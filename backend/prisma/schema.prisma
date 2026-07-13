@@ -1,0 +1,1993 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MULTI-SOCIÉTÉS & MULTI-AGENCES
+// ============================================================================
+
+model Societe {
+  id             String   @id @default(uuid())
+  code           String   @unique @db.VarChar(20)
+  raisonSociale  String   @db.VarChar(200)
+  formeJuridique String?  @db.VarChar(50)
+  capital        Decimal? @db.Decimal(18, 2)
+  rccm           String?  @db.VarChar(50)
+  ncc            String?  @db.VarChar(50)
+  regime         String?  @db.VarChar(50)
+  adresse        String?  @db.VarChar(500)
+  ville          String?  @db.VarChar(100)
+  pays           String   @default("Côte d'Ivoire") @db.VarChar(100)
+  telephone      String?  @db.VarChar(50)
+  mobile         String?  @db.VarChar(50)
+  email          String?  @db.VarChar(200)
+  siteWeb        String?  @db.VarChar(200)
+  logo           String?
+  devise         String   @default("XOF") @db.VarChar(10)
+  tauxTVA        Decimal  @default(18) @db.Decimal(5, 2)
+  timbreFiscal   Decimal  @default(0) @db.Decimal(18, 2)
+  exerciceDebut  Int      @default(1)
+  exerciceFin    Int      @default(12)
+  smtpHost       String?  @db.VarChar(200)
+  smtpPort       Int?
+  smtpUser       String?  @db.VarChar(200)
+  smtpPass       String?  @db.VarChar(200)
+  smtpSecure     Boolean  @default(true)
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  agences               Agence[]
+  utilisateurs          Utilisateur[]
+  exercices             Exercice[]
+  dossiers              Dossier[]
+  clients               Client[]
+  fournisseurs          Fournisseur[]
+  factures              Facture[]
+  comptes               CompteComptable[]
+  journaux              JournalComptable[]
+  numerotations         Numerotation[]
+  parametres            Parametre[]
+  comptesBancaires      CompteBancaire[]
+  caisses               Caisse[]
+  operationsFinancieres OperationFinanciere[]
+  rapprochements        Rapprochement[]
+  depenses              Depense[]
+  comptesTiers          CompteTiers[]
+  facturesFournisseur   FactureFournisseur[]
+  paiementsFournisseurs PaiementFournisseur[]
+  dotations             Dotation[]
+  admissionsTemporaires AdmissionTemporaire[]
+  documents             Document[]
+  cautions              Caution[]
+  modelesCourrier       ModeleCourrier[]
+
+  @@map("societes")
+}
+
+model Agence {
+  id          String   @id @default(uuid())
+  societeId   String
+  code        String   @db.VarChar(20)
+  nom         String   @db.VarChar(200)
+  adresse     String?  @db.VarChar(500)
+  ville       String?  @db.VarChar(100)
+  telephone   String?  @db.VarChar(50)
+  email       String?  @db.VarChar(200)
+  responsable String?  @db.VarChar(200)
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  societe      Societe       @relation(fields: [societeId], references: [id])
+  utilisateurs Utilisateur[]
+  dossiers     Dossier[]
+
+  @@unique([societeId, code])
+  @@map("agences")
+}
+
+// ============================================================================
+// AUTHENTIFICATION & SÉCURITÉ
+// ============================================================================
+
+model Utilisateur {
+  id                 String    @id @default(uuid())
+  societeId          String
+  agenceId           String?
+  matricule          String    @unique @db.VarChar(50)
+  nom                String    @db.VarChar(100)
+  prenom             String    @db.VarChar(100)
+  email              String    @unique @db.VarChar(200)
+  telephone          String?   @db.VarChar(50)
+  motDePasse         String    @db.VarChar(255)
+  avatar             String?
+  doubleAuth         Boolean   @default(false)
+  secretDoubleAuth   String?   @db.VarChar(255)
+  actif              Boolean   @default(true)
+  verrouille         Boolean   @default(false)
+  tentativesEchouees Int       @default(0)
+  derniereConnexion  DateTime?
+  expirationMdp      DateTime?
+  doitChangerMdp     Boolean   @default(false)
+  tokenReset         String?   @db.VarChar(255)
+  tokenResetExpire   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  societe                      Societe               @relation(fields: [societeId], references: [id])
+  agence                       Agence?               @relation(fields: [agenceId], references: [id])
+  profil                       Profil?               @relation(fields: [profilId], references: [id])
+  profilId                     String?
+  sessions                     Session[]
+  journalAudit                 JournalAudit[]
+  historiqueConnexions         HistoriqueConnexion[]
+  dossiersCreateur             Dossier[]             @relation("DossierCreateur")
+  dossiersAgent                Dossier[]             @relation("DossierAgent")
+  facturesCreateur             Facture[]             @relation("FactureCreateur")
+  facturesFournisseurCreateur  FactureFournisseur[]  @relation("FactureFournisseurCreateur")
+  ecritures                    EcritureComptable[]   @relation("EcritureCreateur")
+  courriersCreateur            Courrier[]            @relation("CourrierCreateur")
+  notifications                Notification[]
+  paiementsCreateur            Paiement[]            @relation("PaiementCreateur")
+  paiementsFournisseurCreateur PaiementFournisseur[] @relation("PaiementFournisseurCreateur")
+  operationsAgent              OperationFinanciere[] @relation("OperationFinanciereAgent")
+  dotationsAgent               Dotation[]            @relation("DotationAgent")
+  dotationsCreateur            Dotation[]            @relation("DotationCreateur")
+
+  @@index([societeId])
+  @@index([email])
+  @@index([matricule])
+  @@map("utilisateurs")
+}
+
+model Profil {
+  id          String   @id @default(uuid())
+  code        String   @unique @db.VarChar(50)
+  nom         String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  estAdmin    Boolean  @default(false)
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  utilisateurs Utilisateur[]
+  permissions  ProfilPermission[]
+
+  @@map("profils")
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  module    String   @db.VarChar(100)
+  action    String   @db.VarChar(100)
+  libelle   String   @db.VarChar(200)
+  createdAt DateTime @default(now())
+
+  profils ProfilPermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model ProfilPermission {
+  id           String @id @default(uuid())
+  profilId     String
+  permissionId String
+
+  profil     Profil     @relation(fields: [profilId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([profilId, permissionId])
+  @@map("profils_permissions")
+}
+
+model Session {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  token         String   @unique @db.VarChar(500)
+  ipAdresse     String?  @db.VarChar(50)
+  userAgent     String?  @db.VarChar(500)
+  expiresAt     DateTime
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([utilisateurId])
+  @@map("sessions")
+}
+
+model HistoriqueConnexion {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  ipAdresse     String?  @db.VarChar(50)
+  userAgent     String?  @db.VarChar(500)
+  statut        String   @db.VarChar(20) // SUCCESS, FAILED, LOCKED
+  motif         String?  @db.VarChar(200)
+  createdAt     DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@index([utilisateurId])
+  @@index([createdAt])
+  @@map("historique_connexions")
+}
+
+model JournalAudit {
+  id            String   @id @default(uuid())
+  utilisateurId String?
+  action        String   @db.VarChar(100)
+  module        String   @db.VarChar(100)
+  entite        String?  @db.VarChar(100)
+  entiteId      String?  @db.VarChar(100)
+  donneesAvant  Json?
+  donneesApres  Json?
+  ipAdresse     String?  @db.VarChar(50)
+  userAgent     String?  @db.VarChar(500)
+  createdAt     DateTime @default(now())
+
+  utilisateur Utilisateur? @relation(fields: [utilisateurId], references: [id])
+
+  @@index([utilisateurId])
+  @@index([module])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entite, entiteId])
+  @@map("journal_audit")
+}
+
+// ============================================================================
+// MODULE DOSSIERS
+// ============================================================================
+
+model Dossier {
+  id             String        @id @default(uuid())
+  societeId      String
+  agenceId       String?
+  createurId     String
+  agentId        String?
+  numero         String        @db.VarChar(50)
+  numeroPhysique String?       @db.VarChar(50)
+  annee          Int
+  nature         NatureDossier
+  type           TypeDossier
+  statut         StatutDossier @default(NOUVEAU)
+
+  // Client
+  clientId        String
+  referenceClient String? @db.VarChar(100)
+
+  // Transport Maritime
+  compagnieMaritime String?   @db.VarChar(200)
+  navire            String?   @db.VarChar(200)
+  voyage            String?   @db.VarChar(100)
+  numeroBL          String?   @db.VarChar(100)
+  portOrigine       String?   @db.VarChar(200)
+  portDestination   String?   @db.VarChar(200)
+  dateArrivee       DateTime?
+  dateDepart        DateTime?
+
+  // Conteneur(s)
+  conteneurs Conteneur[]
+
+  // Marchandise
+  designation String?  @db.Text
+  poidsBrut   Decimal? @db.Decimal(18, 3)
+  poidsNet    Decimal? @db.Decimal(18, 3)
+  volume      Decimal? @db.Decimal(18, 3)
+  nombreColis Int?
+  emballage   String?  @db.VarChar(100)
+
+  // Valeur et Douane
+  valeurFOB  Decimal? @db.Decimal(18, 2)
+  fret       Decimal? @db.Decimal(18, 2)
+  assurance  Decimal? @db.Decimal(18, 2)
+  valeurCAF  Decimal? @db.Decimal(18, 2)
+  incoterm   String?  @db.VarChar(10)
+  devise     String   @default("XOF") @db.VarChar(10)
+  tauxChange Decimal  @default(1) @db.Decimal(18, 6)
+
+  // Déclaration en Douane
+  numeroDeclaration String?   @db.VarChar(100)
+  dateDeclaration   DateTime?
+  regimeDouanier    String?   @db.VarChar(100)
+  bureauDouane      String?   @db.VarChar(200)
+  positionTarifaire String?   @db.VarChar(50)
+  droitDouane       Decimal?  @db.Decimal(18, 2)
+  tva               Decimal?  @db.Decimal(18, 2)
+  autresTaxes       Decimal?  @db.Decimal(18, 2)
+  totalDroits       Decimal?  @db.Decimal(18, 2)
+
+  // Livraison
+  dateLivraison DateTime?
+  lieuLivraison String?   @db.VarChar(500)
+  bonLivraison  String?   @db.VarChar(100)
+
+  // AT
+  admissionTemporaireId String?
+
+  // Processus de suivi
+  processusId String?
+
+  // Métadonnées
+  observations     String?   @db.Text
+  dateCreation     DateTime  @default(now())
+  dateModification DateTime  @updatedAt
+  dateCloture      DateTime?
+  dateAnnulation   DateTime?
+  motifAnnulation  String?   @db.VarChar(500)
+
+  // Relations
+  societe             Societe              @relation(fields: [societeId], references: [id])
+  agence              Agence?              @relation(fields: [agenceId], references: [id])
+  createur            Utilisateur          @relation("DossierCreateur", fields: [createurId], references: [id])
+  agent               Utilisateur?         @relation("DossierAgent", fields: [agentId], references: [id])
+  client              Client               @relation(fields: [clientId], references: [id])
+  admissionTemporaire AdmissionTemporaire? @relation(fields: [admissionTemporaireId], references: [id])
+  processus           ProcessusSuivi?      @relation(fields: [processusId], references: [id])
+
+  articles            Article[]
+  factures            Facture[]
+  facturesFournisseur FactureFournisseur[]
+  proformas           Proforma[]
+  documents           Document[]
+  historiqueDossier   HistoriqueDossier[]
+  depenses            Depense[]
+  courriers           CourrierDossier[]
+  offres              OffreCommerciale[]
+  cautions            Caution[]
+
+  @@unique([societeId, numero, annee])
+  @@unique([societeId, numeroPhysique])
+  @@index([societeId])
+  @@index([clientId])
+  @@index([statut])
+  @@index([nature])
+  @@index([annee])
+  @@index([dateCreation])
+  @@index([numero])
+  @@index([numeroBL])
+  @@index([numeroDeclaration])
+  @@map("dossiers")
+}
+
+model Conteneur {
+  id        String   @id @default(uuid())
+  dossierId String
+  numero    String   @db.VarChar(50)
+  type      String?  @db.VarChar(20) // 20', 40', 40'HC, etc.
+  taille    String?  @db.VarChar(10)
+  poids     Decimal? @db.Decimal(18, 3)
+  scelle    String?  @db.VarChar(50)
+  etat      String?  @db.VarChar(50)
+
+  dossier Dossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@index([dossierId])
+  @@index([numero])
+  @@map("conteneurs")
+}
+
+// ============================================================================
+// MODULE ARTICLES (marchandises du dossier)
+// ============================================================================
+
+model Article {
+  id                String    @id @default(uuid())
+  dossierId         String
+  numero            Int
+  designation       String    @db.VarChar(500)
+  type              String?   @db.VarChar(100)
+  marque            String?   @db.VarChar(200)
+  modele            String?   @db.VarChar(200)
+  quantite          Decimal   @default(1) @db.Decimal(18, 3)
+  unite             String?   @db.VarChar(50)
+  positionTarifaire String?   @db.VarChar(50)
+  poids             Decimal?  @db.Decimal(18, 3)
+  valeur            Decimal?  @db.Decimal(18, 2)
+  origine           String?   @db.VarChar(100)
+  dateLivraison     DateTime?
+  bonLivraison      String?   @db.VarChar(100)
+  observations      String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  dossier Dossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@index([dossierId])
+  @@index([positionTarifaire])
+  @@map("articles")
+}
+
+// ============================================================================
+// MODULE PROCESSUS DE SUIVI
+// ============================================================================
+
+model ProcessusSuivi {
+  id          String         @id @default(uuid())
+  societeId   String
+  code        String         @db.VarChar(50)
+  nom         String         @db.VarChar(200)
+  description String?        @db.VarChar(500)
+  nature      NatureDossier?
+  actif       Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  etapes   EtapeProcessus[]
+  dossiers Dossier[]
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@map("processus_suivi")
+}
+
+model EtapeProcessus {
+  id          String   @id @default(uuid())
+  processusId String
+  ordre       Int
+  code        String   @db.VarChar(50)
+  nom         String   @db.VarChar(200)
+  description String?  @db.VarChar(500)
+  couleur     String?  @db.VarChar(20)
+  delaiJours  Int?
+  obligatoire Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  processus ProcessusSuivi @relation(fields: [processusId], references: [id], onDelete: Cascade)
+
+  @@index([processusId])
+  @@map("etapes_processus")
+}
+
+model HistoriqueDossier {
+  id          String         @id @default(uuid())
+  dossierId   String
+  action      String         @db.VarChar(100)
+  statutAvant StatutDossier?
+  statutApres StatutDossier?
+  commentaire String?        @db.Text
+  utilisateur String?        @db.VarChar(200)
+  createdAt   DateTime       @default(now())
+
+  dossier Dossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@index([dossierId])
+  @@index([createdAt])
+  @@map("historique_dossiers")
+}
+
+enum NatureDossier {
+  IMPORT
+  EXPORT
+  TRANSIT
+  REEXPORT
+  CABOTAGE
+  TRANSBORDEMENT
+}
+
+enum TypeDossier {
+  MARITIME
+  AERIEN
+  TERRESTRE
+  MULTIMODAL
+}
+
+enum StatutDossier {
+  NOUVEAU
+  EN_COURS
+  ATTENTE_CLIENT
+  ATTENTE_DOUANE
+  LIQUIDATION
+  PAIEMENT
+  MAIN_LEVEE
+  LIVRAISON
+  CLOTURE
+  ANNULE
+  ARCHIVE
+}
+
+// ============================================================================
+// MODULE CLIENTS
+// ============================================================================
+
+model Client {
+  id            String     @id @default(uuid())
+  societeId     String
+  code          String     @db.VarChar(20)
+  type          TypeClient @default(ENTREPRISE)
+  raisonSociale String     @db.VarChar(200)
+  sigle         String?    @db.VarChar(50)
+  ncc           String?    @db.VarChar(50)
+  rccm          String?    @db.VarChar(50)
+  regimeFiscal  String?    @db.VarChar(50)
+  adresse       String?    @db.VarChar(500)
+  ville         String?    @db.VarChar(100)
+  pays          String     @default("Côte d'Ivoire") @db.VarChar(100)
+  telephone     String?    @db.VarChar(50)
+  mobile        String?    @db.VarChar(50)
+  email         String?    @db.VarChar(200)
+  siteWeb       String?    @db.VarChar(200)
+
+  // Conditions commerciales
+  conditionPaiement Int      @default(30) // jours
+  plafondCredit     Decimal? @db.Decimal(18, 2)
+  tauxRemise        Decimal  @default(0) @db.Decimal(5, 2)
+  devise            String   @default("XOF") @db.VarChar(10)
+  exonere           Boolean  @default(false)
+
+  // État
+  bloque       Boolean @default(false)
+  motifBlocage String? @db.VarChar(500)
+  actif        Boolean @default(true)
+  archive      Boolean @default(false)
+  solde        Decimal @default(0) @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  societe               Societe               @relation(fields: [societeId], references: [id])
+  contacts              ContactClient[]
+  dossiers              Dossier[]
+  factures              Facture[]
+  proformas             Proforma[]
+  paiements             Paiement[]
+  offres                OffreCommerciale[]
+  documents             Document[]
+  admissionsTemporaires AdmissionTemporaire[]
+  cautions              Caution[]
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@index([raisonSociale])
+  @@index([ncc])
+  @@index([code])
+  @@map("clients")
+}
+
+model ContactClient {
+  id        String   @id @default(uuid())
+  clientId  String
+  nom       String   @db.VarChar(100)
+  prenom    String?  @db.VarChar(100)
+  fonction  String?  @db.VarChar(100)
+  telephone String?  @db.VarChar(50)
+  mobile    String?  @db.VarChar(50)
+  email     String?  @db.VarChar(200)
+  principal Boolean  @default(false)
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("contacts_clients")
+}
+
+enum TypeClient {
+  ENTREPRISE
+  PARTICULIER
+  ADMINISTRATION
+  ONG
+  DIPLOMATIQUE
+}
+
+// ============================================================================
+// MODULE FOURNISSEURS
+// ============================================================================
+
+model Fournisseur {
+  id            String          @id @default(uuid())
+  societeId     String
+  code          String          @db.VarChar(20)
+  type          TypeFournisseur @default(PRESTATAIRE)
+  raisonSociale String          @db.VarChar(200)
+  sigle         String?         @db.VarChar(50)
+  ncc           String?         @db.VarChar(50)
+  rccm          String?         @db.VarChar(50)
+  adresse       String?         @db.VarChar(500)
+  ville         String?         @db.VarChar(100)
+  pays          String          @default("Côte d'Ivoire") @db.VarChar(100)
+  telephone     String?         @db.VarChar(50)
+  mobile        String?         @db.VarChar(50)
+  email         String?         @db.VarChar(200)
+  siteWeb       String?         @db.VarChar(200)
+
+  conditionPaiement Int     @default(30)
+  devise            String  @default("XOF") @db.VarChar(10)
+  rib               String? @db.VarChar(100)
+  banque            String? @db.VarChar(200)
+
+  actif     Boolean  @default(true)
+  solde     Decimal  @default(0) @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  societe             Societe               @relation(fields: [societeId], references: [id])
+  contactsFournisseur ContactFournisseur[]
+  facturesFournisseur FactureFournisseur[]
+  paiements           PaiementFournisseur[]
+  depenses            Depense[]
+  documents           Document[]
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@index([raisonSociale])
+  @@index([type])
+  @@map("fournisseurs")
+}
+
+model ContactFournisseur {
+  id            String   @id @default(uuid())
+  fournisseurId String
+  nom           String   @db.VarChar(100)
+  prenom        String?  @db.VarChar(100)
+  fonction      String?  @db.VarChar(100)
+  telephone     String?  @db.VarChar(50)
+  email         String?  @db.VarChar(200)
+  principal     Boolean  @default(false)
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  fournisseur Fournisseur @relation(fields: [fournisseurId], references: [id], onDelete: Cascade)
+
+  @@index([fournisseurId])
+  @@map("contacts_fournisseurs")
+}
+
+enum TypeFournisseur {
+  PRESTATAIRE
+  TRANSPORTEUR
+  COMPAGNIE_MARITIME
+  COMPAGNIE_AERIENNE
+  ACCONIER
+  MAGASIN
+  BANQUE
+  DOUANE
+  ASSURANCE
+  TRANSITAIRE
+  MANUTENTION
+  AUTRE
+}
+
+// ============================================================================
+// MODULE OFFRES COMMERCIALES
+// ============================================================================
+
+model OffreCommerciale {
+  id           String      @id @default(uuid())
+  numero       String      @db.VarChar(50)
+  dossierId    String?
+  clientId     String
+  dateOffre    DateTime    @default(now())
+  dateValidite DateTime
+  objet        String      @db.VarChar(500)
+  description  String?     @db.Text
+  version      Int         @default(1)
+  statut       StatutOffre @default(BROUILLON)
+  montantHT    Decimal     @default(0) @db.Decimal(18, 2)
+  montantTVA   Decimal     @default(0) @db.Decimal(18, 2)
+  montantTTC   Decimal     @default(0) @db.Decimal(18, 2)
+  remise       Decimal     @default(0) @db.Decimal(18, 2)
+  conditions   String?     @db.Text
+  observations String?     @db.Text
+  proformaId   String?
+  factureId    String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  client  Client       @relation(fields: [clientId], references: [id])
+  dossier Dossier?     @relation(fields: [dossierId], references: [id])
+  lignes  LigneOffre[]
+
+  @@index([clientId])
+  @@index([numero])
+  @@index([statut])
+  @@map("offres_commerciales")
+}
+
+model LigneOffre {
+  id           String  @id @default(uuid())
+  offreId      String
+  ordre        Int
+  designation  String  @db.VarChar(500)
+  quantite     Decimal @default(1) @db.Decimal(18, 3)
+  unite        String? @db.VarChar(50)
+  prixUnitaire Decimal @db.Decimal(18, 2)
+  montantHT    Decimal @db.Decimal(18, 2)
+  tauxTVA      Decimal @default(18) @db.Decimal(5, 2)
+  montantTVA   Decimal @db.Decimal(18, 2)
+  remise       Decimal @default(0) @db.Decimal(18, 2)
+
+  offre OffreCommerciale @relation(fields: [offreId], references: [id], onDelete: Cascade)
+
+  @@index([offreId])
+  @@map("lignes_offres")
+}
+
+enum StatutOffre {
+  BROUILLON
+  ENVOYEE
+  ACCEPTEE
+  REFUSEE
+  EXPIREE
+  TRANSFORMEE
+  ANNULEE
+}
+
+// ============================================================================
+// MODULE PROSPECTS
+// ============================================================================
+
+model Prospect {
+  id            String   @id @default(uuid())
+  societeId     String
+  raisonSociale String   @db.VarChar(200)
+  contact       String?  @db.VarChar(200)
+  telephone     String?  @db.VarChar(50)
+  email         String?  @db.VarChar(200)
+  activite      String?  @db.VarChar(200)
+  source        String?  @db.VarChar(100)
+  statut        String   @default("NOUVEAU") @db.VarChar(30)
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([societeId])
+  @@index([statut])
+  @@map("prospects")
+}
+
+// ============================================================================
+// CATALOGUE DE PRESTATIONS
+// ============================================================================
+
+model PrestationCatalogue {
+  id            String   @id @default(uuid())
+  societeId     String
+  categorie     String   @db.VarChar(100)
+  code          String   @db.VarChar(50)
+  designation   String   @db.VarChar(500)
+  montantDefaut Decimal? @db.Decimal(18, 2)
+  tauxTVA       Decimal  @default(0) @db.Decimal(5, 2)
+  estTVA        Boolean  @default(false)
+  ordre         Int      @default(0)
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@index([categorie])
+  @@map("prestations_catalogue")
+}
+
+// ============================================================================
+// MODULE PROFORMA
+// ============================================================================
+
+model Proforma {
+  id           String         @id @default(uuid())
+  numero       String         @db.VarChar(50)
+  dossierId    String?
+  clientId     String
+  dateProforma DateTime       @default(now())
+  dateValidite DateTime
+  titre        String?        @db.VarChar(500)
+  objet        String?        @db.VarChar(500)
+  statut       StatutProforma @default(BROUILLON)
+
+  // Valeurs douane
+  fobUnitaire  Decimal? @db.Decimal(18, 2)
+  fretUnitaire Decimal? @db.Decimal(18, 2)
+  assurance    Decimal? @db.Decimal(18, 2)
+  fraisDivers  Decimal? @db.Decimal(18, 2)
+  nombreUnites Int      @default(1)
+  valeurCAF    Decimal? @db.Decimal(18, 2)
+
+  // Totaux
+  montantHT    Decimal  @default(0) @db.Decimal(18, 2)
+  montantTVA   Decimal  @default(0) @db.Decimal(18, 2)
+  timbreFiscal Decimal  @default(0) @db.Decimal(18, 2)
+  montantTTC   Decimal  @default(0) @db.Decimal(18, 2)
+  remise       Decimal  @default(0) @db.Decimal(18, 2)
+  conditions   String?  @db.Text
+  observations String?  @db.Text
+  factureId    String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client  Client          @relation(fields: [clientId], references: [id])
+  dossier Dossier?        @relation(fields: [dossierId], references: [id])
+  facture Facture?        @relation(fields: [factureId], references: [id])
+  lignes  LigneProforma[]
+
+  @@index([clientId])
+  @@index([dossierId])
+  @@index([numero])
+  @@index([statut])
+  @@map("proformas")
+}
+
+model LigneProforma {
+  id             String  @id @default(uuid())
+  proformaId     String
+  ordre          Int
+  categorie      String? @db.VarChar(100)
+  codePrestation String? @db.VarChar(50)
+  designation    String  @db.VarChar(500)
+  quantite       Decimal @default(1) @db.Decimal(18, 3)
+  unite          String? @db.VarChar(50)
+  prixUnitaire   Decimal @db.Decimal(18, 2)
+  montantHT      Decimal @db.Decimal(18, 2)
+  tauxTVA        Decimal @default(18) @db.Decimal(5, 2)
+  montantTVA     Decimal @db.Decimal(18, 2)
+  estTVA         Boolean @default(false)
+  remise         Decimal @default(0) @db.Decimal(18, 2)
+
+  proforma Proforma @relation(fields: [proformaId], references: [id], onDelete: Cascade)
+
+  @@index([proformaId])
+  @@map("lignes_proformas")
+}
+
+enum StatutProforma {
+  BROUILLON
+  VALIDEE
+  EN_ATTENTE_FACTURATION
+  ENVOYEE
+  ACCEPTEE
+  TRANSFORMEE
+  EXPIREE
+  ANNULEE
+}
+
+// ============================================================================
+// MODULE FACTURATION
+// ============================================================================
+
+model Facture {
+  id           String        @id @default(uuid())
+  societeId    String
+  numero       String        @db.VarChar(50)
+  type         TypeFacture   @default(FACTURE)
+  dossierId    String?
+  clientId     String
+  createurId   String
+  dateFacture  DateTime      @default(now())
+  dateEcheance DateTime
+  objet        String?       @db.VarChar(500)
+  statut       StatutFacture @default(BROUILLON)
+
+  // Montants
+  montantHT         Decimal  @default(0) @db.Decimal(18, 2)
+  montantTVA        Decimal  @default(0) @db.Decimal(18, 2)
+  timbreFiscal      Decimal  @default(0) @db.Decimal(18, 2)
+  retenue           Decimal  @default(0) @db.Decimal(18, 2)
+  montantTTC        Decimal  @default(0) @db.Decimal(18, 2)
+  montantPaye       Decimal  @default(0) @db.Decimal(18, 2)
+  resteAPayer       Decimal  @default(0) @db.Decimal(18, 2)
+  acompte           Decimal  @default(0) @db.Decimal(18, 2)
+  montantPrestation Decimal? @db.Decimal(18, 2)
+  tvaPrestation     Decimal? @db.Decimal(18, 2)
+  remise            Decimal  @default(0) @db.Decimal(18, 2)
+  tauxTVA           Decimal  @default(18) @db.Decimal(5, 2)
+  titre             String?  @db.VarChar(500)
+
+  // Proforma source
+  proformaSourceId String?
+
+  // Devise
+  devise     String  @default("XOF") @db.VarChar(10)
+  tauxChange Decimal @default(1) @db.Decimal(18, 6)
+
+  // Avoir lié
+  factureOrigineId String?
+  motifAvoir       String? @db.VarChar(500)
+
+  // QR Code & Signature
+  qrCode       String?
+  signature    String?
+  conditions   String? @db.Text
+  observations String? @db.Text
+  cheminPDF    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  societe        Societe             @relation(fields: [societeId], references: [id])
+  client         Client              @relation(fields: [clientId], references: [id])
+  dossier        Dossier?            @relation(fields: [dossierId], references: [id])
+  createur       Utilisateur         @relation("FactureCreateur", fields: [createurId], references: [id])
+  factureOrigine Facture?            @relation("FactureAvoir", fields: [factureOrigineId], references: [id])
+  avoirs         Facture[]           @relation("FactureAvoir")
+  proforma       Proforma?
+  lignes         LigneFacture[]
+  paiements      PaiementFacture[]
+  ecritures      EcritureComptable[]
+
+  @@unique([societeId, numero])
+  @@index([societeId])
+  @@index([clientId])
+  @@index([dossierId])
+  @@index([statut])
+  @@index([dateFacture])
+  @@index([dateEcheance])
+  @@map("factures")
+}
+
+model LigneFacture {
+  id              String  @id @default(uuid())
+  factureId       String
+  ordre           Int
+  categorie       String? @db.VarChar(100)
+  codePrestation  String? @db.VarChar(50)
+  designation     String  @db.VarChar(500)
+  estTVA          Boolean @default(false)
+  quantite        Decimal @default(1) @db.Decimal(18, 3)
+  unite           String? @db.VarChar(50)
+  prixUnitaire    Decimal @db.Decimal(18, 2)
+  montantHT       Decimal @db.Decimal(18, 2)
+  tauxTVA         Decimal @default(18) @db.Decimal(5, 2)
+  montantTVA      Decimal @db.Decimal(18, 2)
+  remise          Decimal @default(0) @db.Decimal(18, 2)
+  compteComptable String? @db.VarChar(20)
+
+  facture Facture @relation(fields: [factureId], references: [id], onDelete: Cascade)
+
+  @@index([factureId])
+  @@map("lignes_factures")
+}
+
+model FactureFournisseur {
+  id            String        @id @default(uuid())
+  societeId     String
+  numero        String        @db.VarChar(50)
+  fournisseurId String
+  dossierId     String?
+  createurId    String
+  dateFacture   DateTime      @default(now())
+  dateEcheance  DateTime
+  reference     String?       @db.VarChar(100)
+  objet         String?       @db.VarChar(500)
+  statut        StatutFacture @default(BROUILLON)
+  montantHT     Decimal       @default(0) @db.Decimal(18, 2)
+  montantTVA    Decimal       @default(0) @db.Decimal(18, 2)
+  montantTTC    Decimal       @default(0) @db.Decimal(18, 2)
+  montantPaye   Decimal       @default(0) @db.Decimal(18, 2)
+  resteAPayer   Decimal       @default(0) @db.Decimal(18, 2)
+  observations  String?       @db.Text
+  cheminPDF     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  societe     Societe                      @relation(fields: [societeId], references: [id])
+  fournisseur Fournisseur                  @relation(fields: [fournisseurId], references: [id])
+  dossier     Dossier?                     @relation(fields: [dossierId], references: [id])
+  createur    Utilisateur                  @relation("FactureFournisseurCreateur", fields: [createurId], references: [id])
+  lignes      LigneFactureFournisseur[]
+  paiements   PaiementFactureFournisseur[]
+
+  @@unique([societeId, numero])
+  @@index([societeId])
+  @@index([fournisseurId])
+  @@index([dossierId])
+  @@index([statut])
+  @@index([dateFacture])
+  @@map("factures_fournisseurs")
+}
+
+model LigneFactureFournisseur {
+  id                   String  @id @default(uuid())
+  factureFournisseurId String
+  ordre                Int
+  designation          String  @db.VarChar(500)
+  quantite             Decimal @default(1) @db.Decimal(18, 3)
+  prixUnitaire         Decimal @db.Decimal(18, 2)
+  montantHT            Decimal @db.Decimal(18, 2)
+  tauxTVA              Decimal @default(18) @db.Decimal(5, 2)
+  montantTVA           Decimal @db.Decimal(18, 2)
+
+  factureFournisseur FactureFournisseur @relation(fields: [factureFournisseurId], references: [id], onDelete: Cascade)
+
+  @@index([factureFournisseurId])
+  @@map("lignes_factures_fournisseurs")
+}
+
+model PaiementFournisseur {
+  id               String         @id @default(uuid())
+  societeId        String
+  numero           String         @db.VarChar(50)
+  fournisseurId    String?
+  datePaiement     DateTime       @default(now())
+  montant          Decimal        @db.Decimal(18, 2)
+  modePaiement     ModePaiement
+  reference        String?        @db.VarChar(100)
+  banque           String?        @db.VarChar(200)
+  observations     String?        @db.Text
+  statut           StatutPaiement @default(EN_ATTENTE)
+  caisseId         String?
+  compteBancaireId String?
+  compteTiersId    String?
+  createurId       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  societe        Societe                      @relation(fields: [societeId], references: [id])
+  fournisseur    Fournisseur?                 @relation(fields: [fournisseurId], references: [id])
+  caisse         Caisse?                      @relation(fields: [caisseId], references: [id])
+  compteBancaire CompteBancaire?              @relation(fields: [compteBancaireId], references: [id])
+  compteTiers    CompteTiers?                 @relation(fields: [compteTiersId], references: [id])
+  createur       Utilisateur?                 @relation("PaiementFournisseurCreateur", fields: [createurId], references: [id])
+  affectations   PaiementFactureFournisseur[]
+
+  @@index([societeId])
+  @@index([fournisseurId])
+  @@index([caisseId])
+  @@index([compteBancaireId])
+  @@index([compteTiersId])
+  @@map("paiements_fournisseurs")
+}
+
+model PaiementFactureFournisseur {
+  id                    String   @id @default(uuid())
+  paiementFournisseurId String
+  factureFournisseurId  String
+  montant               Decimal  @db.Decimal(18, 2)
+  createdAt             DateTime @default(now())
+
+  paiementFournisseur PaiementFournisseur @relation(fields: [paiementFournisseurId], references: [id])
+  factureFournisseur  FactureFournisseur  @relation(fields: [factureFournisseurId], references: [id])
+
+  @@unique([paiementFournisseurId, factureFournisseurId])
+  @@map("paiements_factures_fournisseurs")
+}
+
+enum TypeFacture {
+  FACTURE
+  AVOIR
+  PROFORMA
+  DUPLICATA
+  DIVERSE
+}
+
+enum StatutFacture {
+  BROUILLON
+  VALIDEE
+  ENVOYEE
+  PARTIELLEMENT_PAYEE
+  PAYEE
+  EN_RETARD
+  ANNULEE
+  CONTENTIEUX
+}
+
+// ============================================================================
+// MODULE PAIEMENTS
+// ============================================================================
+
+model Paiement {
+  id               String         @id @default(uuid())
+  numero           String         @db.VarChar(50)
+  clientId         String?
+  datePaiement     DateTime       @default(now())
+  montant          Decimal        @db.Decimal(18, 2)
+  modePaiement     ModePaiement
+  reference        String?        @db.VarChar(100)
+  banque           String?        @db.VarChar(200)
+  observations     String?        @db.Text
+  statut           StatutPaiement @default(EN_ATTENTE)
+  caisseId         String?
+  compteBancaireId String?
+  createurId       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  client         Client?             @relation(fields: [clientId], references: [id])
+  caisse         Caisse?             @relation(fields: [caisseId], references: [id])
+  compteBancaire CompteBancaire?     @relation(fields: [compteBancaireId], references: [id])
+  createur       Utilisateur?        @relation("PaiementCreateur", fields: [createurId], references: [id])
+  affectations   PaiementFacture[]
+  ecritures      EcritureComptable[]
+
+  @@index([clientId])
+  @@index([datePaiement])
+  @@index([statut])
+  @@index([caisseId])
+  @@index([compteBancaireId])
+  @@map("paiements")
+}
+
+model PaiementFacture {
+  id         String   @id @default(uuid())
+  paiementId String
+  factureId  String
+  montant    Decimal  @db.Decimal(18, 2)
+  createdAt  DateTime @default(now())
+
+  paiement Paiement @relation(fields: [paiementId], references: [id])
+  facture  Facture  @relation(fields: [factureId], references: [id])
+
+  @@unique([paiementId, factureId])
+  @@map("paiements_factures")
+}
+
+enum ModePaiement {
+  ESPECES
+  CHEQUE
+  VIREMENT
+  TRAITE
+  MOBILE_MONEY
+  ORANGE_MONEY
+  MTN_MONEY
+  WAVE
+  MOOV_MONEY
+  CARTE_BANCAIRE
+  COMPENSATION
+}
+
+enum StatutPaiement {
+  EN_ATTENTE
+  VALIDE
+  REJETE
+  ANNULE
+}
+
+// ============================================================================
+// MODULE COMPTABILITÉ OHADA / SYSCOHADA RÉVISÉ
+// ============================================================================
+
+model Exercice {
+  id          String    @id @default(uuid())
+  societeId   String
+  code        String    @db.VarChar(20)
+  libelle     String    @db.VarChar(200)
+  dateDebut   DateTime
+  dateFin     DateTime
+  cloture     Boolean   @default(false)
+  dateCloture DateTime?
+  actif       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  societe   Societe             @relation(fields: [societeId], references: [id])
+  ecritures EcritureComptable[]
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@map("exercices")
+}
+
+model CompteComptable {
+  id           String       @id @default(uuid())
+  societeId    String
+  numero       String       @db.VarChar(20)
+  libelle      String       @db.VarChar(200)
+  classe       Int // 1-9 OHADA
+  type         TypeCompte
+  nature       NatureCompte
+  sens         SensCompte   @default(DEBITEUR)
+  parent       String?      @db.VarChar(20)
+  niveau       Int          @default(1)
+  collectif    Boolean      @default(false)
+  lettrable    Boolean      @default(false)
+  rapprochable Boolean      @default(false)
+  actif        Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  societe    Societe              @relation(fields: [societeId], references: [id])
+  mouvements MouvementComptable[]
+
+  @@unique([societeId, numero])
+  @@index([societeId])
+  @@index([classe])
+  @@index([numero])
+  @@map("comptes_comptables")
+}
+
+model JournalComptable {
+  id                 String      @id @default(uuid())
+  societeId          String
+  code               String      @db.VarChar(10)
+  libelle            String      @db.VarChar(200)
+  type               TypeJournal
+  compteContrepartie String?     @db.VarChar(20)
+  actif              Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  societe   Societe             @relation(fields: [societeId], references: [id])
+  ecritures EcritureComptable[]
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@map("journaux_comptables")
+}
+
+model EcritureComptable {
+  id             String    @id @default(uuid())
+  exerciceId     String
+  journalId      String
+  numero         String    @db.VarChar(50)
+  dateEcriture   DateTime
+  dateSaisie     DateTime  @default(now())
+  libelle        String    @db.VarChar(500)
+  reference      String?   @db.VarChar(100)
+  piece          String?   @db.VarChar(100)
+  factureId      String?
+  paiementId     String?
+  createurId     String
+  validee        Boolean   @default(false)
+  dateValidation DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  exercice   Exercice             @relation(fields: [exerciceId], references: [id])
+  journal    JournalComptable     @relation(fields: [journalId], references: [id])
+  facture    Facture?             @relation(fields: [factureId], references: [id])
+  paiement   Paiement?            @relation(fields: [paiementId], references: [id])
+  createur   Utilisateur          @relation("EcritureCreateur", fields: [createurId], references: [id])
+  mouvements MouvementComptable[]
+
+  @@index([exerciceId])
+  @@index([journalId])
+  @@index([dateEcriture])
+  @@index([numero])
+  @@map("ecritures_comptables")
+}
+
+model MouvementComptable {
+  id                String    @id @default(uuid())
+  ecritureId        String
+  compteId          String
+  libelle           String?   @db.VarChar(500)
+  debit             Decimal   @default(0) @db.Decimal(18, 2)
+  credit            Decimal   @default(0) @db.Decimal(18, 2)
+  lettrage          String?   @db.VarChar(20)
+  dateLettrage      DateTime?
+  rapprochement     String?   @db.VarChar(50)
+  dateRapprochement DateTime?
+
+  ecriture EcritureComptable @relation(fields: [ecritureId], references: [id], onDelete: Cascade)
+  compte   CompteComptable   @relation(fields: [compteId], references: [id])
+
+  @@index([ecritureId])
+  @@index([compteId])
+  @@index([lettrage])
+  @@map("mouvements_comptables")
+}
+
+enum TypeCompte {
+  BILAN
+  GESTION
+  HORS_BILAN
+}
+
+enum NatureCompte {
+  ACTIF
+  PASSIF
+  CHARGE
+  PRODUIT
+}
+
+enum SensCompte {
+  DEBITEUR
+  CREDITEUR
+}
+
+enum TypeJournal {
+  ACHAT
+  VENTE
+  BANQUE
+  CAISSE
+  OD
+  SITUATION
+  TRESORERIE
+}
+
+// ============================================================================
+// MODULE FINANCE (CAISSE & BANQUE)
+// ============================================================================
+
+model CompteBancaire {
+  id              String   @id @default(uuid())
+  societeId       String
+  code            String   @db.VarChar(20)
+  libelle         String   @db.VarChar(200)
+  banque          String   @db.VarChar(200)
+  rib             String?  @db.VarChar(100)
+  iban            String?  @db.VarChar(50)
+  swift           String?  @db.VarChar(20)
+  devise          String   @default("XOF") @db.VarChar(10)
+  solde           Decimal  @default(0) @db.Decimal(18, 2)
+  actif           Boolean  @default(true)
+  compteComptable String?  @db.VarChar(20)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  societe               Societe               @relation(fields: [societeId], references: [id])
+  operations            OperationFinanciere[]
+  rapprochements        Rapprochement[]
+  depenses              Depense[]
+  paiementsClients      Paiement[]
+  paiementsFournisseurs PaiementFournisseur[]
+
+  @@index([code])
+  @@index([societeId])
+  @@map("comptes_bancaires")
+}
+
+model Caisse {
+  id              String   @id @default(uuid())
+  societeId       String
+  code            String   @db.VarChar(20)
+  libelle         String   @db.VarChar(200)
+  devise          String   @default("XOF") @db.VarChar(10)
+  solde           Decimal  @default(0) @db.Decimal(18, 2)
+  plafond         Decimal? @db.Decimal(18, 2)
+  actif           Boolean  @default(true)
+  compteComptable String?  @db.VarChar(20)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  societe               Societe               @relation(fields: [societeId], references: [id])
+  operations            OperationFinanciere[]
+  depenses              Depense[]
+  paiementsClients      Paiement[]
+  paiementsFournisseurs PaiementFournisseur[]
+
+  @@index([code])
+  @@index([societeId])
+  @@map("caisses")
+}
+
+model OperationFinanciere {
+  id               String           @id @default(uuid())
+  societeId        String
+  numero           String           @db.VarChar(50)
+  type             TypeOperationFin
+  sens             SensOperation
+  compteBancaireId String?
+  caisseId         String?
+  compteTiersId    String?
+  agentId          String?
+  dateOperation    DateTime         @default(now())
+  montant          Decimal          @db.Decimal(18, 2)
+  libelle          String           @db.VarChar(500)
+  reference        String?          @db.VarChar(100)
+  beneficiaire     String?          @db.VarChar(200)
+  observations     String?          @db.Text
+  statut           String           @default("VALIDE") @db.VarChar(20)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  societe        Societe         @relation(fields: [societeId], references: [id])
+  compteBancaire CompteBancaire? @relation(fields: [compteBancaireId], references: [id])
+  caisse         Caisse?         @relation(fields: [caisseId], references: [id])
+  compteTiers    CompteTiers?    @relation(fields: [compteTiersId], references: [id])
+  agent          Utilisateur?    @relation("OperationFinanciereAgent", fields: [agentId], references: [id])
+
+  @@index([societeId])
+  @@index([compteBancaireId])
+  @@index([caisseId])
+  @@index([compteTiersId])
+  @@index([agentId])
+  @@index([dateOperation])
+  @@index([type])
+  @@map("operations_financieres")
+}
+
+model CompteTiers {
+  id              String   @id @default(uuid())
+  societeId       String
+  code            String   @db.VarChar(20)
+  libelle         String   @db.VarChar(200)
+  type            String   @db.VarChar(50)
+  devise          String   @default("XOF") @db.VarChar(10)
+  solde           Decimal  @default(0) @db.Decimal(18, 2)
+  actif           Boolean  @default(true)
+  compteComptable String?  @db.VarChar(20)
+  observations    String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  societe               Societe               @relation(fields: [societeId], references: [id])
+  operations            OperationFinanciere[]
+  paiementsFournisseurs PaiementFournisseur[]
+
+  @@unique([societeId, code])
+  @@index([societeId])
+  @@index([type])
+  @@map("comptes_tiers")
+}
+
+model Rapprochement {
+  id               String   @id @default(uuid())
+  societeId        String
+  compteBancaireId String
+  dateBancaire     DateTime
+  dateComptable    DateTime
+  soldeReleve      Decimal  @db.Decimal(18, 2)
+  soldeComptable   Decimal  @db.Decimal(18, 2)
+  ecart            Decimal  @db.Decimal(18, 2)
+  statut           String   @default("EN_COURS") @db.VarChar(20)
+  observations     String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  societe        Societe        @relation(fields: [societeId], references: [id])
+  compteBancaire CompteBancaire @relation(fields: [compteBancaireId], references: [id])
+
+  @@index([societeId])
+  @@index([compteBancaireId])
+  @@map("rapprochements")
+}
+
+model Depense {
+  id               String       @id @default(uuid())
+  societeId        String
+  numero           String       @db.VarChar(50)
+  dossierId        String?
+  fournisseurId    String?
+  caisseId         String?
+  compteBancaireId String?
+  dotationId       String?
+  dateDepense      DateTime     @default(now())
+  categorie        String       @db.VarChar(100)
+  designation      String       @db.VarChar(500)
+  montant          Decimal      @db.Decimal(18, 2)
+  modePaiement     ModePaiement
+  reference        String?      @db.VarChar(100)
+  observations     String?      @db.Text
+  statut           String       @default("VALIDE") @db.VarChar(20)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  societe        Societe         @relation(fields: [societeId], references: [id])
+  dossier        Dossier?        @relation(fields: [dossierId], references: [id])
+  fournisseur    Fournisseur?    @relation(fields: [fournisseurId], references: [id])
+  caisse         Caisse?         @relation(fields: [caisseId], references: [id])
+  compteBancaire CompteBancaire? @relation(fields: [compteBancaireId], references: [id])
+  dotation       Dotation?       @relation(fields: [dotationId], references: [id])
+
+  @@index([societeId])
+  @@index([dossierId])
+  @@index([fournisseurId])
+  @@index([caisseId])
+  @@index([compteBancaireId])
+  @@index([dotationId])
+  @@index([dateDepense])
+  @@index([categorie])
+  @@map("depenses")
+}
+
+model Dotation {
+  id           String   @id @default(uuid())
+  societeId    String
+  numero       String   @db.VarChar(50)
+  dateDotation DateTime @default(now())
+  montant      Decimal  @db.Decimal(18, 2)
+  motif        String?  @db.Text
+  agentId      String
+  createurId   String
+  statut       String   @default("VALIDE") @db.VarChar(20)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  societe  Societe     @relation(fields: [societeId], references: [id])
+  agent    Utilisateur @relation("DotationAgent", fields: [agentId], references: [id])
+  createur Utilisateur @relation("DotationCreateur", fields: [createurId], references: [id])
+  depenses Depense[]
+
+  @@unique([societeId, numero])
+  @@index([societeId])
+  @@index([agentId])
+  @@map("dotations")
+}
+
+enum TypeOperationFin {
+  ENCAISSEMENT
+  DECAISSEMENT
+  VIREMENT_INTERNE
+  DOTATION
+  RETRAIT
+}
+
+enum SensOperation {
+  ENTREE
+  SORTIE
+}
+
+// ============================================================================
+// MODULE ADMISSIONS TEMPORAIRES
+// ============================================================================
+
+model AdmissionTemporaire {
+  id                 String    @id @default(uuid())
+  societeId          String
+  numero             String    @db.VarChar(50)
+  clientId           String?
+  declarant          String?   @db.VarChar(200)
+  nature             String?   @db.VarChar(200)
+  dateCreation       DateTime  @default(now())
+  dateDeclaration    DateTime?
+  dateExpiration     DateTime
+  dateRenouvellement DateTime?
+  dureeInitiale      Int // en jours
+  dureeProlongation  Int? // en jours
+  delaiMois          Int?
+  alerteJours        Int?      @default(90)
+
+  // Garantie
+  typeGarantie     String?  @db.VarChar(100)
+  montantCaution   Decimal? @db.Decimal(18, 2)
+  banqueCaution    String?  @db.VarChar(200)
+  referenceCaution String?  @db.VarChar(100)
+
+  // Marchandise
+  designation String   @db.VarChar(500)
+  valeur      Decimal? @db.Decimal(18, 2)
+  quantite    Decimal? @db.Decimal(18, 3)
+
+  // Régime
+  regimeDouanier    String? @db.VarChar(100)
+  bureauEntree      String? @db.VarChar(200)
+  bureauSortie      String? @db.VarChar(200)
+  declarationEntree String? @db.VarChar(100)
+
+  // Apurement
+  dateApurement      DateTime?
+  montantApure       Decimal?  @db.Decimal(18, 2)
+  referenceApurement String?   @db.VarChar(100)
+
+  statut       StatutAT @default(ACTIVE)
+  observations String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  societe       Societe                    @relation(fields: [societeId], references: [id])
+  client        Client?                    @relation(fields: [clientId], references: [id])
+  dossiers      Dossier[]
+  documents     Document[]
+  alertes       AlerteAT[]
+  prolongations HistoriqueProlongationAT[]
+
+  @@index([numero])
+  @@index([statut])
+  @@index([dateExpiration])
+  @@index([societeId])
+  @@map("admissions_temporaires")
+}
+
+model AlerteAT {
+  id                    String    @id @default(uuid())
+  admissionTemporaireId String
+  type                  String    @db.VarChar(50) // EXPIRATION, RENOUVELLEMENT, APUREMENT
+  dateAlerte            DateTime
+  message               String    @db.VarChar(500)
+  envoyee               Boolean   @default(false)
+  dateEnvoi             DateTime?
+  createdAt             DateTime  @default(now())
+
+  admissionTemporaire AdmissionTemporaire @relation(fields: [admissionTemporaireId], references: [id], onDelete: Cascade)
+
+  @@index([admissionTemporaireId])
+  @@index([dateAlerte])
+  @@map("alertes_at")
+}
+
+model HistoriqueProlongationAT {
+  id                       String   @id @default(uuid())
+  admissionTemporaireId    String
+  dateProlongation         DateTime @default(now())
+  ancienneDateExpiration   DateTime
+  nouvelleDateExpiration   DateTime
+  ancienNumeroDeclaration  String?  @db.VarChar(100)
+  nouveauNumeroDeclaration String   @db.VarChar(100)
+  dureeProlongationJours   Int
+  utilisateur              String?  @db.VarChar(200)
+  createdAt                DateTime @default(now())
+
+  admissionTemporaire AdmissionTemporaire @relation(fields: [admissionTemporaireId], references: [id], onDelete: Cascade)
+
+  @@index([admissionTemporaireId])
+  @@map("historique_prolongations_at")
+}
+
+enum StatutAT {
+  ACTIVE
+  EXPIREE
+  RENOUVELEE
+  APUREE
+  ANNULEE
+  EN_CONTENTIEUX
+}
+
+// ============================================================================
+// MODULE CAUTIONS
+// ============================================================================
+
+// Caution de dépôt conteneur versée aux compagnies maritimes (par dossier / N° BL),
+// à ne pas confondre avec les garanties douanières rattachées aux AT (AdmissionTemporaire.montantCaution).
+model Caution {
+  id                String        @id @default(uuid())
+  numero            Int           @unique @default(autoincrement())
+  societeId         String
+  dateCaution       DateTime?
+  dossierId         String?
+  numeroBL          String?       @db.VarChar(100)
+  clientId          String?
+  quantite          Int           @default(1)
+  montant           Decimal       @db.Decimal(18, 2)
+  compagnie         String?       @db.VarChar(100)
+  dateDepotCourrier DateTime?
+  datePaiement      DateTime?
+  statut            StatutCaution @default(EN_ATTENTE)
+  observations      String?       @db.Text
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  societe   Societe    @relation(fields: [societeId], references: [id])
+  dossier   Dossier?   @relation(fields: [dossierId], references: [id])
+  client    Client?    @relation(fields: [clientId], references: [id])
+  documents Document[]
+
+  @@index([societeId])
+  @@index([statut])
+  @@index([dossierId])
+  @@index([clientId])
+  @@map("cautions")
+}
+
+enum StatutCaution {
+  NON_ACTIVE
+  EN_ATTENTE
+  COURRIER_DEPOSE
+  PAYEE
+}
+
+// ============================================================================
+// MODULE COURRIERS
+// ============================================================================
+
+model Courrier {
+  id              String         @id @default(uuid())
+  numero          String         @db.VarChar(50)
+  type            TypeCourrier
+  dateCreation    DateTime       @default(now())
+  dateEnvoi       DateTime?
+  dateReception   DateTime?
+  objet           String         @db.VarChar(500)
+  expediteur      String?        @db.VarChar(200)
+  destinataire    String?        @db.VarChar(200)
+  contenu         String?        @db.Text
+  reference       String?        @db.VarChar(100)
+  priorite        Priorite       @default(NORMALE)
+  statut          StatutCourrier @default(BROUILLON)
+  createurId      String
+  classement      String?        @db.VarChar(100)
+  accuseReception Boolean        @default(false)
+  dateAccuse      DateTime?
+  signature       String?
+  cheminPDF       String?
+  observations    String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  createur      Utilisateur           @relation("CourrierCreateur", fields: [createurId], references: [id])
+  piecesJointes PieceJointeCourrier[]
+  dossiers      CourrierDossier[]
+
+  @@index([numero])
+  @@index([type])
+  @@index([statut])
+  @@index([dateCreation])
+  @@map("courriers")
+}
+
+model PieceJointeCourrier {
+  id         String   @id @default(uuid())
+  courrierId String
+  nom        String   @db.VarChar(200)
+  chemin     String   @db.VarChar(500)
+  taille     Int
+  typeMime   String   @db.VarChar(100)
+  createdAt  DateTime @default(now())
+
+  courrier Courrier @relation(fields: [courrierId], references: [id], onDelete: Cascade)
+
+  @@index([courrierId])
+  @@map("pieces_jointes_courriers")
+}
+
+model CourrierDossier {
+  id         String @id @default(uuid())
+  courrierId String
+  dossierId  String
+
+  courrier Courrier @relation(fields: [courrierId], references: [id])
+  dossier  Dossier  @relation(fields: [dossierId], references: [id])
+
+  @@unique([courrierId, dossierId])
+  @@map("courriers_dossiers")
+}
+
+// Modèles réutilisables pour la rédaction rapide des courriers à envoyer (objet + corps avec variables).
+model ModeleCourrier {
+  id        String       @id @default(uuid())
+  societeId String
+  nom       String       @db.VarChar(200)
+  type      TypeCourrier @default(SORTANT)
+  objet     String       @db.VarChar(500)
+  contenu   String       @db.Text
+  actif     Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  societe Societe @relation(fields: [societeId], references: [id])
+
+  @@index([societeId])
+  @@index([type])
+  @@map("modeles_courrier")
+}
+
+enum TypeCourrier {
+  ENTRANT
+  SORTANT
+  INTERNE
+}
+
+enum Priorite {
+  BASSE
+  NORMALE
+  HAUTE
+  URGENTE
+}
+
+enum StatutCourrier {
+  BROUILLON
+  ENVOYE
+  RECU
+  TRAITE
+  ARCHIVE
+  ANNULE
+}
+
+// ============================================================================
+// MODULE DOCUMENTS & ARCHIVES (GED)
+// ============================================================================
+
+model Document {
+  id          String            @id @default(uuid())
+  societeId   String
+  nom         String            @db.VarChar(200)
+  nomOriginal String            @db.VarChar(200)
+  chemin      String            @db.VarChar(500)
+  taille      Int
+  typeMime    String            @db.VarChar(100)
+  extension   String            @db.VarChar(20)
+  categorie   CategorieDocument
+  description String?           @db.VarChar(500)
+
+  // Liens
+  dossierId             String?
+  clientId              String?
+  fournisseurId         String?
+  admissionTemporaireId String?
+  cautionId             String?
+
+  // OCR
+  contenuOCR String? @db.Text
+  ocrTraite  Boolean @default(false)
+
+  // Versioning
+  version       Int     @default(1)
+  versionParent String?
+
+  // Signature
+  signe         Boolean   @default(false)
+  signePar      String?   @db.VarChar(200)
+  dateSignature DateTime?
+
+  // QR Code
+  qrCode String?
+
+  archive   Boolean  @default(false)
+  tags      String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  societe             Societe              @relation(fields: [societeId], references: [id])
+  dossier             Dossier?             @relation(fields: [dossierId], references: [id])
+  client              Client?              @relation(fields: [clientId], references: [id])
+  fournisseur         Fournisseur?         @relation(fields: [fournisseurId], references: [id])
+  admissionTemporaire AdmissionTemporaire? @relation(fields: [admissionTemporaireId], references: [id])
+  caution             Caution?             @relation(fields: [cautionId], references: [id])
+
+  @@index([societeId])
+  @@index([dossierId])
+  @@index([clientId])
+  @@index([categorie])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+enum CategorieDocument {
+  BL
+  FACTURE_COMMERCIALE
+  PACKING_LIST
+  CERTIFICAT_ORIGINE
+  CERTIFICAT_CONFORMITE
+  DECLARATION_DOUANE
+  BON_LIVRAISON
+  CONNAISSEMENT
+  LETTRE_VOITURE
+  ASSURANCE
+  LICENCE_IMPORT
+  LICENCE_EXPORT
+  AUTORISATION
+  CONTRAT
+  CERTIFICAT_PROLONGATION_AT
+  CERTIFICAT_APUREMENT_AT
+  CORRESPONDANCE
+  PHOTO
+  AUTRE
+}
+
+// ============================================================================
+// MODULE NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id            String            @id @default(uuid())
+  utilisateurId String
+  type          TypeNotification
+  titre         String            @db.VarChar(200)
+  message       String            @db.Text
+  lien          String?           @db.VarChar(500)
+  module        String?           @db.VarChar(100)
+  entiteId      String?           @db.VarChar(100)
+  canal         CanalNotification @default(APP)
+  lue           Boolean           @default(false)
+  dateLecture   DateTime?
+  envoyee       Boolean           @default(false)
+  dateEnvoi     DateTime?
+  createdAt     DateTime          @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@index([utilisateurId])
+  @@index([lue])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+enum TypeNotification {
+  INFO
+  ALERTE
+  AVERTISSEMENT
+  ERREUR
+  SUCCES
+  RAPPEL
+  ECHEANCE
+  PAIEMENT
+  AT_EXPIRATION
+  CAUTION_EXPIRATION
+  DOSSIER_STATUT
+  FACTURE
+  COURRIER
+}
+
+enum CanalNotification {
+  APP
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+}
+
+// ============================================================================
+// MODULE NUMÉROTATION
+// ============================================================================
+
+model Numerotation {
+  id        String   @id @default(uuid())
+  societeId String
+  module    String   @db.VarChar(50) // DOSSIER, FACTURE, PROFORMA, COURRIER, etc.
+  prefixe   String   @db.VarChar(20)
+  suffixe   String?  @db.VarChar(20)
+  compteur  Int      @default(0)
+  longueur  Int      @default(6)
+  annuel    Boolean  @default(true)
+  annee     Int?
+  format    String?  @db.VarChar(100) // ex: {PREFIX}/{ANNEE}/{COMPTEUR}
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  societe Societe @relation(fields: [societeId], references: [id])
+
+  @@unique([societeId, module, annee])
+  @@map("numerotations")
+}
+
+// ============================================================================
+// MODULE PARAMÈTRES
+// ============================================================================
+
+model Parametre {
+  id          String   @id @default(uuid())
+  societeId   String?
+  cle         String   @db.VarChar(100)
+  valeur      String   @db.Text
+  type        String   @default("STRING") @db.VarChar(20)
+  module      String?  @db.VarChar(50)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  societe Societe? @relation(fields: [societeId], references: [id])
+
+  @@unique([societeId, cle])
+  @@map("parametres")
+}
+
+// ============================================================================
+// MODULE MOBILE MONEY
+// ============================================================================
+
+model TransactionMobileMoney {
+  id               String               @id @default(uuid())
+  operateur        OperateurMobileMoney
+  type             TypeTransactionMM
+  montant          Decimal              @db.Decimal(18, 2)
+  telephone        String               @db.VarChar(20)
+  reference        String               @db.VarChar(100)
+  referenceExterne String?              @db.VarChar(100)
+  statut           StatutTransactionMM  @default(EN_ATTENTE)
+  dateTransaction  DateTime             @default(now())
+  dateConfirmation DateTime?
+  factureId        String?
+  clientId         String?
+  observations     String?              @db.Text
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([reference])
+  @@index([operateur])
+  @@index([statut])
+  @@index([dateTransaction])
+  @@map("transactions_mobile_money")
+}
+
+enum OperateurMobileMoney {
+  ORANGE_MONEY
+  MTN_MONEY
+  WAVE
+  MOOV_MONEY
+}
+
+enum TypeTransactionMM {
+  PAIEMENT
+  ENCAISSEMENT
+  REMBOURSEMENT
+}
+
+enum StatutTransactionMM {
+  EN_ATTENTE
+  CONFIRMEE
+  ECHOUEE
+  ANNULEE
+  EXPIREE
+}

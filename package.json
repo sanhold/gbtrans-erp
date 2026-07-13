@@ -1,0 +1,19 @@
+{
+  "name": "gbtrans-erp",
+  "version": "1.0.0",
+  "description": "GBTRANS ERP - Solution complète de gestion de bureau de transit (Côte d'Ivoire)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "start": "npm run start --workspace=backend",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:seed": "npm run db:seed --workspace=backend",
+    "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
+    "lint": "npm run lint --workspace=backend && npm run lint --workspace=frontend"
+  },
+  "author": "GBTRANS SARL",
+  "license": "UNLICENSED"
+}
