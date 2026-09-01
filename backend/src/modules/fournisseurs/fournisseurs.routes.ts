@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { authenticate, authorize, requireSociete } from '../../middleware/auth';
+import { audit } from '../../middleware/audit';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -8,7 +9,7 @@ import { Prisma } from '@prisma/client';
 const router = Router();
 router.use(authenticate, requireSociete);
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '20', search, type } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -31,7 +32,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const f = await prisma.fournisseur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
@@ -42,7 +43,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('FOURNISSEURS:CREER'), audit('FOURNISSEURS', 'CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const last = await prisma.fournisseur.findFirst({
       where: { societeId: req.user!.societeId }, orderBy: { code: 'desc' }, select: { code: true },
@@ -53,7 +54,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISSEURS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.fournisseur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }

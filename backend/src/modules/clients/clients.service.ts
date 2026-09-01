@@ -103,6 +103,8 @@ export class ClientService {
   }
 
   async bloquer(id: string, societeId: string, motif: string) {
+    const existing = await prisma.client.findFirst({ where: { id, societeId } });
+    if (!existing) throw new Error('Client non trouvé');
     return prisma.client.update({
       where: { id },
       data: { bloque: true, motifBlocage: motif },
@@ -110,6 +112,8 @@ export class ClientService {
   }
 
   async debloquer(id: string, societeId: string) {
+    const existing = await prisma.client.findFirst({ where: { id, societeId } });
+    if (!existing) throw new Error('Client non trouvé');
     return prisma.client.update({
       where: { id },
       data: { bloque: false, motifBlocage: null },
@@ -117,6 +121,8 @@ export class ClientService {
   }
 
   async archiver(id: string, societeId: string) {
+    const existing = await prisma.client.findFirst({ where: { id, societeId } });
+    if (!existing) throw new Error('Client non trouvé');
     return prisma.client.update({
       where: { id },
       data: { archive: true, actif: false },

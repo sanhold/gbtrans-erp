@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -22,13 +23,14 @@ const CAT_COLORS: Record<string, string> = {
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
 
 export default function FacturationPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<'factures' | 'attente'>('factures');
   const [factures, setFactures] = useState<any[]>([]);
   const [proformasAttente, setProformasAttente] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState('');
+  const [search] = useState('');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [selectedFacture, setSelectedFacture] = useState<any>(null);
@@ -192,7 +194,7 @@ Banque: BICICI - IBAN: CI93 0000 0000 0000 0000 0000 000</div>
   };
 
   const openFactureDetail = (id: string) => {
-    window.location.href = `/facturation/${id}`;
+    router.push(`/facturation/${id}`);
   };
 
   const handleDownloadFacturePDF = async (id: string) => {

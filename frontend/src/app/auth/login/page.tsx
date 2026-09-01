@@ -15,6 +15,19 @@ export default function LoginPage() {
   const [code2FA, setCode2FA] = useState('');
   const [tempToken, setTempToken] = useState('');
 
+  const comptesTest = [
+    { label: 'Administrateur', email: 'admin@gbtrans.ci', color: 'bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300' },
+    { label: 'Transitaire', email: 'transitaire@gbtrans.ci', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' },
+    { label: 'Comptable', email: 'comptable@gbtrans.ci', color: 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300' },
+    { label: 'Commercial', email: 'commercial@gbtrans.ci', color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300' },
+    { label: 'Consultation', email: 'consultation@gbtrans.ci', color: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300' },
+  ];
+
+  const remplirCompteTest = (testEmail: string) => {
+    setEmail(testEmail);
+    setMotDePasse('Admin@2024!');
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -100,28 +113,15 @@ export default function LoginPage() {
           </div>
 
           <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-8">
-            <div className="mb-8 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {show2FA ? 'Vérification 2FA' : 'Connexion'}
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
-                  {show2FA
-                    ? 'Entrez le code de votre application d\'authentification'
-                    : 'Accédez à votre espace de gestion'}
-                </p>
-              </div>
-              {!show2FA && (
-                <button
-                  type="button"
-                  onClick={() => { setEmail('admin@gbtrans.ci'); setMotDePasse('Admin@2024!'); }}
-                  title="Remplir avec les identifiants admin"
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-900/50 transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                  Admin
-                </button>
-              )}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {show2FA ? 'Vérification 2FA' : 'Connexion'}
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+                {show2FA
+                  ? 'Entrez le code de votre application d\'authentification'
+                  : 'Accédez à votre espace de gestion'}
+              </p>
             </div>
 
             {!show2FA ? (
@@ -220,6 +220,30 @@ export default function LoginPage() {
               </form>
             )}
           </div>
+
+          {!show2FA && process.env.NODE_ENV !== 'production' && (
+            <div className="mt-6 bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+                Comptes de test (environnement de développement)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {comptesTest.map((compte) => (
+                  <button
+                    key={compte.email}
+                    type="button"
+                    onClick={() => remplirCompteTest(compte.email)}
+                    title={compte.email}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${compte.color}`}
+                  >
+                    {compte.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
+                Cliquez sur un profil pour pré-remplir le formulaire (mot de passe: Admin@2024!)
+              </p>
+            </div>
+          )}
 
           <p className="text-center text-xs text-gray-400 mt-6">
             GBTRANS ERP v1.0.0 - Tous droits réservés

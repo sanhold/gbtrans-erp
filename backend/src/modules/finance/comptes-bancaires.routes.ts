@@ -32,7 +32,7 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
   try {
     const existing = await prisma.compteBancaire.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    const { solde, ...rest } = req.body;
+    const { solde: _solde, ...rest } = req.body;
     const c = await prisma.compteBancaire.update({ where: { id: req.params.id }, data: rest });
     ApiResponse.success(res, c, 'Compte bancaire modifié');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

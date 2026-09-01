@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -17,6 +18,7 @@ const statutColors: Record<string, string> = {
 const fmt = (n: any) => n ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
 
 export default function ProformasPage() {
+  const router = useRouter();
   const [proformas, setProformas] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ export default function ProformasPage() {
               {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
               : proformas.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
               : paged.map(p => (
-                <tr key={p.id} className="table-row cursor-pointer" onClick={() => window.location.href = `/proformas/${p.id}`}>
+                <tr key={p.id} className="table-row cursor-pointer" onClick={() => router.push(`/proformas/${p.id}`)}>
                   <td className="table-cell font-medium text-primary-600" data-label="N° Proforma">{p.numero}</td>
                   <td className="table-cell" data-label="Client">{p.client?.raisonSociale}</td>
                   <td className="table-cell font-mono text-xs" data-label="Dossier">{p.dossier?.numero || '-'}</td>
@@ -104,7 +106,7 @@ export default function ProformasPage() {
                         <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                       </button>
                       {p.statut !== 'TRANSFORMEE' && (
-                        <button onClick={(e) => { e.stopPropagation(); window.location.href = `/proformas/${p.id}/edit`; }} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
+                        <button onClick={(e) => { e.stopPropagation(); router.push(`/proformas/${p.id}/edit`); }} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
                           <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                       )}

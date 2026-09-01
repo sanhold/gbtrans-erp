@@ -113,6 +113,11 @@ function getPrefixeDefault(module: string): string {
     OPERATION_FINANCIERE: 'OPF',
     FACTURE_FOURNISSEUR: 'FF',
     PAIEMENT_FOURNISSEUR: 'PF',
+    ECRITURE_VE: 'EVE',
+    ECRITURE_AC: 'EAC',
+    ECRITURE_BQ: 'EBQ',
+    ECRITURE_CA: 'ECA',
+    ECRITURE_OD: 'EOD',
   };
   return prefixes[module] || module.substring(0, 3).toUpperCase();
 }

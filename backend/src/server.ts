@@ -8,6 +8,7 @@ import path from 'path';
 import { config } from './config';
 import { logger } from './utils/logger';
 import routes from './routes';
+import prisma from './config/database';
 
 const app = express();
 
@@ -86,6 +87,18 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   });
 });
 
+// Préchauffage du pool de connexions Prisma (évite la pénalité d'ouverture
+// de connexions lors de la première requête réelle sur une base distante)
+async function prechaufferPoolConnexions() {
+  const nbConnexions = 10;
+  try {
+    await Promise.all(Array.from({ length: nbConnexions }, () => prisma.$queryRaw`SELECT 1`));
+    logger.info(`Pool de connexions préchauffé (${nbConnexions} connexions)`);
+  } catch (error) {
+    logger.warn('Préchauffage du pool de connexions échoué (non bloquant):', error);
+  }
+}
+
 // Démarrage du serveur
 const PORT = config.port;
 app.listen(PORT, () => {
@@ -100,6 +113,7 @@ app.listen(PORT, () => {
 ║                                                      ║
 ╚══════════════════════════════════════════════════════╝
   `);
+  prechaufferPoolConnexions();
 });
 
 export default app;

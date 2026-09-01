@@ -6,7 +6,6 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
-import toast from 'react-hot-toast';
 
 const statutColors: Record<string, string> = {
   NOUVEAU: 'badge-info',
@@ -91,12 +90,20 @@ export default function DossiersPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dossiers</h1>
             <p className="text-sm text-gray-500">{total} dossier(s) au total</p>
           </div>
-          <Link href="/dossiers/nouveau" className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nouveau Dossier
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/dossiers/historique" className="btn-secondary">
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Historique
+            </Link>
+            <Link href="/dossiers/nouveau" className="btn-primary">
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nouveau Dossier
+            </Link>
+          </div>
         </div>
 
         {/* Filtres */}

@@ -19,8 +19,23 @@ export const authenticate = async (
 
     const token = authHeader.split(' ')[1];
 
+    jwt.verify(token, config.jwt.secret);
+
     const session = await prisma.session.findUnique({
       where: { token },
+      include: {
+        utilisateur: {
+          include: {
+            profil: {
+              include: {
+                permissions: {
+                  include: { permission: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!session || !session.actif || session.expiresAt < new Date()) {
@@ -28,24 +43,7 @@ export const authenticate = async (
       return;
     }
 
-    const decoded = jwt.verify(token, config.jwt.secret) as {
-      id: string;
-      societeId: string;
-      email: string;
-    };
-
-    const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: decoded.id },
-      include: {
-        profil: {
-          include: {
-            permissions: {
-              include: { permission: true },
-            },
-          },
-        },
-      },
-    });
+    const utilisateur = session.utilisateur;
 
     if (!utilisateur || !utilisateur.actif || utilisateur.verrouille) {
       ApiResponse.unauthorized(res, 'Compte désactivé ou verrouillé');

@@ -165,6 +165,8 @@ export class FacturationService {
   }
 
   async annuler(id: string, societeId: string) {
+    const facture = await prisma.facture.findFirst({ where: { id, societeId } });
+    if (!facture) throw new Error('Facture non trouvée');
     return prisma.facture.update({
       where: { id },
       data: { statut: 'ANNULEE' },

@@ -40,7 +40,11 @@ export class DossierController {
       const { page, limit, sortBy, sortOrder, search, ...filters } = req.query;
       const result = await service.findAll(
         req.user!.societeId,
-        { ...filters, search: search as string },
+        {
+          ...filters,
+          search: search as string,
+          ...(filters.annee && { annee: parseInt(filters.annee as string, 10) }),
+        },
         {
           page: parseInt(page as string) || 1,
           limit: parseInt(limit as string) || 20,

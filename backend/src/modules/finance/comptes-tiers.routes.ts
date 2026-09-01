@@ -36,7 +36,7 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
   try {
     const existing = await prisma.compteTiers.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    const { solde, ...rest } = req.body;
+    const { solde: _solde, ...rest } = req.body;
     const c = await prisma.compteTiers.update({ where: { id: req.params.id }, data: rest });
     ApiResponse.success(res, c, 'Compte tiers modifié');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

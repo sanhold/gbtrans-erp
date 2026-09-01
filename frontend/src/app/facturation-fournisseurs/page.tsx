@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import api, { financeApi } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -15,6 +16,7 @@ const statutColors: Record<string, string> = {
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
 
 export default function FacturationFournisseursPage() {
+  const router = useRouter();
   const [factures, setFactures] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -47,7 +49,7 @@ export default function FacturationFournisseursPage() {
     ttc: acc.ttc + Number(f.montantTTC), paye: acc.paye + Number(f.montantPaye), reste: acc.reste + Number(f.resteAPayer),
   }), { ttc: 0, paye: 0, reste: 0 });
 
-  const openDetail = (id: string) => { window.location.href = `/facturation-fournisseurs/${id}`; };
+  const openDetail = (id: string) => { router.push(`/facturation-fournisseurs/${id}`); };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +62,7 @@ export default function FacturationFournisseursPage() {
       toast.success('Facture fournisseur créée');
       setShowModal(false);
       setForm({ fournisseurId: '', dossierId: '', dateEcheance: '', reference: '', objet: '', observations: '' });
-      window.location.href = `/facturation-fournisseurs/${res.data.data.id}`;
+      router.push(`/facturation-fournisseurs/${res.data.data.id}`);
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 

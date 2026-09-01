@@ -80,7 +80,7 @@ async function main() {
     },
   });
 
-  await prisma.profil.upsert({
+  const profilCommercial = await prisma.profil.upsert({
     where: { code: 'COMMERCIAL' },
     update: {},
     create: {
@@ -90,7 +90,7 @@ async function main() {
     },
   });
 
-  await prisma.profil.upsert({
+  const profilConsultation = await prisma.profil.upsert({
     where: { code: 'CONSULTATION' },
     update: {},
     create: {
@@ -165,13 +165,14 @@ async function main() {
     });
   }
 
-  // Permissions comptable (Finance + Factures Fournisseurs + lecture des Dossiers pour le Bilan)
+  // Permissions comptable (Finance + Factures Fournisseurs + lecture des Dossiers pour le Bilan + Comptabilité)
   const permissionsComptable = await prisma.permission.findMany({
     where: {
       OR: [
         { module: 'FINANCE', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'VALIDER'] } },
         { module: 'FOURNISSEURS', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'VALIDER'] } },
         { module: 'DOSSIERS', action: 'LIRE' },
+        { module: 'COMPTABILITE', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER', 'EXPORTER', 'IMPRIMER'] } },
       ],
     },
   });
@@ -192,7 +193,57 @@ async function main() {
     });
   }
 
-  // Utilisateur Admin
+  // Permissions commercial (Clients + Proformas + Offres + lecture Dossiers/Facturation)
+  const permissionsCommercial = await prisma.permission.findMany({
+    where: {
+      OR: [
+        { module: 'CLIENTS', action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
+        { module: 'PROFORMAS', action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
+        { module: 'OFFRES', action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
+        { module: 'DOSSIERS', action: 'LIRE' },
+        { module: 'FACTURATION', action: 'LIRE' },
+      ],
+    },
+  });
+
+  for (const perm of permissionsCommercial) {
+    await prisma.profilPermission.upsert({
+      where: {
+        profilId_permissionId: {
+          profilId: profilCommercial.id,
+          permissionId: perm.id,
+        },
+      },
+      update: {},
+      create: {
+        profilId: profilCommercial.id,
+        permissionId: perm.id,
+      },
+    });
+  }
+
+  // Permissions consultation (lecture seule sur tous les modules)
+  const permissionsConsultation = await prisma.permission.findMany({
+    where: { action: 'LIRE' },
+  });
+
+  for (const perm of permissionsConsultation) {
+    await prisma.profilPermission.upsert({
+      where: {
+        profilId_permissionId: {
+          profilId: profilConsultation.id,
+          permissionId: perm.id,
+        },
+      },
+      update: {},
+      create: {
+        profilId: profilConsultation.id,
+        permissionId: perm.id,
+      },
+    });
+  }
+
+  // Utilisateurs de test (un par profil, mot de passe commun pour faciliter les tests)
   const hashedPassword = await bcrypt.hash('Admin@2024!', 12);
   await prisma.utilisateur.upsert({
     where: { email: 'admin@gbtrans.ci' },
@@ -208,6 +259,30 @@ async function main() {
       profilId: profilAdmin.id,
     },
   });
+
+  const utilisateursTest = [
+    { matricule: 'TRA001', nom: 'KOUASSI', prenom: 'Aya', email: 'transitaire@gbtrans.ci', profilId: profilTransitaire.id },
+    { matricule: 'CPT001', nom: 'YAO', prenom: 'Bini', email: 'comptable@gbtrans.ci', profilId: profilComptable.id },
+    { matricule: 'COM001', nom: 'TRAORE', prenom: 'Fatim', email: 'commercial@gbtrans.ci', profilId: profilCommercial.id },
+    { matricule: 'CON001', nom: 'DIALLO', prenom: 'Mamadou', email: 'consultation@gbtrans.ci', profilId: profilConsultation.id },
+  ];
+
+  for (const u of utilisateursTest) {
+    await prisma.utilisateur.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        societeId: societe.id,
+        agenceId: agenceSiege.id,
+        matricule: u.matricule,
+        nom: u.nom,
+        prenom: u.prenom,
+        email: u.email,
+        motDePasse: hashedPassword,
+        profilId: u.profilId,
+      },
+    });
+  }
 
   // Exercice comptable
   await prisma.exercice.upsert({
@@ -358,7 +433,12 @@ async function main() {
   }
 
   console.log('✅ Base de données initialisée avec succès!');
-  console.log('📧 Admin: admin@gbtrans.ci / Admin@2024!');
+  console.log('📧 Comptes de test (mot de passe: Admin@2024!):');
+  console.log('   - admin@gbtrans.ci (Administrateur)');
+  console.log('   - transitaire@gbtrans.ci (Transitaire)');
+  console.log('   - comptable@gbtrans.ci (Comptable)');
+  console.log('   - commercial@gbtrans.ci (Commercial)');
+  console.log('   - consultation@gbtrans.ci (Consultation)');
 }
 
 main()
