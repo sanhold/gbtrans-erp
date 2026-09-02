@@ -49,6 +49,20 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
+// Comptage par catégorie (pour les cartes de filtre) — évite de charger tous les documents côté client
+router.get('/comptage-categories', async (req: AuthRequest, res: Response) => {
+  try {
+    const groupes = await prisma.document.groupBy({
+      by: ['categorie'],
+      where: { societeId: req.user!.societeId },
+      _count: true,
+    });
+    const counts: Record<string, number> = {};
+    for (const g of groupes) counts[g.categorie] = g._count;
+    ApiResponse.success(res, counts);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
 router.post('/', upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     if (!req.file) { ApiResponse.badRequest(res, 'Fichier requis'); return; }

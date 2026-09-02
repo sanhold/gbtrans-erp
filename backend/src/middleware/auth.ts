@@ -4,6 +4,7 @@ import { config } from '../config';
 import prisma from '../config/database';
 import { AuthRequest } from '../types';
 import { ApiResponse } from '../utils/apiResponse';
+import { getCachedUser, setCachedUser } from '../utils/sessionCache';
 
 export const authenticate = async (
   req: AuthRequest,
@@ -20,6 +21,13 @@ export const authenticate = async (
     const token = authHeader.split(' ')[1];
 
     jwt.verify(token, config.jwt.secret);
+
+    const cached = getCachedUser(token);
+    if (cached) {
+      req.user = cached;
+      next();
+      return;
+    }
 
     const session = await prisma.session.findUnique({
       where: { token },
@@ -64,6 +72,8 @@ export const authenticate = async (
         (p) => `${p.permission.module}:${p.permission.action}`
       ) || [],
     };
+
+    setCachedUser(token, req.user, session.expiresAt);
 
     next();
   } catch {

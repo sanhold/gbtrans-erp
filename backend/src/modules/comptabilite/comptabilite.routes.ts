@@ -65,44 +65,46 @@ router.get('/grand-livre', async (req: AuthRequest, res: Response) => {
     const { exerciceId, compteId, classe, dateDebut, dateFin } = req.query;
     const societeId = req.user!.societeId;
 
-    const comptes = await prisma.compteComptable.findMany({
+    // Une seule requête pour tous les mouvements (au lieu d'une par compte) : c'était
+    // le principal goulot d'étranglement de cette page (jusqu'à plusieurs dizaines de
+    // requêtes séquentielles). On groupe par compte côté application.
+    const mouvements = await prisma.mouvementComptable.findMany({
       where: {
-        societeId,
-        ...(compteId && { id: compteId as string }),
-        ...(classe && { classe: parseInt(classe as string) }),
+        compte: {
+          societeId,
+          ...(compteId && { id: compteId as string }),
+          ...(classe && { classe: parseInt(classe as string) }),
+        },
+        ecriture: {
+          ...(exerciceId && { exerciceId: exerciceId as string }),
+          ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
+        },
       },
-      orderBy: { numero: 'asc' },
+      include: {
+        compte: { select: { id: true, numero: true, libelle: true } },
+        ecriture: { select: { id: true, numero: true, dateEcriture: true, libelle: true, reference: true, journal: { select: { code: true } } } },
+      },
+      orderBy: [{ compte: { numero: 'asc' } }, { ecriture: { dateEcriture: 'asc' } }],
     });
 
-    const mouvementWhere: any = {
-      compte: { societeId },
-      ecriture: {
-        ...(exerciceId && { exerciceId }),
-        ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
-      },
-    };
-
-    const result = await Promise.all(comptes.map(async (compte) => {
-      const mouvements = await prisma.mouvementComptable.findMany({
-        where: { ...mouvementWhere, compteId: compte.id },
-        include: { ecriture: { select: { id: true, numero: true, dateEcriture: true, libelle: true, reference: true, journal: { select: { code: true } } } } },
-        orderBy: { ecriture: { dateEcriture: 'asc' } },
+    const parCompte = new Map<string, any>();
+    for (const m of mouvements) {
+      let entry = parCompte.get(m.compte.id);
+      if (!entry) {
+        entry = { compte: m.compte, totalDebit: 0, totalCredit: 0, mouvements: [] };
+        parCompte.set(m.compte.id, entry);
+      }
+      entry.totalDebit += Number(m.debit);
+      entry.totalCredit += Number(m.credit);
+      entry.mouvements.push({
+        id: m.id, date: m.ecriture.dateEcriture, numeroEcriture: m.ecriture.numero,
+        journal: m.ecriture.journal.code, libelle: m.libelle || m.ecriture.libelle,
+        reference: m.ecriture.reference, debit: Number(m.debit), credit: Number(m.credit),
       });
-      if (mouvements.length === 0) return null;
-      const totalDebit = mouvements.reduce((s, m) => s + Number(m.debit), 0);
-      const totalCredit = mouvements.reduce((s, m) => s + Number(m.credit), 0);
-      return {
-        compte: { id: compte.id, numero: compte.numero, libelle: compte.libelle },
-        totalDebit, totalCredit, solde: totalDebit - totalCredit,
-        mouvements: mouvements.map(m => ({
-          id: m.id, date: m.ecriture.dateEcriture, numeroEcriture: m.ecriture.numero,
-          journal: m.ecriture.journal.code, libelle: m.libelle || m.ecriture.libelle,
-          reference: m.ecriture.reference, debit: Number(m.debit), credit: Number(m.credit),
-        })),
-      };
-    }));
+    }
+    const result = [...parCompte.values()].map(e => ({ ...e, solde: e.totalDebit - e.totalCredit }));
 
-    ApiResponse.success(res, result.filter(Boolean));
+    ApiResponse.success(res, result);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 

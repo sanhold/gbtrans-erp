@@ -129,6 +129,7 @@ export const modelesCourrierApi = {
 // Documents / Archives Numériques API
 export const documentsApi = {
   list: (params?: Record<string, any>) => api.get('/documents', { params }),
+  comptageCategories: () => api.get('/documents/comptage-categories'),
   upload: (formData: FormData) => api.post('/documents', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 

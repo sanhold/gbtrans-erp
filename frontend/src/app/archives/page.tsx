@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { documentsApi, getFileUrl, clientsApi, dossiersApi } from '@/lib/api';
-import { usePagination } from '@/lib/usePagination';
+import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
 const CATEGORIE_LABELS: Record<string, string> = {
@@ -43,7 +43,12 @@ export default function ArchivesPage() {
   const [dossierSearch, setDossierSearch] = useState('');
   const [showCategories, setShowCategories] = useState(false);
 
-  const { paged, page, setPage, pageSize, setPageSize, total, totalPages } = usePagination(documents);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const setPageSize = (n: number) => { setPageSizeState(n); setPage(1); };
+  const [countsByCategorie, setCountsByCategorie] = useState<Record<string, number>>({});
 
   const [clients, setClients] = useState<any[]>([]);
   const [dossiers, setDossiers] = useState<any[]>([]);
@@ -55,6 +60,7 @@ export default function ArchivesPage() {
   useEffect(() => {
     clientsApi.list({ limit: 500 }).then(r => setClients(r.data.data || [])).catch(() => {});
     dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
+    documentsApi.comptageCategories().then(r => setCountsByCategorie(r.data.data || {})).catch(() => {});
   }, []);
 
   const resetUploadForm = () => { setUploadFile(null); setUploadForm({ categorie: '', description: '', dossierId: '', clientId: '' }); };
@@ -76,28 +82,27 @@ export default function ArchivesPage() {
       setShowUpload(false);
       resetUploadForm();
       load();
+      documentsApi.comptageCategories().then(r => setCountsByCategorie(r.data.data || {})).catch(() => {});
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur lors de l\'import'); }
     finally { setUploading(false); }
   };
 
   const load = () => {
     setLoading(true);
-    const params: any = { limit: 500 };
+    const params: any = { page, limit: pageSize };
     if (appliedSearch) params.search = appliedSearch;
     if (categorieFiltre) params.categorie = categorieFiltre;
     if (dossierFiltre) params.dossierId = dossierFiltre;
     documentsApi.list(params)
-      .then(res => setDocuments(res.data.data || []))
+      .then(res => { setDocuments(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setDocuments([]))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [appliedSearch, categorieFiltre, dossierFiltre]);
+  useEffect(() => { load(); }, [appliedSearch, categorieFiltre, dossierFiltre, page, pageSize]);
+  useEffect(() => { setPage(1); }, [appliedSearch, categorieFiltre, dossierFiltre]);
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setAppliedSearch(search); };
-
-  const countsByCategorie: Record<string, number> = {};
-  documents.forEach(d => { countsByCategorie[d.categorie] = (countsByCategorie[d.categorie] || 0) + 1; });
 
   const dossierSelectionne = dossiers.find(d => d.id === dossierFiltre);
   const dossiersFiltres = dossiers.filter(d => {
@@ -200,7 +205,7 @@ export default function ArchivesPage() {
                         <tr><td colSpan={6} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</td></tr>
                       ) : documents.length === 0 ? (
                         <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun document archivé</td></tr>
-                      ) : paged.map(d => (
+                      ) : documents.map(d => (
                         <tr key={d.id} className="table-row">
                           <td className="table-cell" data-label="Nom">
                             <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline font-medium">{d.nomOriginal}</a>

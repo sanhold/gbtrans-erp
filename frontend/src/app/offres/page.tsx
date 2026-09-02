@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { offresApi, clientsApi, dossiersApi } from '@/lib/api';
-import { usePagination } from '@/lib/usePagination';
+import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
 const statutColors: Record<string, string> = {
@@ -25,7 +25,11 @@ export default function OffresPage() {
   const router = useRouter();
   const [offres, setOffres] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { paged, page, setPage, pageSize, setPageSize, total, totalPages } = usePagination(offres);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const setPageSize = (n: number) => { setPageSizeState(n); setPage(1); };
 
   const [clients, setClients] = useState<any[]>([]);
   const [dossiers, setDossiers] = useState<any[]>([]);
@@ -36,14 +40,15 @@ export default function OffresPage() {
 
   const load = () => {
     setLoading(true);
-    offresApi.list({ limit: 500 })
-      .then(r => setOffres(r.data.data || []))
+    offresApi.list({ page, limit: pageSize })
+      .then(r => { setOffres(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
       .catch(() => setOffres([]))
       .finally(() => setLoading(false));
   };
 
+  useEffect(() => { load(); }, [page, pageSize]);
+
   useEffect(() => {
-    load();
     clientsApi.list({ limit: 500 }).then(r => setClients(r.data.data || [])).catch(() => {});
     dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
   }, []);
@@ -102,7 +107,7 @@ export default function OffresPage() {
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
               : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune offre commerciale. Créez votre première offre.</td></tr>
-              : paged.map(o => (
+              : offres.map(o => (
                 <tr key={o.id} className="table-row cursor-pointer" onClick={() => router.push(`/offres/${o.id}`)}>
                   <td className="table-cell font-medium text-primary-600" data-label="N°">{o.numero}</td>
                   <td className="table-cell" data-label="Client">{o.client?.raisonSociale}</td>

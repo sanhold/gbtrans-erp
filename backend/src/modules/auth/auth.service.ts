@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { config } from '../../config';
 import prisma from '../../config/database';
 import { logger } from '../../utils/logger';
+import { invalidateSessionCache } from '../../utils/sessionCache';
 
 export class AuthService {
   async login(email: string, motDePasse: string, ip?: string, userAgent?: string) {
@@ -212,6 +213,7 @@ export class AuthService {
       where: { token },
       data: { actif: false },
     });
+    invalidateSessionCache(token);
     return { message: 'Déconnexion réussie' };
   }
 

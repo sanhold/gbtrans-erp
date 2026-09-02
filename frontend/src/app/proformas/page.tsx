@@ -7,7 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import api from '@/lib/api';
 import { downloadPDF } from '@/lib/generatePDF';
-import { usePagination } from '@/lib/usePagination';
+import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
 const statutColors: Record<string, string> = {
@@ -22,14 +22,18 @@ export default function ProformasPage() {
   const [proformas, setProformas] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { paged, page, setPage, pageSize, setPageSize, total: totalRows, totalPages } = usePagination(proformas);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(DEFAULT_PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const setPageSize = (n: number) => { setPageSizeState(n); setPage(1); };
 
   const load = () => {
-    api.get('/proformas', { params: { limit: 500 } }).then(r => { setProformas(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
+    setLoading(true);
+    api.get('/proformas', { params: { page, limit: pageSize } }).then(r => { setProformas(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
       .catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [page, pageSize]);
 
   const handleDelete = async (p: any) => {
     if (p.factureId || p.statut === 'TRANSFORMEE') {
@@ -89,7 +93,7 @@ export default function ProformasPage() {
             <tbody>
               {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
               : proformas.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
-              : paged.map(p => (
+              : proformas.map(p => (
                 <tr key={p.id} className="table-row cursor-pointer" onClick={() => router.push(`/proformas/${p.id}`)}>
                   <td className="table-cell font-medium text-primary-600" data-label="N° Proforma">{p.numero}</td>
                   <td className="table-cell" data-label="Client">{p.client?.raisonSociale}</td>
@@ -121,7 +125,7 @@ export default function ProformasPage() {
               ))}
             </tbody>
           </table>
-          <PaginationControls page={page} totalPages={totalPages} total={totalRows} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </div>
       </div>
     </AppLayout>
