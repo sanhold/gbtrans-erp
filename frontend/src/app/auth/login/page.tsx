@@ -221,10 +221,10 @@ export default function LoginPage() {
             )}
           </div>
 
-          {!show2FA && process.env.NODE_ENV !== 'production' && (
+          {!show2FA && (
             <div className="mt-6 bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-5">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
-                Comptes de test (environnement de développement)
+                Comptes de test
               </p>
               <div className="flex flex-wrap gap-2">
                 {comptesTest.map((compte) => (
