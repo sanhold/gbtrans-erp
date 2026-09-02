@@ -20,6 +20,7 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [total, setTotal] = useState(0);
+  const [resume, setResume] = useState({ totalEntrees: 0, totalSorties: 0 });
   const [form, setForm] = useState({ type: 'ENCAISSEMENT', montant: '', libelle: '', dateOperation: '', reference: '', beneficiaire: '', observations: '', source: '', destination: '' });
 
   const load = useCallback(async () => {
@@ -37,6 +38,7 @@ export default function TransactionsPage() {
       });
       setOperations(res.data.data || []);
       setTotal(res.data.pagination?.total || 0);
+      setResume(res.data.resume || { totalEntrees: 0, totalSorties: 0 });
     } catch { setOperations([]); }
     finally { setLoading(false); }
   }, [page, pageSize, filterType, filterCompte, filterDateDebut, filterDateFin]);
@@ -51,8 +53,7 @@ export default function TransactionsPage() {
   const needsSource = ['DECAISSEMENT', 'RETRAIT', 'VIREMENT_INTERNE'].includes(form.type);
   const needsDestination = ['ENCAISSEMENT', 'DOTATION', 'VIREMENT_INTERNE'].includes(form.type);
 
-  const totalEntrees = operations.filter(o => o.sens === 'ENTREE').reduce((s, o) => s + Number(o.montant), 0);
-  const totalSorties = operations.filter(o => o.sens === 'SORTIE').reduce((s, o) => s + Number(o.montant), 0);
+  const { totalEntrees, totalSorties } = resume;
   const soldeNet = totalEntrees - totalSorties;
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -84,7 +85,7 @@ export default function TransactionsPage() {
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">↘ Entrées</p><p className="text-base font-bold text-green-600">{fmt(totalEntrees)} F</p></div>
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">↗ Sorties</p><p className="text-base font-bold text-red-600">{fmt(totalSorties)} F</p></div>
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Solde net période</p><p className={`text-base font-bold ${soldeNet >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{fmt(soldeNet)} F</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Nb. transactions</p><p className="text-base font-bold text-gray-900 dark:text-white">{operations.length}</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Nb. transactions</p><p className="text-base font-bold text-gray-900 dark:text-white">{total}</p></div>
         </div>
         <div className="flex justify-between items-end flex-wrap gap-3">
           <div className="flex items-end flex-wrap gap-3">

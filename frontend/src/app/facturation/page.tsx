@@ -259,8 +259,8 @@ Banque: BICICI - IBAN: CI93 0000 0000 0000 0000 0000 000</div>
                 {loading ? <tr><td colSpan={10} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
                 : factures.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucune facture</td></tr>
                 : factures.map(f => (
-                  <tr key={f.id} className="table-row">
-                    <td className="table-cell font-medium text-primary-600 cursor-pointer" onClick={() => openFactureDetail(f.id)} data-label="N° Facture">{f.numero}</td>
+                  <tr key={f.id} className="table-row cursor-pointer" onClick={() => openFactureDetail(f.id)}>
+                    <td className="table-cell font-medium text-primary-600" data-label="N° Facture">{f.numero}</td>
                     <td className="table-cell" data-label="Client">{f.client?.raisonSociale}</td>
                     <td className="table-cell font-mono text-xs" data-label="Dossier">{f.dossier?.numero || '-'}</td>
                     <td className="table-cell font-mono text-xs" data-label="Proforma">{f.proformaSourceId ? '✓' : '-'}</td>
@@ -271,10 +271,10 @@ Banque: BICICI - IBAN: CI93 0000 0000 0000 0000 0000 000</div>
                     <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
                     <td className="table-cell" data-label="Actions">
                       <div className="flex gap-1">
-                        <button onClick={() => openFactureDetail(f.id)} className="p-1 rounded hover:bg-gray-100" title="Voir">
+                        <button onClick={(e) => { e.stopPropagation(); openFactureDetail(f.id); }} className="p-1 rounded hover:bg-gray-100" title="Voir">
                           <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
-                        <button onClick={() => handleDownloadFacturePDF(f.id)} className="p-1 rounded hover:bg-gray-100" title="Télécharger PDF">
+                        <button onClick={(e) => { e.stopPropagation(); handleDownloadFacturePDF(f.id); }} className="p-1 rounded hover:bg-gray-100" title="Télécharger PDF">
                           <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
                       </div>

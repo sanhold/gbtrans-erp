@@ -227,3 +227,24 @@ export const financeApi = {
     annuler: (id: string) => api.patch(`/finance/dotations/${id}/annuler`),
   },
 };
+
+// Offres Commerciales API
+export const offresApi = {
+  list: (params?: Record<string, any>) => api.get('/offres', { params }),
+  get: (id: string) => api.get(`/offres/${id}`),
+  create: (data: any) => api.post('/offres', data),
+  update: (id: string, data: any) => api.put(`/offres/${id}`, data),
+  changerStatut: (id: string, statut: string) => api.patch(`/offres/${id}/statut`, { statut }),
+  transformerProforma: (id: string) => api.post(`/offres/${id}/transformer-proforma`),
+  delete: (id: string) => api.delete(`/offres/${id}`),
+};
+
+// Comptabilité API
+export const comptabiliteApi = {
+  exercices: () => api.get('/comptabilite/exercices'),
+  journaux: () => api.get('/comptabilite/journaux'),
+  ecritures: (params?: Record<string, any>) => api.get('/comptabilite/ecritures', { params }),
+  grandLivre: (params?: Record<string, any>) => api.get('/comptabilite/grand-livre', { params }),
+  balance: (params?: Record<string, any>) => api.get('/comptabilite/balance', { params }),
+  bilan: (params?: Record<string, any>) => api.get('/comptabilite/bilan', { params }),
+};

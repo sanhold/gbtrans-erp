@@ -31,7 +31,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
         },
       }),
     };
-    const [data, total] = await Promise.all([
+    const [data, total, sommeEntrees, sommeSorties] = await Promise.all([
       prisma.operationFinanciere.findMany({
         where, skip, take: parseInt(limit as string),
         orderBy: { dateOperation: 'desc' },
@@ -43,8 +43,17 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
         },
       }),
       prisma.operationFinanciere.count({ where }),
+      prisma.operationFinanciere.aggregate({ where: { ...where, sens: 'ENTREE' }, _sum: { montant: true } }),
+      prisma.operationFinanciere.aggregate({ where: { ...where, sens: 'SORTIE' }, _sum: { montant: true } }),
     ]);
-    ApiResponse.paginated(res, data, total, parseInt(page as string), parseInt(limit as string));
+    res.status(200).json({
+      success: true,
+      message: 'Succès',
+      data,
+      pagination: { total, page: parseInt(page as string), limit: parseInt(limit as string), totalPages: Math.ceil(total / parseInt(limit as string)), hasNext: parseInt(page as string) * parseInt(limit as string) < total, hasPrev: parseInt(page as string) > 1 },
+      resume: { totalEntrees: Number(sommeEntrees._sum.montant || 0), totalSorties: Number(sommeSorties._sum.montant || 0) },
+      timestamp: new Date().toISOString(),
+    });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
