@@ -6,14 +6,26 @@ import AppLayout from '@/components/layout/AppLayout';
 import { catalogueApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-const CATEGORIES = ['TRANSIT', 'DOUANE', 'TRANSPORT', 'MANUTENTION', 'ASSURANCE', 'DIVERS'];
+const CATEGORIES = [
+  'DOUANE', 'DOUANE & COMPAGNIE', 'DEBOURS DOUANE', 'DEBOURS DOUANE & COMPAGNIE', 'DOUANE ELIBU-NOE-E',
+  'COMPAGNIE MARITIME', 'FRAIS PORTUAIRES', 'GUICHET UNIQUE', 'GUICHET UNIQUE/IMMATRICULATION',
+  'EXPORT ET FRET', 'TRANSPORT', 'PENALITES PORTUAIRES', 'AUTRES FRAIS', 'DIVERS',
+];
 const CAT_COLORS: Record<string, string> = {
-  TRANSIT: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300',
-  DOUANE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
-  TRANSPORT: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  MANUTENTION: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-  ASSURANCE: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
-  DIVERS: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  'DOUANE': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+  'DOUANE & COMPAGNIE': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  'DEBOURS DOUANE': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+  'DEBOURS DOUANE & COMPAGNIE': 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200',
+  'DOUANE ELIBU-NOE-E': 'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300',
+  'COMPAGNIE MARITIME': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'FRAIS PORTUAIRES': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
+  'GUICHET UNIQUE': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+  'GUICHET UNIQUE/IMMATRICULATION': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200',
+  'EXPORT ET FRET': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+  'TRANSPORT': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'PENALITES PORTUAIRES': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'AUTRES FRAIS': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  'DIVERS': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
