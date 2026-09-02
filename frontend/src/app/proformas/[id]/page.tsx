@@ -282,7 +282,7 @@ export default function ProformaDetailPage() {
 
             {/* Sections par catégorie */}
             {groupedLignes.map(group => {
-              const catColor = CAT_COLORS[group.categorie] || '#AE7C1F';
+              const catColor = CAT_COLORS[group.categorie] || '#7322ab';
               return (
                 <div key={group.categorie} className="pv-section">
                   <div className="pv-section-head" style={{ background: catColor }}>{group.categorie}</div>
@@ -351,8 +351,8 @@ export default function ProformaDetailPage() {
       </div>
 
       <style jsx global>{`
-        .pv-sheet-wrap { --pv-ink:#16213E; --pv-ink-soft:#2E3B5C; --pv-gold:#AE7C1F; --pv-gold-soft:#EADFC4; --pv-paper:#FBF9F4; --pv-line:#DAD2BE; --pv-dim:#8B93AD;
-          background:#0C1120; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; }
+        .pv-sheet-wrap { --pv-ink:#241536; --pv-ink-soft:#5d4a72; --pv-gold:#7322ab; --pv-gold-soft:#f0e6fa; --pv-paper:#FBF9F4; --pv-line:#ded2ea; --pv-dim:#9a8bb0;
+          background:#0C0812; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; }
         .pv-sheet { width:100%; max-width:210mm; background:var(--pv-paper); color:var(--pv-ink); padding:26px 28px; font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
         .pv-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pv-ink); padding-bottom:14px; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
         .pv-company-name { font-size:22px; font-weight:700; letter-spacing:.01em; margin:0; }

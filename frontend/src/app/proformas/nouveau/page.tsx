@@ -442,7 +442,7 @@ function NouvelleProformaForm() {
       )}
 
       <style jsx global>{`
-        .pf-root { --pf-ink:#16213E; --pf-ink-soft:#2E3B5C; --pf-gold:#AE7C1F; --pf-gold-soft:#EADFC4; --pf-paper:#FBF9F4; --pf-line:#DAD2BE; --pf-panel:#12182A; --pf-panel-2:#1B2338; --pf-panel-text:#E9E7DD; --pf-panel-dim:#9199AF; --pf-danger:#B3492F; }
+        .pf-root { --pf-ink:#241536; --pf-ink-soft:#5d4a72; --pf-gold:#7322ab; --pf-gold-soft:#f0e6fa; --pf-paper:#FBF9F4; --pf-line:#ded2ea; --pf-panel:#1a1025; --pf-panel-2:#241a35; --pf-panel-text:#E9E7DD; --pf-panel-dim:#a89bb8; --pf-danger:#B3492F; }
 
         .pf-topbar { display:flex; align-items:center; justify-content:space-between; background:var(--pf-panel); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
         .pf-topbar-left { display:flex; align-items:center; gap:10px; }
@@ -460,7 +460,7 @@ function NouvelleProformaForm() {
         .pf-btn-cancel { background:transparent; color:#E08877; border:1px solid #4a2c28; }
         .pf-btn-cancel:hover { background:rgba(224,136,119,.1); }
 
-        .pf-app { display:grid; grid-template-columns:340px 1fr; gap:0; background:#0C1120; border-radius:12px; overflow:hidden; }
+        .pf-app { display:grid; grid-template-columns:340px minmax(0,1fr); gap:0; background:#0C0812; border-radius:12px; overflow:hidden; }
         @media (max-width:1000px) { .pf-app { grid-template-columns:1fr; } }
 
         .pf-panel { background:var(--pf-panel); padding:20px 18px 40px; border-right:1px solid #232B42; max-height:calc(100vh - 160px); overflow-y:auto; }
@@ -495,7 +495,7 @@ function NouvelleProformaForm() {
         .pf-new-prestation { width:100%; margin-top:8px; background:transparent; border:1px dashed #3a4363; color:var(--pf-panel-dim); font-size:11px; padding:8px; border-radius:4px; cursor:pointer; }
         .pf-new-prestation:hover { border-color:var(--pf-gold); color:var(--pf-gold); }
 
-        .pf-sheet-wrap { background:#0C1120; padding:30px 24px; display:flex; justify-content:center; }
+        .pf-sheet-wrap { background:#0C0812; padding:30px 24px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
         .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
 
         .pf-doc-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pf-ink); padding-bottom:12px; margin-bottom:18px; }

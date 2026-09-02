@@ -254,14 +254,14 @@ ${horsNote}
 }
 
 const PAPER = {
-  ink: '#16213E',
-  inkSoft: '#2E3B5C',
-  gold: '#AE7C1F',
-  goldSoft: '#EADFC4',
+  ink: '#241536',
+  inkSoft: '#5d4a72',
+  gold: '#7322ab',
+  goldSoft: '#f0e6fa',
   paper: '#FBF9F4',
-  line: '#DAD2BE',
+  line: '#ded2ea',
   danger: '#B3492F',
-  dim: '#8B93AD',
+  dim: '#9a8bb0',
 };
 
 function buildProformaHtml(data: DocData, qrDataUrl?: string): string {
