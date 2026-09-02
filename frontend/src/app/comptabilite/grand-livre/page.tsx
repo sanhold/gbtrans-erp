@@ -15,12 +15,21 @@ export default function GrandLivrePage() {
   const [loading, setLoading] = useState(true);
   const [ouverts, setOuverts] = useState<Record<string, boolean>>({});
 
-  useEffect(() => { comptabiliteApi.exercices().then(r => setExercices(r.data.data || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    comptabiliteApi.exercices().then(r => {
+      const data = r.data.data || [];
+      setExercices(data);
+      // Par défaut : exercice le plus récent seulement (évite de charger tout
+      // l'historique multi-exercices d'un coup, nettement plus lourd/lent).
+      if (data.length > 0) setExerciceId(data[0].id);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
+    if (!exerciceId) return;
     setLoading(true);
     const params: any = {};
-    if (exerciceId) params.exerciceId = exerciceId;
+    if (exerciceId !== 'TOUS') params.exerciceId = exerciceId;
     if (classe) params.classe = classe;
     comptabiliteApi.grandLivre(params)
       .then(r => setComptes(r.data.data || []))
@@ -41,8 +50,8 @@ export default function GrandLivrePage() {
 
         <div className="card !p-4 flex flex-wrap gap-3">
           <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field w-40">
-            <option value="">Tous exercices</option>
             {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.code}</option>)}
+            <option value="TOUS">Tous exercices (lent)</option>
           </select>
           <select value={classe} onChange={e => setClasse(e.target.value)} className="input-field w-56">
             <option value="">Toutes classes</option>
