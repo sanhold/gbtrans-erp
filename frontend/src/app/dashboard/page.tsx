@@ -130,6 +130,7 @@ const operationsModules: ModuleItem[] = [
 
 const commercialModules: ModuleItem[] = [
   { name: 'Offres', desc: 'Créez et gérez vos offres commerciales.', href: '/offres', icon: 'M6 4h12v16l-6-3-6 3z', color: 'violet' },
+  { name: 'Catalogue des Prestations', desc: 'Gérez les prestations et leurs tarifs par défaut.', href: '/parametres/catalogue-prestations', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-7.07-7.07a1.998 1.998 0 0 1 0-2.828l4.244-4.243a1.998 1.998 0 0 1 2.828 0l7.07 7.07a1.998 1.998 0 0 1 0 2.828zM11 7h.01', color: 'slate' },
   { name: 'Proforma', desc: 'Créez et gérez vos factures proforma.', href: '/proformas', icon: 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM14 2v5h5M8 13h8M8 17h5', color: 'blue' },
   { name: 'Facturation', desc: 'Émettez et suivez vos factures clients.', href: '/facturation', icon: 'M9 14l6-6M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z', color: 'rose' },
   { name: 'Gestion des Finances', desc: 'Trésorerie, comptabilité et rapports financiers.', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', color: 'teal' },
