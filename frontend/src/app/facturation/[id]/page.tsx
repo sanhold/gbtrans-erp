@@ -9,8 +9,17 @@ import { montantEnLettres } from '@/lib/montantEnLettres';
 import { downloadPDF, printDocument, generateDocQrDataUrl, type DocData } from '@/lib/generatePDF';
 
 const CAT_COLORS: Record<string, string> = {
-  'DOUANE & COMPAGNIE': '#059669', 'DOUANE': '#059669', 'FRAIS PORTUAIRES': '#0891B2',
-  'AUTRES FRAIS': '#D97706', 'TRANSPORT': '#7C3AED',
+  'DOUANE': '#059669', 'DOUANE & COMPAGNIE': '#059669',
+  'DEBOURS DOUANE': '#0d9488', 'DEBOURS DOUANE & COMPAGNIE': '#0d9488',
+  'DOUANE ELIBU-NOE-E': '#65a30d',
+  'COMPAGNIE MARITIME': '#2563eb',
+  'FRAIS PORTUAIRES': '#0891b2',
+  'GUICHET UNIQUE': '#4f46e5', 'GUICHET UNIQUE/IMMATRICULATION': '#4f46e5',
+  'EXPORT ET FRET': '#7c3aed',
+  'TRANSPORT': '#9333ea',
+  'PENALITES PORTUAIRES': '#dc2626',
+  'AUTRES FRAIS': '#d97706',
+  'DIVERS': '#6b7280',
 };
 const MODE_PAIEMENT_LABELS: Record<string, string> = {
   ESPECES: 'Espèces', CHEQUE: 'Chèque', VIREMENT: 'Virement', TRAITE: 'Traite',
@@ -78,6 +87,8 @@ export default function FactureDetailPage() {
       montantTTC: Number(facture.montantTTC),
       montantPrestation: facture.montantPrestation ? Number(facture.montantPrestation) : undefined,
       tvaPrestation: facture.tvaPrestation ? Number(facture.tvaPrestation) : undefined,
+      acompte: Number(facture.acompte) || undefined,
+      resteAPayer: Number(facture.resteAPayer) || undefined,
       lignes: (facture.lignes || []).map((l: any) => ({
         categorie: l.categorie || '',
         designation: l.designation,

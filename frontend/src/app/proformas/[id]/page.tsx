@@ -8,6 +8,20 @@ import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
 import { downloadPDF, printDocument, generateDocQrDataUrl, type DocData } from '@/lib/generatePDF';
 
+const CAT_COLORS: Record<string, string> = {
+  'DOUANE': '#059669', 'DOUANE & COMPAGNIE': '#059669',
+  'DEBOURS DOUANE': '#0d9488', 'DEBOURS DOUANE & COMPAGNIE': '#0d9488',
+  'DOUANE ELIBU-NOE-E': '#65a30d',
+  'COMPAGNIE MARITIME': '#2563eb',
+  'FRAIS PORTUAIRES': '#0891b2',
+  'GUICHET UNIQUE': '#4f46e5', 'GUICHET UNIQUE/IMMATRICULATION': '#4f46e5',
+  'EXPORT ET FRET': '#7c3aed',
+  'TRANSPORT': '#9333ea',
+  'PENALITES PORTUAIRES': '#dc2626',
+  'AUTRES FRAIS': '#d97706',
+  'DIVERS': '#6b7280',
+};
+
 const CI_FLAG = (
   <span className="inline-flex ml-1.5 align-middle shadow-[0_0_0_1px_#e3ddee] rounded-[1px] overflow-hidden">
     <span className="w-2 h-2.5 bg-[#f77f00]" />
@@ -67,6 +81,7 @@ export default function ProformaDetailPage() {
         quantite: Number(l.quantite || 1),
         prixUnitaire: Number(l.prixUnitaire || 0),
         montant: Number(l.prixUnitaire || 0),
+        estTVA: !!l.estTVA,
       })),
     };
   }, [proforma]);
@@ -148,12 +163,6 @@ export default function ProformaDetailPage() {
   const totalTTC = Number(proforma.montantTTC);
   const d = proforma.dossier;
 
-  const detailsRows = [
-    ['N° Facture', proforma.numero, true],
-    ['Date', new Date(proforma.dateProforma).toLocaleDateString('fr-FR'), false],
-    ['Réf. Dossier', d?.numero, false],
-  ].filter(([, v]) => v);
-
   const clientInfoRows = [
     ['Nom', proforma.client?.raisonSociale, true],
     ['Adresse', proforma.client?.adresse, false],
@@ -224,29 +233,28 @@ export default function ProformaDetailPage() {
           </div>
         </div>
 
-        {/* Aperçu état */}
-        <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-100 dark:border-surface-700 shadow-card overflow-hidden">
-          <div className="p-6 space-y-4">
+        {/* Aperçu — rendu papier */}
+        <div className="pv-sheet-wrap">
+          <div className="pv-sheet">
             {/* Header */}
-            <div className="flex justify-between items-start gap-4 flex-wrap">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-[11px] bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center flex-shrink-0"><span className="font-extrabold text-white text-sm">GB</span></div>
-                <div>
-                  <p className="font-display font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">GBTRANS SARL</p>
-                  <p className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold mt-0.5">Transit • Douane • Logistique</p>
-                  <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed space-y-0.5">
-                    <p>Cocody Angré 7ème Tranche, Abidjan — Côte d&apos;Ivoire</p>
-                    <p>+225 27 20 00 00 00 &nbsp;·&nbsp; contact@gbtrans.ci</p>
-                  </div>
+            <div className="pv-head">
+              <div>
+                <p className="pv-company-name">GBTRANS SARL</p>
+                <p className="pv-company-sub">Transit · Douane · Logistique</p>
+                <div className="pv-company-addr">
+                  <p>Cocody Angré 7ème Tranche, Abidjan — Côte d&apos;Ivoire</p>
+                  <p>+225 27 20 00 00 00 &nbsp;·&nbsp; contact@gbtrans.ci</p>
                 </div>
               </div>
-              <div className="min-w-[220px] text-right">
-                <span className="inline-block w-full text-center font-display text-sm font-extrabold text-gray-900 dark:text-white bg-surface-100 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-md px-4 py-2 tracking-wide">FACTURE PROFORMA</span>
+              <div className="pv-title-block">
+                <p className="pv-doc-label">FACTURE PROFORMA</p>
+                <p className="pv-doc-num">N° <strong>{proforma.numero}</strong></p>
+                <p className="pv-doc-num">Date : {new Date(proforma.dateProforma).toLocaleDateString('fr-FR')}</p>
                 {qrDataUrl && (
                   <div className="flex justify-end mt-2">
                     <div className="text-center">
-                      <img src={qrDataUrl} alt="QR code de vérification" className="w-16 h-16 border border-surface-200 dark:border-surface-600 rounded-md p-0.5 bg-white" />
-                      <p className="text-[7.5px] text-gray-400 dark:text-gray-500 mt-1">Vérifier le document</p>
+                      <img src={qrDataUrl} alt="QR code de vérification" className="w-14 h-14 border pv-qr-border p-0.5 bg-white" />
+                      <p className="pv-qr-label">Vérifier le document</p>
                     </div>
                   </div>
                 )}
@@ -254,119 +262,149 @@ export default function ProformaDetailPage() {
             </div>
 
             {/* DÉTAILS / CLIENT */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              <div className="border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden">
-                <div className="bg-surface-50 dark:bg-surface-700 text-gray-900 dark:text-white text-[11px] font-extrabold px-3 py-1.5 tracking-wide border-b border-surface-100 dark:border-surface-700">DÉTAILS DE LA PROFORMA</div>
-                <table className="w-full text-[11px]">
-                  <tbody>
-                    {detailsRows.map(([label, value, hl]) => (
-                      <tr key={label as string}><td className="px-3 py-1 text-gray-500 dark:text-gray-400 w-2/5">{label}</td><td className={`px-3 py-1 font-semibold ${hl ? 'font-mono font-bold text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>{value}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="pv-meta-grid">
+              <div className="pv-meta-block">
+                <p className="pv-meta-k">Adressée à</p>
+                {clientInfoRows.map(([label, value]) => (
+                  <p key={label as string} className={label === 'Nom' ? 'pv-meta-v pv-meta-strong' : 'pv-meta-v'}>
+                    {value}{label === 'Pays' && isPaysCI ? CI_FLAG : null}
+                  </p>
+                ))}
               </div>
-              <div className="border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden">
-                <div className="bg-surface-50 dark:bg-surface-700 text-gray-900 dark:text-white text-[11px] font-extrabold px-3 py-1.5 tracking-wide border-b border-surface-100 dark:border-surface-700">CLIENT</div>
-                <table className="w-full text-[11px]">
-                  <tbody>
-                    {clientInfoRows.map(([label, value]) => (
-                      <tr key={label as string}>
-                        <td className="px-3 py-1 text-gray-500 dark:text-gray-400 w-[34%]">{label}</td>
-                        <td className="px-3 py-1 font-semibold text-gray-900 dark:text-white">
-                          {value}{label === 'Pays' && isPaysCI ? CI_FLAG : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="pv-meta-block">
+                <p className="pv-meta-k">Détails</p>
+                {d?.numero && <p className="pv-meta-v">Dossier : <strong>{d.numero}</strong></p>}
+                <p className="pv-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</p>
               </div>
             </div>
 
-            {proforma.titre && (
-              <div className="bg-surface-50 dark:bg-surface-700 border-l-[3px] border-primary-700 rounded-r-lg px-4 py-2.5 font-bold text-sm uppercase tracking-wide text-gray-900 dark:text-white">{proforma.titre}</div>
-            )}
+            {proforma.titre && <div className="pv-titre">{proforma.titre}</div>}
 
-            {/* Tableau */}
-            <div className="border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-surface-50 dark:bg-surface-700 text-[10px] text-gray-900 dark:text-white">
-                    <th className="px-2 py-2 text-center tracking-wide w-8">N°</th>
-                    <th className="px-2 py-2 text-left tracking-wide">DÉSIGNATION</th>
-                    <th className="px-2 py-2 text-center tracking-wide w-14">QTÉ</th>
-                    <th className="px-2 py-2 text-right tracking-wide w-28">PU (XOF)</th>
-                    <th className="px-2 py-2 text-right w-32 tracking-wide">MONTANT HT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedLignes.map(group => (
-                    <Fragment key={group.categorie}>
-                      <tr className="bg-surface-50 dark:bg-surface-700/60 border-t border-surface-100 dark:border-surface-700">
-                        <td colSpan={5} className="px-2 py-1.5 font-bold text-[10px] tracking-wide text-gray-900 dark:text-white">{group.categorie}</td>
+            {/* Sections par catégorie */}
+            {groupedLignes.map(group => {
+              const catColor = CAT_COLORS[group.categorie] || '#AE7C1F';
+              return (
+                <div key={group.categorie} className="pv-section">
+                  <div className="pv-section-head" style={{ background: catColor }}>{group.categorie}</div>
+                  <table className="pv-items">
+                    <thead>
+                      <tr>
+                        <th className="pv-numcol">N°</th>
+                        <th>Désignation</th>
+                        <th className="pv-num pv-montantcol">Montant</th>
                       </tr>
+                    </thead>
+                    <tbody>
                       {group.lignes.map((l: any) => {
                         globalIndex++;
                         return (
-                          <tr key={l.id} className="border-t border-surface-100 dark:border-surface-700">
-                            <td className="px-2 py-1.5 text-[10px] text-center text-gray-400 dark:text-gray-500">{globalIndex}</td>
-                            <td className="px-2 py-1.5 text-[11px] text-gray-700 dark:text-gray-300">{l.designation}</td>
-                            <td className="px-2 py-1.5 text-center font-mono text-[11px] text-gray-500 dark:text-gray-400">{Number(l.quantite || 1)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono text-[11px] text-gray-500 dark:text-gray-400">{fmt(l.prixUnitaire)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono text-[11px] font-semibold text-gray-900 dark:text-white">{Number(l.prixUnitaire) > 0 ? fmt(l.prixUnitaire) : ''}</td>
+                          <tr key={l.id}>
+                            <td className="pv-numcol">{globalIndex}</td>
+                            <td>{l.designation}{l.estTVA && <span className="pv-tva-badge" style={{ borderColor: catColor, color: catColor }}>TVA</span>}</td>
+                            <td className="pv-num">{Number(l.prixUnitaire) > 0 ? fmt(l.prixUnitaire) : ''}</td>
                           </tr>
                         );
                       })}
-                      <tr className="border-t border-surface-100 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-700/40">
-                        <td colSpan={4} className="px-2 py-1.5 text-right text-[9.5px] font-extrabold text-gray-900 dark:text-white">SOUS-TOTAL {group.categorie}</td>
-                        <td className="px-2 py-1.5 text-right font-mono font-extrabold text-[11px] text-gray-900 dark:text-white">{fmt(group.sousTotal)}</td>
+                      <tr className="pv-subtotal-row" style={{ borderBottomColor: catColor }}>
+                        <td colSpan={2}>Sous-total {group.categorie}</td>
+                        <td className="pv-num">{fmt(group.sousTotal)}</td>
                       </tr>
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+
+            {/* Totaux */}
+            <div className="pv-totals">
+              <div className="pv-trow"><span>Total HT</span><span>{fmt(totalHT)}</span></div>
+              <div className="pv-trow"><span>Total TVA</span><span>{fmt(totalTVA)}</span></div>
+              <div className="pv-trow pv-grand"><span>Total Général</span><span>{fmt(totalTTC)}</span></div>
             </div>
 
-            {/* Montant en lettres + Totaux */}
-            <div className="flex justify-between items-start gap-4 flex-wrap">
-              <div className="flex-1 min-w-[240px] border border-surface-100 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/40 rounded-md p-3">
-                <p className="text-[10px] font-extrabold text-gray-900 dark:text-white tracking-wide">MONTANT ARRÊTÉ À LA SOMME DE :</p>
-                <p className="text-sm font-bold italic mt-1 text-gray-900 dark:text-white">{montantEnLettres(totalTTC)}</p>
-              </div>
-              <table className="text-sm border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden min-w-[240px]">
-                <tbody>
-                  <tr><td className="px-3 py-1.5 text-gray-500 dark:text-gray-400">TOTAL HT</td><td className="px-3 py-1.5 text-right font-mono font-bold text-gray-900 dark:text-white">{fmt(totalHT)}</td></tr>
-                  <tr><td className="px-3 py-1.5 text-gray-500 dark:text-gray-400">TVA (18%)</td><td className="px-3 py-1.5 text-right font-mono font-bold text-gray-900 dark:text-white">{fmt(totalTVA)}</td></tr>
-                  <tr>
-                    <td colSpan={2} className="p-0">
-                      <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white flex justify-between px-3 py-2 font-extrabold text-[13px]">
-                        <span>NET À PAYER TTC</span><span className="font-mono">{fmt(totalTTC)}</span>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="pv-hors">
+              <strong>HORS :</strong> Frais de dépotage, d&apos;expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
+            </div>
+
+            <div className="pv-lettres">
+              <p className="pv-meta-k">Montant arrêté à la somme de</p>
+              <p className="pv-lettres-text">{montantEnLettres(totalTTC)}</p>
             </div>
 
             {proforma.observations && (
-              <div className="border-t border-surface-100 dark:border-surface-700 pt-3"><p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Observations</p><p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{proforma.observations}</p></div>
+              <div className="pv-obs"><p className="pv-meta-k">Observations</p><p className="pv-obs-text">{proforma.observations}</p></div>
             )}
 
             {/* Signature */}
-            <div className="flex justify-end pt-4">
-              <div className="text-center w-56">
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-9">Le Directeur / Cachet &amp; Signature</p>
-                <div className="border-t border-gray-900 dark:border-white pt-1 font-bold text-gray-900 dark:text-white">GBTRANS SARL</div>
-              </div>
+            <div className="pv-sign">
+              Fait à Abidjan
+              <div className="pv-sign-line">GBTRANS SARL</div>
             </div>
-          </div>
 
-          {/* Footer légal */}
-          <div className="border-t border-surface-100 dark:border-surface-700 px-6 py-4 text-center text-[9px] text-gray-400 dark:text-gray-500 leading-relaxed">
-            <p>Facture proforma — non valable pour dédouanement. Établie sous réserve d&apos;acceptation. Règlement par virement bancaire à l&apos;ordre de GBTRANS SARL.</p>
-            <p className="mt-1">GBTRANS SARL — Cocody Angré 7ème Tranche, Abidjan, Côte d&apos;Ivoire — RCCM CI-ABJ-2018-B-12345 — CC 1812345 Z — contact@gbtrans.ci</p>
+            {/* Footer légal */}
+            <div className="pv-footer">
+              <p>Facture proforma — non valable pour dédouanement. Établie sous réserve d&apos;acceptation. Règlement par virement bancaire à l&apos;ordre de GBTRANS SARL.</p>
+              <p className="mt-1">GBTRANS SARL — Cocody Angré 7ème Tranche, Abidjan, Côte d&apos;Ivoire — RCCM CI-ABJ-2018-B-12345 — CC 1812345 Z — contact@gbtrans.ci</p>
+            </div>
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .pv-sheet-wrap { --pv-ink:#16213E; --pv-ink-soft:#2E3B5C; --pv-gold:#AE7C1F; --pv-gold-soft:#EADFC4; --pv-paper:#FBF9F4; --pv-line:#DAD2BE; --pv-dim:#8B93AD;
+          background:#0C1120; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; }
+        .pv-sheet { width:100%; max-width:210mm; background:var(--pv-paper); color:var(--pv-ink); padding:26px 28px; font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
+        .pv-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pv-ink); padding-bottom:14px; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+        .pv-company-name { font-size:22px; font-weight:700; letter-spacing:.01em; margin:0; }
+        .pv-company-sub { font-size:11.5px; color:var(--pv-ink-soft); margin:2px 0 0; }
+        .pv-company-addr { font-size:10.5px; color:#5C6580; margin-top:6px; line-height:1.5; }
+        .pv-company-addr p { margin:0; }
+        .pv-title-block { text-align:right; }
+        .pv-doc-label { font-size:20px; font-weight:700; letter-spacing:.05em; margin:0; }
+        .pv-doc-num { font-size:12px; color:var(--pv-ink-soft); margin:4px 0 0; }
+        .pv-doc-num strong { color:var(--pv-gold); font-family:'Courier New',monospace; }
+        .pv-qr-border { border-color:var(--pv-line); border-radius:3px; }
+        .pv-qr-label { font-size:7.5px; color:var(--pv-dim); margin-top:2px; }
+
+        .pv-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+        .pv-meta-block { border:1px solid var(--pv-line); padding:10px 12px; }
+        .pv-meta-k { font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--pv-gold); margin:0 0 6px; font-weight:700; }
+        .pv-meta-v { font-size:12.5px; margin:1px 0; }
+        .pv-meta-strong { font-weight:700; }
+        .pv-meta-dim { color:#8b93ad; font-size:10.5px; margin-top:4px; }
+
+        .pv-titre { background:var(--pv-gold-soft); padding:10px 12px; margin-bottom:18px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-left:3px solid var(--pv-gold); color:var(--pv-ink); }
+
+        .pv-section { margin-bottom:16px; }
+        .pv-section-head { color:#fff; padding:6px 10px; font-size:11.5px; letter-spacing:.03em; font-weight:700; }
+        table.pv-items { width:100%; border-collapse:collapse; font-size:12px; }
+        table.pv-items th { text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--pv-ink-soft); border-bottom:1px solid var(--pv-line); padding:6px; }
+        table.pv-items td { padding:6px; border-bottom:1px solid var(--pv-line); vertical-align:middle; }
+        .pv-numcol { width:30px; text-align:center; color:var(--pv-dim); font-size:10.5px; }
+        .pv-montantcol { width:120px; }
+        table.pv-items .pv-num { text-align:right; white-space:nowrap; font-family:'Courier New',monospace; font-weight:700; }
+        .pv-tva-badge { font-size:8.5px; border:1px solid; border-radius:8px; padding:0 6px; margin-left:7px; }
+        .pv-subtotal-row td { font-weight:700; color:var(--pv-ink); background:rgba(174,124,31,.06); border-bottom:2px solid; }
+        .pv-subtotal-row td:first-child { text-align:right; font-size:10.5px; }
+
+        .pv-totals { margin-left:auto; width:270px; margin-top:10px; margin-bottom:18px; }
+        .pv-trow { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; border-bottom:1px solid var(--pv-line); }
+        .pv-trow.pv-grand { border-bottom:none; border-top:2px solid var(--pv-ink); margin-top:4px; padding-top:8px; font-size:16px; font-weight:700; color:var(--pv-ink); }
+
+        .pv-hors { font-size:10px; color:var(--pv-ink-soft); border:1px solid var(--pv-line); padding:9px 11px; background:rgba(174,124,31,.05); line-height:1.55; margin-bottom:16px; }
+        .pv-hors strong { color:var(--pv-ink); }
+
+        .pv-lettres { border:1px solid var(--pv-line); padding:10px 12px; margin-bottom:16px; }
+        .pv-lettres-text { font-style:italic; font-weight:700; color:var(--pv-ink); font-size:12px; line-height:1.5; margin:2px 0 0; }
+
+        .pv-obs { border-top:1px solid var(--pv-line); padding-top:10px; margin-bottom:12px; }
+        .pv-obs-text { font-size:12px; color:var(--pv-ink-soft); margin-top:4px; }
+
+        .pv-sign { margin-top:22px; text-align:right; font-size:12px; color:var(--pv-ink-soft); }
+        .pv-sign-line { margin-top:34px; border-top:1px solid var(--pv-ink-soft); display:inline-block; padding-top:4px; width:200px; font-weight:700; color:var(--pv-ink); }
+
+        .pv-footer { border-top:1px solid var(--pv-line); margin-top:22px; padding-top:12px; text-align:center; font-size:9px; color:var(--pv-dim); line-height:1.6; }
+      `}</style>
     </AppLayout>
   );
 }
