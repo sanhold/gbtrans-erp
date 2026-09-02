@@ -15,7 +15,9 @@ const tabs = [
 ];
 
 const linkTabs = [
+  { href: '/parametres/catalogue-prestations', label: 'Catalogue des prestations' },
   { href: '/parametres/modeles-courrier', label: 'Modèles de courrier' },
+  { href: '/parametres/processus', label: 'Processus de suivi' },
 ];
 
 export default function ParametresPage() {

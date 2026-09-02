@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
-import { offresApi, clientsApi, dossiersApi } from '@/lib/api';
+import { offresApi, clientsApi, dossiersApi, catalogueApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
@@ -33,7 +33,11 @@ export default function OffresPage() {
 
   const [clients, setClients] = useState<any[]>([]);
   const [dossiers, setDossiers] = useState<any[]>([]);
+  const [catalogue, setCatalogue] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showCatalogue, setShowCatalogue] = useState(false);
+  const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [catalogueCat, setCatalogueCat] = useState('');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ clientId: '', dossierId: '', objet: '', description: '', dateValidite: '' });
   const [lignes, setLignes] = useState([ligneVide()]);
@@ -51,11 +55,21 @@ export default function OffresPage() {
   useEffect(() => {
     clientsApi.list({ limit: 500 }).then(r => setClients(r.data.data || [])).catch(() => {});
     dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
+    catalogueApi.list().then(r => setCatalogue((r.data.data || []).filter((p: any) => p.actif))).catch(() => {});
   }, []);
 
   const resetForm = () => {
     setForm({ clientId: '', dossierId: '', objet: '', description: '', dateValidite: '' });
     setLignes([ligneVide()]);
+  };
+
+  const catalogueCategories = [...new Set(catalogue.map(p => p.categorie))];
+
+  const addFromCatalogue = (p: any) => {
+    const ligneFromCat = { designation: p.designation, quantite: '1', unite: 'FORFAIT', prixUnitaire: p.montantDefaut != null ? String(p.montantDefaut) : '', tauxTVA: Number(p.tauxTVA) || 0 };
+    const estVide = lignes.length === 1 && !lignes[0].designation && !lignes[0].prixUnitaire;
+    setLignes(estVide ? [ligneFromCat] : [...lignes, ligneFromCat]);
+    toast.success(`${p.designation} ajouté`);
   };
 
   const totalHT = lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0), 0);
@@ -174,7 +188,13 @@ export default function OffresPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label !mb-0">Lignes de prestations</label>
-                  <button type="button" onClick={() => setLignes([...lignes, ligneVide()])} className="text-xs text-primary-600 hover:underline">+ Ajouter une ligne</button>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setShowCatalogue(true)} className="text-xs text-emerald-600 hover:underline flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      Choisir depuis le catalogue
+                    </button>
+                    <button type="button" onClick={() => setLignes([...lignes, ligneVide()])} className="text-xs text-primary-600 hover:underline">+ Ligne libre</button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {lignes.map((l, i) => (
@@ -202,6 +222,50 @@ export default function OffresPage() {
                 <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Création...' : 'Créer l\'offre'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showCatalogue && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCatalogue(false)}>
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <h3 className="font-bold text-lg">Catalogue des Prestations</h3>
+              <button type="button" onClick={() => setShowCatalogue(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-4 pt-3 space-y-2">
+              <input type="text" value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher une prestation..." className="input-field text-sm" autoFocus />
+              <div className="flex gap-1 flex-wrap">
+                <button type="button" onClick={() => setCatalogueCat('')} className={`px-3 py-1 rounded-full text-xs font-medium ${!catalogueCat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Toutes</button>
+                {catalogueCategories.map(cat => (
+                  <button key={cat} type="button" onClick={() => setCatalogueCat(catalogueCat === cat ? '' : cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${catalogueCat === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{cat}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
+              {catalogue
+                .filter(p => !catalogueCat || p.categorie === catalogueCat)
+                .filter(p => !catalogueSearch || p.designation.toLowerCase().includes(catalogueSearch.toLowerCase()) || p.code.toLowerCase().includes(catalogueSearch.toLowerCase()))
+                .map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 dark:border-surface-600 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-surface-700 transition-all">
+                    <div>
+                      <p className="text-sm font-medium">{p.designation}</p>
+                      <p className="text-[10px] text-gray-400">{p.categorie} — {p.code}{p.montantDefaut ? ` • Défaut: ${fmt(p.montantDefaut)} F` : ''}</p>
+                    </div>
+                    <button type="button" onClick={() => addFromCatalogue(p)} className="px-3 py-1 bg-primary-500 text-white rounded text-xs font-medium hover:bg-primary-600 whitespace-nowrap">+ Ajouter</button>
+                  </div>
+                ))}
+              {catalogue.length === 0 && (
+                <div className="text-center py-6 text-gray-400 text-sm">
+                  Catalogue vide. <a href="/parametres/catalogue-prestations" target="_blank" className="text-primary-500 hover:underline">Ajoutez des prestations →</a>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-surface-700 flex justify-end">
+              <button type="button" onClick={() => setShowCatalogue(false)} className="btn-primary">Fermer</button>
+            </div>
           </div>
         </div>
       )}

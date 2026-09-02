@@ -229,6 +229,14 @@ export const financeApi = {
   },
 };
 
+// Catalogue des Prestations API
+export const catalogueApi = {
+  list: () => api.get('/proformas/catalogue'),
+  create: (data: any) => api.post('/proformas/catalogue', data),
+  update: (id: string, data: any) => api.put(`/proformas/catalogue/${id}`, data),
+  delete: (id: string) => api.delete(`/proformas/catalogue/${id}`),
+};
+
 // Offres Commerciales API
 export const offresApi = {
   list: (params?: Record<string, any>) => api.get('/offres', { params }),
