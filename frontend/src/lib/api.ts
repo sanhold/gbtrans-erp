@@ -257,3 +257,23 @@ export const comptabiliteApi = {
   balance: (params?: Record<string, any>) => api.get('/comptabilite/balance', { params }),
   bilan: (params?: Record<string, any>) => api.get('/comptabilite/bilan', { params }),
 };
+
+// Utilisateurs / Profils / Permissions API
+export const utilisateursApi = {
+  list: () => api.get('/utilisateurs'),
+  create: (data: any) => api.post('/utilisateurs', data),
+  update: (id: string, data: any) => api.put(`/utilisateurs/${id}`, data),
+  toggleStatut: (id: string) => api.patch(`/utilisateurs/${id}/statut`),
+  deverrouiller: (id: string) => api.patch(`/utilisateurs/${id}/deverrouiller`),
+  resetPassword: (id: string, motDePasse: string) => api.put(`/utilisateurs/${id}/reset-password`, { motDePasse }),
+  profils: {
+    list: () => api.get('/utilisateurs/profils/liste'),
+    create: (data: any) => api.post('/utilisateurs/profils', data),
+    update: (id: string, data: any) => api.put(`/utilisateurs/profils/${id}`, data),
+    delete: (id: string) => api.delete(`/utilisateurs/profils/${id}`),
+    setPermissions: (id: string, permissionIds: string[]) => api.put(`/utilisateurs/profils/${id}/permissions`, { permissionIds }),
+  },
+  permissions: {
+    list: () => api.get('/utilisateurs/permissions/liste'),
+  },
+};

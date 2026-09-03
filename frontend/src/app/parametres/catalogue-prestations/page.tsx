@@ -30,7 +30,25 @@ const CAT_COLORS: Record<string, string> = {
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
 
-const emptyForm = { categorie: 'TRANSIT', code: '', designation: '', montantDefaut: '', tauxTVA: '18', estTVA: true };
+const emptyForm = { categorie: CATEGORIES[0], code: '', designation: '', montantDefaut: '', tauxTVA: '18', estTVA: true };
+
+function suggestCode(prestations: any[], categorie: string): string {
+  const codes = prestations.filter(p => p.categorie === categorie).map(p => p.code as string).filter(Boolean);
+  const parsed = codes
+    .map(c => { const m = c.match(/^([A-Za-zÀ-ÿ-]*)(\d+)$/); return m ? { prefix: m[1], num: parseInt(m[2], 10), width: m[2].length } : null; })
+    .filter((p): p is { prefix: string; num: number; width: number } => !!p);
+  if (parsed.length > 0) {
+    const counts: Record<string, number> = {};
+    parsed.forEach(p => { counts[p.prefix] = (counts[p.prefix] || 0) + 1; });
+    const bestPrefix = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+    const group = parsed.filter(p => p.prefix === bestPrefix);
+    const maxNum = Math.max(...group.map(p => p.num));
+    const width = Math.max(...group.map(p => p.width));
+    return `${bestPrefix}${String(maxNum + 1).padStart(width, '0')}`;
+  }
+  const initials = (categorie.match(/[A-Za-zÀ-ÿ]+/g) || []).map(w => w[0]).join('').toUpperCase().slice(0, 3) || 'PR';
+  return `${initials}01`;
+}
 
 export default function CataloguePrestationsPage() {
   const [prestations, setPrestations] = useState<any[]>([]);
@@ -41,6 +59,8 @@ export default function CataloguePrestationsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [customCategorie, setCustomCategorie] = useState('');
+  const [codeTouched, setCodeTouched] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -52,9 +72,19 @@ export default function CataloguePrestationsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
+  const allCategories = [...new Set([...CATEGORIES, ...prestations.map(p => p.categorie)])];
+
+  const openCreate = () => {
+    setEditing(null);
+    setCodeTouched(false);
+    setCustomCategorie('');
+    setForm({ ...emptyForm, code: suggestCode(prestations, emptyForm.categorie) });
+    setShowModal(true);
+  };
   const openEdit = (p: any) => {
     setEditing(p);
+    setCodeTouched(true);
+    setCustomCategorie('');
     setForm({
       categorie: p.categorie, code: p.code, designation: p.designation,
       montantDefaut: p.montantDefaut != null ? String(p.montantDefaut) : '',
@@ -63,13 +93,19 @@ export default function CataloguePrestationsPage() {
     setShowModal(true);
   };
 
+  const setFormCategorie = (categorie: string) => {
+    setForm(prev => ({ ...prev, categorie, code: (editing || codeTouched) ? prev.code : suggestCode(prestations, categorie) }));
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const categorie = form.categorie === '__new__' ? customCategorie.trim().toUpperCase() : form.categorie;
+    if (!categorie) { toast.error('Indiquez le nom de la nouvelle catégorie'); return; }
     if (!form.code.trim() || !form.designation.trim()) { toast.error('Code et désignation requis'); return; }
     setSaving(true);
     try {
       const payload = {
-        categorie: form.categorie, code: form.code.trim().toUpperCase(), designation: form.designation.trim(),
+        categorie, code: form.code.trim().toUpperCase(), designation: form.designation.trim(),
         montantDefaut: form.montantDefaut ? parseFloat(form.montantDefaut) : null,
         tauxTVA: form.estTVA ? (parseFloat(form.tauxTVA) || 18) : 0,
         estTVA: form.estTVA,
@@ -78,7 +114,7 @@ export default function CataloguePrestationsPage() {
         await catalogueApi.update(editing.id, payload);
         toast.success('Prestation modifiée');
       } else {
-        await catalogueApi.create({ ...payload, ordre: prestations.filter(p => p.categorie === form.categorie).length + 1 });
+        await catalogueApi.create({ ...payload, ordre: prestations.filter(p => p.categorie === categorie).length + 1 });
         toast.success('Prestation ajoutée au catalogue');
       }
       setShowModal(false);
@@ -129,8 +165,8 @@ export default function CataloguePrestationsPage() {
           </div>
           <div className="flex gap-1 flex-wrap">
             <button onClick={() => setCategorieFiltre('')} className={`px-3 py-1.5 rounded-full text-xs font-medium ${!categorieFiltre ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-surface-700 dark:text-gray-300'}`}>Toutes</button>
-            {CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => setCategorieFiltre(categorieFiltre === cat ? '' : cat)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categorieFiltre === cat ? CAT_COLORS[cat] + ' ring-2 ring-offset-1 ring-primary-300' : CAT_COLORS[cat] + ' opacity-60 hover:opacity-100'}`}>{cat}</button>
+            {allCategories.map(cat => (
+              <button key={cat} onClick={() => setCategorieFiltre(categorieFiltre === cat ? '' : cat)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categorieFiltre === cat ? (CAT_COLORS[cat] || 'bg-gray-100 text-gray-700') + ' ring-2 ring-offset-1 ring-primary-300' : (CAT_COLORS[cat] || 'bg-gray-100 text-gray-700') + ' opacity-60 hover:opacity-100'}`}>{cat}</button>
             ))}
           </div>
         </div>
@@ -189,14 +225,22 @@ export default function CataloguePrestationsPage() {
 
               <div>
                 <label className="label">Catégorie *</label>
-                <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className="input-field">
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                {form.categorie === '__new__' ? (
+                  <div className="flex gap-2">
+                    <input type="text" autoFocus value={customCategorie} onChange={e => { const v = e.target.value.toUpperCase(); setCustomCategorie(v); if (!editing && !codeTouched) setForm(prev => ({ ...prev, code: suggestCode(prestations, v) })); }} className="input-field" placeholder="NOM DE LA NOUVELLE CATEGORIE" />
+                    <button type="button" onClick={() => { setFormCategorie(allCategories[0]); setCustomCategorie(''); }} className="btn-secondary text-sm px-3 whitespace-nowrap">Annuler</button>
+                  </div>
+                ) : (
+                  <select value={form.categorie} onChange={e => setFormCategorie(e.target.value)} className="input-field">
+                    {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="__new__">+ Nouvelle catégorie…</option>
+                  </select>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Code *</label>
-                  <input type="text" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} className="input-field font-mono" placeholder="TRA-DED" required />
+                  <label className="label">Code * {!editing && <span className="text-gray-400 font-normal">(généré, modifiable)</span>}</label>
+                  <input type="text" value={form.code} onChange={e => { setCodeTouched(true); setForm({ ...form, code: e.target.value.toUpperCase() }); }} className="input-field font-mono" placeholder="TRA-DED" required />
                 </div>
                 <div>
                   <label className="label">Montant par défaut</label>

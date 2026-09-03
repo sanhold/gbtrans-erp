@@ -34,6 +34,24 @@ const CAT_COLORS: Record<string, string> = {
 
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n || 0));
 
+function suggestCode(catalogue: any[], categorie: string): string {
+  const codes = catalogue.filter(p => p.categorie === categorie).map(p => p.code as string).filter(Boolean);
+  const parsed = codes
+    .map(c => { const m = c.match(/^([A-Za-zÀ-ÿ-]*)(\d+)$/); return m ? { prefix: m[1], num: parseInt(m[2], 10), width: m[2].length } : null; })
+    .filter((p): p is { prefix: string; num: number; width: number } => !!p);
+  if (parsed.length > 0) {
+    const counts: Record<string, number> = {};
+    parsed.forEach(p => { counts[p.prefix] = (counts[p.prefix] || 0) + 1; });
+    const bestPrefix = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+    const group = parsed.filter(p => p.prefix === bestPrefix);
+    const maxNum = Math.max(...group.map(p => p.num));
+    const width = Math.max(...group.map(p => p.width));
+    return `${bestPrefix}${String(maxNum + 1).padStart(width, '0')}`;
+  }
+  const initials = (categorie.match(/[A-Za-zÀ-ÿ]+/g) || []).map(w => w[0]).join('').toUpperCase().slice(0, 3) || 'PR';
+  return `${initials}01`;
+}
+
 export default function NouvelleProformaPage() {
   return (
     <Suspense fallback={null}>
@@ -56,6 +74,8 @@ function NouvelleProformaForm() {
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const [showAddPrestation, setShowAddPrestation] = useState(false);
   const [newPrestation, setNewPrestation] = useState({ categorie: 'DOUANE & COMPAGNIE', code: '', designation: '', montantDefaut: '', estTVA: false });
+  const [customCategorie, setCustomCategorie] = useState('');
+  const [codeTouched, setCodeTouched] = useState(false);
 
   const [form, setForm] = useState({
     clientId: '', dossierId: searchParams.get('dossierId') || '', titre: '', observations: '',
@@ -107,18 +127,33 @@ function NouvelleProformaForm() {
     }]);
   };
 
+  const openAddPrestation = () => {
+    setCodeTouched(false);
+    setCustomCategorie('');
+    setNewPrestation(prev => ({ ...prev, code: suggestCode(catalogue, prev.categorie) }));
+    setShowAddPrestation(true);
+  };
+
+  const setPrestationCategorie = (categorie: string) => {
+    setNewPrestation(prev => ({ ...prev, categorie, code: codeTouched ? prev.code : suggestCode(catalogue, categorie) }));
+  };
+
   const handleAddPrestation = async () => {
+    const categorie = newPrestation.categorie === '__new__' ? customCategorie.trim().toUpperCase() : newPrestation.categorie;
+    if (!categorie) { toast.error('Indiquez le nom de la nouvelle catégorie'); return; }
     if (!newPrestation.code || !newPrestation.designation) { toast.error('Code et désignation requis'); return; }
     try {
       const res = await api.post('/proformas/catalogue', {
         ...newPrestation,
+        categorie,
         code: newPrestation.code.toUpperCase(),
         montantDefaut: newPrestation.montantDefaut ? parseFloat(newPrestation.montantDefaut) : null,
-        ordre: catalogue.filter(p => p.categorie === newPrestation.categorie).length + 1,
+        ordre: catalogue.filter(p => p.categorie === categorie).length + 1,
       });
       setCatalogue([...catalogue, res.data.data]);
-      setOpenCat(newPrestation.categorie);
-      setNewPrestation({ categorie: newPrestation.categorie, code: '', designation: '', montantDefaut: '', estTVA: false });
+      setOpenCat(categorie);
+      setNewPrestation({ categorie, code: '', designation: '', montantDefaut: '', estTVA: false });
+      setCustomCategorie('');
       setShowAddPrestation(false);
       toast.success('Prestation ajoutée au catalogue');
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
@@ -132,10 +167,11 @@ function NouvelleProformaForm() {
 
   const valeurCAF = ((parseFloat(form.fobUnitaire) || 0) + (parseFloat(form.fretUnitaire) || 0) + (parseFloat(form.assurance) || 0) + (parseFloat(form.fraisDivers) || 0)) * (parseInt(form.nombreUnites) || 1);
 
-  const categoriesWithItems = Object.keys(CAT_COLORS).filter(cat => catalogue.some(p => p.categorie === cat));
-  const groupedLignes = Object.keys(CAT_COLORS).map(cat => ({
+  const allCategories = [...new Set([...Object.keys(CAT_COLORS), ...catalogue.map(p => p.categorie)])];
+  const categoriesWithItems = allCategories.filter(cat => catalogue.some(p => p.categorie === cat));
+  const groupedLignes = allCategories.map(cat => ({
     categorie: cat,
-    couleur: CAT_COLORS[cat],
+    couleur: CAT_COLORS[cat] || '#6b7280',
     lignes: lignes.filter(l => l.categorie === cat),
     sousTotal: lignes.filter(l => l.categorie === cat).reduce((s, l) => s + (l.montant || 0), 0),
   })).filter(g => g.lignes.length > 0);
@@ -284,7 +320,7 @@ function NouvelleProformaForm() {
                 );
               })}
             </div>
-            <button type="button" className="pf-new-prestation" onClick={() => setShowAddPrestation(true)}>+ Nouvelle prestation au catalogue</button>
+            <button type="button" className="pf-new-prestation" onClick={openAddPrestation}>+ Nouvelle prestation au catalogue</button>
           </div>
 
           {/* ---------- RIGHT: SHEET ---------- */}
@@ -410,14 +446,22 @@ function NouvelleProformaForm() {
             <div className="p-4 space-y-3">
               <div>
                 <label className="label">Catégorie *</label>
-                <select value={newPrestation.categorie} onChange={e => setNewPrestation({ ...newPrestation, categorie: e.target.value })} className="input-field">
-                  {Object.keys(CAT_COLORS).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
+                {newPrestation.categorie === '__new__' ? (
+                  <div className="flex gap-2">
+                    <input type="text" autoFocus value={customCategorie} onChange={e => { const v = e.target.value.toUpperCase(); setCustomCategorie(v); if (!codeTouched) setNewPrestation(prev => ({ ...prev, code: suggestCode(catalogue, v) })); }} className="input-field" placeholder="NOM DE LA NOUVELLE CATEGORIE" />
+                    <button type="button" onClick={() => { setPrestationCategorie(allCategories[0] || 'DOUANE & COMPAGNIE'); setCustomCategorie(''); }} className="btn-secondary text-sm px-3 whitespace-nowrap">Annuler</button>
+                  </div>
+                ) : (
+                  <select value={newPrestation.categorie} onChange={e => setPrestationCategorie(e.target.value)} className="input-field">
+                    {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    <option value="__new__">+ Nouvelle catégorie…</option>
+                  </select>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="label">Code *</label>
-                  <input type="text" value={newPrestation.code} onChange={e => setNewPrestation({ ...newPrestation, code: e.target.value.toUpperCase() })} className="input-field" placeholder="AF09" />
+                  <label className="label">Code * <span className="text-gray-400 font-normal">(généré, modifiable)</span></label>
+                  <input type="text" value={newPrestation.code} onChange={e => { setCodeTouched(true); setNewPrestation({ ...newPrestation, code: e.target.value.toUpperCase() }); }} className="input-field" placeholder="AF09" />
                 </div>
                 <div>
                   <label className="label">Montant par défaut</label>

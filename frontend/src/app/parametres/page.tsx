@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import { utilisateursApi } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 const tabs = [
   { id: 'entreprise', label: 'Entreprise' },
@@ -20,8 +22,140 @@ const linkTabs = [
   { href: '/parametres/processus', label: 'Processus de suivi' },
 ];
 
+const emptyUserForm = { matricule: '', nom: '', prenom: '', email: '', telephone: '', motDePasse: '', profilId: '' };
+const emptyProfilForm = { code: '', nom: '', description: '' };
+
 export default function ParametresPage() {
   const [activeTab, setActiveTab] = useState('entreprise');
+
+  const [utilisateurs, setUtilisateurs] = useState<any[]>([]);
+  const [profils, setProfils] = useState<any[]>([]);
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [userForm, setUserForm] = useState(emptyUserForm);
+  const [savingUser, setSavingUser] = useState(false);
+
+  const [resetUser, setResetUser] = useState<any>(null);
+  const [resetPassword, setResetPassword] = useState('');
+
+  const [showProfilModal, setShowProfilModal] = useState(false);
+  const [profilForm, setProfilForm] = useState(emptyProfilForm);
+  const [savingProfil, setSavingProfil] = useState(false);
+
+  const [permProfil, setPermProfil] = useState<any>(null);
+  const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
+  const [savingPerms, setSavingPerms] = useState(false);
+
+  const loadAll = () => {
+    setLoadingUsers(true);
+    Promise.all([utilisateursApi.list(), utilisateursApi.profils.list(), utilisateursApi.permissions.list()])
+      .then(([uRes, pRes, permRes]) => {
+        setUtilisateurs(uRes.data.data || []);
+        setProfils(pRes.data.data || []);
+        setPermissions(permRes.data.data || []);
+      })
+      .catch(() => toast.error('Erreur de chargement des utilisateurs/profils'))
+      .finally(() => setLoadingUsers(false));
+  };
+
+  useEffect(() => { loadAll(); }, []);
+
+  const openCreateUser = () => { setEditingUser(null); setUserForm(emptyUserForm); setShowUserModal(true); };
+  const openEditUser = (u: any) => {
+    setEditingUser(u);
+    setUserForm({ matricule: u.matricule, nom: u.nom, prenom: u.prenom, email: u.email, telephone: u.telephone || '', motDePasse: '', profilId: u.profilId || '' });
+    setShowUserModal(true);
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingUser(true);
+    try {
+      if (editingUser) {
+        await utilisateursApi.update(editingUser.id, {
+          nom: userForm.nom, prenom: userForm.prenom, telephone: userForm.telephone, profilId: userForm.profilId || null,
+        });
+        toast.success('Utilisateur modifié');
+      } else {
+        if (!userForm.motDePasse || userForm.motDePasse.length < 8) { toast.error('Mot de passe : 8 caractères minimum'); setSavingUser(false); return; }
+        await utilisateursApi.create(userForm);
+        toast.success('Utilisateur créé');
+      }
+      setShowUserModal(false);
+      loadAll();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSavingUser(false); }
+  };
+
+  const handleToggleStatut = async (u: any) => {
+    if (!confirm(`${u.actif ? 'Désactiver' : 'Activer'} le compte de ${u.prenom} ${u.nom} ?`)) return;
+    try { await utilisateursApi.toggleStatut(u.id); toast.success(u.actif ? 'Utilisateur désactivé' : 'Utilisateur activé'); loadAll(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+  };
+
+  const handleDeverrouiller = async (u: any) => {
+    try { await utilisateursApi.deverrouiller(u.id); toast.success('Compte déverrouillé'); loadAll(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPassword || resetPassword.length < 8) { toast.error('8 caractères minimum'); return; }
+    try {
+      await utilisateursApi.resetPassword(resetUser.id, resetPassword);
+      toast.success('Mot de passe réinitialisé');
+      setResetUser(null);
+      setResetPassword('');
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+  };
+
+  const openCreateProfil = () => { setProfilForm(emptyProfilForm); setShowProfilModal(true); };
+  const handleSaveProfil = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profilForm.code.trim() || !profilForm.nom.trim()) { toast.error('Code et nom requis'); return; }
+    setSavingProfil(true);
+    try {
+      await utilisateursApi.profils.create(profilForm);
+      toast.success('Profil créé');
+      setShowProfilModal(false);
+      loadAll();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSavingProfil(false); }
+  };
+
+  const handleDeleteProfil = async (p: any) => {
+    if (!confirm(`Supprimer le profil "${p.nom}" ?`)) return;
+    try { await utilisateursApi.profils.delete(p.id); toast.success('Profil supprimé'); loadAll(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+  };
+
+  const openPermissions = (p: any) => { setPermProfil(p); setSelectedPerms(new Set(p.permissionIds)); };
+  const togglePerm = (id: string) => {
+    setSelectedPerms(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  };
+  const toggleModuleAll = (modulePerms: any[], checked: boolean) => {
+    setSelectedPerms(prev => {
+      const next = new Set(prev);
+      modulePerms.forEach(p => checked ? next.add(p.id) : next.delete(p.id));
+      return next;
+    });
+  };
+  const handleSavePermissions = async () => {
+    setSavingPerms(true);
+    try {
+      await utilisateursApi.profils.setPermissions(permProfil.id, [...selectedPerms]);
+      toast.success('Permissions mises à jour');
+      setPermProfil(null);
+      loadAll();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSavingPerms(false); }
+  };
+
+  const permissionsByModule: Record<string, any[]> = {};
+  for (const p of permissions) { (permissionsByModule[p.module] ||= []).push(p); }
 
   return (
     <AppLayout>
@@ -65,20 +199,82 @@ export default function ParametresPage() {
                 <div className="flex justify-end"><button className="btn-primary">Enregistrer</button></div>
               </div>
             )}
+
             {activeTab === 'utilisateurs' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Utilisateurs</h3><button className="btn-primary text-sm">Nouvel Utilisateur</button></div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Utilisateurs ({utilisateurs.length})</h3>
+                  <button onClick={openCreateUser} className="btn-primary text-sm">+ Nouvel Utilisateur</button>
+                </div>
                 <div className="table-container !shadow-none !border-0">
                   <table className="w-full">
-                    <thead><tr><th className="table-header">Matricule</th><th className="table-header">Nom</th><th className="table-header">Email</th><th className="table-header">Profil</th><th className="table-header">Statut</th></tr></thead>
+                    <thead><tr>
+                      <th className="table-header">Matricule</th><th className="table-header">Nom</th><th className="table-header">Email</th>
+                      <th className="table-header">Profil</th><th className="table-header">Statut</th><th className="table-header">Actions</th>
+                    </tr></thead>
                     <tbody>
-                      <tr className="table-row"><td className="table-cell font-medium" data-label="Matricule">ADM001</td><td className="table-cell" data-label="Nom">ADMINISTRATEUR Système</td><td className="table-cell" data-label="Email">admin@gbtrans.ci</td><td className="table-cell" data-label="Profil"><span className="badge badge-info">Administrateur</span></td><td className="table-cell" data-label="Statut"><span className="badge badge-success">Actif</span></td></tr>
+                      {loadingUsers ? (
+                        <tr><td colSpan={6} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                      ) : utilisateurs.length === 0 ? (
+                        <tr><td colSpan={6} className="text-center py-8 text-gray-500">Aucun utilisateur</td></tr>
+                      ) : utilisateurs.map(u => (
+                        <tr key={u.id} className="table-row">
+                          <td className="table-cell font-medium" data-label="Matricule">{u.matricule}</td>
+                          <td className="table-cell" data-label="Nom">{u.prenom} {u.nom}</td>
+                          <td className="table-cell text-xs" data-label="Email">{u.email}</td>
+                          <td className="table-cell" data-label="Profil">
+                            {u.profil ? <span className={`badge ${u.profil.estAdmin ? 'badge-info' : 'badge-gray'}`}>{u.profil.nom}</span> : <span className="text-xs text-gray-400">Aucun</span>}
+                          </td>
+                          <td className="table-cell" data-label="Statut">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`badge ${u.actif ? 'badge-success' : 'badge-danger'}`}>{u.actif ? 'Actif' : 'Désactivé'}</span>
+                              {u.verrouille && <span className="badge badge-warning">Verrouillé</span>}
+                            </div>
+                          </td>
+                          <td className="table-cell" data-label="Actions">
+                            <div className="flex items-center gap-2 text-xs">
+                              <button onClick={() => openEditUser(u)} className="text-primary-500 hover:underline">Modifier</button>
+                              <button onClick={() => handleToggleStatut(u)} className={u.actif ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline'}>{u.actif ? 'Désactiver' : 'Activer'}</button>
+                              {u.verrouille && <button onClick={() => handleDeverrouiller(u)} className="text-amber-600 hover:underline">Déverrouiller</button>}
+                              <button onClick={() => { setResetUser(u); setResetPassword(''); }} className="text-gray-500 hover:underline">Mot de passe</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
-            {activeTab === 'profils' && <div><h3 className="text-lg font-semibold mb-4">Profils & Permissions</h3><div className="space-y-2">{['Administrateur', 'Transitaire', 'Comptable', 'Commercial', 'Consultation'].map(p => (<div key={p} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-surface-700 rounded-lg"><span className="font-medium text-sm">{p}</span><button className="text-xs text-primary-500 hover:underline">Gérer les permissions</button></div>))}</div></div>}
+
+            {activeTab === 'profils' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Profils & Permissions</h3>
+                  <button onClick={openCreateProfil} className="btn-primary text-sm">+ Nouveau Profil</button>
+                </div>
+                {loadingUsers ? (
+                  <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
+                ) : (
+                  <div className="space-y-2">
+                    {profils.map(p => (
+                      <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-surface-700 rounded-lg">
+                        <div>
+                          <span className="font-medium text-sm">{p.nom}</span>
+                          {p.estAdmin && <span className="badge badge-info ml-2">Accès total</span>}
+                          <p className="text-xs text-gray-500 mt-0.5">{p.description || 'Aucune description'} — {p.nbUtilisateurs} utilisateur(s){!p.estAdmin && ` — ${p.permissionIds.length} permission(s)`}</p>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs">
+                          {!p.estAdmin && <button onClick={() => openPermissions(p)} className="text-primary-500 hover:underline font-medium">Gérer les permissions</button>}
+                          {!p.estAdmin && p.nbUtilisateurs === 0 && <button onClick={() => handleDeleteProfil(p)} className="text-red-500 hover:underline">Supprimer</button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'numerotation' && <div><h3 className="text-lg font-semibold mb-4">Numérotation automatique</h3><div className="space-y-2">{['Dossier (DOS)', 'Facture (FAC)', 'Proforma (PRO)', 'Avoir (AVR)', 'Paiement (PAI)', 'Courrier Entrant (CE)', 'Courrier Sortant (CS)', 'AT', 'Caution (CAU)'].map(n => (<div key={n} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-surface-700 rounded-lg"><span className="text-sm font-medium">{n}</span><span className="text-xs text-gray-500">FORMAT/{'{ANNEE}'}/{'{COMPTEUR}'}</span></div>))}</div></div>}
             {activeTab === 'email' && <div><h3 className="text-lg font-semibold mb-4">Configuration SMTP</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="label">Serveur SMTP</label><input type="text" defaultValue="smtp.gmail.com" className="input-field" /></div><div><label className="label">Port</label><input type="number" defaultValue="587" className="input-field" /></div><div><label className="label">Utilisateur</label><input type="text" className="input-field" /></div><div><label className="label">Mot de passe</label><input type="password" className="input-field" /></div></div><div className="flex justify-end mt-4"><button className="btn-primary">Enregistrer</button></div></div>}
             {activeTab === 'sms' && <div><h3 className="text-lg font-semibold mb-4">Configuration SMS</h3><p className="text-gray-500 text-sm">Configurez l&apos;API Orange pour l&apos;envoi de SMS automatiques.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"><div><label className="label">Clé API Orange</label><input type="text" className="input-field" /></div><div><label className="label">Secret API</label><input type="password" className="input-field" /></div></div></div>}
@@ -86,6 +282,126 @@ export default function ParametresPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Nouvel/Modifier Utilisateur */}
+      {showUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <h3 className="font-bold text-lg">{editingUser ? 'Modifier l\'utilisateur' : 'Nouvel Utilisateur'}</h3>
+              <button onClick={() => setShowUserModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <form onSubmit={handleSaveUser} className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Matricule *</label><input type="text" value={userForm.matricule} onChange={e => setUserForm({ ...userForm, matricule: e.target.value.toUpperCase() })} className="input-field" disabled={!!editingUser} required /></div>
+                <div><label className="label">Profil</label>
+                  <select value={userForm.profilId} onChange={e => setUserForm({ ...userForm, profilId: e.target.value })} className="input-field">
+                    <option value="">— Aucun —</option>
+                    {profils.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Prénom *</label><input type="text" value={userForm.prenom} onChange={e => setUserForm({ ...userForm, prenom: e.target.value })} className="input-field" required /></div>
+                <div><label className="label">Nom *</label><input type="text" value={userForm.nom} onChange={e => setUserForm({ ...userForm, nom: e.target.value })} className="input-field" required /></div>
+              </div>
+              <div><label className="label">Email *</label><input type="email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} className="input-field" disabled={!!editingUser} required /></div>
+              <div><label className="label">Téléphone</label><input type="text" value={userForm.telephone} onChange={e => setUserForm({ ...userForm, telephone: e.target.value })} className="input-field" /></div>
+              {!editingUser && (
+                <div><label className="label">Mot de passe initial * <span className="text-gray-400 font-normal">(8 caractères min.)</span></label><input type="password" value={userForm.motDePasse} onChange={e => setUserForm({ ...userForm, motDePasse: e.target.value })} className="input-field" required /></div>
+              )}
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-surface-700">
+                <button type="button" onClick={() => setShowUserModal(false)} className="btn-secondary text-sm">Annuler</button>
+                <button type="submit" disabled={savingUser} className="btn-primary text-sm disabled:opacity-50">{savingUser ? 'Enregistrement...' : editingUser ? 'Modifier' : 'Créer'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Réinitialiser mot de passe */}
+      {resetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <h3 className="font-bold text-lg">Réinitialiser le mot de passe</h3>
+              <button onClick={() => setResetUser(null)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <form onSubmit={handleResetPassword} className="p-4 space-y-3">
+              <p className="text-sm text-gray-500">{resetUser.prenom} {resetUser.nom} devra changer ce mot de passe à sa prochaine connexion.</p>
+              <div><label className="label">Nouveau mot de passe *</label><input type="password" value={resetPassword} onChange={e => setResetPassword(e.target.value)} className="input-field" required /></div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-surface-700">
+                <button type="button" onClick={() => setResetUser(null)} className="btn-secondary text-sm">Annuler</button>
+                <button type="submit" className="btn-primary text-sm">Réinitialiser</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nouveau Profil */}
+      {showProfilModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <h3 className="font-bold text-lg">Nouveau Profil</h3>
+              <button onClick={() => setShowProfilModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <form onSubmit={handleSaveProfil} className="p-4 space-y-3">
+              <div><label className="label">Code *</label><input type="text" value={profilForm.code} onChange={e => setProfilForm({ ...profilForm, code: e.target.value.toUpperCase() })} className="input-field" placeholder="CAISSIER" required /></div>
+              <div><label className="label">Nom *</label><input type="text" value={profilForm.nom} onChange={e => setProfilForm({ ...profilForm, nom: e.target.value })} className="input-field" placeholder="Caissier" required /></div>
+              <div><label className="label">Description</label><textarea value={profilForm.description} onChange={e => setProfilForm({ ...profilForm, description: e.target.value })} className="input-field" rows={2} /></div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-surface-700">
+                <button type="button" onClick={() => setShowProfilModal(false)} className="btn-secondary text-sm">Annuler</button>
+                <button type="submit" disabled={savingProfil} className="btn-primary text-sm disabled:opacity-50">{savingProfil ? 'Création...' : 'Créer'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gérer les permissions */}
+      {permProfil && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <div>
+                <h3 className="font-bold text-lg">Permissions — {permProfil.nom}</h3>
+                <p className="text-xs text-gray-500">{selectedPerms.size} permission(s) sélectionnée(s)</p>
+              </div>
+              <button onClick={() => setPermProfil(null)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {Object.entries(permissionsByModule).map(([module, modulePerms]) => {
+                const allChecked = modulePerms.every(p => selectedPerms.has(p.id));
+                return (
+                  <div key={module} className="border border-gray-100 dark:border-surface-700 rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-surface-700">
+                      <span className="text-xs font-bold uppercase tracking-wide">{module}</span>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={allChecked} onChange={e => toggleModuleAll(modulePerms, e.target.checked)} className="w-3.5 h-3.5 rounded" />
+                        Tout
+                      </label>
+                    </div>
+                    <div className="p-2.5 flex flex-wrap gap-1.5">
+                      {modulePerms.map(p => (
+                        <label key={p.id} className={`px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer border transition-colors ${selectedPerms.has(p.id) ? 'bg-primary-500 border-primary-500 text-white' : 'bg-white dark:bg-surface-800 border-gray-200 dark:border-surface-600 text-gray-600 dark:text-gray-300'}`}>
+                          <input type="checkbox" checked={selectedPerms.has(p.id)} onChange={() => togglePerm(p.id)} className="hidden" />
+                          {p.action}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-surface-700 flex justify-end gap-2">
+              <button onClick={() => setPermProfil(null)} className="btn-secondary text-sm">Annuler</button>
+              <button onClick={handleSavePermissions} disabled={savingPerms} className="btn-primary text-sm disabled:opacity-50">{savingPerms ? 'Enregistrement...' : 'Enregistrer les permissions'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
