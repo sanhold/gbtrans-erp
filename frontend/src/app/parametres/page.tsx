@@ -134,12 +134,16 @@ export default function ParametresPage() {
 
   const openPermissions = (p: any) => { setPermProfil(p); setSelectedPerms(new Set(p.permissionIds)); };
   const togglePerm = (id: string) => {
-    setSelectedPerms(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+    setSelectedPerms(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
   const toggleModuleAll = (modulePerms: any[], checked: boolean) => {
     setSelectedPerms(prev => {
       const next = new Set(prev);
-      modulePerms.forEach(p => checked ? next.add(p.id) : next.delete(p.id));
+      modulePerms.forEach(p => { if (checked) next.add(p.id); else next.delete(p.id); });
       return next;
     });
   };
