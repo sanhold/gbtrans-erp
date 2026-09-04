@@ -1179,24 +1179,30 @@ enum StatutPaiement {
 // ============================================================================
 
 model Exercice {
-  id          String    @id @default(uuid())
+  id          String       @id @default(uuid())
   societeId   String
-  code        String    @db.VarChar(20)
-  libelle     String    @db.VarChar(200)
+  code        String       @db.VarChar(20)
+  libelle     String       @db.VarChar(200)
   dateDebut   DateTime
   dateFin     DateTime
-  cloture     Boolean   @default(false)
+  cloture     Boolean      @default(false)
   dateCloture DateTime?
-  actif       Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  actif       Boolean      @default(true)
+  source      SourceCompta @default(AUTO)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   societe   Societe             @relation(fields: [societeId], references: [id])
   ecritures EcritureComptable[]
 
-  @@unique([societeId, code])
+  @@unique([societeId, code, source])
   @@index([societeId])
   @@map("exercices")
+}
+
+enum SourceCompta {
+  AUTO
+  REEL
 }
 
 model CompteComptable {

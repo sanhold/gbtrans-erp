@@ -15,6 +15,7 @@ export const ROUTE_MODULES: { href: string; module: string }[] = [
   { href: '/finance', module: 'FINANCE' },
   { href: '/transactions', module: 'FINANCE' },
   { href: '/comptabilite', module: 'COMPTABILITE' },
+  { href: '/compta-reel', module: 'COMPTABILITE' },
   { href: '/statistiques', module: 'STATISTIQUES' },
   { href: '/clients', module: 'CLIENTS' },
   { href: '/prospects', module: 'CLIENTS' },

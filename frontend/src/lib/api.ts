@@ -253,9 +253,15 @@ export const offresApi = {
 
 // Comptabilité API
 export const comptabiliteApi = {
-  exercices: () => api.get('/comptabilite/exercices'),
+  exercices: (params?: Record<string, any>) => api.get('/comptabilite/exercices', { params }),
+  creerExercice: (data: any) => api.post('/comptabilite/exercices', data),
   journaux: () => api.get('/comptabilite/journaux'),
   ecritures: (params?: Record<string, any>) => api.get('/comptabilite/ecritures', { params }),
+  creerEcriture: (data: any) => api.post('/comptabilite/ecritures', data),
+  modifierEcriture: (id: string, data: any) => api.put(`/comptabilite/ecritures/${id}`, data),
+  validerEcriture: (id: string) => api.patch(`/comptabilite/ecritures/${id}/valider`),
+  supprimerEcriture: (id: string) => api.delete(`/comptabilite/ecritures/${id}`),
+  comptes: () => api.get('/comptabilite/comptes'),
   grandLivre: (params?: Record<string, any>) => api.get('/comptabilite/grand-livre', { params }),
   balance: (params?: Record<string, any>) => api.get('/comptabilite/balance', { params }),
   bilan: (params?: Record<string, any>) => api.get('/comptabilite/bilan', { params }),
