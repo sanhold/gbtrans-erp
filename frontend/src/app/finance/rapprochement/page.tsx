@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
@@ -63,10 +64,7 @@ export default function RapprochementPage() {
         <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rapprochement Bancaire</h1><p className="text-sm text-gray-500">Comparez le solde relevé bancaire au solde comptable</p></div>
 
         <div className="flex justify-between items-center flex-wrap gap-3">
-          <select value={compteId} onChange={e => setCompteId(e.target.value)} className="input-field !w-auto">
-            <option value="">Sélectionner un compte bancaire...</option>
-            {comptes.map(c => <option key={c.id} value={c.id}>{c.libelle} ({c.banque})</option>)}
-          </select>
+          <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte, banque..." className="!w-64" />
           <button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary disabled:opacity-50">
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Nouveau Rapprochement

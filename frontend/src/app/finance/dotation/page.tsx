@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -41,6 +42,8 @@ export default function DotationPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [page, pageSize]);
+
+  const agentOptions = agents.map(a => ({ id: a.id, label: `${a.nom} ${a.prenom}` }));
 
   const changePageSize = (n: number) => { setPageSize(n); setPage(1); };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -189,10 +192,7 @@ export default function DotationPage() {
             <div><label className="label !mb-1">N° Dotation</label><input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field !w-auto" placeholder="Rechercher..." /></div>
             <div>
               <label className="label !mb-1">Agent</label>
-              <select value={filterAgentId} onChange={e => setFilterAgentId(e.target.value)} className="input-field !w-auto">
-                <option value="">Tous les agents</option>
-                {agents.map(a => <option key={a.id} value={a.id}>{a.nom} {a.prenom}</option>)}
-              </select>
+              <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="!w-44" />
             </div>
             <button onClick={load} className="btn-secondary">Afficher</button>
           </div>
@@ -261,10 +261,7 @@ export default function DotationPage() {
                   </div>
                 )}
                 <div><label className="label">Agent *</label>
-                  <select value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })} className="input-field" required>
-                    <option value="">Sélectionner un agent...</option>
-                    {agents.map(a => <option key={a.id} value={a.id}>{a.nom} {a.prenom}</option>)}
-                  </select>
+                  <PickerField value={form.agentId} onChange={id => setForm({ ...form, agentId: id })} options={agentOptions} placeholder="Sélectionner un agent..." title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." required />
                 </div>
                 <div><label className="label">Motif</label><textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} /></div>
                 <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Valider</button></div>

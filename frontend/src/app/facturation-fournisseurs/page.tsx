@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import api, { financeApi } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
@@ -25,6 +26,8 @@ export default function FacturationFournisseursPage() {
   const [showModal, setShowModal] = useState(false);
   const [fournisseurs, setFournisseurs] = useState<any[]>([]);
   const [form, setForm] = useState({ fournisseurId: '', dossierId: '', dateEcheance: '', reference: '', objet: '', observations: '' });
+
+  const fournisseurOptions = fournisseurs.map(f => ({ id: f.id, label: f.raisonSociale }));
 
   const load = async () => {
     setLoading(true);
@@ -123,10 +126,7 @@ export default function FacturationFournisseursPage() {
               </div>
               <form onSubmit={handleCreate} className="p-6 space-y-4">
                 <div><label className="label">Fournisseur *</label>
-                  <select value={form.fournisseurId} onChange={e => setForm({ ...form, fournisseurId: e.target.value })} className="input-field" required>
-                    <option value="">Sélectionner...</option>
-                    {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.raisonSociale}</option>)}
-                  </select>
+                  <PickerField value={form.fournisseurId} onChange={id => setForm({ ...form, fournisseurId: id })} options={fournisseurOptions} placeholder="Sélectionner..." title="Sélectionner un fournisseur" searchPlaceholder="Raison sociale..." required />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="label">Échéance *</label><input type="date" value={form.dateEcheance} onChange={e => setForm({ ...form, dateEcheance: e.target.value })} className="input-field" required /></div>

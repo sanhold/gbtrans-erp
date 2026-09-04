@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt, mergedComptes, parseCompteValue, TYPE_OPERATION_LABELS, useComptesFinanciers } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -50,6 +51,7 @@ export default function TransactionsPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const options = mergedComptes(caisses, comptes, tiers);
+  const compteOptions = options.map(o => ({ id: o.value, label: o.label }));
   const needsSource = ['DECAISSEMENT', 'RETRAIT', 'VIREMENT_INTERNE'].includes(form.type);
   const needsDestination = ['ENCAISSEMENT', 'DOTATION', 'VIREMENT_INTERNE'].includes(form.type);
 
@@ -93,10 +95,7 @@ export default function TransactionsPage() {
               <option value="">Tous les types</option>
               {Object.entries(TYPE_OPERATION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <select value={filterCompte} onChange={e => setFilterCompte(e.target.value)} className="input-field !w-auto">
-              <option value="">Tous les comptes</option>
-              {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <PickerField value={filterCompte} onChange={setFilterCompte} options={compteOptions} placeholder="Tous les comptes" title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." className="!w-44" />
             <div><label className="label !mb-1">Du</label><input type="date" value={filterDateDebut} onChange={e => setFilterDateDebut(e.target.value)} className="input-field !w-auto" /></div>
             <div><label className="label !mb-1">Au</label><input type="date" value={filterDateFin} onChange={e => setFilterDateFin(e.target.value)} className="input-field !w-auto" /></div>
             <button onClick={load} className="btn-secondary">Afficher</button>
@@ -142,18 +141,12 @@ export default function TransactionsPage() {
                 </div>
                 {needsSource && (
                   <div><label className="label">Compte source *</label>
-                    <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} className="input-field" required>
-                      <option value="">Sélectionner...</option>
-                      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <PickerField value={form.source} onChange={id => setForm({ ...form, source: id })} options={compteOptions} placeholder="Sélectionner..." title="Sélectionner le compte source" searchPlaceholder="Compte, caisse..." required />
                   </div>
                 )}
                 {needsDestination && (
                   <div><label className="label">Compte de destination *</label>
-                    <select value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} className="input-field" required>
-                      <option value="">Sélectionner...</option>
-                      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <PickerField value={form.destination} onChange={id => setForm({ ...form, destination: id })} options={compteOptions} placeholder="Sélectionner..." title="Sélectionner le compte de destination" searchPlaceholder="Compte, caisse..." required />
                   </div>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

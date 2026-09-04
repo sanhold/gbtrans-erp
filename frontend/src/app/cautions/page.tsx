@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { cautionsApi, clientsApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
+import PickerField from '@/components/ui/PickerField';
 import toast from 'react-hot-toast';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
@@ -80,6 +81,9 @@ export default function CautionsPage() {
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
   const totalPages = Math.ceil(total / limit);
   const sommeMontant = items.reduce((s, c) => s + Number(c.montant || 0), 0);
+
+  const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (c: any) => {
@@ -197,17 +201,11 @@ export default function CautionsPage() {
             <div><label className="label">Date fin</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field" /></div>
             <div>
               <label className="label">Dossier</label>
-              <select value={dossierFiltre} onChange={e => setDossierFiltre(e.target.value)} className="input-field w-40">
-                <option value="">Tous</option>
-                {dossiers.map(d => <option key={d.id} value={d.id}>{d.numero}</option>)}
-              </select>
+              <PickerField value={dossierFiltre} onChange={setDossierFiltre} options={dossierOptions} placeholder="Tous" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." className="w-44" />
             </div>
             <div>
               <label className="label">Client</label>
-              <select value={clientFiltre} onChange={e => setClientFiltre(e.target.value)} className="input-field w-40">
-                <option value="">Tous</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.raisonSociale}</option>)}
-              </select>
+              <PickerField value={clientFiltre} onChange={setClientFiltre} options={clientOptions} placeholder="Tous" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="w-44" />
             </div>
             <div><label className="label">Compagnie</label><input type="text" value={compagnieFiltre} onChange={e => setCompagnieFiltre(e.target.value)} className="input-field w-32" /></div>
             <div><label className="label">N° BL</label><input type="text" value={blFiltre} onChange={e => setBlFiltre(e.target.value)} className="input-field w-36" /></div>
@@ -329,18 +327,12 @@ export default function CautionsPage() {
                   <div><label className="label">Date caution</label><input type="date" value={form.dateCaution} onChange={e => setForm({ ...form, dateCaution: e.target.value })} className="input-field" /></div>
                   <div>
                     <label className="label">Dossier</label>
-                    <select value={form.dossierId} onChange={e => handleDossierChange(e.target.value)} className="input-field">
-                      <option value="">-- Aucun --</option>
-                      {dossiers.map(d => <option key={d.id} value={d.id}>{d.numero}</option>)}
-                    </select>
+                    <PickerField value={form.dossierId} onChange={handleDossierChange} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
                   </div>
                   <div><label className="label">N° BL</label><input type="text" value={form.numeroBL} onChange={e => setForm({ ...form, numeroBL: e.target.value })} className="input-field" /></div>
                   <div>
                     <label className="label">Client</label>
-                    <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="input-field">
-                      <option value="">-- Aucun --</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.raisonSociale}</option>)}
-                    </select>
+                    <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Aucun --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." />
                   </div>
                   <div><label className="label">Qte</label><input type="number" min="1" value={form.quantite} onChange={e => setForm({ ...form, quantite: e.target.value })} className="input-field" /></div>
                   <div><label className="label">Montant Caution *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>

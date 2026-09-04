@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
+import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -279,10 +280,7 @@ export default function FactureFournisseurDetailPage() {
                 </select>
               </div>
               <div><label className="label">Compte à débiter *</label>
-                <select value={paiementForm.compte} onChange={e => setPaiementForm({ ...paiementForm, compte: e.target.value })} className="input-field" required>
-                  <option value="">Sélectionner...</option>
-                  {comptesOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <PickerField value={paiementForm.compte} onChange={id => setPaiementForm({ ...paiementForm, compte: id })} options={comptesOptions.map(o => ({ id: o.value, label: o.label }))} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
               </div>
               {(paiementForm.modePaiement === 'CHEQUE' || paiementForm.modePaiement === 'VIREMENT') && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

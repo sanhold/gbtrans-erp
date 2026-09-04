@@ -65,6 +65,8 @@ export default function ModifierProformaPage() {
   const [exporting, setExporting] = useState(false);
   const [openCat, setOpenCat] = useState('');
   const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [showCatalogue, setShowCatalogue] = useState(false);
+  const [quickCat, setQuickCat] = useState('');
   const [showAddPrestation, setShowAddPrestation] = useState(false);
   const [newPrestation, setNewPrestation] = useState({ categorie: 'DOUANE & COMPAGNIE', code: '', designation: '', montantDefaut: '', estTVA: false });
   const [customCategorie, setCustomCategorie] = useState('');
@@ -164,6 +166,20 @@ export default function ModifierProformaPage() {
 
   const removeLigne = (index: number) => setLignes(lignes.filter((_, i) => i !== index));
 
+  const handleAjouterGroupe = () => {
+    if (!quickCat) { toast.error('Choisissez une catégorie'); return; }
+    const items = catalogue.filter(p => p.categorie === quickCat);
+    if (items.length === 0) { toast.error('Aucune prestation dans cette catégorie'); return; }
+    const nouvelles = items.filter(p => !lignes.some(l => l.codePrestation === p.code));
+    if (nouvelles.length === 0) { toast.error('Toutes les prestations de cette catégorie sont déjà ajoutées'); return; }
+    setLignes([...lignes, ...nouvelles.map(p => ({
+      categorie: p.categorie, codePrestation: p.code, designation: p.designation,
+      tauxTVA: Number(p.tauxTVA) || 0, montant: Number(p.montantDefaut) || 0, estTVA: p.estTVA,
+    }))]);
+    toast.success(`${nouvelles.length} prestation(s) ajoutée(s)`);
+    setQuickCat('');
+  };
+
   const valeurCAF = ((parseFloat(form.fobUnitaire) || 0) + (parseFloat(form.fretUnitaire) || 0) + (parseFloat(form.assurance) || 0) + (parseFloat(form.fraisDivers) || 0)) * (parseInt(form.nombreUnites) || 1);
 
   const allCategories = [...new Set([...Object.keys(CAT_COLORS), ...catalogue.map(p => p.categorie)])];
@@ -232,205 +248,223 @@ export default function ModifierProformaPage() {
 
   return (
     <AppLayout>
-      <div className="pf-root">
+      <div className="space-y-4">
         {/* Barre d'actions */}
-        <div className="pf-topbar">
-          <div className="pf-topbar-left">
-            <button onClick={() => router.push(`/proformas/${proformaId}`)} className="pf-icon-btn" aria-label="Retour">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push(`/proformas/${proformaId}`)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-700">
+              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </button>
-            <span className="pf-topbar-title">Modifier — {proforma.numero}</span>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Modifier — {proforma.numero}</h1>
           </div>
-          <div className="pf-topbar-right">
-            <button onClick={handleExportApercu} disabled={exporting || lignes.length === 0} className="pf-btn-ghost">
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={handleExportApercu} disabled={exporting || lignes.length === 0} className="btn-secondary disabled:opacity-50">
               {exporting ? 'Export...' : 'Aperçu PDF'}
             </button>
-            <button onClick={handleSubmit} disabled={saving} className="pf-btn-gold">
+            <button onClick={handleSubmit} disabled={saving} className="btn-primary disabled:opacity-50">
               {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
             </button>
-            <button onClick={() => router.push(`/proformas/${proformaId}`)} className="pf-btn-cancel">Annuler</button>
+            <button onClick={() => router.push(`/proformas/${proformaId}`)} className="btn-secondary !text-red-600 hover:!bg-red-50">Annuler</button>
           </div>
         </div>
 
-        <div className="pf-app">
-          {/* ---------- LEFT PANEL ---------- */}
-          <div className="pf-panel">
-            <div className="pf-brandmark">GBTRANS SARL</div>
-            <h1 className="pf-panel-h1">Fiche Proforma</h1>
-
-            <h2 className="pf-panel-h2">Informations</h2>
-            <div className="pf-field">
-              <label>Client</label>
-              <div className="pf-readonly" style={{ fontWeight: 600, fontFamily: 'inherit' }}>{proforma.client?.raisonSociale}</div>
-            </div>
+        {/* Informations (au-dessus de la fiche) */}
+        <div className="card">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div><label className="label">Client</label><div className="input-field bg-gray-50 dark:bg-surface-700 font-medium flex items-center">{proforma.client?.raisonSociale}</div></div>
             {proforma.dossier && (
-              <div className="pf-field">
-                <label>Dossier</label>
-                <div className="pf-readonly">{proforma.dossier.numero}</div>
+              <div><label className="label">Dossier</label><div className="input-field bg-gray-50 dark:bg-surface-700 font-mono flex items-center">{proforma.dossier.numeroPhysique || proforma.dossier.numero}</div></div>
+            )}
+            <div><label className="label">FOB (Unitaire)</label><input type="number" value={form.fobUnitaire} onChange={e => setForm({ ...form, fobUnitaire: e.target.value })} className="input-field" /></div>
+            <div><label className="label">FRET (Unitaire)</label><input type="number" value={form.fretUnitaire} onChange={e => setForm({ ...form, fretUnitaire: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Assurance</label><input type="number" value={form.assurance} onChange={e => setForm({ ...form, assurance: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Frais divers</label><input type="number" value={form.fraisDivers} onChange={e => setForm({ ...form, fraisDivers: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Nbre unités</label><input type="number" value={form.nombreUnites} onChange={e => setForm({ ...form, nombreUnites: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Valeur CAF</label><div className="input-field bg-gray-50 dark:bg-surface-700 font-mono font-bold text-primary-600 flex items-center">{fmt(valeurCAF)}</div></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div><label className="label">Titre</label><textarea value={form.titre} onChange={e => setForm({ ...form, titre: e.target.value })} rows={2} className="input-field" placeholder="DEDOUANEMENT..." /></div>
+            <div><label className="label">NB / Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} rows={2} className="input-field" /></div>
+          </div>
+        </div>
+
+        {/* Fiche Proforma — rendu papier */}
+        <div className="pf-sheet-wrap">
+          <div className="pf-sheet" ref={sheetRef}>
+            <div className="pf-doc-head">
+              <div className="pf-company">
+                <div className="pf-company-name">GBTRANS SARL</div>
+                <div className="pf-company-sub">Transit · Douane · Logistique</div>
+                <div className="pf-company-addr">
+                  Cocody Angré 7ème Tranche, Abidjan — Côte d&apos;Ivoire<br />
+                  +225 27 20 00 00 00 · contact@gbtrans.ci
+                </div>
+              </div>
+              <div className="pf-doc-title">
+                <div className="pf-doc-label">PROFORMA</div>
+                <div className="pf-doc-num">N° <em>{proforma.numero}</em></div>
+                <div className="pf-doc-num">Date : {new Date(proforma.dateProforma).toLocaleDateString('fr-FR')}</div>
+              </div>
+            </div>
+
+            <div className="pf-meta-grid">
+              <div className="pf-meta-block">
+                <div className="pf-meta-k">Adressée à</div>
+                <div className="pf-meta-v pf-meta-strong">{proforma.client?.raisonSociale}</div>
+                {proforma.client?.adresse && <div className="pf-meta-v">{proforma.client.adresse}</div>}
+                {(proforma.client?.telephone || proforma.client?.mobile) && <div className="pf-meta-v">{proforma.client.telephone || proforma.client.mobile}</div>}
+              </div>
+              <div className="pf-meta-block">
+                <div className="pf-meta-k">Détails</div>
+                {proforma.dossier && <div className="pf-meta-v">Dossier : <strong>{proforma.dossier.numeroPhysique || proforma.dossier.numero}</strong></div>}
+                <div className="pf-meta-v pf-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</div>
+              </div>
+            </div>
+
+            {form.titre && <div className="pf-titre">{form.titre}</div>}
+
+            {lignes.length === 0 && (
+              <div className="pf-empty-hint">Ajoutez des prestations depuis le catalogue pour composer la proforma.</div>
+            )}
+
+            <div className="pf-inline-toolbar pf-no-export">
+              <button type="button" onClick={() => setShowCatalogue(true)} className="pf-inline-btn-outline">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                Catalogue des prestations
+                {lignes.length > 0 && <span className="pf-inline-badge">{lignes.length}</span>}
+              </button>
+              <div className="pf-inline-group-add">
+                <select value={quickCat} onChange={e => setQuickCat(e.target.value)} className="pf-inline-select">
+                  <option value="">-- Choisir une catégorie --</option>
+                  {categoriesWithItems.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <button type="button" onClick={handleAjouterGroupe} className="pf-inline-btn-solid">+ Ajouter un groupe</button>
+              </div>
+            </div>
+
+            {lignes.length > 0 && groupedLignes.map(group => (
+              <div key={group.categorie} className="pf-section-block">
+                <div className="pf-section-title-row" style={{ background: group.couleur }}>
+                  <span className="pf-section-name">{group.categorie}</span>
+                </div>
+                <table className="pf-items">
+                  <thead>
+                    <tr>
+                      <th className="pf-numcol">N°</th>
+                      <th>Désignation</th>
+                      <th className="pf-tvacol">TVA</th>
+                      <th className="pf-num pf-montantcol">Montant</th>
+                      <th className="pf-rmcol pf-no-export"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.lignes.map(ligne => {
+                      globalIndex++;
+                      const idx = lignes.indexOf(ligne);
+                      return (
+                        <tr key={idx}>
+                          <td className="pf-numcol">{globalIndex}</td>
+                          <td><input value={ligne.designation} onChange={e => updateLigne(idx, 'designation', e.target.value)} /></td>
+                          <td className="pf-tvacol"><input type="checkbox" checked={ligne.estTVA} onChange={e => updateLigne(idx, 'estTVA', e.target.checked)} /></td>
+                          <td className="pf-num"><input className="pf-num-input" type="number" value={ligne.montant || ''} onChange={e => updateLigne(idx, 'montant', parseFloat(e.target.value) || 0)} /></td>
+                          <td className="pf-rmcol pf-no-export"><button type="button" onClick={() => removeLigne(idx)}>✕</button></td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="pf-subtotal-row">
+                      <td colSpan={3}>Sous-total {group.categorie}</td>
+                      <td className="pf-num">{fmt(group.sousTotal)}</td>
+                      <td className="pf-no-export"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+            {lignes.length > 0 && (
+              <div className="pf-totals">
+                <div className="pf-trow"><span>Total HT</span><span>{fmt(totalHT)}</span></div>
+                <div className="pf-trow"><span>Total TVA</span><span>{fmt(totalTVA)}</span></div>
+                <div className="pf-trow pf-grand"><span>Total Général</span><span>{fmt(totalGeneral)}</span></div>
               </div>
             )}
-            <div className="pf-row2">
-              <div className="pf-field"><label>FOB (Unitaire)</label><input type="number" value={form.fobUnitaire} onChange={e => setForm({ ...form, fobUnitaire: e.target.value })} /></div>
-              <div className="pf-field"><label>FRET (Unitaire)</label><input type="number" value={form.fretUnitaire} onChange={e => setForm({ ...form, fretUnitaire: e.target.value })} /></div>
-            </div>
-            <div className="pf-row2">
-              <div className="pf-field"><label>Assurance</label><input type="number" value={form.assurance} onChange={e => setForm({ ...form, assurance: e.target.value })} /></div>
-              <div className="pf-field"><label>Frais divers</label><input type="number" value={form.fraisDivers} onChange={e => setForm({ ...form, fraisDivers: e.target.value })} /></div>
-            </div>
-            <div className="pf-row2">
-              <div className="pf-field"><label>Nbre unités</label><input type="number" value={form.nombreUnites} onChange={e => setForm({ ...form, nombreUnites: e.target.value })} /></div>
-              <div className="pf-field"><label>Valeur CAF</label><div className="pf-readonly">{fmt(valeurCAF)}</div></div>
-            </div>
-            <div className="pf-field"><label>Titre</label><textarea value={form.titre} onChange={e => setForm({ ...form, titre: e.target.value })} rows={2} placeholder="DEDOUANEMENT..." /></div>
-            <div className="pf-field"><label>NB / Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} rows={2} /></div>
 
-            <h2 className="pf-panel-h2">Catalogue des prestations</h2>
-            <input className="pf-search" type="text" value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher..." />
+            <div className="pf-hors">
+              <strong>HORS :</strong> Frais de dépotage, d&apos;expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
+            </div>
 
-            <div className="pf-catalog">
+            {form.observations && (
+              <div className="pf-footer-grid">
+                <div>
+                  <div className="pf-meta-k">Observations</div>
+                  <p className="pf-obs-text">{form.observations}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="pf-sign">
+              Fait à Abidjan<br />
+              <div className="pf-sign-line">GBTRANS SARL</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Catalogue des prestations */}
+      {showCatalogue && (
+        <div className="fixed inset-0 z-[58] flex items-center justify-center bg-black/50 animate-fade-in p-4" onClick={() => setShowCatalogue(false)}>
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <h3 className="font-bold text-lg">Catalogue des prestations</h3>
+              <button type="button" onClick={() => setShowCatalogue(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-4 pt-3">
+              <input type="text" autoFocus value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher..." className="input-field text-sm" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {categoriesWithItems.length === 0 ? (
-                <p className="pf-catalog-empty">Chargement du catalogue…</p>
+                <p className="text-center text-sm text-gray-400 py-8">Chargement du catalogue…</p>
               ) : categoriesWithItems.map(cat => {
                 const items = filteredCatalogue(cat);
                 if (catalogueSearch && items.length === 0) return null;
                 const isOpen = openCat === cat;
                 return (
-                  <div key={cat} className={`pf-cat ${isOpen ? 'pf-cat-open' : ''}`}>
-                    <button type="button" className="pf-cat-head" onClick={() => setOpenCat(isOpen ? '' : cat)} style={{ borderLeftColor: CAT_COLORS[cat] || '#6b7280' }}>
+                  <div key={cat} className="border border-gray-100 dark:border-surface-600 rounded-lg overflow-hidden">
+                    <button type="button" onClick={() => setOpenCat(isOpen ? '' : cat)} className="w-full flex items-center justify-between px-3 py-2 text-left text-xs font-bold uppercase tracking-wide bg-gray-50 dark:bg-surface-700 text-gray-700 dark:text-gray-200" style={{ borderLeft: `3px solid ${CAT_COLORS[cat] || '#6b7280'}` }}>
                       <span>{cat}</span>
-                      <span className="pf-chev">▶</span>
+                      <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                     </button>
                     {isOpen && (
-                      <div className="pf-cat-items">
+                      <div className="divide-y divide-gray-100 dark:divide-surface-700">
                         {items.map(p => {
                           const already = lignes.some(l => l.codePrestation === p.code);
                           return (
-                            <div key={p.id} className="pf-cat-item">
+                            <div key={p.id} className="flex items-center justify-between px-3 py-2">
                               <div>
-                                <div className="pf-cat-item-name">{p.designation}</div>
-                                <div className="pf-cat-item-meta">{p.code}{p.montantDefaut ? ` · ${fmt(Number(p.montantDefaut))} F` : ''}{p.estTVA ? ' · TVA' : ''}</div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{p.designation}</p>
+                                <p className="text-[10px] text-gray-400">{p.code}{p.montantDefaut ? ` · ${fmt(Number(p.montantDefaut))} F` : ''}{p.estTVA ? ' · TVA' : ''}</p>
                               </div>
-                              {already ? <span className="pf-added">✓</span> : (
-                                <button type="button" className="pf-add-btn" title="Ajouter" onClick={() => addFromCatalogue(p)}>+</button>
+                              {already ? <span className="text-green-500 text-sm font-bold flex-shrink-0">✓</span> : (
+                                <button type="button" onClick={() => addFromCatalogue(p)} className="w-6 h-6 flex-shrink-0 rounded-full border border-primary-400 text-primary-500 text-sm hover:bg-primary-500 hover:text-white transition-colors" title="Ajouter">+</button>
                               )}
                             </div>
                           );
                         })}
-                        {items.length === 0 && <p className="pf-catalog-empty">Aucun résultat</p>}
+                        {items.length === 0 && <p className="text-center text-xs text-gray-400 py-4">Aucun résultat</p>}
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-            <button type="button" className="pf-new-prestation" onClick={openAddPrestation}>+ Nouvelle prestation au catalogue</button>
-          </div>
-
-          {/* ---------- RIGHT: SHEET ---------- */}
-          <div className="pf-sheet-wrap">
-            <div className="pf-sheet" ref={sheetRef}>
-              <div className="pf-doc-head">
-                <div className="pf-company">
-                  <div className="pf-company-name">GBTRANS SARL</div>
-                  <div className="pf-company-sub">Transit · Douane · Logistique</div>
-                  <div className="pf-company-addr">
-                    Cocody Angré 7ème Tranche, Abidjan — Côte d&apos;Ivoire<br />
-                    +225 27 20 00 00 00 · contact@gbtrans.ci
-                  </div>
-                </div>
-                <div className="pf-doc-title">
-                  <div className="pf-doc-label">PROFORMA</div>
-                  <div className="pf-doc-num">N° <em>{proforma.numero}</em></div>
-                  <div className="pf-doc-num">Date : {new Date(proforma.dateProforma).toLocaleDateString('fr-FR')}</div>
-                </div>
-              </div>
-
-              <div className="pf-meta-grid">
-                <div className="pf-meta-block">
-                  <div className="pf-meta-k">Adressée à</div>
-                  <div className="pf-meta-v pf-meta-strong">{proforma.client?.raisonSociale}</div>
-                  {proforma.client?.adresse && <div className="pf-meta-v">{proforma.client.adresse}</div>}
-                  {(proforma.client?.telephone || proforma.client?.mobile) && <div className="pf-meta-v">{proforma.client.telephone || proforma.client.mobile}</div>}
-                </div>
-                <div className="pf-meta-block">
-                  <div className="pf-meta-k">Détails</div>
-                  {proforma.dossier && <div className="pf-meta-v">Dossier : <strong>{proforma.dossier.numero}</strong></div>}
-                  <div className="pf-meta-v pf-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</div>
-                </div>
-              </div>
-
-              {form.titre && <div className="pf-titre">{form.titre}</div>}
-
-              {lignes.length === 0 ? (
-                <div className="pf-empty-hint">Ajoutez des prestations depuis le catalogue à gauche pour composer la proforma.</div>
-              ) : groupedLignes.map(group => (
-                <div key={group.categorie} className="pf-section-block">
-                  <div className="pf-section-title-row" style={{ background: group.couleur }}>
-                    <span className="pf-section-name">{group.categorie}</span>
-                  </div>
-                  <table className="pf-items">
-                    <thead>
-                      <tr>
-                        <th className="pf-numcol">N°</th>
-                        <th>Désignation</th>
-                        <th className="pf-tvacol">TVA</th>
-                        <th className="pf-num pf-montantcol">Montant</th>
-                        <th className="pf-rmcol pf-no-export"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.lignes.map(ligne => {
-                        globalIndex++;
-                        const idx = lignes.indexOf(ligne);
-                        return (
-                          <tr key={idx}>
-                            <td className="pf-numcol">{globalIndex}</td>
-                            <td><input value={ligne.designation} onChange={e => updateLigne(idx, 'designation', e.target.value)} /></td>
-                            <td className="pf-tvacol"><input type="checkbox" checked={ligne.estTVA} onChange={e => updateLigne(idx, 'estTVA', e.target.checked)} /></td>
-                            <td className="pf-num"><input className="pf-num-input" type="number" value={ligne.montant || ''} onChange={e => updateLigne(idx, 'montant', parseFloat(e.target.value) || 0)} /></td>
-                            <td className="pf-rmcol pf-no-export"><button type="button" onClick={() => removeLigne(idx)}>✕</button></td>
-                          </tr>
-                        );
-                      })}
-                      <tr className="pf-subtotal-row">
-                        <td colSpan={3}>Sous-total {group.categorie}</td>
-                        <td className="pf-num">{fmt(group.sousTotal)}</td>
-                        <td className="pf-no-export"></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-
-              {lignes.length > 0 && (
-                <div className="pf-totals">
-                  <div className="pf-trow"><span>Total HT</span><span>{fmt(totalHT)}</span></div>
-                  <div className="pf-trow"><span>Total TVA</span><span>{fmt(totalTVA)}</span></div>
-                  <div className="pf-trow pf-grand"><span>Total Général</span><span>{fmt(totalGeneral)}</span></div>
-                </div>
-              )}
-
-              <div className="pf-hors">
-                <strong>HORS :</strong> Frais de dépotage, d&apos;expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
-              </div>
-
-              {form.observations && (
-                <div className="pf-footer-grid">
-                  <div>
-                    <div className="pf-meta-k">Observations</div>
-                    <p className="pf-obs-text">{form.observations}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="pf-sign">
-                Fait à Abidjan<br />
-                <div className="pf-sign-line">GBTRANS SARL</div>
-              </div>
+            <div className="p-4 border-t border-gray-200 dark:border-surface-700">
+              <button type="button" onClick={openAddPrestation} className="text-xs text-primary-600 hover:underline">+ Nouvelle prestation au catalogue</button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Modal Nouvelle Prestation (catalogue) */}
       {showAddPrestation && (
@@ -485,60 +519,9 @@ export default function ModifierProformaPage() {
       )}
 
       <style jsx global>{`
-        .pf-root { --pf-ink:#241536; --pf-ink-soft:#5d4a72; --pf-gold:#7322ab; --pf-gold-soft:#f0e6fa; --pf-paper:#FBF9F4; --pf-line:#ded2ea; --pf-panel:#1a1025; --pf-panel-2:#241a35; --pf-panel-text:#E9E7DD; --pf-panel-dim:#a89bb8; --pf-danger:#B3492F; }
+        :root { --pf-ink:#241536; --pf-ink-soft:#5d4a72; --pf-gold:#7322ab; --pf-gold-soft:#f0e6fa; --pf-paper:#FBF9F4; --pf-line:#ded2ea; --pf-danger:#B3492F; }
 
-        .pf-topbar { display:flex; align-items:center; justify-content:space-between; background:var(--pf-panel); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
-        .pf-topbar-left { display:flex; align-items:center; gap:10px; }
-        .pf-topbar-title { color:#fff; font-weight:700; font-size:15px; }
-        .pf-icon-btn { background:transparent; border:none; color:#fff; cursor:pointer; padding:6px; border-radius:8px; display:flex; }
-        .pf-icon-btn:hover { background:rgba(255,255,255,.08); }
-        .pf-topbar-right { display:flex; gap:8px; }
-        .pf-btn-gold, .pf-btn-ghost, .pf-btn-cancel { border:none; border-radius:6px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; }
-        .pf-btn-gold { background:var(--pf-gold); color:#fff; }
-        .pf-btn-gold:hover { background:#5d1590; }
-        .pf-btn-gold:disabled { opacity:.5; cursor:default; }
-        .pf-btn-ghost { background:var(--pf-panel-2); color:var(--pf-panel-text); border:1px solid #2C3550; }
-        .pf-btn-ghost:hover { border-color:var(--pf-gold); color:var(--pf-gold); }
-        .pf-btn-ghost:disabled { opacity:.5; cursor:default; }
-        .pf-btn-cancel { background:transparent; color:#E08877; border:1px solid #4a2c28; }
-        .pf-btn-cancel:hover { background:rgba(224,136,119,.1); }
-
-        .pf-app { display:grid; grid-template-columns:340px minmax(0,1fr); gap:0; background:#0C0812; border-radius:12px; overflow:hidden; }
-        @media (max-width:1000px) { .pf-app { grid-template-columns:1fr; } }
-
-        .pf-panel { background:var(--pf-panel); padding:20px 18px 40px; border-right:1px solid #232B42; max-height:calc(100vh - 160px); overflow-y:auto; }
-        .pf-brandmark { font-size:10.5px; letter-spacing:.14em; color:var(--pf-gold); margin-bottom:4px; font-weight:700; }
-        .pf-panel-h1 { font-size:17px; margin:0 0 16px; color:#fff; font-weight:700; }
-        .pf-panel-h2 { font-size:11px; color:var(--pf-panel-dim); text-transform:uppercase; letter-spacing:.08em; margin:20px 0 10px; font-weight:700; }
-        .pf-field { margin-bottom:9px; }
-        .pf-field label { display:block; font-size:10.5px; color:var(--pf-panel-dim); margin-bottom:3px; }
-        .pf-field input, .pf-field select, .pf-field textarea {
-          width:100%; background:var(--pf-panel-2); border:1px solid #2C3550; color:var(--pf-panel-text);
-          padding:7px 8px; border-radius:4px; font-size:12.5px; font-family:inherit; resize:none;
-        }
-        .pf-field input:focus, .pf-field select:focus, .pf-field textarea:focus { outline:none; border-color:var(--pf-gold); }
-        .pf-readonly { background:var(--pf-panel-2); border:1px solid #2C3550; color:var(--pf-gold); padding:7px 8px; border-radius:4px; font-size:12.5px; font-weight:700; font-family:'Courier New',monospace; }
-        .pf-row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-
-        .pf-search { width:100%; background:var(--pf-panel-2); border:1px solid #2C3550; color:var(--pf-panel-text); padding:7px 9px; border-radius:4px; font-size:12px; margin-bottom:8px; }
-        .pf-search:focus { outline:none; border-color:var(--pf-gold); }
-        .pf-catalog-empty { font-size:11px; color:var(--pf-panel-dim); padding:6px 2px; }
-        .pf-cat { border:1px solid #232B42; border-radius:4px; margin-bottom:6px; overflow:hidden; background:var(--pf-panel-2); }
-        .pf-cat-head { width:100%; text-align:left; background:transparent; border:none; border-left:3px solid; padding:8px 10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:12px; font-weight:600; color:#fff; }
-        .pf-chev { color:var(--pf-panel-dim); font-size:9px; transition:transform .15s; }
-        .pf-cat-open .pf-chev { transform:rotate(90deg); }
-        .pf-cat-items { border-top:1px solid #232B42; }
-        .pf-cat-item { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; border-top:1px solid #232B42; gap:6px; }
-        .pf-cat-item:first-child { border-top:none; }
-        .pf-cat-item-name { font-size:11.5px; color:var(--pf-panel-text); }
-        .pf-cat-item-meta { font-size:10px; color:var(--pf-panel-dim); margin-top:1px; }
-        .pf-add-btn { flex:none; width:20px; height:20px; border-radius:50%; border:1px solid var(--pf-gold); background:transparent; color:var(--pf-gold); font-size:13px; line-height:1; cursor:pointer; }
-        .pf-add-btn:hover { background:var(--pf-gold); color:#fff; }
-        .pf-added { color:#4ade80; font-size:12px; font-weight:700; }
-        .pf-new-prestation { width:100%; margin-top:8px; background:transparent; border:1px dashed #3a4363; color:var(--pf-panel-dim); font-size:11px; padding:8px; border-radius:4px; cursor:pointer; }
-        .pf-new-prestation:hover { border-color:var(--pf-gold); color:var(--pf-gold); }
-
-        .pf-sheet-wrap { background:#0C0812; padding:30px 24px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
+        .pf-sheet-wrap { background:#0C0812; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
         .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
 
         .pf-doc-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pf-ink); padding-bottom:12px; margin-bottom:18px; }
@@ -556,11 +539,20 @@ export default function ModifierProformaPage() {
         .pf-meta-v { font-size:12px; padding:1px 0; }
         .pf-meta-strong { font-weight:700; }
         .pf-meta-dim { color:#8b93ad; font-size:10.5px; margin-top:4px; }
-        .pf-meta-placeholder { color:#b6b0a0; font-style:italic; }
 
         .pf-titre { background:var(--pf-gold-soft); padding:8px 11px; margin-bottom:16px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-left:3px solid var(--pf-gold); color:var(--pf-ink); }
 
         .pf-empty-hint { font-size:12px; color:#9AA0B5; text-align:center; padding:30px 10px; border:1px dashed var(--pf-line); margin-bottom:16px; }
+
+        .pf-inline-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; border:1px dashed var(--pf-line); border-radius:4px; padding:10px 12px; margin-bottom:16px; background:rgba(174,124,31,.03); }
+        .pf-inline-btn-outline { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--pf-gold); color:var(--pf-gold); font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:4px; cursor:pointer; font-family:inherit; }
+        .pf-inline-btn-outline:hover { background:var(--pf-gold-soft); }
+        .pf-inline-badge { background:var(--pf-gold); color:#fff; font-size:9.5px; font-weight:800; padding:1px 7px; border-radius:10px; margin-left:2px; }
+        .pf-inline-group-add { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .pf-inline-select { border:1px solid var(--pf-line); background:#fff; color:var(--pf-ink); font-size:11.5px; padding:6px 8px; border-radius:4px; font-family:inherit; min-width:180px; }
+        .pf-inline-select:focus { outline:none; border-color:var(--pf-gold); }
+        .pf-inline-btn-solid { background:var(--pf-gold); color:#fff; border:none; font-size:11.5px; font-weight:700; padding:7px 14px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:inherit; }
+        .pf-inline-btn-solid:hover { background:#5d1590; }
 
         .pf-section-block { margin-bottom:14px; }
         .pf-section-title-row { color:#fff; padding:6px 10px; font-size:11.5px; letter-spacing:.03em; font-weight:700; }

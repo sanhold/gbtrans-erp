@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { atApi, clientsApi, dossiersApi, documentsApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { generateATCertBlob, downloadBlob } from '@/lib/generateATPdf';
@@ -86,6 +87,9 @@ export default function ATPage() {
     dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
     loadStats();
   }, []);
+
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
+  const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); setAppliedSearch(search); };
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
@@ -351,17 +355,11 @@ export default function ATPage() {
                   <div className="col-span-2"><label className="label">Désignation *</label><input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required /></div>
                   <div>
                     <label className="label">Client</label>
-                    <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="input-field">
-                      <option value="">-- Aucun --</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.raisonSociale}</option>)}
-                    </select>
+                    <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Aucun --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." />
                   </div>
                   <div>
                     <label className="label">Dossier *</label>
-                    <select value={form.dossierId} onChange={e => setForm({ ...form, dossierId: e.target.value })} className="input-field" required={!editing}>
-                      <option value="">-- Sélectionner --</option>
-                      {dossiers.map(d => <option key={d.id} value={d.id}>{d.numero}</option>)}
-                    </select>
+                    <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="-- Sélectionner --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." required={!editing} />
                   </div>
                   <div><label className="label">Déclarant</label><input type="text" value={form.declarant} onChange={e => setForm({ ...form, declarant: e.target.value })} className="input-field" /></div>
                   <div><label className="label">Nature</label><input type="text" value={form.nature} onChange={e => setForm({ ...form, nature: e.target.value })} className="input-field" /></div>

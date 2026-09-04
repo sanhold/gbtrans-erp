@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, utilisateursApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -28,6 +29,8 @@ export default function SuiviDossiersPage() {
   useEffect(() => {
     utilisateursApi.list().then(r => setUtilisateurs((r.data.data || []).filter((u: any) => u.actif))).catch(() => {});
   }, []);
+
+  const utilisateurOptions = utilisateurs.map(u => ({ id: u.id, label: `${u.prenom} ${u.nom}` }));
 
   useEffect(() => {
     setLoadingDossiers(true);
@@ -186,10 +189,7 @@ export default function SuiviDossiersPage() {
                             <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-surface-700 bg-gray-50/50 dark:bg-surface-700/30 grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
                               <div>
                                 <label className="text-[10px] font-bold text-gray-500 uppercase">Exécuté par *</label>
-                                <select value={validForm.executantId} onChange={ev => setValidForm({ ...validForm, executantId: ev.target.value })} className="input-field !py-1.5 text-xs">
-                                  <option value="">— Sélectionner —</option>
-                                  {utilisateurs.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
-                                </select>
+                                <PickerField value={validForm.executantId} onChange={id => setValidForm({ ...validForm, executantId: id })} options={utilisateurOptions} placeholder="— Sélectionner —" title="Sélectionner l'exécutant" searchPlaceholder="Nom, prénom..." className="!py-1.5 text-xs" required />
                               </div>
                               <div>
                                 <label className="text-[10px] font-bold text-gray-500 uppercase">Date d&apos;exécution</label>

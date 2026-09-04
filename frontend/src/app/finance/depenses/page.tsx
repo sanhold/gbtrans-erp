@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt, mergedComptes, parseCompteValue, MODE_PAIEMENT_LABELS, CATEGORIES_DEPENSE, useComptesFinanciers } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -41,6 +42,8 @@ export default function DepensesPage() {
   }, []);
 
   const options = mergedComptes(caisses, comptes);
+  const compteOptions = options.map(o => ({ id: o.value, label: o.label }));
+  const dotationOptions = dotations.map(d => ({ id: d.id, label: d.numero, sublabel: `${d.agent?.nom || ''} ${d.agent?.prenom || ''} — reste ${fmt(d.montantRestant)}` }));
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,16 +122,10 @@ export default function DepensesPage() {
                   </div>
                 </div>
                 <div><label className="label">Compte débité *</label>
-                  <select value={form.compte} onChange={e => setForm({ ...form, compte: e.target.value })} className="input-field" required>
-                    <option value="">Sélectionner...</option>
-                    {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <PickerField value={form.compte} onChange={id => setForm({ ...form, compte: id })} options={compteOptions} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
                 </div>
                 <div><label className="label">Dotation (agent)</label>
-                  <select value={form.dotationId} onChange={e => setForm({ ...form, dotationId: e.target.value })} className="input-field">
-                    <option value="">Aucune</option>
-                    {dotations.map(d => <option key={d.id} value={d.id}>{d.numero} — {d.agent?.nom} {d.agent?.prenom} (reste {fmt(d.montantRestant)})</option>)}
-                  </select>
+                  <PickerField value={form.dotationId} onChange={id => setForm({ ...form, dotationId: id })} options={dotationOptions} placeholder="Aucune" title="Sélectionner une dotation" searchPlaceholder="N° dotation, agent..." />
                 </div>
                 <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>

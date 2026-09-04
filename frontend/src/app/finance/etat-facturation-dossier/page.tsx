@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, clientsApi, facturesApi } from '@/lib/api';
 import { fmt, STATUTS_DOSSIER } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -38,6 +39,8 @@ export default function EtatFacturationDossierPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [page, pageSize]);
+
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
 
   const changePageSize = (n: number) => { setPageSize(n); setPage(1); };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -190,10 +193,7 @@ export default function EtatFacturationDossierPage() {
           </div>
           <div>
             <label className="label !mb-1">Client</label>
-            <select value={clientId} onChange={e => setClientId(e.target.value)} className="input-field !w-auto">
-              <option value="">Tous</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.raisonSociale}</option>)}
-            </select>
+            <PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!w-44" />
           </div>
           <button onClick={load} className="btn-secondary">Afficher</button>
         </div>

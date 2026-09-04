@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
+import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, clientsApi } from '@/lib/api';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -57,6 +58,8 @@ export default function NouveauDossierPage() {
       .then(res => setForm(prev => ({ ...prev, numeroPhysique: res.data.data.numeroPhysique })))
       .catch(() => {});
   }, [form.nature, numeroPhysiqueEdited]);
+
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
 
   const updateField = (field: string, value: string) => {
     if (field === 'numeroPhysique') setNumeroPhysiqueEdited(true);
@@ -165,10 +168,7 @@ export default function NouveauDossierPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="label">Client *</label>
-                <select value={form.clientId} onChange={e => updateField('clientId', e.target.value)} className="input-field" required>
-                  <option value="">-- Sélectionner un client --</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.code} - {c.raisonSociale}</option>)}
-                </select>
+                <PickerField value={form.clientId} onChange={id => updateField('clientId', id)} options={clientOptions} placeholder="-- Sélectionner un client --" title="Sélectionner un client" searchPlaceholder="Raison sociale, code..." required />
               </div>
               <div>
                 <label className="label">N° physique *</label>

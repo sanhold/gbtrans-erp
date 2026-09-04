@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { courriersApi, modelesCourrierApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -61,6 +62,8 @@ export default function CourriersPage() {
   useEffect(() => {
     modelesCourrierApi.list({ type: tab, actif: 'true' }).then(r => setModeles(r.data.data || [])).catch(() => setModeles([]));
   }, [tab]);
+
+  const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); setAppliedSearch(search); };
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
@@ -262,10 +265,7 @@ export default function CourriersPage() {
                 </div>
                 <div>
                   <label className="label">Dossier lié</label>
-                  <select value={form.dossierId} onChange={e => applyDossier(e.target.value)} className="input-field">
-                    <option value="">-- Aucun --</option>
-                    {dossiers.map(d => <option key={d.id} value={d.id}>{d.numero}</option>)}
-                  </select>
+                  <PickerField value={form.dossierId} onChange={applyDossier} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
                 </div>
                 <div className="col-span-2"><label className="label">Objet *</label><input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" required /></div>
                 <div className="col-span-2"><label className="label">Contenu</label><textarea value={form.contenu} onChange={e => setForm({ ...form, contenu: e.target.value })} className="input-field" rows={6} /></div>

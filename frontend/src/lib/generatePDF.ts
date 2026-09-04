@@ -136,7 +136,7 @@ function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteB
         <td style="padding:4px 8px;font-size:10.5px;color:${BRAND.ink};border-bottom:1px solid ${BRAND.line};">${l.designation}</td>
         <td style="padding:4px 6px;font-size:10.5px;text-align:center;border-bottom:1px solid ${BRAND.line};color:${BRAND.slate};">${l.quantite ?? 1}</td>
         <td style="padding:4px 8px;font-size:10.5px;text-align:right;border-bottom:1px solid ${BRAND.line};font-family:'Courier New',monospace;color:${BRAND.slate};">${fmt(l.prixUnitaire ?? l.montant)}</td>
-        <td style="padding:4px 8px;font-size:10.5px;text-align:right;border-bottom:1px solid ${BRAND.line};font-family:'Courier New',monospace;font-weight:600;color:${BRAND.ink};">${l.montant > 0 ? fmt(l.montant) : ''}</td>
+        <td style="padding:4px 8px;font-size:10.5px;text-align:right;border-bottom:1px solid ${BRAND.line};font-family:'Courier New',monospace;font-weight:600;color:${BRAND.ink};">${fmt(l.montant)}</td>
       </tr>`;
     }
     tableRows += `<tr><td colspan="4" style="background:${BRAND.bgSoft};text-align:right;font-size:9.5px;font-weight:800;color:${catColor};padding:5px 8px;border-bottom:2px solid ${catColor};">SOUS-TOTAL ${cat}</td>
@@ -284,8 +284,8 @@ const PAPER = {
 
 function buildProformaHtml(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): string {
   const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
-  const totalHT = data.lignes.filter(l => !l.estTVA).reduce((s, l) => s + l.montant, 0) || data.montantHT;
-  const totalTVA = data.lignes.filter(l => l.estTVA).reduce((s, l) => s + l.montant, 0) || data.montantTVA;
+  const totalHT = data.montantHT;
+  const totalTVA = data.montantTVA;
 
   let sectionsHtml = '';
   let n = 0;
@@ -298,8 +298,8 @@ function buildProformaHtml(data: DocData, qrDataUrl?: string, branding?: Societe
       n++;
       rows += `<tr>
         <td style="width:26px;text-align:center;color:${PAPER.dim};font-size:10px;padding:5px 6px;border-bottom:1px solid ${PAPER.line};">${n}</td>
-        <td style="padding:5px 6px;font-size:11px;color:${PAPER.ink};border-bottom:1px solid ${PAPER.line};">${l.designation}${l.estTVA ? `<span style="font-size:8px;color:${catColor};border:1px solid ${catColor};border-radius:8px;padding:0px 5px;margin-left:6px;">TVA</span>` : ''}</td>
-        <td style="width:110px;text-align:right;font-family:'Courier New',monospace;font-weight:700;font-size:11px;padding:5px 6px;border-bottom:1px solid ${PAPER.line};">${l.montant > 0 ? fmt(l.montant) : ''}</td>
+        <td style="padding:5px 6px;font-size:11px;color:${PAPER.ink};border-bottom:1px solid ${PAPER.line};">${l.designation}${l.estTVA ? `<span style="display:inline-block;white-space:nowrap;vertical-align:middle;font-size:8px;color:${catColor};border:1px solid ${catColor};border-radius:8px;padding:1px 6px;margin-left:6px;">TVA</span>` : ''}</td>
+        <td style="width:110px;text-align:right;font-family:'Courier New',monospace;font-weight:700;font-size:11px;padding:5px 6px;border-bottom:1px solid ${PAPER.line};">${fmt(l.montant)}</td>
       </tr>`;
     }
     sectionsHtml += `

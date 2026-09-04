@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { documentsApi, getFileUrl, clientsApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -103,6 +104,9 @@ export default function ArchivesPage() {
   useEffect(() => { setPage(1); }, [appliedSearch, categorieFiltre, dossierFiltre]);
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setAppliedSearch(search); };
+
+  const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
 
   const dossierSelectionne = dossiers.find(d => d.id === dossierFiltre);
   const dossiersFiltres = dossiers.filter(d => {
@@ -287,17 +291,11 @@ export default function ArchivesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Dossier</label>
-                    <select value={uploadForm.dossierId} onChange={e => setUploadForm({ ...uploadForm, dossierId: e.target.value })} className="input-field">
-                      <option value="">-- Aucun --</option>
-                      {dossiers.map(d => <option key={d.id} value={d.id}>{d.numeroPhysique || d.numero}</option>)}
-                    </select>
+                    <PickerField value={uploadForm.dossierId} onChange={id => setUploadForm({ ...uploadForm, dossierId: id })} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
                   </div>
                   <div>
                     <label className="label">Client</label>
-                    <select value={uploadForm.clientId} onChange={e => setUploadForm({ ...uploadForm, clientId: e.target.value })} className="input-field">
-                      <option value="">-- Aucun --</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.raisonSociale}</option>)}
-                    </select>
+                    <PickerField value={uploadForm.clientId} onChange={id => setUploadForm({ ...uploadForm, clientId: id })} options={clientOptions} placeholder="-- Aucun --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." />
                   </div>
                 </div>
                 <div><label className="label">Description</label><textarea value={uploadForm.description} onChange={e => setUploadForm({ ...uploadForm, description: e.target.value })} className="input-field" rows={2} /></div>

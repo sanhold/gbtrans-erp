@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
+import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, clientsApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -67,6 +68,8 @@ export default function EditDossierPage() {
   const updateField = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
+
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,10 +140,7 @@ export default function EditDossierPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="label">Client *</label>
-                <select value={form.clientId} onChange={e => updateField('clientId', e.target.value)} className="input-field" required>
-                  <option value="">-- Sélectionner --</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.code} - {c.raisonSociale}</option>)}
-                </select>
+                <PickerField value={form.clientId} onChange={id => updateField('clientId', id)} options={clientOptions} placeholder="-- Sélectionner --" title="Sélectionner un client" searchPlaceholder="Raison sociale, code..." required />
               </div>
               <div>
                 <label className="label">N° physique *</label>

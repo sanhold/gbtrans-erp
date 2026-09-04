@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import PickerField from '@/components/ui/PickerField';
 import { offresApi, clientsApi, dossiersApi, catalogueApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -64,6 +65,8 @@ export default function OffresPage() {
   };
 
   const catalogueCategories = [...new Set(catalogue.map(p => p.categorie))];
+  const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
+  const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
 
   const addFromCatalogue = (p: any) => {
     const ligneFromCat = { designation: p.designation, quantite: '1', unite: 'FORFAIT', prixUnitaire: p.montantDefaut != null ? String(p.montantDefaut) : '', tauxTVA: Number(p.tauxTVA) || 0 };
@@ -154,17 +157,11 @@ export default function OffresPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Client *</label>
-                  <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="input-field" required>
-                    <option value="">-- Sélectionner --</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.raisonSociale}</option>)}
-                  </select>
+                  <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Sélectionner --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." required />
                 </div>
                 <div>
                   <label className="label">Dossier lié</label>
-                  <select value={form.dossierId} onChange={e => setForm({ ...form, dossierId: e.target.value })} className="input-field">
-                    <option value="">-- Aucun --</option>
-                    {dossiers.map(d => <option key={d.id} value={d.id}>{d.numero}</option>)}
-                  </select>
+                  <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
                 </div>
               </div>
 

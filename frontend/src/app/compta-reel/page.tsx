@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -277,10 +278,15 @@ function EcrituresTab({ exerciceId, comptes, journaux }: { exerciceId: string; c
                 </div>
                 {form.lignes.map((l: any, i: number) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_110px_110px_28px] border-t border-gray-100 dark:border-surface-700">
-                    <select value={l.compteId} onChange={e => updateLigne(i, 'compteId', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none">
-                      <option value="">— Compte —</option>
-                      {comptes.map((c: any) => <option key={c.id} value={c.id}>{c.numero} {c.libelle}</option>)}
-                    </select>
+                    <PickerField
+                      value={l.compteId}
+                      onChange={id => updateLigne(i, 'compteId', id)}
+                      options={comptes.map((c: any) => ({ id: c.id, label: `${c.numero} ${c.libelle}` }))}
+                      placeholder="— Compte —"
+                      title="Sélectionner un compte"
+                      searchPlaceholder="N° ou libellé du compte..."
+                      className="!bg-transparent !border-0 !shadow-none !px-2 !py-1.5 !text-xs !rounded-none"
+                    />
                     <input type="text" value={l.libelle} onChange={e => updateLigne(i, 'libelle', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none" placeholder="Libellé de la ligne" />
                     <input type="number" value={l.debit} onChange={e => updateLigne(i, 'debit', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none text-right font-mono" placeholder="0" />
                     <input type="number" value={l.credit} onChange={e => updateLigne(i, 'credit', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none text-right font-mono" placeholder="0" />
