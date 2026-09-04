@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '@/lib/api';
+import { getRequiredModule } from '@/lib/permissions';
 
 interface NavItem {
   name: string;
@@ -31,6 +32,7 @@ const navGroups: NavGroup[] = [
     title: 'Opérations',
     items: [
       { name: 'Dossiers', href: '/dossiers', icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', badgeKey: 'dossiers' },
+      { name: 'Suivi des dossiers', href: '/dossiers/suivi', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
       { name: 'Gestion AT', href: '/at', icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
       { name: 'Gestion Caution', href: '/cautions', icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z' },
       { name: 'Courrier', href: '/courriers', icon: 'M2 7l10 6 10-6M2 4h20v16H2z', badgeKey: 'courriers' },
@@ -75,7 +77,7 @@ interface SidebarProps {
 export default function Sidebar({ open = false, onClose = () => {} }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
   const [showProfile, setShowProfile] = useState(false);
 
@@ -138,12 +140,19 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
 
       {/* Navigation */}
       <nav className="flex-1">
-        {navGroups.map((group) => (
+        {navGroups.map((group) => {
+          const visibleItems = group.items.filter((item) => {
+            const requiredModule = getRequiredModule(item.href);
+            return !requiredModule || hasPermission(`${requiredModule}:LIRE`);
+          });
+          if (visibleItems.length === 0) return null;
+
+          return (
           <div key={group.title} className="mt-3">
             <div className="text-[10.5px] uppercase tracking-wider text-white/40 font-semibold px-3 pb-2">
               {group.title}
             </div>
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const isActive = isItemActive(item.href);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
@@ -179,22 +188,25 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer */}
       <div className="mt-auto pt-3.5 border-t border-white/10">
-        <Link
-          href="/parametres"
-          onClick={onClose}
-          className="flex items-center gap-3 px-3 py-2 mb-2 rounded-[10px] text-[13.5px] font-medium text-white/80 hover:bg-white/[.08] hover:text-white transition-colors duration-150"
-        >
-          <svg className="w-[18px] h-[18px] flex-shrink-0 opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.3 1a7 7 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z" />
-          </svg>
-          Paramètres
-        </Link>
+        {hasPermission('PARAMETRES:LIRE') && (
+          <Link
+            href="/parametres"
+            onClick={onClose}
+            className="flex items-center gap-3 px-3 py-2 mb-2 rounded-[10px] text-[13.5px] font-medium text-white/80 hover:bg-white/[.08] hover:text-white transition-colors duration-150"
+          >
+            <svg className="w-[18px] h-[18px] flex-shrink-0 opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.3 1a7 7 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z" />
+            </svg>
+            Paramètres
+          </Link>
+        )}
         <div className="relative">
           <button
             onClick={() => setShowProfile((v) => !v)}

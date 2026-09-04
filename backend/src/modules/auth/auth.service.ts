@@ -218,7 +218,7 @@ export class AuthService {
   }
 
   async getProfile(utilisateurId: string) {
-    return prisma.utilisateur.findUnique({
+    const utilisateur = await prisma.utilisateur.findUnique({
       where: { id: utilisateurId },
       select: {
         id: true,
@@ -250,6 +250,21 @@ export class AuthService {
         },
       },
     });
+    if (!utilisateur) return null;
+
+    return {
+      ...utilisateur,
+      profil: utilisateur.profil
+        ? {
+            id: utilisateur.profil.id,
+            nom: utilisateur.profil.nom,
+            estAdmin: utilisateur.profil.estAdmin,
+            permissions: utilisateur.profil.permissions.map(
+              (p) => `${p.permission.module}:${p.permission.action}`
+            ),
+          }
+        : null,
+    };
   }
 
   private async createSession(

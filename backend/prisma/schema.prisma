@@ -140,6 +140,7 @@ model Utilisateur {
   operationsAgent              OperationFinanciere[] @relation("OperationFinanciereAgent")
   dotationsAgent               Dotation[]            @relation("DotationAgent")
   dotationsCreateur            Dotation[]            @relation("DotationCreateur")
+  etapesDossierExecutees       EtapeDossier[]
 
   @@index([societeId])
   @@index([email])
@@ -344,6 +345,7 @@ model Dossier {
   courriers           CourrierDossier[]
   offres              OffreCommerciale[]
   cautions            Caution[]
+  etapesDossier       EtapeDossier[]
 
   @@unique([societeId, numero, annee])
   @@unique([societeId, numeroPhysique])
@@ -442,10 +444,36 @@ model EtapeProcessus {
   obligatoire Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  processus ProcessusSuivi @relation(fields: [processusId], references: [id], onDelete: Cascade)
+  processus     ProcessusSuivi @relation(fields: [processusId], references: [id], onDelete: Cascade)
+  etapesDossier EtapeDossier[]
 
   @@index([processusId])
   @@map("etapes_processus")
+}
+
+enum StatutEtapeDossier {
+  A_FAIRE
+  VALIDEE
+}
+
+model EtapeDossier {
+  id               String             @id @default(uuid())
+  dossierId        String
+  etapeProcessusId String
+  statut           StatutEtapeDossier @default(A_FAIRE)
+  dateRealisation  DateTime?
+  executantId      String?
+  commentaire      String?            @db.VarChar(500)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  dossier        Dossier        @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  etapeProcessus EtapeProcessus @relation(fields: [etapeProcessusId], references: [id], onDelete: Cascade)
+  executant      Utilisateur?   @relation(fields: [executantId], references: [id])
+
+  @@unique([dossierId, etapeProcessusId])
+  @@index([dossierId])
+  @@map("etapes_dossiers")
 }
 
 model HistoriqueDossier {

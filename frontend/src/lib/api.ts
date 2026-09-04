@@ -79,6 +79,9 @@ export const dossiersApi = {
     api.get('/dossiers/numero-physique-suggestion', { params: { nature, annee } }),
   bilan: (params?: Record<string, any>) =>
     api.get('/dossiers/bilan', { params }),
+  etapes: (id: string) => api.get(`/dossiers/${id}/etapes`),
+  validerEtape: (id: string, etapeProcessusId: string, data: { statut: 'VALIDEE' | 'A_FAIRE'; executantId?: string; dateRealisation?: string; commentaire?: string }) =>
+    api.put(`/dossiers/${id}/etapes/${etapeProcessusId}`, data),
 };
 
 // AT (Admissions Temporaires) API
