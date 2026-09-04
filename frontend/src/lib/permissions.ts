@@ -19,6 +19,7 @@ export const ROUTE_MODULES: { href: string; module: string }[] = [
   { href: '/clients', module: 'CLIENTS' },
   { href: '/prospects', module: 'CLIENTS' },
   { href: '/fournisseurs', module: 'FOURNISSEURS' },
+  { href: '/rh', module: 'RH' },
   { href: '/parametres', module: 'PARAMETRES' },
   // Trié du plus spécifique au plus générique pour le préfix-matching.
 ].sort((a, b) => b.href.length - a.href.length);

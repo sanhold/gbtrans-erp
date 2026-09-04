@@ -67,6 +67,13 @@ const navGroups: NavGroup[] = [
       { name: 'Fournisseurs', href: '/fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
     ],
   },
+  {
+    title: 'RH & Paie',
+    items: [
+      { name: 'Employés', href: '/rh/employes', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
+      { name: 'Paie', href: '/rh/paie', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
+    ],
+  },
 ];
 
 interface SidebarProps {

@@ -280,3 +280,25 @@ export const utilisateursApi = {
     list: () => api.get('/utilisateurs/permissions/liste'),
   },
 };
+
+// RH & Paie API
+export const rhApi = {
+  employes: {
+    list: (params?: Record<string, any>) => api.get('/rh/employes', { params }),
+    get: (id: string) => api.get(`/rh/employes/${id}`),
+    create: (data: any) => api.post('/rh/employes', data),
+    update: (id: string, data: any) => api.put(`/rh/employes/${id}`, data),
+    toggleStatut: (id: string) => api.patch(`/rh/employes/${id}/statut`),
+  },
+  bulletins: {
+    list: (params?: Record<string, any>) => api.get('/rh/bulletins', { params }),
+    get: (id: string) => api.get(`/rh/bulletins/${id}`),
+    generer: (periodeMois: number, periodeAnnee: number, employeIds?: string[]) =>
+      api.post('/rh/bulletins/generer', { periodeMois, periodeAnnee, employeIds }),
+    update: (id: string, data: any) => api.put(`/rh/bulletins/${id}`, data),
+    valider: (id: string) => api.patch(`/rh/bulletins/${id}/valider`),
+    payer: (id: string, modePaiement?: string, datePaiement?: string) =>
+      api.patch(`/rh/bulletins/${id}/payer`, { modePaiement, datePaiement }),
+    delete: (id: string) => api.delete(`/rh/bulletins/${id}`),
+  },
+};

@@ -67,6 +67,8 @@ model Societe {
   documents             Document[]
   cautions              Caution[]
   modelesCourrier       ModeleCourrier[]
+  employes              Employe[]
+  bulletinsPaie         BulletinPaie[]
 
   @@map("societes")
 }
@@ -141,6 +143,7 @@ model Utilisateur {
   dotationsAgent               Dotation[]            @relation("DotationAgent")
   dotationsCreateur            Dotation[]            @relation("DotationCreateur")
   etapesDossierExecutees       EtapeDossier[]
+  employe                      Employe?
 
   @@index([societeId])
   @@index([email])
@@ -2018,4 +2021,112 @@ enum StatutTransactionMM {
   ECHOUEE
   ANNULEE
   EXPIREE
+}
+
+// ============================================================================
+// MODULE RH & PAIE
+// ============================================================================
+
+model Employe {
+  id                 String             @id @default(uuid())
+  societeId          String
+  matricule          String             @db.VarChar(50)
+  nom                String             @db.VarChar(100)
+  prenom             String             @db.VarChar(100)
+  dateNaissance      DateTime?
+  sexe               Sexe?
+  situationFamiliale SituationFamiliale @default(CELIBATAIRE)
+  nombreEnfants      Int                @default(0)
+  telephone          String?            @db.VarChar(50)
+  email              String?            @db.VarChar(200)
+  adresse            String?            @db.VarChar(500)
+  poste              String             @db.VarChar(200)
+  departement        String?            @db.VarChar(200)
+  typeContrat        TypeContratEmploye @default(CDI)
+  dateEmbauche       DateTime
+  dateFinContrat     DateTime?
+  salaireBase        Decimal            @db.Decimal(18, 2)
+  numeroCNPS         String?            @db.VarChar(50)
+  compteBancaire     String?            @db.VarChar(100)
+  actif              Boolean            @default(true)
+  utilisateurId      String?            @unique
+  observations       String?            @db.Text
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  societe     Societe        @relation(fields: [societeId], references: [id])
+  utilisateur Utilisateur?   @relation(fields: [utilisateurId], references: [id])
+  bulletins   BulletinPaie[]
+
+  @@unique([societeId, matricule])
+  @@index([societeId])
+  @@index([actif])
+  @@map("employes")
+}
+
+model BulletinPaie {
+  id            String   @id @default(uuid())
+  societeId     String
+  employeId     String
+  numero        String   @db.VarChar(50)
+  periodeMois   Int
+  periodeAnnee  Int
+  dateEmission  DateTime @default(now())
+
+  salaireBase Decimal @db.Decimal(18, 2)
+  primes      Decimal @default(0) @db.Decimal(18, 2)
+  indemnites  Decimal @default(0) @db.Decimal(18, 2)
+  salaireBrut Decimal @db.Decimal(18, 2)
+
+  cnpsSalarie    Decimal @db.Decimal(18, 2)
+  itsSalarie     Decimal @db.Decimal(18, 2)
+  autresRetenues Decimal @default(0) @db.Decimal(18, 2)
+  avance         Decimal @default(0) @db.Decimal(18, 2)
+
+  salaireNet Decimal @db.Decimal(18, 2)
+
+  cnpsPatronal       Decimal @default(0) @db.Decimal(18, 2)
+  coutTotalEmployeur Decimal @default(0) @db.Decimal(18, 2)
+
+  statut       StatutBulletinPaie @default(BROUILLON)
+  datePaiement DateTime?
+  modePaiement ModePaiement?
+  observations String?            @db.Text
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  societe Societe @relation(fields: [societeId], references: [id])
+  employe Employe @relation(fields: [employeId], references: [id])
+
+  @@unique([employeId, periodeMois, periodeAnnee])
+  @@index([societeId])
+  @@index([employeId])
+  @@index([periodeAnnee, periodeMois])
+  @@map("bulletins_paie")
+}
+
+enum Sexe {
+  M
+  F
+}
+
+enum SituationFamiliale {
+  CELIBATAIRE
+  MARIE
+  DIVORCE
+  VEUF
+}
+
+enum TypeContratEmploye {
+  CDI
+  CDD
+  STAGE
+  JOURNALIER
+  CONSULTANT
+}
+
+enum StatutBulletinPaie {
+  BROUILLON
+  VALIDE
+  PAYE
 }

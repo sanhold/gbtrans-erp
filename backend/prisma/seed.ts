@@ -105,7 +105,7 @@ async function main() {
     'DOSSIERS', 'CLIENTS', 'FOURNISSEURS', 'FACTURATION',
     'COMPTABILITE', 'FINANCE', 'AT', 'CAUTIONS', 'COURRIERS',
     'ARCHIVES', 'NOTIFICATIONS', 'STATISTIQUES', 'PARAMETRES',
-    'UTILISATEURS', 'PROFORMAS', 'OFFRES',
+    'UTILISATEURS', 'PROFORMAS', 'OFFRES', 'RH',
   ];
 
   const actions = ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER', 'EXPORTER', 'IMPRIMER'];
@@ -131,6 +131,7 @@ async function main() {
     { module: 'CLIENTS', action: 'BLOQUER', libelle: 'Bloquer un client' },
     { module: 'DOSSIERS', action: 'CHANGER_STATUT', libelle: 'Changer le statut d\'un dossier' },
     { module: 'COMPTABILITE', action: 'CLOTURER', libelle: 'Clôturer un exercice' },
+    { module: 'RH', action: 'PAYER', libelle: 'Marquer un bulletin de paie comme payé' },
   ];
 
   for (const perm of permissionsSpecifiques) {
