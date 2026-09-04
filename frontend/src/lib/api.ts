@@ -287,6 +287,20 @@ export const utilisateursApi = {
   },
 };
 
+// Paramètres API
+export const parametresApi = {
+  societe: {
+    get: () => api.get('/parametres/societe'),
+    update: (data: any) => api.put('/parametres/societe', data),
+    setLogo: (logo: string | null) => api.put('/parametres/societe/logo', { logo }),
+    setSignature: (signature: string | null) => api.put('/parametres/societe/signature', { signature }),
+  },
+  numerotations: {
+    list: () => api.get('/parametres/numerotations'),
+    update: (module: string, data: { prefixe: string; longueur: number }) => api.put(`/parametres/numerotations/${module}`, data),
+  },
+};
+
 // RH & Paie API
 export const rhApi = {
   employes: {

@@ -38,7 +38,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         where, skip, take: parseInt(limit as string),
         orderBy: { createdAt: 'desc' },
         include: {
-          dossier: { select: { id: true, numero: true } },
+          dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           admissionTemporaire: { select: { id: true, numero: true } },
           client: { select: { id: true, raisonSociale: true } },
         },

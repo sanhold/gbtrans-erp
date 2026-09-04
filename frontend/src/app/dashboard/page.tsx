@@ -96,12 +96,6 @@ function ModuleCard({ mod }: { mod: ModuleItem }) {
         <h3 className="text-[14.5px] font-bold tracking-tight text-gray-900 dark:text-white">{mod.name}</h3>
         <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">{mod.desc}</p>
       </div>
-      <span className="mt-auto flex items-center gap-1.5 text-[12.5px] font-semibold text-primary-700 dark:text-primary-400">
-        Accéder
-        <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </span>
     </Link>
   );
 }

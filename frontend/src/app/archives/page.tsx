@@ -108,7 +108,7 @@ export default function ArchivesPage() {
   const dossiersFiltres = dossiers.filter(d => {
     if (!dossierSearch) return true;
     const q = dossierSearch.toLowerCase();
-    return d.numero?.toLowerCase().includes(q) || d.client?.raisonSociale?.toLowerCase().includes(q) || d.numeroBL?.toLowerCase().includes(q);
+    return d.numeroPhysique?.toLowerCase().includes(q) || d.numero?.toLowerCase().includes(q) || d.client?.raisonSociale?.toLowerCase().includes(q) || d.numeroBL?.toLowerCase().includes(q);
   });
 
   return (
@@ -214,7 +214,7 @@ export default function ArchivesPage() {
                           <td className="table-cell" data-label="Catégorie"><span className="badge badge-gray">{CATEGORIE_LABELS[d.categorie] || d.categorie}</span></td>
                           <td className="table-cell text-xs" data-label="Lié à">
                             {d.admissionTemporaire ? <span>AT {d.admissionTemporaire.numero}</span>
-                              : d.dossier ? <Link href={`/dossiers/${d.dossier.id}`} className="text-primary-600 hover:underline">{d.dossier.numero}</Link>
+                              : d.dossier ? <Link href={`/dossiers/${d.dossier.id}`} className="text-primary-600 hover:underline">{d.dossier.numeroPhysique || d.dossier.numero}</Link>
                               : d.client ? <span>{d.client.raisonSociale}</span> : '-'}
                           </td>
                           <td className="table-cell text-xs" data-label="Taille">{fmtSize(d.taille)}</td>
@@ -256,7 +256,7 @@ export default function ArchivesPage() {
                     onClick={() => setDossierFiltre(dossierFiltre === d.id ? '' : d.id)}
                     className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-700 transition-colors ${dossierFiltre === d.id ? 'bg-primary-50 dark:bg-primary-900/20 border-l-2 border-primary-500' : ''}`}
                   >
-                    <p className={`text-sm font-medium truncate ${dossierFiltre === d.id ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{d.numero}</p>
+                    <p className={`text-sm font-medium truncate ${dossierFiltre === d.id ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{d.numeroPhysique || d.numero}</p>
                     <p className="text-xs text-gray-400 truncate">{d.client?.raisonSociale || '-'}</p>
                   </button>
                 ))}
@@ -289,7 +289,7 @@ export default function ArchivesPage() {
                     <label className="label">Dossier</label>
                     <select value={uploadForm.dossierId} onChange={e => setUploadForm({ ...uploadForm, dossierId: e.target.value })} className="input-field">
                       <option value="">-- Aucun --</option>
-                      {dossiers.map(d => <option key={d.id} value={d.id}>{d.numero}</option>)}
+                      {dossiers.map(d => <option key={d.id} value={d.id}>{d.numeroPhysique || d.numero}</option>)}
                     </select>
                   </div>
                   <div>

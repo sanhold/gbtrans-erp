@@ -29,6 +29,7 @@ model Societe {
   email          String?  @db.VarChar(200)
   siteWeb        String?  @db.VarChar(200)
   logo           String?
+  signature      String?
   devise         String   @default("XOF") @db.VarChar(10)
   tauxTVA        Decimal  @default(18) @db.Decimal(5, 2)
   timbreFiscal   Decimal  @default(0) @db.Decimal(18, 2)

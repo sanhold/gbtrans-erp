@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import { utilisateursApi } from '@/lib/api';
+import { utilisateursApi, parametresApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const tabs = [
@@ -24,6 +24,17 @@ const linkTabs = [
 
 const emptyUserForm = { matricule: '', nom: '', prenom: '', email: '', telephone: '', motDePasse: '', profilId: '' };
 const emptyProfilForm = { code: '', nom: '', description: '' };
+const emptySocieteForm = {
+  raisonSociale: '', formeJuridique: '', ncc: '', rccm: '', regime: '', adresse: '', ville: '', pays: '',
+  telephone: '', mobile: '', email: '', siteWeb: '', devise: 'XOF', tauxTVA: '18', timbreFiscal: '0',
+  smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '', smtpSecure: true,
+};
+const fileToDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 export default function ParametresPage() {
   const [activeTab, setActiveTab] = useState('entreprise');
@@ -32,6 +43,108 @@ export default function ParametresPage() {
   const [profils, setProfils] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+
+  const [societe, setSociete] = useState<any>(null);
+  const [societeForm, setSocieteForm] = useState(emptySocieteForm);
+  const [loadingSociete, setLoadingSociete] = useState(true);
+  const [savingSociete, setSavingSociete] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+
+  const [numerotations, setNumerotations] = useState<any[]>([]);
+  const [loadingNumerotations, setLoadingNumerotations] = useState(true);
+  const [editingNumerotation, setEditingNumerotation] = useState<string | null>(null);
+  const [numerotationForm, setNumerotationForm] = useState({ prefixe: '', longueur: '6' });
+
+  const loadSociete = () => {
+    setLoadingSociete(true);
+    parametresApi.societe.get().then(r => {
+      const s = r.data.data;
+      setSociete(s);
+      setSocieteForm({
+        raisonSociale: s.raisonSociale || '', formeJuridique: s.formeJuridique || '', ncc: s.ncc || '',
+        rccm: s.rccm || '', regime: s.regime || '', adresse: s.adresse || '', ville: s.ville || '', pays: s.pays || '',
+        telephone: s.telephone || '', mobile: s.mobile || '', email: s.email || '', siteWeb: s.siteWeb || '',
+        devise: s.devise || 'XOF', tauxTVA: String(s.tauxTVA ?? 18), timbreFiscal: String(s.timbreFiscal ?? 0),
+        smtpHost: s.smtpHost || '', smtpPort: s.smtpPort ? String(s.smtpPort) : '', smtpUser: s.smtpUser || '',
+        smtpPass: '', smtpSecure: s.smtpSecure !== false,
+      });
+    }).catch(() => toast.error('Erreur de chargement des informations société'))
+      .finally(() => setLoadingSociete(false));
+  };
+
+  const loadNumerotations = () => {
+    setLoadingNumerotations(true);
+    parametresApi.numerotations.list()
+      .then(r => setNumerotations(r.data.data || []))
+      .catch(() => toast.error('Erreur de chargement des numérotations'))
+      .finally(() => setLoadingNumerotations(false));
+  };
+
+  useEffect(() => { loadSociete(); loadNumerotations(); }, []);
+
+  const handleSaveSociete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSociete(true);
+    try {
+      const payload: any = { ...societeForm };
+      if (!payload.smtpPass) delete payload.smtpPass;
+      await parametresApi.societe.update(payload);
+      toast.success('Informations société enregistrées');
+      loadSociete();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSavingSociete(false); }
+  };
+
+  const handleLogoChange = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > 2_000_000) { toast.error('Image trop volumineuse (2 Mo max)'); return; }
+    setUploadingLogo(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const res = await parametresApi.societe.setLogo(dataUrl);
+      setSociete(res.data.data);
+      toast.success('Logo mis à jour');
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setUploadingLogo(false); }
+  };
+
+  const handleRemoveLogo = async () => {
+    setUploadingLogo(true);
+    try { const res = await parametresApi.societe.setLogo(null); setSociete(res.data.data); toast.success('Logo supprimé'); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setUploadingLogo(false); }
+  };
+
+  const handleSignatureChange = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > 2_000_000) { toast.error('Image trop volumineuse (2 Mo max)'); return; }
+    setUploadingSignature(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const res = await parametresApi.societe.setSignature(dataUrl);
+      setSociete(res.data.data);
+      toast.success('Signature mise à jour');
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setUploadingSignature(false); }
+  };
+
+  const handleRemoveSignature = async () => {
+    setUploadingSignature(true);
+    try { const res = await parametresApi.societe.setSignature(null); setSociete(res.data.data); toast.success('Signature supprimée'); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setUploadingSignature(false); }
+  };
+
+  const openEditNumerotation = (n: any) => { setEditingNumerotation(n.module); setNumerotationForm({ prefixe: n.prefixe, longueur: String(n.longueur) }); };
+  const handleSaveNumerotation = async (module: string) => {
+    try {
+      await parametresApi.numerotations.update(module, { prefixe: numerotationForm.prefixe, longueur: parseInt(numerotationForm.longueur) || 6 });
+      toast.success('Numérotation mise à jour');
+      setEditingNumerotation(null);
+      loadNumerotations();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+  };
 
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -187,21 +300,74 @@ export default function ParametresPage() {
 
           <div className="flex-1 card">
             {activeTab === 'entreprise' && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Informations Société</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Raison Sociale</label><input type="text" defaultValue="GBTRANS SARL" className="input-field" /></div>
-                  <div><label className="label">Forme Juridique</label><input type="text" defaultValue="SARL" className="input-field" /></div>
-                  <div><label className="label">NCC</label><input type="text" className="input-field" /></div>
-                  <div><label className="label">RCCM</label><input type="text" className="input-field" /></div>
-                  <div><label className="label">Taux TVA (%)</label><input type="number" defaultValue="18" className="input-field" /></div>
-                  <div><label className="label">Devise</label><select className="input-field"><option>XOF</option><option>EUR</option><option>USD</option></select></div>
-                  <div className="col-span-2"><label className="label">Adresse</label><input type="text" defaultValue="Abidjan, Côte d'Ivoire" className="input-field" /></div>
-                  <div><label className="label">Téléphone</label><input type="text" className="input-field" /></div>
-                  <div><label className="label">Email</label><input type="email" defaultValue="contact@gbtrans.ci" className="input-field" /></div>
+              loadingSociete ? (
+                <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
+              ) : (
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Logo & Signature</h3>
+                  <p className="text-xs text-gray-500 mb-4">Affichés sur les documents générés (proforma, facture...). Image, 2 Mo maximum.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="label">Logo de l&apos;entreprise</label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-20 h-20 rounded-xl border border-gray-200 dark:border-surface-700 bg-gray-50 dark:bg-surface-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {societe?.logo ? <img src={societe.logo} alt="Logo" className="w-full h-full object-contain" /> : <span className="text-[10px] text-gray-400">Aucun</span>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="btn-secondary text-xs cursor-pointer inline-block">
+                            {uploadingLogo ? 'Envoi...' : 'Choisir un fichier'}
+                            <input type="file" accept="image/*" className="hidden" disabled={uploadingLogo} onChange={e => handleLogoChange(e.target.files?.[0] || null)} />
+                          </label>
+                          {societe?.logo && <button onClick={handleRemoveLogo} disabled={uploadingLogo} className="block text-xs text-red-500 hover:underline">Supprimer</button>}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">Signature (cachet du responsable)</label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-20 h-20 rounded-xl border border-gray-200 dark:border-surface-700 bg-gray-50 dark:bg-surface-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {societe?.signature ? <img src={societe.signature} alt="Signature" className="w-full h-full object-contain" /> : <span className="text-[10px] text-gray-400">Aucune</span>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="btn-secondary text-xs cursor-pointer inline-block">
+                            {uploadingSignature ? 'Envoi...' : 'Choisir un fichier'}
+                            <input type="file" accept="image/*" className="hidden" disabled={uploadingSignature} onChange={e => handleSignatureChange(e.target.files?.[0] || null)} />
+                          </label>
+                          {societe?.signature && <button onClick={handleRemoveSignature} disabled={uploadingSignature} className="block text-xs text-red-500 hover:underline">Supprimer</button>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-end"><button className="btn-primary">Enregistrer</button></div>
+
+                <form onSubmit={handleSaveSociete} className="space-y-4">
+                  <h3 className="text-lg font-semibold">Informations Société</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label className="label">Raison Sociale</label><input type="text" value={societeForm.raisonSociale} onChange={e => setSocieteForm({ ...societeForm, raisonSociale: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Forme Juridique</label><input type="text" value={societeForm.formeJuridique} onChange={e => setSocieteForm({ ...societeForm, formeJuridique: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">NCC</label><input type="text" value={societeForm.ncc} onChange={e => setSocieteForm({ ...societeForm, ncc: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">RCCM</label><input type="text" value={societeForm.rccm} onChange={e => setSocieteForm({ ...societeForm, rccm: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Régime fiscal</label><input type="text" value={societeForm.regime} onChange={e => setSocieteForm({ ...societeForm, regime: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Taux TVA (%)</label><input type="number" value={societeForm.tauxTVA} onChange={e => setSocieteForm({ ...societeForm, tauxTVA: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Devise</label>
+                      <select value={societeForm.devise} onChange={e => setSocieteForm({ ...societeForm, devise: e.target.value })} className="input-field">
+                        <option value="XOF">XOF</option><option value="EUR">EUR</option><option value="USD">USD</option>
+                      </select>
+                    </div>
+                    <div><label className="label">Timbre fiscal</label><input type="number" value={societeForm.timbreFiscal} onChange={e => setSocieteForm({ ...societeForm, timbreFiscal: e.target.value })} className="input-field" /></div>
+                    <div className="sm:col-span-2"><label className="label">Adresse</label><input type="text" value={societeForm.adresse} onChange={e => setSocieteForm({ ...societeForm, adresse: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Ville</label><input type="text" value={societeForm.ville} onChange={e => setSocieteForm({ ...societeForm, ville: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Pays</label><input type="text" value={societeForm.pays} onChange={e => setSocieteForm({ ...societeForm, pays: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Téléphone</label><input type="text" value={societeForm.telephone} onChange={e => setSocieteForm({ ...societeForm, telephone: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Mobile</label><input type="text" value={societeForm.mobile} onChange={e => setSocieteForm({ ...societeForm, mobile: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Email</label><input type="email" value={societeForm.email} onChange={e => setSocieteForm({ ...societeForm, email: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Site web</label><input type="text" value={societeForm.siteWeb} onChange={e => setSocieteForm({ ...societeForm, siteWeb: e.target.value })} className="input-field" /></div>
+                  </div>
+                  <div className="flex justify-end"><button type="submit" disabled={savingSociete} className="btn-primary disabled:opacity-50">{savingSociete ? 'Enregistrement...' : 'Enregistrer'}</button></div>
+                </form>
               </div>
+              )
             )}
 
             {activeTab === 'utilisateurs' && (
@@ -279,8 +445,57 @@ export default function ParametresPage() {
               </div>
             )}
 
-            {activeTab === 'numerotation' && <div><h3 className="text-lg font-semibold mb-4">Numérotation automatique</h3><div className="space-y-2">{['Dossier (DOS)', 'Facture (FAC)', 'Proforma (PRO)', 'Avoir (AVR)', 'Paiement (PAI)', 'Courrier Entrant (CE)', 'Courrier Sortant (CS)', 'AT', 'Caution (CAU)'].map(n => (<div key={n} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-surface-700 rounded-lg"><span className="text-sm font-medium">{n}</span><span className="text-xs text-gray-500">FORMAT/{'{ANNEE}'}/{'{COMPTEUR}'}</span></div>))}</div></div>}
-            {activeTab === 'email' && <div><h3 className="text-lg font-semibold mb-4">Configuration SMTP</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="label">Serveur SMTP</label><input type="text" defaultValue="smtp.gmail.com" className="input-field" /></div><div><label className="label">Port</label><input type="number" defaultValue="587" className="input-field" /></div><div><label className="label">Utilisateur</label><input type="text" className="input-field" /></div><div><label className="label">Mot de passe</label><input type="password" className="input-field" /></div></div><div className="flex justify-end mt-4"><button className="btn-primary">Enregistrer</button></div></div>}
+            {activeTab === 'numerotation' && (
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Numérotation automatique</h3>
+                <p className="text-xs text-gray-500 mb-4">Préfixe et longueur du compteur pour l&apos;année {new Date().getFullYear()}. Format : PRÉFIXE/ANNÉE/COMPTEUR.</p>
+                {loadingNumerotations ? (
+                  <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
+                ) : (
+                  <div className="space-y-2">
+                    {numerotations.map(n => (
+                      <div key={n.module} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-surface-700 rounded-lg gap-3">
+                        <span className="text-sm font-medium flex-1">{n.label}</span>
+                        {editingNumerotation === n.module ? (
+                          <>
+                            <input type="text" value={numerotationForm.prefixe} onChange={e => setNumerotationForm({ ...numerotationForm, prefixe: e.target.value.toUpperCase() })} className="input-field !w-24 !py-1 text-xs" />
+                            <input type="number" value={numerotationForm.longueur} onChange={e => setNumerotationForm({ ...numerotationForm, longueur: e.target.value })} className="input-field !w-16 !py-1 text-xs" min="3" max="10" />
+                            <button onClick={() => handleSaveNumerotation(n.module)} className="text-xs text-primary-600 font-medium hover:underline">Enregistrer</button>
+                            <button onClick={() => setEditingNumerotation(null)} className="text-xs text-gray-400 hover:underline">Annuler</button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs text-gray-500 font-mono">{n.prefixe}/{n.annee}/{String(n.compteur + 1).padStart(n.longueur, '0')}</span>
+                            <span className="text-[10px] text-gray-400">{n.enUsage ? `${n.compteur} émis` : 'jamais utilisé'}</span>
+                            <button onClick={() => openEditNumerotation(n)} className="text-xs text-primary-500 hover:underline">Modifier</button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'email' && (
+              loadingSociete ? (
+                <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
+              ) : (
+                <form onSubmit={handleSaveSociete}>
+                  <h3 className="text-lg font-semibold mb-4">Configuration SMTP</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label className="label">Serveur SMTP</label><input type="text" value={societeForm.smtpHost} onChange={e => setSocieteForm({ ...societeForm, smtpHost: e.target.value })} className="input-field" placeholder="smtp.gmail.com" /></div>
+                    <div><label className="label">Port</label><input type="number" value={societeForm.smtpPort} onChange={e => setSocieteForm({ ...societeForm, smtpPort: e.target.value })} className="input-field" placeholder="587" /></div>
+                    <div><label className="label">Utilisateur</label><input type="text" value={societeForm.smtpUser} onChange={e => setSocieteForm({ ...societeForm, smtpUser: e.target.value })} className="input-field" /></div>
+                    <div><label className="label">Mot de passe</label><input type="password" value={societeForm.smtpPass} onChange={e => setSocieteForm({ ...societeForm, smtpPass: e.target.value })} className="input-field" placeholder={societe?.smtpHost ? '••••••••' : ''} /></div>
+                    <label className="flex items-center gap-2 cursor-pointer sm:col-span-2">
+                      <input type="checkbox" checked={societeForm.smtpSecure} onChange={e => setSocieteForm({ ...societeForm, smtpSecure: e.target.checked })} className="w-4 h-4 rounded" />
+                      <span className="text-sm">Connexion sécurisée (TLS/SSL)</span>
+                    </label>
+                  </div>
+                  <div className="flex justify-end mt-4"><button type="submit" disabled={savingSociete} className="btn-primary disabled:opacity-50">{savingSociete ? 'Enregistrement...' : 'Enregistrer'}</button></div>
+                </form>
+              )
+            )}
             {activeTab === 'sms' && <div><h3 className="text-lg font-semibold mb-4">Configuration SMS</h3><p className="text-gray-500 text-sm">Configurez l&apos;API Orange pour l&apos;envoi de SMS automatiques.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"><div><label className="label">Clé API Orange</label><input type="text" className="input-field" /></div><div><label className="label">Secret API</label><input type="password" className="input-field" /></div></div></div>}
             {activeTab === 'sauvegarde' && <div><h3 className="text-lg font-semibold mb-4">Sauvegarde & Restauration</h3><div className="space-y-4"><button className="btn-primary">Sauvegarder maintenant</button><p className="text-sm text-gray-500">Dernière sauvegarde : Aucune</p></div></div>}
           </div>

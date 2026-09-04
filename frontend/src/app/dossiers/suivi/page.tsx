@@ -26,16 +26,19 @@ export default function SuiviDossiersPage() {
   const [validForm, setValidForm] = useState<{ dateRealisation: string; executantId: string; commentaire: string }>({ dateRealisation: new Date().toISOString().slice(0, 10), executantId: '', commentaire: '' });
 
   useEffect(() => {
-    setLoadingDossiers(true);
-    Promise.all([
-      dossiersApi.list({ limit: 200, sort: 'dateCreation:desc' }),
-      utilisateursApi.list(),
-    ]).then(([dRes, uRes]) => {
-      setDossiers((dRes.data.data || []).filter((d: any) => !['CLOTURE', 'ANNULE', 'ARCHIVE'].includes(d.statut)));
-      setUtilisateurs((uRes.data.data || []).filter((u: any) => u.actif));
-    }).catch(() => toast.error('Erreur de chargement des dossiers'))
-      .finally(() => setLoadingDossiers(false));
+    utilisateursApi.list().then(r => setUtilisateurs((r.data.data || []).filter((u: any) => u.actif))).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setLoadingDossiers(true);
+    const timer = setTimeout(() => {
+      dossiersApi.list({ limit: 50, search: search || undefined, sortBy: 'dateCreation', sortOrder: 'desc' })
+        .then(r => setDossiers(r.data.data || []))
+        .catch(() => toast.error('Erreur de chargement des dossiers'))
+        .finally(() => setLoadingDossiers(false));
+    }, search ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const loadDossierEtapes = async (id: string) => {
     setSelectedId(id);
@@ -79,10 +82,6 @@ export default function SuiviDossiersPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
-  const filteredDossiers = dossiers.filter(d =>
-    !search || d.numero?.toLowerCase().includes(search.toLowerCase()) || d.client?.raisonSociale?.toLowerCase().includes(search.toLowerCase())
-  );
-
   const nbValidees = etapes.filter(e => e.statut === 'VALIDEE').length;
 
   return (
@@ -98,18 +97,18 @@ export default function SuiviDossiersPage() {
           <div className="w-80 flex-shrink-0 card !p-3 space-y-2">
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un dossier..." className="input-field pl-9 text-sm" />
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="N° physique, client, BL, déclaration..." className="input-field pl-9 text-sm" />
             </div>
             <div className="max-h-[65vh] overflow-y-auto space-y-1">
               {loadingDossiers ? (
                 <div className="text-center py-8"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
-              ) : filteredDossiers.length === 0 ? (
+              ) : dossiers.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 py-6">Aucun dossier</p>
-              ) : filteredDossiers.map(d => (
+              ) : dossiers.map(d => (
                 <button key={d.id} onClick={() => loadDossierEtapes(d.id)}
                   className={`w-full text-left p-2.5 rounded-lg border transition-colors ${selectedId === d.id ? 'bg-primary-50 border-primary-300 dark:bg-primary-900/20' : 'border-transparent hover:bg-gray-50 dark:hover:bg-surface-700'}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold text-primary-600">{d.numero}</span>
+                    <span className="font-mono text-xs font-semibold text-primary-600">{d.numeroPhysique || d.numero}</span>
                     <span className={`badge ${statutColors[d.statut] || 'badge-gray'} !text-[10px]`}>{d.statut?.replace(/_/g, ' ')}</span>
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 truncate">{d.client?.raisonSociale}</p>
@@ -131,9 +130,9 @@ export default function SuiviDossiersPage() {
               <div>
                 <div className="p-4 border-b border-gray-100 dark:border-surface-700 flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <h2 className="font-bold text-gray-900 dark:text-white">{dossier?.numero} — {dossier?.client?.raisonSociale}</h2>
+                    <h2 className="font-bold text-gray-900 dark:text-white">{dossier?.numeroPhysique || dossier?.numero} — {dossier?.client?.raisonSociale}</h2>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {dossier?.processus ? <>Processus : <span className="font-medium">{dossier.processus.nom}</span></> : 'Aucun processus de suivi assigné à ce dossier'}
+                      N° dossier {dossier?.numero} · {dossier?.processus ? <>Processus : <span className="font-medium">{dossier.processus.nom}</span></> : 'Aucun processus de suivi assigné à ce dossier'}
                     </p>
                   </div>
                   {etapes.length > 0 && (

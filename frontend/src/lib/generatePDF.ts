@@ -1,7 +1,22 @@
 'use client';
 
 import { montantEnLettres } from './montantEnLettres';
+import api from './api';
 import QRCode from 'qrcode';
+
+interface SocieteBranding { logo?: string | null; signature?: string | null }
+let societeBrandingCache: SocieteBranding | null = null;
+
+async function getSocieteBranding(): Promise<SocieteBranding> {
+  if (societeBrandingCache) return societeBrandingCache;
+  try {
+    const res = await api.get('/parametres/societe');
+    societeBrandingCache = { logo: res.data.data.logo, signature: res.data.data.signature };
+  } catch {
+    societeBrandingCache = {};
+  }
+  return societeBrandingCache;
+}
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
 
@@ -104,7 +119,7 @@ function catIcon(path: string, color: string = BRAND.primary): string {
 
 const CI_FLAG = `<span style="display:inline-block;width:18px;height:11px;vertical-align:middle;margin-left:5px;box-shadow:0 0 0 1px ${BRAND.line};"><span style="display:inline-block;width:33.33%;height:11px;background:#f77f00;"></span><span style="display:inline-block;width:33.33%;height:11px;background:#fff;"></span><span style="display:inline-block;width:33.33%;height:11px;background:#009e60;"></span></span>`;
 
-function buildContentHtml(data: DocData, qrDataUrl?: string): string {
+function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): string {
   const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
   let tableRows = '';
   let n = 0;
@@ -159,7 +174,9 @@ function buildContentHtml(data: DocData, qrDataUrl?: string): string {
   return `
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
   <div style="display:flex;gap:12px;align-items:flex-start;">
-    <div style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,${BRAND.primary},${BRAND.primaryDark});display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0;">GB</div>
+    ${branding?.logo
+      ? `<img src="${branding.logo}" style="width:44px;height:44px;border-radius:11px;object-fit:contain;flex-shrink:0;background:#fff;border:1px solid ${BRAND.line};" />`
+      : `<div style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,${BRAND.primary},${BRAND.primaryDark});display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0;">GB</div>`}
     <div>
       <div style="font-weight:800;font-size:18px;letter-spacing:.2px;color:${BRAND.ink};">GBTRANS SARL</div>
       <div style="color:${BRAND.primary};font-weight:600;font-size:10px;margin:2px 0 6px;">Transit • Douane • Logistique</div>
@@ -242,7 +259,8 @@ ${horsNote}
 
 <div style="display:flex;justify-content:flex-end;margin-top:26px;">
   <div style="text-align:center;width:220px;">
-    <div style="color:${BRAND.slate};font-size:9.5px;margin-bottom:38px;">Le Directeur / Cachet &amp; Signature</div>
+    <div style="color:${BRAND.slate};font-size:9.5px;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
+    ${branding?.signature ? `<img src="${branding.signature}" style="height:34px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
     <div style="border-top:1px solid ${BRAND.ink};padding-top:4px;font-weight:700;color:${BRAND.ink};">GBTRANS SARL</div>
   </div>
 </div>
@@ -264,7 +282,7 @@ const PAPER = {
   dim: '#9a8bb0',
 };
 
-function buildProformaHtml(data: DocData, qrDataUrl?: string): string {
+function buildProformaHtml(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): string {
   const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
   const totalHT = data.lignes.filter(l => !l.estTVA).reduce((s, l) => s + l.montant, 0) || data.montantHT;
   const totalTVA = data.lignes.filter(l => l.estTVA).reduce((s, l) => s + l.montant, 0) || data.montantTVA;
@@ -305,12 +323,15 @@ function buildProformaHtml(data: DocData, qrDataUrl?: string): string {
 
   return `
 <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${PAPER.ink};padding-bottom:12px;margin-bottom:18px;">
-  <div>
-    <div style="font-size:20px;font-weight:700;color:${PAPER.ink};letter-spacing:.01em;">GBTRANS SARL</div>
-    <div style="font-size:11px;color:${PAPER.inkSoft};margin-top:2px;">Transit · Douane · Logistique</div>
-    <div style="font-size:10px;color:#5C6580;margin-top:6px;line-height:1.5;">
-      Cocody Angré 7ème Tranche, Abidjan — Côte d'Ivoire<br/>
-      +225 27 20 00 00 00 · contact@gbtrans.ci
+  <div style="display:flex;gap:12px;align-items:flex-start;">
+    ${branding?.logo ? `<img src="${branding.logo}" style="width:48px;height:48px;object-fit:contain;flex-shrink:0;" />` : ''}
+    <div>
+      <div style="font-size:20px;font-weight:700;color:${PAPER.ink};letter-spacing:.01em;">GBTRANS SARL</div>
+      <div style="font-size:11px;color:${PAPER.inkSoft};margin-top:2px;">Transit · Douane · Logistique</div>
+      <div style="font-size:10px;color:#5C6580;margin-top:6px;line-height:1.5;">
+        Cocody Angré 7ème Tranche, Abidjan — Côte d'Ivoire<br/>
+        +225 27 20 00 00 00 · contact@gbtrans.ci
+      </div>
     </div>
   </div>
   <div style="text-align:right;">
@@ -363,7 +384,8 @@ ${sectionsHtml}
 
 <div style="text-align:right;font-size:11.5px;color:${PAPER.inkSoft};">
   Fait à Abidjan<br/>
-  <div style="margin-top:32px;border-top:1px solid ${PAPER.inkSoft};display:inline-block;padding-top:4px;width:180px;">GBTRANS SARL</div>
+  ${branding?.signature ? `<img src="${branding.signature}" style="height:34px;object-fit:contain;margin-top:${branding.signature ? '10px' : '32px'};display:inline-block;" />` : ''}
+  <div style="margin-top:${branding?.signature ? '4px' : '32px'};border-top:1px solid ${PAPER.inkSoft};display:inline-block;padding-top:4px;width:180px;">GBTRANS SARL</div>
 </div>
 
 <div style="text-align:center;font-size:8px;color:${PAPER.dim};border-top:1px solid ${PAPER.line};padding-top:8px;margin-top:20px;line-height:1.6;">
@@ -372,23 +394,26 @@ ${sectionsHtml}
 </div>`;
 }
 
-function buildElement(data: DocData, qrDataUrl?: string): HTMLDivElement {
+function buildElement(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): HTMLDivElement {
   const div = document.createElement('div');
   if (data.type === 'PROFORMA') {
     div.style.cssText = `width:210mm;padding:14mm 13mm;font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;font-size:11px;color:${PAPER.ink};background:${PAPER.paper};`;
-    div.innerHTML = buildProformaHtml(data, qrDataUrl);
+    div.innerHTML = buildProformaHtml(data, qrDataUrl, branding);
     return div;
   }
   div.style.cssText = `width:210mm;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${BRAND.ink};background:white;`;
-  div.innerHTML = buildContentHtml(data, qrDataUrl);
+  div.innerHTML = buildContentHtml(data, qrDataUrl, branding);
   return div;
 }
 
 export async function downloadPDF(data: DocData) {
   const html2pdf = (await import('html2pdf.js')).default;
 
-  const qrDataUrl = await generateDocQrDataUrl(data).catch(() => undefined);
-  const element = buildElement(data, qrDataUrl);
+  const [qrDataUrl, branding] = await Promise.all([
+    generateDocQrDataUrl(data).catch(() => undefined),
+    getSocieteBranding(),
+  ]);
+  const element = buildElement(data, qrDataUrl, branding);
   document.body.appendChild(element);
 
   const filename = `${data.type === 'PROFORMA' ? 'Proforma' : 'Facture'}_${data.numero.replace(/\//g, '-')}.pdf`;
@@ -408,9 +433,12 @@ export async function downloadPDF(data: DocData) {
 }
 
 export async function printDocument(data: DocData) {
-  const qrDataUrl = await generateDocQrDataUrl(data).catch(() => undefined);
+  const [qrDataUrl, branding] = await Promise.all([
+    generateDocQrDataUrl(data).catch(() => undefined),
+    getSocieteBranding(),
+  ]);
   const isProforma = data.type === 'PROFORMA';
-  const contentHtml = isProforma ? buildProformaHtml(data, qrDataUrl) : buildContentHtml(data, qrDataUrl);
+  const contentHtml = isProforma ? buildProformaHtml(data, qrDataUrl, branding) : buildContentHtml(data, qrDataUrl, branding);
   const label = isProforma ? 'Proforma' : 'Facture';
 
   const html = `<!DOCTYPE html>
