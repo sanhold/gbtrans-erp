@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
+import { downloadPDF, type DocData } from '@/lib/generatePDF';
 import api, { clientsApi, dossiersApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -213,23 +214,31 @@ function NouvelleProformaForm() {
   };
 
   const handleExportApercu = async () => {
-    if (!sheetRef.current) return;
     setExporting(true);
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const el = sheetRef.current;
-      el.classList.add('pf-exporting');
-      await html2pdf()
-        .set({
-          margin: 0,
-          filename: `Proforma_apercu_${selectedClient?.raisonSociale || 'client'}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        })
-        .from(el)
-        .save();
-      el.classList.remove('pf-exporting');
+      const docData: DocData = {
+        type: 'PROFORMA',
+        numero: 'BROUILLON',
+        date: new Date().toLocaleDateString('fr-FR'),
+        client: selectedClient?.raisonSociale || '',
+        clientAdresse: selectedClient?.adresse || undefined,
+        clientTelephone: selectedClient?.telephone || selectedClient?.mobile || undefined,
+        clientEmail: selectedClient?.email || undefined,
+        clientNcc: selectedClient?.ncc || undefined,
+        clientPays: selectedClient?.pays || undefined,
+        dossierNumero: selectedDossier ? (selectedDossier.numeroPhysique || selectedDossier.numero) : undefined,
+        titre: form.titre || undefined,
+        fobUnitaire: form.fobUnitaire ? parseFloat(form.fobUnitaire) : undefined,
+        fretUnitaire: form.fretUnitaire ? parseFloat(form.fretUnitaire) : undefined,
+        assurance: form.assurance ? parseFloat(form.assurance) : undefined,
+        nombreUnites: form.nombreUnites ? parseInt(form.nombreUnites) : undefined,
+        valeurCAF: valeurCAF || undefined,
+        montantHT: totalHT,
+        montantTVA: totalTVA,
+        montantTTC: totalGeneral,
+        lignes: lignes.map(l => ({ categorie: l.categorie, designation: l.designation, montant: l.montant, estTVA: l.estTVA })),
+      };
+      await downloadPDF(docData);
       toast.success('Aperçu PDF téléchargé');
     } catch { toast.error('Erreur lors de l\'export'); }
     finally { setExporting(false); }
@@ -341,22 +350,22 @@ function NouvelleProformaForm() {
               </div>
             </div>
 
-            {lignes.length > 0 && groupedLignes.map(group => (
-              <div key={group.categorie} className="pf-section-block">
-                <div className="pf-section-title-row" style={{ background: group.couleur }}>
-                  <span className="pf-section-name">{group.categorie}</span>
-                </div>
-                <table className="pf-items">
-                  <thead>
+            {lignes.length > 0 && (
+              <table className="pf-items">
+                <thead>
+                  <tr>
+                    <th className="pf-numcol">N°</th>
+                    <th>Désignation</th>
+                    <th className="pf-num pf-montantcol">Montant</th>
+                    <th className="pf-tvacol">TVA</th>
+                    <th className="pf-rmcol pf-no-export"></th>
+                  </tr>
+                </thead>
+                {groupedLignes.map(group => (
+                  <tbody key={group.categorie}>
                     <tr>
-                      <th className="pf-numcol">N°</th>
-                      <th>Désignation</th>
-                      <th className="pf-tvacol">TVA</th>
-                      <th className="pf-num pf-montantcol">Montant</th>
-                      <th className="pf-rmcol pf-no-export"></th>
+                      <td colSpan={5} className="pf-section-title-row" style={{ background: group.couleur }}>{group.categorie}</td>
                     </tr>
-                  </thead>
-                  <tbody>
                     {group.lignes.map(ligne => {
                       globalIndex++;
                       const idx = lignes.indexOf(ligne);
@@ -364,21 +373,22 @@ function NouvelleProformaForm() {
                         <tr key={idx}>
                           <td className="pf-numcol">{globalIndex}</td>
                           <td><input value={ligne.designation} onChange={e => updateLigne(idx, 'designation', e.target.value)} /></td>
-                          <td className="pf-tvacol"><input type="checkbox" checked={ligne.estTVA} onChange={e => updateLigne(idx, 'estTVA', e.target.checked)} /></td>
                           <td className="pf-num"><input className="pf-num-input" type="number" value={ligne.montant || ''} onChange={e => updateLigne(idx, 'montant', parseFloat(e.target.value) || 0)} /></td>
+                          <td className="pf-tvacol"><input type="checkbox" checked={ligne.estTVA} disabled className="pf-tva-checkbox" title="Défini depuis le catalogue" /></td>
                           <td className="pf-rmcol pf-no-export"><button type="button" onClick={() => removeLigne(idx)}>✕</button></td>
                         </tr>
                       );
                     })}
                     <tr className="pf-subtotal-row">
-                      <td colSpan={3}>Sous-total {group.categorie}</td>
+                      <td colSpan={2}>Sous-total {group.categorie}</td>
                       <td className="pf-num">{fmt(group.sousTotal)}</td>
+                      <td className="pf-no-export"></td>
                       <td className="pf-no-export"></td>
                     </tr>
                   </tbody>
-                </table>
-              </div>
-            ))}
+                ))}
+              </table>
+            )}
 
             {lignes.length > 0 && (
               <div className="pf-totals">
@@ -521,7 +531,7 @@ function NouvelleProformaForm() {
         :root { --pf-ink:#241536; --pf-ink-soft:#5d4a72; --pf-gold:#7322ab; --pf-gold-soft:#f0e6fa; --pf-paper:#FBF9F4; --pf-line:#ded2ea; --pf-danger:#B3492F; }
 
         .pf-sheet-wrap { background:#0C0812; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
-        .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
+        .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
 
         .pf-doc-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pf-ink); padding-bottom:12px; margin-bottom:18px; }
         .pf-company-name { font-size:20px; font-weight:700; letter-spacing:.01em; }
@@ -554,13 +564,13 @@ function NouvelleProformaForm() {
         .pf-inline-btn-solid { background:var(--pf-gold); color:#fff; border:none; font-size:11.5px; font-weight:700; padding:7px 14px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:inherit; }
         .pf-inline-btn-solid:hover { background:#5d1590; }
 
-        .pf-section-block { margin-bottom:14px; }
-        .pf-section-title-row { color:#fff; padding:6px 10px; font-size:11.5px; letter-spacing:.03em; font-weight:700; }
+        .pf-section-title-row { color:#fff; padding:8px 10px; font-size:11.5px; letter-spacing:.03em; font-weight:700; text-align:left; }
         table.pf-items { width:100%; border-collapse:collapse; font-size:11.5px; }
         table.pf-items th { text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:var(--pf-ink-soft); border-bottom:1px solid var(--pf-line); padding:5px 6px; }
         table.pf-items td { padding:5px 6px; border-bottom:1px solid var(--pf-line); vertical-align:middle; }
         .pf-numcol { width:28px; text-align:center; color:#8b93ad; }
         .pf-tvacol { width:36px; text-align:center; }
+        .pf-tva-checkbox { accent-color:#9AA0B5; opacity:.65; cursor:not-allowed; }
         .pf-montantcol { width:110px; }
         .pf-rmcol { width:22px; }
         table.pf-items .pf-num { text-align:right; white-space:nowrap; }

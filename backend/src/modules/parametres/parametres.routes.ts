@@ -22,6 +22,7 @@ router.put('/societe', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest
     const {
       raisonSociale, formeJuridique, capital, rccm, ncc, regime, adresse, ville, pays,
       telephone, mobile, email, siteWeb, devise, tauxTVA, timbreFiscal,
+      slogan, mentionLegale,
       smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure,
     } = req.body;
 
@@ -41,6 +42,8 @@ router.put('/societe', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest
         ...(mobile !== undefined && { mobile: mobile || null }),
         ...(email !== undefined && { email: email || null }),
         ...(siteWeb !== undefined && { siteWeb: siteWeb || null }),
+        ...(slogan !== undefined && { slogan: slogan || null }),
+        ...(mentionLegale !== undefined && { mentionLegale: mentionLegale || null }),
         ...(devise !== undefined && { devise }),
         ...(tauxTVA !== undefined && { tauxTVA: parseFloat(tauxTVA) || 0 }),
         ...(timbreFiscal !== undefined && { timbreFiscal: parseFloat(timbreFiscal) || 0 }),

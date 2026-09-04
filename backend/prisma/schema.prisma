@@ -30,6 +30,8 @@ model Societe {
   siteWeb        String?  @db.VarChar(200)
   logo           String?
   signature      String?
+  slogan         String?  @db.VarChar(200)
+  mentionLegale  String?  @db.Text
   devise         String   @default("XOF") @db.VarChar(10)
   tauxTVA        Decimal  @default(18) @db.Decimal(5, 2)
   timbreFiscal   Decimal  @default(0) @db.Decimal(18, 2)

@@ -27,6 +27,7 @@ const emptyProfilForm = { code: '', nom: '', description: '' };
 const emptySocieteForm = {
   raisonSociale: '', formeJuridique: '', ncc: '', rccm: '', regime: '', adresse: '', ville: '', pays: '',
   telephone: '', mobile: '', email: '', siteWeb: '', devise: 'XOF', tauxTVA: '18', timbreFiscal: '0',
+  slogan: '', mentionLegale: '',
   smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '', smtpSecure: true,
 };
 const fileToDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -66,6 +67,7 @@ export default function ParametresPage() {
         rccm: s.rccm || '', regime: s.regime || '', adresse: s.adresse || '', ville: s.ville || '', pays: s.pays || '',
         telephone: s.telephone || '', mobile: s.mobile || '', email: s.email || '', siteWeb: s.siteWeb || '',
         devise: s.devise || 'XOF', tauxTVA: String(s.tauxTVA ?? 18), timbreFiscal: String(s.timbreFiscal ?? 0),
+        slogan: s.slogan || '', mentionLegale: s.mentionLegale || '',
         smtpHost: s.smtpHost || '', smtpPort: s.smtpPort ? String(s.smtpPort) : '', smtpUser: s.smtpUser || '',
         smtpPass: '', smtpSecure: s.smtpSecure !== false,
       });
@@ -364,6 +366,20 @@ export default function ParametresPage() {
                     <div><label className="label">Email</label><input type="email" value={societeForm.email} onChange={e => setSocieteForm({ ...societeForm, email: e.target.value })} className="input-field" /></div>
                     <div><label className="label">Site web</label><input type="text" value={societeForm.siteWeb} onChange={e => setSocieteForm({ ...societeForm, siteWeb: e.target.value })} className="input-field" /></div>
                   </div>
+
+                  <h3 className="text-lg font-semibold pt-2 border-t border-gray-200 dark:border-surface-700">En-tête et pied de page des documents</h3>
+                  <p className="text-xs text-gray-500 -mt-2">Ces informations apparaissent sur les factures, proformas et autres documents générés (PDF, impression).</p>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="label">Slogan / Activité (sous le nom de l&apos;entreprise)</label>
+                      <input type="text" value={societeForm.slogan} onChange={e => setSocieteForm({ ...societeForm, slogan: e.target.value })} className="input-field" placeholder="Transit · Douane · Logistique" />
+                    </div>
+                    <div>
+                      <label className="label">Mention légale (pied de page)</label>
+                      <textarea value={societeForm.mentionLegale} onChange={e => setSocieteForm({ ...societeForm, mentionLegale: e.target.value })} className="input-field" rows={2} placeholder="Ex : Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation." />
+                    </div>
+                  </div>
+
                   <div className="flex justify-end"><button type="submit" disabled={savingSociete} className="btn-primary disabled:opacity-50">{savingSociete ? 'Enregistrement...' : 'Enregistrer'}</button></div>
                 </form>
               </div>

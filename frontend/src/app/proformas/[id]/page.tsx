@@ -65,7 +65,7 @@ export default function ProformaDetailPage() {
       clientEmail: proforma.client?.email || undefined,
       clientNcc: proforma.client?.ncc || undefined,
       clientPays: proforma.client?.pays || undefined,
-      dossierNumero: d?.numero,
+      dossierNumero: d?.numeroPhysique || d?.numero,
       titre: proforma.titre,
       fobUnitaire: proforma.fobUnitaire ? Number(proforma.fobUnitaire) : undefined,
       fretUnitaire: proforma.fretUnitaire ? Number(proforma.fretUnitaire) : undefined,
@@ -273,7 +273,7 @@ export default function ProformaDetailPage() {
               </div>
               <div className="pv-meta-block">
                 <p className="pv-meta-k">Détails</p>
-                {d?.numero && <p className="pv-meta-v">Dossier : <strong>{d.numero}</strong></p>}
+                {d?.numero && <p className="pv-meta-v">Dossier : <strong>{d.numeroPhysique || d.numero}</strong></p>}
                 <p className="pv-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</p>
               </div>
             </div>
@@ -353,7 +353,7 @@ export default function ProformaDetailPage() {
       <style jsx global>{`
         .pv-sheet-wrap { --pv-ink:#241536; --pv-ink-soft:#5d4a72; --pv-gold:#7322ab; --pv-gold-soft:#f0e6fa; --pv-paper:#FBF9F4; --pv-line:#ded2ea; --pv-dim:#9a8bb0;
           background:#0C0812; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; }
-        .pv-sheet { width:100%; max-width:210mm; background:var(--pv-paper); color:var(--pv-ink); padding:26px 28px; font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
+        .pv-sheet { width:100%; max-width:210mm; background:var(--pv-paper); color:var(--pv-ink); padding:26px 28px; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
         .pv-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pv-ink); padding-bottom:14px; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
         .pv-company-name { font-size:22px; font-weight:700; letter-spacing:.01em; margin:0; }
         .pv-company-sub { font-size:11.5px; color:var(--pv-ink-soft); margin:2px 0 0; }

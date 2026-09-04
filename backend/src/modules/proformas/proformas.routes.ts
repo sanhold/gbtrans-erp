@@ -70,7 +70,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         orderBy: { dateProforma: 'desc' },
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
-          dossier: { select: { id: true, numero: true } },
+          dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           _count: { select: { lignes: true } },
         },
       }),
@@ -108,7 +108,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
         client: true,
         dossier: {
           select: {
-            id: true, numero: true, nature: true, valeurFOB: true, fret: true, assurance: true, valeurCAF: true, designation: true,
+            id: true, numero: true, numeroPhysique: true, nature: true, valeurFOB: true, fret: true, assurance: true, valeurCAF: true, designation: true,
             numeroBL: true, navire: true, portOrigine: true, portDestination: true, incoterm: true,
             poidsBrut: true, volume: true, nombreColis: true,
             agent: { select: { nom: true, prenom: true } },
