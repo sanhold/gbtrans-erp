@@ -80,8 +80,8 @@ export default function EtatFacturationDossierPage() {
       const element = document.createElement('div');
       element.style.cssText = "width:210mm;padding:12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;";
       element.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #5d1590;padding-bottom:10px;margin-bottom:14px;">
-          <div><div style="font-weight:800;font-size:16px;color:#5d1590;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:10px;margin-bottom:14px;">
+          <div><div style="font-weight:800;font-size:16px;color:#12314f;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
           <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">ÉTAT DU DOSSIER</div><div style="font-size:10px;color:#666;">${dossier.numero}</div></div>
         </div>
         <table style="width:100%;font-size:10px;margin-bottom:14px;">
@@ -90,7 +90,7 @@ export default function EtatFacturationDossierPage() {
           <tr><td style="padding:2px 0;color:#666;">Nature</td><td>${dossier.nature || '-'}</td></tr>
         </table>
 
-        <div style="font-weight:800;font-size:11px;background:#f0e6fa;padding:5px 8px;margin-bottom:4px;">FACTURES (${factures.length})</div>
+        <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:4px;">FACTURES (${factures.length})</div>
         <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:12px;">
           <thead><tr>
             <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">N°</th>
@@ -118,7 +118,7 @@ export default function EtatFacturationDossierPage() {
           </tbody>
         </table>
 
-        <div style="font-weight:800;font-size:11px;background:#f0e6fa;padding:5px 8px;margin-bottom:4px;">DÉPENSES (${depenses.length})</div>
+        <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:4px;">DÉPENSES (${depenses.length})</div>
         <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:12px;">
           <thead><tr>
             <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">N°</th>
@@ -139,7 +139,7 @@ export default function EtatFacturationDossierPage() {
           </tbody>
         </table>
 
-        <div style="font-weight:800;font-size:11px;background:#f0e6fa;padding:5px 8px;margin-bottom:4px;">PAIEMENTS (${paiements.length})</div>
+        <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:4px;">PAIEMENTS (${paiements.length})</div>
         <table style="width:100%;border-collapse:collapse;font-size:9.5px;">
           <thead><tr>
             <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">N°</th>

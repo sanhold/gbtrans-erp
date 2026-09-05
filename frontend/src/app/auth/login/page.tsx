@@ -75,8 +75,8 @@ export default function LoginPage() {
           </svg>
         </div>
         <div className="relative z-10 text-center">
-          <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mx-auto mb-8">
-            <span className="text-white font-bold text-4xl">GB</span>
+          <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mx-auto mb-8 p-2">
+            <img src="/brand/logo-icon.png" alt="GBTrans" className="w-full h-full rounded-2xl" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">GBTRANS ERP</h1>
           <p className="text-xl text-white/80 mb-2">Bureau de Transit</p>
@@ -106,9 +106,7 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8 bg-surface-50 dark:bg-surface-900">
         <div className="w-full max-w-md">
           <div className="lg:hidden text-center mb-10">
-            <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-white font-bold text-2xl">GB</span>
-            </div>
+            <img src="/brand/logo-icon.png" alt="GBTrans" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">GBTRANS ERP</h1>
           </div>
 

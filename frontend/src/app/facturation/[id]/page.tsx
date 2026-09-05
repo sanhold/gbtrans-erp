@@ -28,7 +28,7 @@ const MODE_PAIEMENT_LABELS: Record<string, string> = {
   WAVE: 'Wave', MOOV_MONEY: 'Moov Money', CARTE_BANCAIRE: 'Carte bancaire', COMPENSATION: 'Compensation',
 };
 const CI_FLAG = (
-  <span className="inline-flex ml-1.5 align-middle shadow-[0_0_0_1px_#e3ddee] rounded-[1px] overflow-hidden">
+  <span className="inline-flex ml-1.5 align-middle shadow-[0_0_0_1px_#dbe2e8] rounded-[1px] overflow-hidden">
     <span className="w-2 h-2.5 bg-[#f77f00]" />
     <span className="w-2 h-2.5 bg-white" />
     <span className="w-2 h-2.5 bg-[#009e60]" />

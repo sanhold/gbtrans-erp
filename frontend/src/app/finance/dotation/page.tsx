@@ -111,15 +111,15 @@ export default function DotationPage() {
       const element = document.createElement('div');
       element.style.cssText = "width:210mm;padding:20mm;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;";
       element.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #5d1590;padding-bottom:12px;margin-bottom:20px;">
-          <div><div style="font-weight:800;font-size:16px;color:#5d1590;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:12px;margin-bottom:20px;">
+          <div><div style="font-weight:800;font-size:16px;color:#12314f;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
           <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">REÇU DE DOTATION</div><div style="font-size:10px;color:#666;">${d.numero}</div></div>
         </div>
         <table style="width:100%;font-size:11px;margin-bottom:24px;">
           <tr><td style="padding:5px 0;color:#666;width:160px;">Date</td><td style="font-weight:700;">${new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td></tr>
           <tr><td style="padding:5px 0;color:#666;">Agent</td><td style="font-weight:700;">${d.agent?.nom} ${d.agent?.prenom}</td></tr>
           <tr><td style="padding:5px 0;color:#666;">Motif</td><td>${d.motif || '-'}</td></tr>
-          <tr><td style="padding:5px 0;color:#666;">Montant alloué</td><td style="font-weight:800;font-size:14px;color:#5d1590;">${fmt(d.montant)} XOF</td></tr>
+          <tr><td style="padding:5px 0;color:#666;">Montant alloué</td><td style="font-weight:800;font-size:14px;color:#12314f;">${fmt(d.montant)} XOF</td></tr>
         </table>
         <div style="display:flex;justify-content:space-between;margin-top:60px;">
           <div style="text-align:center;width:220px;"><div style="font-size:10px;color:#666;margin-bottom:40px;">Signature de l&apos;agent</div><div style="border-top:1px solid #333;padding-top:4px;">${d.agent?.nom} ${d.agent?.prenom}</div></div>
@@ -143,8 +143,8 @@ export default function DotationPage() {
       const element = document.createElement('div');
       element.style.cssText = "width:210mm;padding:15mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;";
       element.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #5d1590;padding-bottom:10px;margin-bottom:16px;">
-          <div><div style="font-weight:800;font-size:16px;color:#5d1590;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:10px;margin-bottom:16px;">
+          <div><div style="font-weight:800;font-size:16px;color:#12314f;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
           <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">ÉTAT D&apos;UTILISATION</div><div style="font-size:10px;color:#666;">${d.numero}</div></div>
         </div>
         <table style="width:100%;font-size:10px;margin-bottom:14px;">
@@ -156,7 +156,7 @@ export default function DotationPage() {
           <div style="flex:1;border:1px solid #eee;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#666;">UTILISÉ</div><div style="font-weight:800;font-size:13px;color:#b91c1c;">${fmt(d.montantUtilise)}</div></div>
           <div style="flex:1;border:1px solid #eee;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#666;">RESTANT</div><div style="font-weight:800;font-size:13px;color:#15803d;">${fmt(d.montantRestant)}</div></div>
         </div>
-        <div style="font-weight:800;font-size:11px;background:#f0e6fa;padding:5px 8px;margin-bottom:4px;">DÉPENSES IMPUTÉES (${depenses.length})</div>
+        <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:4px;">DÉPENSES IMPUTÉES (${depenses.length})</div>
         <table style="width:100%;border-collapse:collapse;font-size:9.5px;">
           <thead><tr>
             <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">N°</th>

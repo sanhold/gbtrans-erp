@@ -125,7 +125,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { clientId, dossierId, titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes } = req.body;
+    const { clientId, dossierId, titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes, afficherSignature } = req.body;
 
     if (dossierId) {
       const dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
@@ -173,6 +173,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         valeurCAF: valeurCAF || null,
         montantHT, montantTVA, montantTTC: montantHT + montantTVA,
         observations,
+        afficherSignature: !!afficherSignature,
         lignes: { create: lignesData },
       },
       include: { lignes: { orderBy: { ordre: 'asc' } }, client: { select: { raisonSociale: true } } },
@@ -183,7 +184,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const { titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes } = req.body;
+    const { titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes, afficherSignature } = req.body;
 
     if (lignes) {
       await prisma.ligneProforma.deleteMany({ where: { proformaId: req.params.id } });
@@ -210,6 +211,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       where: { id: req.params.id },
       data: {
         titre, objet, observations,
+        afficherSignature: afficherSignature != null ? !!afficherSignature : undefined,
         fobUnitaire: fobUnitaire != null ? parseFloat(fobUnitaire) : undefined,
         fretUnitaire: fretUnitaire != null ? parseFloat(fretUnitaire) : undefined,
         assurance: assurance != null ? parseFloat(assurance) : undefined,

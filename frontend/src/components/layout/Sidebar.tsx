@@ -127,12 +127,7 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       >
         {/* Brand */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-5">
-          <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-6 9 6v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <path d="M9 21V12h6v9" />
-            </svg>
-          </div>
+          <img src="/brand/logo-icon.png" alt="GBTrans" className="w-11 h-11 rounded-xl flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="font-display font-extrabold text-[19px] tracking-tight leading-none">GBTrans</div>
             <div className="text-[11px] text-white/60 mt-0.5 font-medium">Gestion Bureau de Transit</div>

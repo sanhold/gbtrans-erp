@@ -1,29 +1,16 @@
 'use client';
 
-import { Fragment, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
-import { downloadPDF, printDocument, generateDocQrDataUrl, type DocData } from '@/lib/generatePDF';
-
-const CAT_COLORS: Record<string, string> = {
-  'DOUANE': '#059669', 'DOUANE & COMPAGNIE': '#059669',
-  'DEBOURS DOUANE': '#0d9488', 'DEBOURS DOUANE & COMPAGNIE': '#0d9488',
-  'DOUANE ELIBU-NOE-E': '#65a30d',
-  'COMPAGNIE MARITIME': '#2563eb',
-  'FRAIS PORTUAIRES': '#0891b2',
-  'GUICHET UNIQUE': '#4f46e5', 'GUICHET UNIQUE/IMMATRICULATION': '#4f46e5',
-  'EXPORT ET FRET': '#7c3aed',
-  'TRANSPORT': '#9333ea',
-  'PENALITES PORTUAIRES': '#dc2626',
-  'AUTRES FRAIS': '#d97706',
-  'DIVERS': '#6b7280',
-};
+import { downloadPDF, printDocument, type DocData } from '@/lib/generatePDF';
+import { useAuthStore } from '@/stores/authStore';
 
 const CI_FLAG = (
-  <span className="inline-flex ml-1.5 align-middle shadow-[0_0_0_1px_#e3ddee] rounded-[1px] overflow-hidden">
+  <span className="inline-flex ml-1.5 align-middle shadow-[0_0_0_1px_#dbe2e8] rounded-[1px] overflow-hidden">
     <span className="w-2 h-2.5 bg-[#f77f00]" />
     <span className="w-2 h-2.5 bg-white" />
     <span className="w-2 h-2.5 bg-[#009e60]" />
@@ -40,7 +27,9 @@ export default function ProformaDetailPage() {
   const [transforming, setTransforming] = useState(false);
   const [validating, setValidating] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [branding, setBranding] = useState<any>(null);
+  const { hasPermission } = useAuthStore();
+  const canImprimer = hasPermission('PROFORMAS:IMPRIMER');
 
   const load = useCallback(async () => {
     try {
@@ -51,6 +40,7 @@ export default function ProformaDetailPage() {
   }, [params.id, router]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.get('/parametres/societe').then(r => setBranding(r.data.data)).catch(() => {}); }, []);
 
   const buildDocData = useCallback((): DocData | null => {
     if (!proforma) return null;
@@ -67,9 +57,11 @@ export default function ProformaDetailPage() {
       clientPays: proforma.client?.pays || undefined,
       dossierNumero: d?.numeroPhysique || d?.numero,
       titre: proforma.titre,
+      afficherSignature: !!proforma.afficherSignature,
       fobUnitaire: proforma.fobUnitaire ? Number(proforma.fobUnitaire) : undefined,
       fretUnitaire: proforma.fretUnitaire ? Number(proforma.fretUnitaire) : undefined,
       assurance: proforma.assurance ? Number(proforma.assurance) : undefined,
+      fraisDivers: proforma.fraisDivers ? Number(proforma.fraisDivers) : undefined,
       nombreUnites: proforma.nombreUnites,
       valeurCAF: proforma.valeurCAF ? Number(proforma.valeurCAF) : undefined,
       montantHT: Number(proforma.montantHT),
@@ -86,11 +78,6 @@ export default function ProformaDetailPage() {
     };
   }, [proforma]);
 
-  useEffect(() => {
-    const data = buildDocData();
-    if (!data) return;
-    generateDocQrDataUrl(data).then(setQrDataUrl).catch(() => {});
-  }, [buildDocData]);
 
   const handleValider = async () => {
     if (!confirm('Valider cette proforma ? Elle passera en attente de facturation (aucune facture ne sera créée pour l\'instant).')) return;
@@ -134,6 +121,7 @@ export default function ProformaDetailPage() {
   };
 
   const handleDownloadPDF = () => {
+    if (!canImprimer) { toast.error('Vous n\'avez pas la permission d\'imprimer/télécharger ce document'); return; }
     const data = buildDocData();
     if (!data) return;
     downloadPDF(data);
@@ -141,6 +129,7 @@ export default function ProformaDetailPage() {
   };
 
   const handlePrint = async () => {
+    if (!canImprimer) { toast.error('Vous n\'avez pas la permission d\'imprimer/télécharger ce document'); return; }
     const data = buildDocData();
     if (!data) return;
     const ok = await printDocument(data);
@@ -162,6 +151,17 @@ export default function ProformaDetailPage() {
   const totalTVA = Number(proforma.montantTVA);
   const totalTTC = Number(proforma.montantTTC);
   const d = proforma.dossier;
+
+  const brand = {
+    nom: branding?.raisonSociale || 'GBTRANS SARL',
+    slogan: branding?.slogan || 'Transit · Douane · Logistique',
+    adresse: branding?.adresse || "Cocody Angré 7ème Tranche, Abidjan — Côte d'Ivoire",
+    telephone: branding?.telephone || branding?.mobile || '+225 27 20 00 00 00',
+    email: branding?.email || 'contact@gbtrans.ci',
+    rccm: branding?.rccm || 'CI-ABJ-2018-B-12345',
+    ncc: branding?.ncc || '1812345 Z',
+    ville: branding?.ville || 'Abidjan',
+  };
 
   const clientInfoRows = [
     ['Nom', proforma.client?.raisonSociale, true],
@@ -197,11 +197,11 @@ export default function ProformaDetailPage() {
                 Modifier
               </button>
             )}
-            <button onClick={handleDownloadPDF} className="btn-primary">
+            <button onClick={handleDownloadPDF} disabled={!canImprimer} title={!canImprimer ? 'Permission requise : PROFORMAS:IMPRIMER' : undefined} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
               <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Télécharger PDF
             </button>
-            <button onClick={handlePrint} className="btn-secondary">
+            <button onClick={handlePrint} disabled={!canImprimer} title={!canImprimer ? 'Permission requise : PROFORMAS:IMPRIMER' : undefined} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed">
               <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
               Imprimer
             </button>
@@ -238,31 +238,47 @@ export default function ProformaDetailPage() {
           <div className="pv-sheet">
             {/* Header */}
             <div className="pv-head">
-              <div>
-                <p className="pv-company-name">GBTRANS SARL</p>
-                <p className="pv-company-sub">Transit · Douane · Logistique</p>
-                <div className="pv-company-addr">
-                  <p>Cocody Angré 7ème Tranche, Abidjan — Côte d&apos;Ivoire</p>
-                  <p>+225 27 20 00 00 00 &nbsp;·&nbsp; contact@gbtrans.ci</p>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                {branding?.logo && <img src={branding.logo} alt={brand.nom} style={{ width: 44, height: 44, objectFit: 'contain', flexShrink: 0 }} />}
+                <div>
+                  <p className="pv-company-name">{brand.nom}</p>
+                  <p className="pv-company-sub">{brand.slogan}</p>
+                  <div className="pv-company-addr">
+                    <p>{brand.adresse}</p>
+                    <p>{brand.telephone} &nbsp;·&nbsp; {brand.email}</p>
+                  </div>
                 </div>
               </div>
               <div className="pv-title-block">
                 <p className="pv-doc-label">FACTURE PROFORMA</p>
                 <p className="pv-doc-num">N° <strong>{proforma.numero}</strong></p>
+                {d?.numero && <p className="pv-doc-num">Dossier : <strong>{d.numeroPhysique || d.numero}</strong></p>}
                 <p className="pv-doc-num">Date : {new Date(proforma.dateProforma).toLocaleDateString('fr-FR')}</p>
-                {qrDataUrl && (
-                  <div className="flex justify-end mt-2">
-                    <div className="text-center">
-                      <img src={qrDataUrl} alt="QR code de vérification" className="w-14 h-14 border pv-qr-border p-0.5 bg-white" />
-                      <p className="pv-qr-label">Vérifier le document</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* DÉTAILS / CLIENT */}
+            {/* FOB/FRET + CLIENT */}
             <div className="pv-meta-grid">
+              {(proforma.fobUnitaire || proforma.fretUnitaire || proforma.assurance || proforma.valeurCAF) ? (
+                <div className="pv-fob-block">
+                  <table className="pv-fob-table">
+                    <tbody>
+                      <tr>
+                        <td>FOB (Unitaire)</td><td className="pv-num">{fmt(proforma.fobUnitaire)}</td>
+                        <td>Frais divers</td><td className="pv-num">{fmt(proforma.fraisDivers)}</td>
+                      </tr>
+                      <tr>
+                        <td>FRET (Unitaire)</td><td className="pv-num">{fmt(proforma.fretUnitaire)}</td>
+                        <td>Nbre unités</td><td className="pv-num">{proforma.nombreUnites || 1}</td>
+                      </tr>
+                      <tr>
+                        <td>Assurance</td><td className="pv-num">{fmt(proforma.assurance)}</td>
+                        <td className="pv-fob-strong">Valeur CAF</td><td className="pv-num pv-fob-strong">{fmt(proforma.valeurCAF)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
               <div className="pv-meta-block">
                 <p className="pv-meta-k">Adressée à</p>
                 {clientInfoRows.map(([label, value]) => (
@@ -270,10 +286,6 @@ export default function ProformaDetailPage() {
                     {value}{label === 'Pays' && isPaysCI ? CI_FLAG : null}
                   </p>
                 ))}
-              </div>
-              <div className="pv-meta-block">
-                <p className="pv-meta-k">Détails</p>
-                {d?.numero && <p className="pv-meta-v">Dossier : <strong>{d.numeroPhysique || d.numero}</strong></p>}
                 <p className="pv-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</p>
               </div>
             </div>
@@ -281,78 +293,75 @@ export default function ProformaDetailPage() {
             {proforma.titre && <div className="pv-titre">{proforma.titre}</div>}
 
             {/* Sections par catégorie */}
-            {groupedLignes.map(group => {
-              const catColor = CAT_COLORS[group.categorie] || '#7322ab';
-              return (
-                <div key={group.categorie} className="pv-section">
-                  <div className="pv-section-head" style={{ background: catColor }}>{group.categorie}</div>
-                  <table className="pv-items">
-                    <thead>
-                      <tr>
-                        <th className="pv-numcol">N°</th>
-                        <th>Désignation</th>
-                        <th className="pv-num pv-montantcol">Montant</th>
+            <table className="pv-items">
+              <thead>
+                <tr>
+                  <th className="pv-numcol">N°</th>
+                  <th>Désignation</th>
+                  <th className="pv-num pv-montantcol">Montant</th>
+                </tr>
+              </thead>
+              {groupedLignes.map(group => (
+                <tbody key={group.categorie}>
+                  <tr><td colSpan={3} className="pv-section-head">{group.categorie}</td></tr>
+                  {group.lignes.map((l: any) => {
+                    globalIndex++;
+                    return (
+                      <tr key={l.id}>
+                        <td className="pv-numcol">{globalIndex}</td>
+                        <td>{l.designation}{l.estTVA && <span className="pv-tva-badge">TVA</span>}</td>
+                        <td className="pv-num">{Number(l.prixUnitaire) > 0 ? fmt(l.prixUnitaire) : ''}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {group.lignes.map((l: any) => {
-                        globalIndex++;
-                        return (
-                          <tr key={l.id}>
-                            <td className="pv-numcol">{globalIndex}</td>
-                            <td>{l.designation}{l.estTVA && <span className="pv-tva-badge" style={{ borderColor: catColor, color: catColor }}>TVA</span>}</td>
-                            <td className="pv-num">{Number(l.prixUnitaire) > 0 ? fmt(l.prixUnitaire) : ''}</td>
-                          </tr>
-                        );
-                      })}
-                      <tr className="pv-subtotal-row" style={{ borderBottomColor: catColor }}>
-                        <td colSpan={2}>Sous-total {group.categorie}</td>
-                        <td className="pv-num">{fmt(group.sousTotal)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
+                    );
+                  })}
+                  <tr className="pv-subtotal-row">
+                    <td colSpan={2}>Sous-total {group.categorie}</td>
+                    <td className="pv-num">{fmt(group.sousTotal)}</td>
+                  </tr>
+                </tbody>
+              ))}
+            </table>
 
             {/* Totaux */}
-            <div className="pv-totals">
-              <div className="pv-trow"><span>Total HT</span><span>{fmt(totalHT)}</span></div>
-              <div className="pv-trow"><span>Total TVA</span><span>{fmt(totalTVA)}</span></div>
-              <div className="pv-trow pv-grand"><span>Total Général</span><span>{fmt(totalTTC)}</span></div>
+            <div className="pv-bottom-row">
+              <div className="pv-lettres">
+                <p className="pv-meta-k">Arrêtée à la présente facture à la somme de :</p>
+                <p className="pv-lettres-text">{montantEnLettres(totalTTC)}</p>
+              </div>
+              <table className="pv-totals-table">
+                <tbody>
+                  <tr><td>TOTAL HT</td><td className="pv-num">{fmt(totalHT)}</td></tr>
+                  <tr><td>TOTAL TVA</td><td className="pv-num">{fmt(totalTVA)}</td></tr>
+                  <tr className="pv-grand"><td>TOTAL TTC</td><td className="pv-num">{fmt(totalTTC)}</td></tr>
+                </tbody>
+              </table>
             </div>
 
-            <div className="pv-hors">
-              <strong>HORS :</strong> Frais de dépotage, d&apos;expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
-            </div>
-
-            <div className="pv-lettres">
-              <p className="pv-meta-k">Montant arrêté à la somme de</p>
-              <p className="pv-lettres-text">{montantEnLettres(totalTTC)}</p>
-            </div>
+            {proforma.afficherSignature && (
+              <div className="pv-signature-row">
+                <div className="pv-signature-box">
+                  {branding?.signature ? <img src={branding.signature} alt="Signature" className="pv-signature-img" /> : <div className="pv-signature-placeholder" />}
+                  <div className="pv-signature-label">Le Responsable</div>
+                </div>
+              </div>
+            )}
 
             {proforma.observations && (
               <div className="pv-obs"><p className="pv-meta-k">Observations</p><p className="pv-obs-text">{proforma.observations}</p></div>
             )}
 
-            {/* Signature */}
-            <div className="pv-sign">
-              Fait à Abidjan
-              <div className="pv-sign-line">GBTRANS SARL</div>
-            </div>
-
             {/* Footer légal */}
             <div className="pv-footer">
-              <p>Facture proforma — non valable pour dédouanement. Établie sous réserve d&apos;acceptation. Règlement par virement bancaire à l&apos;ordre de GBTRANS SARL.</p>
-              <p className="mt-1">GBTRANS SARL — Cocody Angré 7ème Tranche, Abidjan, Côte d&apos;Ivoire — RCCM CI-ABJ-2018-B-12345 — CC 1812345 Z — contact@gbtrans.ci</p>
+              <p>{branding?.mentionLegale || `Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation. Règlement par virement bancaire à l'ordre de ${brand.nom}.`}</p>
+              <p className="mt-1">{brand.nom} — {brand.adresse} — RCCM {brand.rccm} — CC {brand.ncc} — {brand.email}</p>
             </div>
           </div>
         </div>
       </div>
 
       <style jsx global>{`
-        .pv-sheet-wrap { --pv-ink:#241536; --pv-ink-soft:#5d4a72; --pv-gold:#7322ab; --pv-gold-soft:#f0e6fa; --pv-paper:#FBF9F4; --pv-line:#ded2ea; --pv-dim:#9a8bb0;
-          background:#0C0812; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; }
+        .pv-sheet-wrap { --pv-ink:#16232e; --pv-ink-soft:#56626f; --pv-gold:#e8821e; --pv-gold-soft:#fdf1e3; --pv-paper:#FFFFFF; --pv-line:#dbe2e8; --pv-dim:#93a1ab;
+          background:#0a1622; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; }
         .pv-sheet { width:100%; max-width:210mm; background:var(--pv-paper); color:var(--pv-ink); padding:26px 28px; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
         .pv-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pv-ink); padding-bottom:14px; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
         .pv-company-name { font-size:22px; font-weight:700; letter-spacing:.01em; margin:0; }
@@ -366,42 +375,52 @@ export default function ProformaDetailPage() {
         .pv-qr-border { border-color:var(--pv-line); border-radius:3px; }
         .pv-qr-label { font-size:7.5px; color:var(--pv-dim); margin-top:2px; }
 
-        .pv-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
-        .pv-meta-block { border:1px solid var(--pv-line); padding:10px 12px; }
-        .pv-meta-k { font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--pv-gold); margin:0 0 6px; font-weight:700; }
-        .pv-meta-v { font-size:12.5px; margin:1px 0; }
+        .pv-meta-grid { display:flex; gap:10px; margin-bottom:14px; align-items:stretch; }
+        .pv-meta-block { flex:1; border:1px solid var(--pv-line); padding:9px 11px; }
+        .pv-meta-k { font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:var(--pv-gold); margin:0 0 6px; font-weight:700; }
+        .pv-meta-v { font-size:12px; margin:1px 0; }
         .pv-meta-strong { font-weight:700; }
-        .pv-meta-dim { color:#8b93ad; font-size:10.5px; margin-top:4px; }
+        .pv-meta-dim { color:#8b93ad; font-size:9.5px; margin-top:4px; }
 
-        .pv-titre { background:var(--pv-gold-soft); padding:10px 12px; margin-bottom:18px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-left:3px solid var(--pv-gold); color:var(--pv-ink); }
+        .pv-fob-block { flex:1.2; border:1px solid var(--pv-line); padding:6px 9px; }
+        .pv-fob-table { width:100%; font-size:10px; color:var(--pv-ink-soft); border-collapse:collapse; }
+        .pv-fob-table td { padding:2px 4px; }
+        .pv-fob-table .pv-num { text-align:right; font-weight:700; font-family:'Courier New',monospace; color:var(--pv-ink); }
+        .pv-fob-strong { font-weight:700; color:var(--pv-gold) !important; }
 
-        .pv-section { margin-bottom:16px; }
-        .pv-section-head { color:#fff; padding:6px 10px; font-size:11.5px; letter-spacing:.03em; font-weight:700; }
-        table.pv-items { width:100%; border-collapse:collapse; font-size:12px; }
+        .pv-titre { background:var(--pv-gold-soft); padding:8px 11px; margin-bottom:14px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-left:3px solid var(--pv-gold); color:var(--pv-ink); }
+
+        .pv-section-head { color:var(--pv-ink); padding:6px 10px; font-size:10px; letter-spacing:.03em; font-weight:700; text-align:left; border-top:1px solid var(--pv-line); border-bottom:1px solid var(--pv-line); }
+        table.pv-items { width:100%; border-collapse:collapse; border:1px solid var(--pv-line); font-size:12px; }
         table.pv-items th { text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--pv-ink-soft); border-bottom:1px solid var(--pv-line); padding:6px; }
         table.pv-items td { padding:6px; border-bottom:1px solid var(--pv-line); vertical-align:middle; }
         .pv-numcol { width:30px; text-align:center; color:var(--pv-dim); font-size:10.5px; }
         .pv-montantcol { width:120px; }
         table.pv-items .pv-num { text-align:right; white-space:nowrap; font-family:'Courier New',monospace; font-weight:700; }
-        .pv-tva-badge { font-size:8.5px; border:1px solid; border-radius:8px; padding:0 6px; margin-left:7px; }
-        .pv-subtotal-row td { font-weight:700; color:var(--pv-ink); background:rgba(174,124,31,.06); border-bottom:2px solid; }
+        .pv-tva-badge { font-size:7.5px; color:var(--pv-ink-soft); border:1px solid var(--pv-dim); border-radius:8px; padding:1px 6px; margin-left:6px; white-space:nowrap; }
+        .pv-subtotal-row td { font-weight:700; color:var(--pv-ink); border-top:1px solid var(--pv-line); border-bottom:1px solid var(--pv-line); }
         .pv-subtotal-row td:first-child { text-align:right; font-size:10.5px; }
 
-        .pv-totals { margin-left:auto; width:270px; margin-top:10px; margin-bottom:18px; }
-        .pv-trow { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; border-bottom:1px solid var(--pv-line); }
-        .pv-trow.pv-grand { border-bottom:none; border-top:2px solid var(--pv-ink); margin-top:4px; padding-top:8px; font-size:16px; font-weight:700; color:var(--pv-ink); }
+        .pv-bottom-row { display:flex; gap:12px; margin-top:8px; margin-bottom:16px; align-items:stretch; }
+        .pv-totals-table { width:230px; border:1px solid var(--pv-line); border-collapse:collapse; font-size:12px; }
+        .pv-totals-table td { padding:5px 9px; border-bottom:1px solid var(--pv-line); }
+        .pv-totals-table td:first-child { color:var(--pv-ink-soft); }
+        .pv-totals-table .pv-num { text-align:right; font-weight:700; font-family:'Courier New',monospace; }
+        .pv-totals-table tr.pv-grand td { border-bottom:none; font-weight:800; font-size:14px; color:var(--pv-ink); padding-top:6px; padding-bottom:6px; }
 
-        .pv-hors { font-size:10px; color:var(--pv-ink-soft); border:1px solid var(--pv-line); padding:9px 11px; background:rgba(174,124,31,.05); line-height:1.55; margin-bottom:16px; }
-        .pv-hors strong { color:var(--pv-ink); }
+        .pv-signature-row { display:flex; justify-content:flex-end; margin-top:8px; margin-bottom:16px; }
+        .pv-signature-box { text-align:center; width:160px; }
+        .pv-signature-img { max-width:140px; max-height:70px; object-fit:contain; }
+        .pv-signature-placeholder { height:70px; }
+        .pv-signature-label { border-top:1px solid var(--pv-line); padding-top:4px; font-size:9px; color:var(--pv-ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
 
-        .pv-lettres { border:1px solid var(--pv-line); padding:10px 12px; margin-bottom:16px; }
+
+        .pv-lettres { flex:1; border:1px solid var(--pv-line); padding:10px 12px; }
         .pv-lettres-text { font-style:italic; font-weight:700; color:var(--pv-ink); font-size:12px; line-height:1.5; margin:2px 0 0; }
 
         .pv-obs { border-top:1px solid var(--pv-line); padding-top:10px; margin-bottom:12px; }
         .pv-obs-text { font-size:12px; color:var(--pv-ink-soft); margin-top:4px; }
 
-        .pv-sign { margin-top:22px; text-align:right; font-size:12px; color:var(--pv-ink-soft); }
-        .pv-sign-line { margin-top:34px; border-top:1px solid var(--pv-ink-soft); display:inline-block; padding-top:4px; width:200px; font-weight:700; color:var(--pv-ink); }
 
         .pv-footer { border-top:1px solid var(--pv-line); margin-top:22px; padding-top:12px; text-align:center; font-size:9px; color:var(--pv-dim); line-height:1.6; }
       `}</style>

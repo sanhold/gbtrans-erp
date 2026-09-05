@@ -1,14 +1,14 @@
 'use client';
 
 const BRAND = {
-  primary: '#5d1590',
-  primaryDark: '#3b0a63',
+  primary: '#12314f',
+  primaryDark: '#0c2035',
   accent: '#00b884',
-  ink: '#221730',
-  slate: '#5f5670',
-  line: '#e3ddee',
-  bgSoft: '#f8f5fc',
-  greyBg: '#eeeaf4',
+  ink: '#16232e',
+  slate: '#56626f',
+  line: '#dbe2e8',
+  bgSoft: '#f4f7fa',
+  greyBg: '#eaeef2',
 };
 
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';

@@ -53,14 +53,14 @@ function brandIdentity(branding?: SocieteBranding) {
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
 
 const BRAND = {
-  primary: '#5d1590',
-  primaryDark: '#3b0a63',
-  accent: '#00b884',
-  ink: '#221730',
-  slate: '#5f5670',
-  line: '#e3ddee',
-  bgSoft: '#f8f5fc',
-  greyBg: '#eeeaf4',
+  primary: '#12314f',
+  primaryDark: '#0c2035',
+  accent: '#e8821e',
+  ink: '#16232e',
+  slate: '#56626f',
+  line: '#dbe2e8',
+  bgSoft: '#f4f7fa',
+  greyBg: '#eaeef2',
 };
 
 const CAT_ICONS: Record<string, string> = {
@@ -115,9 +115,11 @@ interface DocData {
   clientPays?: string;
   dossierNumero?: string;
   titre?: string;
+  afficherSignature?: boolean;
   fobUnitaire?: number;
   fretUnitaire?: number;
   assurance?: number;
+  fraisDivers?: number;
   nombreUnites?: number;
   valeurCAF?: number;
   montantHT: number;
@@ -142,7 +144,7 @@ function buildQrText(data: DocData): string {
 }
 
 export async function generateDocQrDataUrl(data: DocData): Promise<string> {
-  return QRCode.toDataURL(buildQrText(data), { margin: 0, width: 200, color: { dark: '#221730', light: '#00000000' } });
+  return QRCode.toDataURL(buildQrText(data), { margin: 0, width: 200, color: { dark: '#16232e', light: '#00000000' } });
 }
 
 function catIcon(path: string, color: string = BRAND.primary): string {
@@ -197,12 +199,6 @@ function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteB
   const legalDisclaimer = branding?.mentionLegale || (data.type === 'PROFORMA'
     ? `Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation. Règlement par virement bancaire à l'ordre de ${brand.nom}.`
     : 'Facture définitive. Toute réclamation doit être formulée sous 8 jours.');
-
-  const horsNote = data.type === 'PROFORMA'
-    ? `<div style="margin-top:10px;font-size:8.5px;color:${BRAND.slate};border:1px solid ${BRAND.line};border-radius:6px;padding:7px 10px;background:${BRAND.bgSoft};">
-        <span style="font-weight:800;color:${BRAND.ink};">HORS :</span> Frais de dépotage, d'expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
-      </div>`
-    : '';
 
   return `
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
@@ -268,8 +264,6 @@ ${(data.fobUnitaire || data.fretUnitaire || data.valeurCAF) ? `<div style="displ
   </table>
 </div>` : ''}
 
-${horsNote}
-
 <div style="display:flex;gap:12px;margin-top:14px;align-items:flex-start;">
   <div style="flex:1;border:1px solid ${BRAND.line};border-radius:6px;background:${BRAND.bgSoft};padding:10px 12px;">
     <div style="color:${BRAND.ink};font-weight:800;font-size:9.5px;letter-spacing:.4px;margin-bottom:4px;">MONTANT ARRÊTÉ À LA SOMME DE :</div>
@@ -305,14 +299,14 @@ ${horsNote}
 }
 
 const PAPER = {
-  ink: '#241536',
-  inkSoft: '#5d4a72',
-  gold: '#7322ab',
-  goldSoft: '#f0e6fa',
-  paper: '#FBF9F4',
-  line: '#ded2ea',
+  ink: '#16232e',
+  inkSoft: '#56626f',
+  gold: '#e8821e',
+  goldSoft: '#fdf1e3',
+  paper: '#FFFFFF',
+  line: '#dbe2e8',
   danger: '#B3492F',
-  dim: '#9a8bb0',
+  dim: '#93a1ab',
 };
 
 function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: SocieteBranding): string {
@@ -320,7 +314,7 @@ function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: Societ
   const totalHT = data.montantHT;
   const totalTVA = data.montantTVA;
   const brand = brandIdentity(branding);
-  const grey = '#f1eef2';
+  const grey = '#eef1f4';
 
   let n = 0;
   let bodyHtml = '';
@@ -337,13 +331,13 @@ function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: Societ
       </tr>`;
     }
     bodyHtml += `
-      <tr><td colspan="3" style="background:${grey};color:${PAPER.ink};padding:5px 6px;font-size:10px;letter-spacing:.03em;font-weight:700;border-top:1px solid ${PAPER.ink};">${cat}</td></tr>
+      <tr><td colspan="3" style="color:${PAPER.ink};padding:5px 6px;font-size:10px;letter-spacing:.03em;font-weight:700;border-top:1px solid ${PAPER.line};border-bottom:1px solid ${PAPER.line};">${cat}</td></tr>
       ${rows}
-      <tr><td colspan="2" style="text-align:right;font-weight:700;color:${PAPER.ink};background:${grey};border-bottom:2px solid ${PAPER.ink};padding:4px 6px;font-size:9.5px;">Sous-total ${cat}</td>
-      <td style="text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};background:${grey};border-bottom:2px solid ${PAPER.ink};padding:4px 6px;font-size:10.5px;">${fmt(sousTotal)}</td></tr>`;
+      <tr><td colspan="2" style="text-align:right;font-weight:700;color:${PAPER.ink};border-top:1px solid ${PAPER.line};border-bottom:1px solid ${PAPER.line};padding:4px 6px;font-size:9.5px;">Sous-total ${cat}</td>
+      <td style="text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};border-top:1px solid ${PAPER.line};border-bottom:1px solid ${PAPER.line};padding:4px 6px;font-size:10.5px;">${fmt(sousTotal)}</td></tr>`;
   }
 
-  const sectionsHtml = `<table style="width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif;">
+  const sectionsHtml = `<table style="width:100%;border-collapse:collapse;border:1px solid ${PAPER.line};font-family:'Segoe UI',Arial,sans-serif;">
     <thead><tr>
       <th style="text-align:center;width:24px;font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:${PAPER.inkSoft};border-bottom:1px solid ${PAPER.line};padding:3px 5px;">N°</th>
       <th style="text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:${PAPER.inkSoft};border-bottom:1px solid ${PAPER.line};padding:3px 5px;">Désignation</th>
@@ -352,7 +346,14 @@ function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: Societ
     <tbody>${bodyHtml}</tbody>
   </table>`;
 
-  const clientLines = [data.client, data.clientAdresse, (data.clientTelephone || data.clientEmail)].filter(Boolean);
+  const clientRows = [
+    ['Nom', data.client],
+    ['Adresse', data.clientAdresse],
+    ['Téléphone', data.clientTelephone],
+    ['Email', data.clientEmail],
+    ['N° Contribuable', data.clientNcc],
+    ['Pays', data.clientPays ? `${data.clientPays}${data.clientPays.toLowerCase().includes('ivoire') ? CI_FLAG : ''}` : undefined],
+  ].filter(([, v]) => v);
 
   return `
 <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${PAPER.ink};padding-bottom:8px;margin-bottom:10px;">
@@ -370,57 +371,59 @@ function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: Societ
   <div style="text-align:right;">
     <div style="font-size:17px;font-weight:700;letter-spacing:.05em;color:${PAPER.ink};">FACTURE PROFORMA</div>
     <div style="font-size:11px;color:${PAPER.gold};font-weight:700;margin-top:2px;">N° ${data.numero}</div>
+    ${data.dossierNumero ? `<div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">Dossier : <strong>${data.dossierNumero}</strong></div>` : ''}
     <div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">Date : ${data.date}</div>
   </div>
 </div>
 
-<div style="display:flex;gap:10px;margin-bottom:10px;">
+<div style="display:flex;gap:10px;margin-bottom:10px;align-items:stretch;">
+  ${(data.fobUnitaire || data.fretUnitaire || data.assurance || data.valeurCAF) ? `<div style="flex:1.2;border:1px solid ${PAPER.line};padding:6px 9px;">
+    <table style="width:100%;font-size:10px;color:${PAPER.inkSoft};font-family:'Segoe UI',Arial,sans-serif;border-collapse:collapse;">
+      <tr>
+        <td style="padding:2px 4px;width:25%;">FOB (Unitaire)</td><td style="padding:2px 4px;width:25%;text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};">${fmt(data.fobUnitaire || 0)}</td>
+        <td style="padding:2px 4px;width:25%;">Frais divers</td><td style="padding:2px 4px;width:25%;text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};">${fmt(data.fraisDivers || 0)}</td>
+      </tr>
+      <tr>
+        <td style="padding:2px 4px;">FRET (Unitaire)</td><td style="padding:2px 4px;text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};">${fmt(data.fretUnitaire || 0)}</td>
+        <td style="padding:2px 4px;">Nbre unités</td><td style="padding:2px 4px;text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};">${data.nombreUnites || 1}</td>
+      </tr>
+      <tr>
+        <td style="padding:2px 4px;">Assurance</td><td style="padding:2px 4px;text-align:right;font-weight:700;font-family:'Courier New',monospace;color:${PAPER.ink};">${fmt(data.assurance || 0)}</td>
+        <td style="padding:2px 4px;font-weight:700;">Valeur CAF</td><td style="padding:2px 4px;text-align:right;font-weight:800;font-family:'Courier New',monospace;color:${PAPER.gold};">${fmt(data.valeurCAF || 0)}</td>
+      </tr>
+    </table>
+  </div>` : ''}
   <div style="flex:1;border:1px solid ${PAPER.line};padding:6px 9px;">
     <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:${PAPER.gold};font-weight:700;margin-bottom:3px;">Adressée à</div>
-    ${clientLines.map((l, i) => `<div style="font-size:11px;padding:0.5px 0;${i === 0 ? 'font-weight:700;' : ''}">${l}</div>`).join('')}
-  </div>
-  <div style="flex:1;border:1px solid ${PAPER.line};padding:6px 9px;">
-    <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:${PAPER.gold};font-weight:700;margin-bottom:3px;">Détails</div>
-    ${data.dossierNumero ? `<div style="font-size:11px;padding:0.5px 0;">Dossier : <strong>${data.dossierNumero}</strong></div>` : ''}
-    <div style="font-size:9.5px;color:#8b93ad;margin-top:2px;">Offre valable 30 jours à compter de la date d'émission.</div>
+    ${clientRows.map(([label, value]) => `<div style="font-size:11px;padding:0.5px 0;${label === 'Nom' ? 'font-weight:700;' : ''}">${value}</div>`).join('')}
+    <div style="font-size:9px;color:#8b93ad;margin-top:4px;">Offre valable 30 jours à compter de la date d'émission.</div>
   </div>
 </div>
 
 ${data.titre ? `<div style="background:${grey};padding:5px 9px;margin-bottom:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;border-left:3px solid ${PAPER.ink};color:${PAPER.ink};">${data.titre}</div>` : ''}
 
-${(data.fobUnitaire || data.fretUnitaire || data.valeurCAF) ? `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-  <table style="font-size:9.5px;color:${PAPER.inkSoft};border:1px solid ${PAPER.line};font-family:'Segoe UI',Arial,sans-serif;">
-    ${data.fobUnitaire ? `<tr><td style="padding:1px 8px;">Fob unitaire</td><td style="padding:1px 8px;font-weight:700;font-family:'Courier New',monospace;">${fmt(data.fobUnitaire)}</td></tr>` : ''}
-    ${data.fretUnitaire ? `<tr><td style="padding:1px 8px;">Fret unitaire</td><td style="padding:1px 8px;font-weight:700;font-family:'Courier New',monospace;">${fmt(data.fretUnitaire)}</td></tr>` : ''}
-    ${data.assurance ? `<tr><td style="padding:1px 8px;">Assurance</td><td style="padding:1px 8px;font-weight:700;font-family:'Courier New',monospace;">${fmt(data.assurance)}</td></tr>` : ''}
-    ${data.valeurCAF ? `<tr><td style="padding:1px 8px;font-weight:700;">Valeur CAF</td><td style="padding:1px 8px;font-weight:800;font-family:'Courier New',monospace;color:${PAPER.gold};">${fmt(data.valeurCAF)}</td></tr>` : ''}
-  </table>
-</div>` : ''}
-
 ${sectionsHtml}
 
-<div style="margin-left:auto;width:250px;margin-top:8px;margin-bottom:10px;font-family:'Segoe UI',Arial,sans-serif;">
-  <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid ${PAPER.line};"><span>Total HT</span><span style="font-family:'Courier New',monospace;">${fmt(totalHT)}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid ${PAPER.line};"><span>Total TVA</span><span style="font-family:'Courier New',monospace;">${fmt(totalTVA)}</span></div>
-  <div style="display:flex;justify-content:space-between;border-top:2px solid ${PAPER.ink};margin-top:2px;padding-top:5px;font-size:14px;font-weight:700;color:${PAPER.ink};"><span>Total Général</span><span style="font-family:'Courier New',monospace;">${fmt(data.montantTTC)}</span></div>
+<div style="display:flex;gap:12px;margin-top:8px;margin-bottom:10px;align-items:stretch;">
+  <div style="flex:1;border:1px solid ${PAPER.line};padding:6px 9px;">
+    <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:${PAPER.gold};font-weight:700;margin-bottom:3px;">Arrêtée à la présente facture à la somme de :</div>
+    <div style="font-style:italic;font-weight:700;color:${PAPER.ink};font-size:10.5px;line-height:1.4;">${montantEnLettres(data.montantTTC)}</div>
+  </div>
+  <table style="width:220px;border:1px solid ${PAPER.line};border-collapse:collapse;font-size:10.5px;font-family:'Segoe UI',Arial,sans-serif;">
+    <tr><td style="padding:5px 9px;color:${PAPER.inkSoft};border-bottom:1px solid ${PAPER.line};">TOTAL HT</td><td style="padding:5px 9px;text-align:right;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid ${PAPER.line};">${fmt(totalHT)}</td></tr>
+    <tr><td style="padding:5px 9px;color:${PAPER.inkSoft};border-bottom:1px solid ${PAPER.line};">TOTAL TVA</td><td style="padding:5px 9px;text-align:right;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid ${PAPER.line};">${fmt(totalTVA)}</td></tr>
+    <tr><td style="padding:6px 9px;color:${PAPER.ink};font-weight:800;font-size:12px;">TOTAL TTC</td><td style="padding:6px 9px;text-align:right;font-weight:800;font-size:12px;font-family:'Courier New',monospace;color:${PAPER.ink};">${fmt(data.montantTTC)}</td></tr>
+  </table>
 </div>
 
-<div style="font-size:9px;color:${PAPER.inkSoft};border:1px solid ${PAPER.line};padding:6px 9px;background:${grey};line-height:1.4;margin-bottom:10px;">
-  <strong style="color:${PAPER.ink};">HORS :</strong> Frais de dépotage, d'expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
-</div>
+${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+  <div style="text-align:center;width:160px;">
+    ${branding?.signature ? `<img src="${branding.signature}" style="max-width:140px;max-height:70px;object-fit:contain;" />` : '<div style="height:70px;"></div>'}
+    <div style="border-top:1px solid ${PAPER.line};padding-top:4px;font-size:9px;color:${PAPER.inkSoft};font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Le Responsable</div>
+  </div>
+</div>` : ''}
 
-<div style="border:1px solid ${PAPER.line};padding:6px 9px;margin-bottom:12px;">
-  <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:${PAPER.gold};font-weight:700;margin-bottom:3px;">Montant arrêté à la somme de</div>
-  <div style="font-style:italic;font-weight:700;color:${PAPER.ink};font-size:10.5px;line-height:1.4;">${montantEnLettres(data.montantTTC)}</div>
-</div>
-
-<div style="text-align:right;font-size:11px;color:${PAPER.inkSoft};">
-  Fait à ${branding?.ville || 'Abidjan'}<br/>
-  ${branding?.signature ? `<img src="${branding.signature}" style="height:32px;object-fit:contain;margin-top:8px;display:inline-block;" />` : ''}
-  <div style="margin-top:${branding?.signature ? '4px' : '24px'};border-top:1px solid ${PAPER.inkSoft};display:inline-block;padding-top:3px;width:170px;">${brand.nom}</div>
-</div>
-
-<div style="text-align:center;font-size:7.5px;color:${PAPER.dim};border-top:1px solid ${PAPER.line};padding-top:6px;margin-top:12px;line-height:1.5;">
+<div style="position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:7.5px;color:${PAPER.dim};border-top:1px solid ${PAPER.line};padding-top:6px;line-height:1.5;">
   ${branding?.mentionLegale || `Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation. Règlement par virement bancaire à l'ordre de ${brand.nom}.`}<br/>
   ${brand.nom} — ${brand.adresseComplete} — RCCM ${brand.rccm} — CC ${brand.ncc} — ${brand.email}
 </div>`;
@@ -429,7 +432,7 @@ ${sectionsHtml}
 function buildElement(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): HTMLDivElement {
   const div = document.createElement('div');
   if (data.type === 'PROFORMA') {
-    div.style.cssText = `width:210mm;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${PAPER.ink};background:${PAPER.paper};`;
+    div.style.cssText = `width:210mm;min-height:293mm;box-sizing:border-box;position:relative;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${PAPER.ink};background:${PAPER.paper};`;
     div.innerHTML = buildProformaHtml(data, qrDataUrl, branding);
     return div;
   }
@@ -478,8 +481,8 @@ export async function printDocument(data: DocData) {
 <style>
   @page { size: A4; margin: 8mm 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Segoe UI',Arial,sans-serif; font-size:11px; color:${isProforma ? PAPER.ink : BRAND.ink}; background:${isProforma ? PAPER.paper : '#fff'}; }
-  @media print { body { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; } }
+  body { font-family:'Segoe UI',Arial,sans-serif; font-size:11px; color:${isProforma ? PAPER.ink : BRAND.ink}; background:${isProforma ? PAPER.paper : '#fff'}; ${isProforma ? 'position:relative;min-height:100vh;' : ''} }
+  @media print { body { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; ${isProforma ? 'min-height:278mm;' : ''} } }
 </style></head>
 <body>${contentHtml}</body></html>`;
 

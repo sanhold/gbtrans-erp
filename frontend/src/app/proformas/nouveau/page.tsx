@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { downloadPDF, type DocData } from '@/lib/generatePDF';
+import { montantEnLettres } from '@/lib/montantEnLettres';
+import { useAuthStore } from '@/stores/authStore';
 import api, { clientsApi, dossiersApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -66,6 +68,8 @@ function NouvelleProformaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sheetRef = useRef<HTMLDivElement>(null);
+  const { hasPermission } = useAuthStore();
+  const canImprimer = hasPermission('PROFORMAS:IMPRIMER');
 
   const [clients, setClients] = useState<any[]>([]);
   const [dossiers, setDossiers] = useState<any[]>([]);
@@ -80,10 +84,16 @@ function NouvelleProformaForm() {
   const [newPrestation, setNewPrestation] = useState({ categorie: 'DOUANE & COMPAGNIE', code: '', designation: '', montantDefaut: '', estTVA: false });
   const [customCategorie, setCustomCategorie] = useState('');
   const [codeTouched, setCodeTouched] = useState(false);
+  const [branding, setBranding] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/parametres/societe').then(r => setBranding(r.data.data)).catch(() => {});
+  }, []);
 
   const [form, setForm] = useState({
     clientId: '', dossierId: searchParams.get('dossierId') || '', titre: '', observations: '',
     fobUnitaire: '', fretUnitaire: '', assurance: '', fraisDivers: '0', nombreUnites: '1',
+    afficherSignature: false,
   });
 
   const [lignes, setLignes] = useState<LigneProforma[]>([]);
@@ -214,6 +224,7 @@ function NouvelleProformaForm() {
   };
 
   const handleExportApercu = async () => {
+    if (!canImprimer) { toast.error('Vous n\'avez pas la permission d\'imprimer/télécharger ce document'); return; }
     setExporting(true);
     try {
       const docData: DocData = {
@@ -228,9 +239,11 @@ function NouvelleProformaForm() {
         clientPays: selectedClient?.pays || undefined,
         dossierNumero: selectedDossier ? (selectedDossier.numeroPhysique || selectedDossier.numero) : undefined,
         titre: form.titre || undefined,
+        afficherSignature: form.afficherSignature,
         fobUnitaire: form.fobUnitaire ? parseFloat(form.fobUnitaire) : undefined,
         fretUnitaire: form.fretUnitaire ? parseFloat(form.fretUnitaire) : undefined,
         assurance: form.assurance ? parseFloat(form.assurance) : undefined,
+        fraisDivers: form.fraisDivers ? parseFloat(form.fraisDivers) : undefined,
         nombreUnites: form.nombreUnites ? parseInt(form.nombreUnites) : undefined,
         valeurCAF: valeurCAF || undefined,
         montantHT: totalHT,
@@ -264,7 +277,7 @@ function NouvelleProformaForm() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Nouvelle Proforma</h1>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button onClick={handleExportApercu} disabled={exporting || lignes.length === 0} className="btn-secondary disabled:opacity-50">
+            <button onClick={handleExportApercu} disabled={exporting || lignes.length === 0 || !canImprimer} title={!canImprimer ? 'Permission requise : PROFORMAS:IMPRIMER' : undefined} className="btn-secondary disabled:opacity-50">
               {exporting ? 'Export...' : 'Aperçu PDF'}
             </button>
             <button onClick={handleSubmit} disabled={saving} className="btn-primary disabled:opacity-50">
@@ -290,6 +303,10 @@ function NouvelleProformaForm() {
             <div><label className="label">Titre</label><textarea value={form.titre} onChange={e => setForm({ ...form, titre: e.target.value })} rows={2} className="input-field" placeholder="DEDOUANEMENT..." /></div>
             <div><label className="label">NB / Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} rows={2} className="input-field" /></div>
           </div>
+          <label className="flex items-center gap-2 mt-4 text-sm text-gray-700 dark:text-gray-300 cursor-pointer w-fit">
+            <input type="checkbox" checked={form.afficherSignature} onChange={e => setForm({ ...form, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
+            Afficher la signature sur la proforma
+          </label>
         </div>
 
         {/* Fiche Proforma — rendu papier */}
@@ -307,11 +324,32 @@ function NouvelleProformaForm() {
               <div className="pf-doc-title">
                 <div className="pf-doc-label">PROFORMA</div>
                 <div className="pf-doc-num">N° <em>généré à l&apos;enregistrement</em></div>
+                {selectedDossier && <div className="pf-doc-num">Dossier : <strong>{selectedDossier.numeroPhysique || selectedDossier.numero}</strong></div>}
                 <div className="pf-doc-num">Date : {new Date().toLocaleDateString('fr-FR')}</div>
               </div>
             </div>
 
             <div className="pf-meta-grid">
+              {(form.fobUnitaire || form.fretUnitaire || form.assurance || valeurCAF) ? (
+                <div className="pf-fob-block">
+                  <table className="pf-fob-table">
+                    <tbody>
+                      <tr>
+                        <td>FOB (Unitaire)</td><td className="pf-num">{fmt(parseFloat(form.fobUnitaire) || 0)}</td>
+                        <td>Frais divers</td><td className="pf-num">{fmt(parseFloat(form.fraisDivers) || 0)}</td>
+                      </tr>
+                      <tr>
+                        <td>FRET (Unitaire)</td><td className="pf-num">{fmt(parseFloat(form.fretUnitaire) || 0)}</td>
+                        <td>Nbre unités</td><td className="pf-num">{form.nombreUnites || 1}</td>
+                      </tr>
+                      <tr>
+                        <td>Assurance</td><td className="pf-num">{fmt(parseFloat(form.assurance) || 0)}</td>
+                        <td className="pf-fob-strong">Valeur CAF</td><td className="pf-num pf-fob-strong">{fmt(valeurCAF)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
               <div className="pf-meta-block">
                 <div className="pf-meta-k">Adressée à</div>
                 {selectedClient ? (
@@ -319,12 +357,18 @@ function NouvelleProformaForm() {
                     <div className="pf-meta-v pf-meta-strong">{selectedClient.raisonSociale}</div>
                     {selectedClient.adresse && <div className="pf-meta-v">{selectedClient.adresse}</div>}
                     {(selectedClient.telephone || selectedClient.mobile) && <div className="pf-meta-v">{selectedClient.telephone || selectedClient.mobile}</div>}
+                    {selectedClient.email && <div className="pf-meta-v">{selectedClient.email}</div>}
+                    {selectedClient.ncc && <div className="pf-meta-v">{selectedClient.ncc}</div>}
+                    {selectedClient.pays && (
+                      <div className="pf-meta-v">
+                        {selectedClient.pays}
+                        {selectedClient.pays.toLowerCase().includes('ivoire') && (
+                          <span className="pf-ci-flag"><span /><span /><span /></span>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : <div className="pf-meta-v pf-meta-placeholder">Sélectionnez un client…</div>}
-              </div>
-              <div className="pf-meta-block">
-                <div className="pf-meta-k">Détails</div>
-                {selectedDossier && <div className="pf-meta-v">Dossier : <strong>{selectedDossier.numeroPhysique || selectedDossier.numero}</strong></div>}
                 <div className="pf-meta-v pf-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</div>
               </div>
             </div>
@@ -364,7 +408,7 @@ function NouvelleProformaForm() {
                 {groupedLignes.map(group => (
                   <tbody key={group.categorie}>
                     <tr>
-                      <td colSpan={5} className="pf-section-title-row" style={{ background: group.couleur }}>{group.categorie}</td>
+                      <td colSpan={5} className="pf-section-title-row">{group.categorie}</td>
                     </tr>
                     {group.lignes.map(ligne => {
                       globalIndex++;
@@ -391,16 +435,29 @@ function NouvelleProformaForm() {
             )}
 
             {lignes.length > 0 && (
-              <div className="pf-totals">
-                <div className="pf-trow"><span>Total HT</span><span>{fmt(totalHT)}</span></div>
-                <div className="pf-trow"><span>Total TVA</span><span>{fmt(totalTVA)}</span></div>
-                <div className="pf-trow pf-grand"><span>Total Général</span><span>{fmt(totalGeneral)}</span></div>
+              <div className="pf-bottom-row">
+                <div className="pf-lettres-block">
+                  <div className="pf-meta-k">Arrêtée à la présente facture à la somme de :</div>
+                  <div className="pf-lettres-text">{montantEnLettres(totalGeneral)}</div>
+                </div>
+                <table className="pf-totals-table">
+                  <tbody>
+                    <tr><td>TOTAL HT</td><td className="pf-num">{fmt(totalHT)}</td></tr>
+                    <tr><td>TOTAL TVA</td><td className="pf-num">{fmt(totalTVA)}</td></tr>
+                    <tr className="pf-grand"><td>TOTAL TTC</td><td className="pf-num">{fmt(totalGeneral)}</td></tr>
+                  </tbody>
+                </table>
               </div>
             )}
 
-            <div className="pf-hors">
-              <strong>HORS :</strong> Frais de dépotage, d&apos;expertises éventuels, scanner, frais de magasinage, de dépôt douane, de surestarie, BSC, tout autre frais non défini mais induit par les opérations de dédouanement.
-            </div>
+            {form.afficherSignature && (
+              <div className="pf-signature-row">
+                <div className="pf-signature-box">
+                  {branding?.signature ? <img src={branding.signature} alt="Signature" className="pf-signature-img" /> : <div className="pf-signature-placeholder" />}
+                  <div className="pf-signature-label">Le Responsable</div>
+                </div>
+              </div>
+            )}
 
             {form.observations && (
               <div className="pf-footer-grid">
@@ -411,10 +468,6 @@ function NouvelleProformaForm() {
               </div>
             )}
 
-            <div className="pf-sign">
-              Fait à Abidjan<br />
-              <div className="pf-sign-line">GBTRANS SARL</div>
-            </div>
           </div>
         </div>
       </div>
@@ -528,9 +581,9 @@ function NouvelleProformaForm() {
       )}
 
       <style jsx global>{`
-        :root { --pf-ink:#241536; --pf-ink-soft:#5d4a72; --pf-gold:#7322ab; --pf-gold-soft:#f0e6fa; --pf-paper:#FBF9F4; --pf-line:#ded2ea; --pf-danger:#B3492F; }
+        :root { --pf-ink:#16232e; --pf-ink-soft:#56626f; --pf-gold:#e8821e; --pf-gold-soft:#fdf1e3; --pf-paper:#FFFFFF; --pf-line:#dbe2e8; --pf-danger:#B3492F; }
 
-        .pf-sheet-wrap { background:#0C0812; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
+        .pf-sheet-wrap { background:#0a1622; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
         .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
 
         .pf-doc-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pf-ink); padding-bottom:12px; margin-bottom:18px; }
@@ -542,13 +595,23 @@ function NouvelleProformaForm() {
         .pf-doc-num { font-size:11.5px; color:var(--pf-ink-soft); margin-top:3px; }
         .pf-doc-num em { color:var(--pf-gold); font-style:normal; }
 
-        .pf-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
-        .pf-meta-block { border:1px solid var(--pf-line); padding:9px 11px; }
+        .pf-meta-grid { display:flex; gap:10px; margin-bottom:14px; align-items:stretch; }
+        .pf-meta-block { flex:1; border:1px solid var(--pf-line); padding:9px 11px; }
         .pf-meta-k { font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:var(--pf-gold); margin-bottom:6px; font-weight:700; }
         .pf-meta-v { font-size:12px; padding:1px 0; }
         .pf-meta-strong { font-weight:700; }
-        .pf-meta-dim { color:#8b93ad; font-size:10.5px; margin-top:4px; }
+        .pf-meta-dim { color:#8b93ad; font-size:9.5px; margin-top:4px; }
         .pf-meta-placeholder { color:#b6b0a0; font-style:italic; }
+        .pf-ci-flag { display:inline-flex; margin-left:6px; vertical-align:middle; box-shadow:0 0 0 1px var(--pf-line); border-radius:1px; overflow:hidden; }
+        .pf-ci-flag span:nth-child(1) { width:8px; height:10px; background:#f77f00; }
+        .pf-ci-flag span:nth-child(2) { width:8px; height:10px; background:#fff; }
+        .pf-ci-flag span:nth-child(3) { width:8px; height:10px; background:#009e60; }
+
+        .pf-fob-block { flex:1.2; border:1px solid var(--pf-line); padding:6px 9px; }
+        .pf-fob-table { width:100%; font-size:10px; color:var(--pf-ink-soft); border-collapse:collapse; }
+        .pf-fob-table td { padding:2px 4px; }
+        .pf-fob-table .pf-num { text-align:right; font-weight:700; font-family:'Courier New',monospace; color:var(--pf-ink); }
+        .pf-fob-strong { font-weight:700; color:var(--pf-gold) !important; }
 
         .pf-titre { background:var(--pf-gold-soft); padding:8px 11px; margin-bottom:16px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-left:3px solid var(--pf-gold); color:var(--pf-ink); }
 
@@ -562,10 +625,10 @@ function NouvelleProformaForm() {
         .pf-inline-select { border:1px solid var(--pf-line); background:#fff; color:var(--pf-ink); font-size:11.5px; padding:6px 8px; border-radius:4px; font-family:inherit; min-width:180px; }
         .pf-inline-select:focus { outline:none; border-color:var(--pf-gold); }
         .pf-inline-btn-solid { background:var(--pf-gold); color:#fff; border:none; font-size:11.5px; font-weight:700; padding:7px 14px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:inherit; }
-        .pf-inline-btn-solid:hover { background:#5d1590; }
+        .pf-inline-btn-solid:hover { background:#c2690f; }
 
-        .pf-section-title-row { color:#fff; padding:8px 10px; font-size:11.5px; letter-spacing:.03em; font-weight:700; text-align:left; }
-        table.pf-items { width:100%; border-collapse:collapse; font-size:11.5px; }
+        .pf-section-title-row { color:var(--pf-ink); padding:6px 10px; font-size:10px; letter-spacing:.03em; font-weight:700; text-align:left; border-top:1px solid var(--pf-line); border-bottom:1px solid var(--pf-line); }
+        table.pf-items { width:100%; border-collapse:collapse; border:1px solid var(--pf-line); font-size:11.5px; }
         table.pf-items th { text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:var(--pf-ink-soft); border-bottom:1px solid var(--pf-line); padding:5px 6px; }
         table.pf-items td { padding:5px 6px; border-bottom:1px solid var(--pf-line); vertical-align:middle; }
         .pf-numcol { width:28px; text-align:center; color:#8b93ad; }
@@ -578,21 +641,28 @@ function NouvelleProformaForm() {
         table.pf-items input:focus { outline:1px dashed var(--pf-gold); }
         .pf-num-input { text-align:right; font-family:'Courier New',monospace; font-weight:700; }
         table.pf-items .pf-rmcol button { background:none; border:none; color:var(--pf-danger); cursor:pointer; font-size:12px; }
-        .pf-subtotal-row td { font-weight:700; color:var(--pf-ink); background:rgba(174,124,31,.06); border-bottom:2px solid var(--pf-gold); }
+        .pf-subtotal-row td { font-weight:700; color:var(--pf-ink); border-top:1px solid var(--pf-line); border-bottom:1px solid var(--pf-line); }
         .pf-subtotal-row td:first-child { text-align:right; font-size:10.5px; }
 
-        .pf-totals { margin-left:auto; width:260px; margin-top:10px; margin-bottom:16px; }
-        .pf-trow { display:flex; justify-content:space-between; padding:5px 0; font-size:12.5px; border-bottom:1px solid var(--pf-line); }
-        .pf-trow.pf-grand { border-bottom:none; border-top:2px solid var(--pf-ink); margin-top:4px; padding-top:8px; font-size:15px; font-weight:700; color:var(--pf-ink); }
+        .pf-bottom-row { display:flex; gap:12px; margin-top:8px; margin-bottom:14px; align-items:stretch; }
+        .pf-lettres-block { flex:1; border:1px solid var(--pf-line); padding:8px 11px; }
+        .pf-lettres-text { font-style:italic; font-weight:700; color:var(--pf-ink); font-size:11px; line-height:1.4; margin-top:2px; }
+        .pf-totals-table { width:230px; border:1px solid var(--pf-line); border-collapse:collapse; font-size:11.5px; }
+        .pf-totals-table td { padding:5px 9px; border-bottom:1px solid var(--pf-line); }
+        .pf-totals-table td:first-child { color:var(--pf-ink-soft); }
+        .pf-totals-table .pf-num { text-align:right; font-weight:700; font-family:'Courier New',monospace; }
+        .pf-totals-table tr.pf-grand td { border-bottom:none; font-weight:800; font-size:13px; color:var(--pf-ink); padding-top:6px; padding-bottom:6px; }
 
-        .pf-hors { font-size:9.5px; color:var(--pf-ink-soft); border:1px solid var(--pf-line); border-radius:2px; padding:8px 10px; background:rgba(174,124,31,.05); line-height:1.5; margin-bottom:14px; }
-        .pf-hors strong { color:var(--pf-ink); }
+        .pf-signature-row { display:flex; justify-content:flex-end; margin-top:8px; margin-bottom:14px; }
+        .pf-signature-box { text-align:center; width:160px; }
+        .pf-signature-img { max-width:140px; max-height:70px; object-fit:contain; }
+        .pf-signature-placeholder { height:70px; }
+        .pf-signature-label { border-top:1px solid var(--pf-line); padding-top:4px; font-size:9px; color:var(--pf-ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+
 
         .pf-footer-grid { margin-top:10px; margin-bottom:10px; font-size:11px; color:var(--pf-ink-soft); }
         .pf-obs-text { border:1px solid var(--pf-line); padding:8px; margin-top:4px; font-size:11px; line-height:1.5; }
 
-        .pf-sign { margin-top:24px; text-align:right; font-size:11.5px; color:var(--pf-ink-soft); }
-        .pf-sign-line { margin-top:32px; border-top:1px solid var(--pf-ink-soft); display:inline-block; padding-top:4px; width:180px; }
 
         .pf-sheet.pf-exporting input, .pf-sheet.pf-exporting textarea { border:none !important; outline:none !important; background:transparent !important; }
         .pf-sheet.pf-exporting .pf-no-export { display:none !important; }

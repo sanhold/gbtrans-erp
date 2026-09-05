@@ -820,6 +820,7 @@ model Proforma {
   titre        String?        @db.VarChar(500)
   objet        String?        @db.VarChar(500)
   statut       StatutProforma @default(BROUILLON)
+  afficherSignature Boolean   @default(false)
 
   // Valeurs douane
   fobUnitaire  Decimal? @db.Decimal(18, 2)
