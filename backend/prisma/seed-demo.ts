@@ -167,7 +167,7 @@ async function main() {
     { designation: 'Frais d\'assurance', min: 50000, max: 500000 },
   ];
   const containerTypes = ['20\'', '40\'', '40\'HC', '20\' REEFER', '40\' REEFER'];
-  const statuts: StatutDossier[] = ['NOUVEAU', 'EN_COURS', 'ATTENTE_CLIENT', 'ATTENTE_DOUANE', 'LIQUIDATION', 'PAIEMENT', 'MAIN_LEVEE', 'LIVRAISON', 'CLOTURE', 'CLOTURE', 'CLOTURE'];
+  const statuts: StatutDossier[] = ['NOUVEAU', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'TERMINE', 'TERMINE', 'TERMINE'];
 
   const annees = [
     { annee: 2024, count: 60, debut: new Date('2024-01-05'), fin: new Date('2024-12-28') },
@@ -203,7 +203,7 @@ async function main() {
       const client = randomItem(clients);
       const nature = randomItem(['IMPORT', 'IMPORT', 'IMPORT', 'EXPORT', 'TRANSIT'] as NatureDossier[]);
       const dateCreation = randomDate(a.debut, a.fin);
-      const statut = a.annee < 2026 ? randomItem(statuts) : randomItem(['NOUVEAU', 'EN_COURS', 'ATTENTE_CLIENT', 'ATTENTE_DOUANE', 'LIQUIDATION', 'PAIEMENT', 'MAIN_LEVEE', 'LIVRAISON'] as StatutDossier[]);
+      const statut = a.annee < 2026 ? randomItem(statuts) : randomItem(['NOUVEAU', 'EN_COURS', 'EN_COURS', 'EN_COURS'] as StatutDossier[]);
       const valeurFOB = randomInt(500000, 150000000);
       const fret = Math.round(valeurFOB * (randomInt(3, 12) / 100));
       const assurance = Math.round(valeurFOB * (randomInt(1, 3) / 100));
@@ -233,7 +233,7 @@ async function main() {
           regimeDouanier: nature === 'EXPORT' ? 'Exportation' : 'Mise à la consommation',
           dateCreation,
           dateModification: dateCreation,
-          dateCloture: statut === 'CLOTURE' ? new Date(dateCreation.getTime() + randomInt(7, 45) * 86400000) : null,
+          dateCloture: statut === 'TERMINE' ? new Date(dateCreation.getTime() + randomInt(7, 45) * 86400000) : null,
           numeroDeclaration: statut !== 'NOUVEAU' ? `D${a.annee}${randomInt(10000, 99999)}` : null,
         },
       });
@@ -285,10 +285,10 @@ async function main() {
 
         let statutFac: StatutFacture = 'BROUILLON';
         let montantPaye = 0;
-        if (['CLOTURE', 'LIVRAISON', 'MAIN_LEVEE'].includes(statut)) {
+        if (statut === 'TERMINE') {
           if (Math.random() > 0.3) { statutFac = 'PAYEE'; montantPaye = montantTTC; }
           else { statutFac = 'PARTIELLEMENT_PAYEE'; montantPaye = Math.round(montantTTC * (randomInt(30, 80) / 100)); }
-        } else if (['PAIEMENT', 'LIQUIDATION'].includes(statut)) {
+        } else if (statut === 'EN_COURS') {
           statutFac = 'VALIDEE';
         }
 

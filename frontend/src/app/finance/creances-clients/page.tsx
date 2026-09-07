@@ -31,21 +31,31 @@ export default function CreancesClientsPage() {
           Total des créances clients : <span className="font-mono font-bold">{fmt(total)} XOF</span> — {rows.length} facture(s) ouverte(s)
         </div>
         <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Client</th><th className="table-header">N° Facture</th><th className="table-header">Date</th><th className="table-header text-right">TTC</th><th className="table-header text-right">Payé</th><th className="table-header text-right">Reste à payer</th><th className="table-header">Statut</th><th className="table-header"></th></tr></thead>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TTC</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune créance ouverte</td></tr>
               : paged.map(f => (
                 <tr key={f.id} className="table-row">
-                  <td className="table-cell font-medium" data-label="Client">{f.client?.raisonSociale}</td>
-                  <td className="table-cell font-mono text-primary-600" data-label="N° Facture">{f.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{fmt(f.montantPaye)}</td>
-                  <td className="table-cell text-right font-mono font-semibold text-red-600" data-label="Reste à payer">{fmt(f.resteAPayer)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${CREANCE_STATUT_BADGE[f.statut] || 'badge-gray'}`}>{f.statut?.replace(/_/g, ' ')}</span></td>
-                  <td className="table-cell" data-label="Actions"><Link href={`/facturation/${f.id}`} className="btn-primary text-xs">Encaisser</Link></td>
+                  <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Client" title={f.client?.raisonSociale}>{f.client?.raisonSociale}</td>
+                  <td className="table-cell font-mono text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Facture">{f.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TTC">{fmt(f.montantTTC)}</td>
+                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
+                  <td className="table-cell text-right font-mono font-semibold text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste à payer">{fmt(f.resteAPayer)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${CREANCE_STATUT_BADGE[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Actions"><Link href={`/facturation/${f.id}`} className="btn-primary !px-2 !py-1 text-[10.5px]">Encaisser</Link></td>
                 </tr>
               ))}
             </tbody>

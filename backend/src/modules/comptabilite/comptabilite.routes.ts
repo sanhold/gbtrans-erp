@@ -4,6 +4,7 @@ import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
+import syscohadaPlanReference from '../../../prisma/data/syscohada-plan-reference.json';
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -12,12 +13,79 @@ router.use(authenticate, requireSociete);
 
 router.get('/comptes', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
+    const { tous } = req.query;
     const comptes = await prisma.compteComptable.findMany({
-      where: { societeId: req.user!.societeId, actif: true },
+      where: { societeId: req.user!.societeId, ...(tous !== '1' && { actif: true }) },
       orderBy: { numero: 'asc' },
     });
     ApiResponse.success(res, comptes);
   } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+router.post('/comptes', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { numero, libelle, classe, type, nature, sens, parent, collectif, lettrable, rapprochable } = req.body;
+    if (!numero || !libelle || !classe || !type || !nature) { ApiResponse.badRequest(res, 'Numéro, libellé, classe, type et nature sont requis'); return; }
+    const compte = await prisma.compteComptable.create({
+      data: {
+        societeId: req.user!.societeId, numero: String(numero).trim(), libelle, classe: parseInt(classe),
+        type, nature, sens: sens || 'DEBITEUR', parent: parent || null,
+        niveau: String(numero).trim().length <= 2 ? 1 : String(numero).trim().length,
+        collectif: !!collectif, lettrable: !!lettrable, rapprochable: !!rapprochable,
+      },
+    });
+    ApiResponse.created(res, compte, 'Compte créé');
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce numéro de compte existe déjà' : e.message); }
+});
+
+router.put('/comptes/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.compteComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
+    const { libelle, classe, type, nature, sens, parent, collectif, lettrable, rapprochable, actif } = req.body;
+    const compte = await prisma.compteComptable.update({
+      where: { id: req.params.id },
+      data: {
+        ...(libelle !== undefined && { libelle }),
+        ...(classe !== undefined && { classe: parseInt(classe) }),
+        ...(type !== undefined && { type }),
+        ...(nature !== undefined && { nature }),
+        ...(sens !== undefined && { sens }),
+        ...(parent !== undefined && { parent: parent || null }),
+        ...(collectif !== undefined && { collectif: !!collectif }),
+        ...(lettrable !== undefined && { lettrable: !!lettrable }),
+        ...(rapprochable !== undefined && { rapprochable: !!rapprochable }),
+        ...(actif !== undefined && { actif: !!actif }),
+      },
+    });
+    ApiResponse.success(res, compte, 'Compte modifié');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.delete('/comptes/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.compteComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
+    const mouvement = await prisma.mouvementComptable.findFirst({ where: { compteId: req.params.id } });
+    if (mouvement) { ApiResponse.badRequest(res, 'Ce compte a des mouvements comptables : il ne peut pas être supprimé, seulement désactivé'); return; }
+    await prisma.compteComptable.delete({ where: { id: req.params.id } });
+    ApiResponse.success(res, null, 'Compte supprimé');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/comptes/importer-syscohada', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    const result = await prisma.compteComptable.createMany({
+      data: syscohadaPlanReference.map(c => ({
+        societeId, numero: c.numero, libelle: c.libelle, classe: c.classe,
+        type: c.type as any, nature: c.nature as any, sens: c.sens as any,
+        niveau: c.numero.length,
+      })),
+      skipDuplicates: true,
+    });
+    ApiResponse.success(res, { importes: result.count, total: syscohadaPlanReference.length }, `${result.count} compte(s) importé(s) (${syscohadaPlanReference.length - result.count} déjà présent(s))`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 // ===== EXERCICES =====
@@ -58,6 +126,46 @@ router.get('/journaux', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest,
     });
     ApiResponse.success(res, data);
   } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+router.post('/journaux', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { code, libelle, type, compteContrepartie } = req.body;
+    if (!code || !libelle || !type) { ApiResponse.badRequest(res, 'Code, libellé et type sont requis'); return; }
+    const journal = await prisma.journalComptable.create({
+      data: { societeId: req.user!.societeId, code: String(code).trim().toUpperCase(), libelle, type, compteContrepartie: compteContrepartie || null },
+    });
+    ApiResponse.created(res, journal, 'Journal créé');
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce code de journal existe déjà' : e.message); }
+});
+
+router.put('/journaux/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.journalComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
+    const { libelle, type, compteContrepartie, actif } = req.body;
+    const journal = await prisma.journalComptable.update({
+      where: { id: req.params.id },
+      data: {
+        ...(libelle !== undefined && { libelle }),
+        ...(type !== undefined && { type }),
+        ...(compteContrepartie !== undefined && { compteContrepartie: compteContrepartie || null }),
+        ...(actif !== undefined && { actif: !!actif }),
+      },
+    });
+    ApiResponse.success(res, journal, 'Journal modifié');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.delete('/journaux/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.journalComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
+    const ecriture = await prisma.ecritureComptable.findFirst({ where: { journalId: req.params.id } });
+    if (ecriture) { ApiResponse.badRequest(res, 'Ce journal contient des écritures : il ne peut pas être supprimé, seulement désactivé'); return; }
+    await prisma.journalComptable.delete({ where: { id: req.params.id } });
+    ApiResponse.success(res, null, 'Journal supprimé');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 // ===== ECRITURES (détail d'un journal) =====
@@ -193,6 +301,193 @@ router.delete('/ecritures/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req:
     if (existing.validee) { ApiResponse.badRequest(res, 'Une écriture validée ne peut pas être supprimée'); return; }
     await prisma.ecritureComptable.delete({ where: { id: req.params.id } });
     ApiResponse.success(res, null, 'Écriture supprimée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+// ===== ÉCRITURES EN ATTENTE DE COMPTABILISATION (Compta Réel) =====
+
+const ecritureAttenteInclude = {
+  facture: { select: { id: true, numero: true, client: { select: { raisonSociale: true } } } },
+  factureFournisseur: { select: { id: true, numero: true, fournisseur: { select: { raisonSociale: true } } } },
+  paiement: { select: { id: true, numero: true } },
+  paiementFournisseur: { select: { id: true, numero: true } },
+  depense: { select: { id: true, numero: true, categorie: true } },
+};
+
+router.get('/ecritures-attente', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { statut } = req.query;
+    const data = await prisma.ecritureEnAttente.findMany({
+      where: { societeId: req.user!.societeId, statut: (statut as any) || 'EN_ATTENTE' },
+      include: ecritureAttenteInclude,
+      orderBy: { dateOperation: 'desc' },
+    });
+    ApiResponse.success(res, data);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+router.post('/ecritures-attente', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { libelle, montant, dateOperation } = req.body;
+    if (!libelle || !montant || !dateOperation) { ApiResponse.badRequest(res, 'Libellé, montant et date sont requis'); return; }
+    const entree = await prisma.ecritureEnAttente.create({
+      data: {
+        societeId: req.user!.societeId, source: 'MANUEL', libelle,
+        montant: parseFloat(montant), dateOperation: new Date(dateOperation),
+        createurNom: `${req.user!.prenom || ''} ${req.user!.nom || ''}`.trim() || null,
+      },
+    });
+    ApiResponse.created(res, entree, 'Entrée ajoutée à la file d\'attente');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/ecritures-attente/:id/comptabiliser', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const entree = await prisma.ecritureEnAttente.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!entree) { ApiResponse.notFound(res, 'Entrée introuvable'); return; }
+    if (entree.statut !== 'EN_ATTENTE') { ApiResponse.badRequest(res, 'Cette entrée a déjà été traitée'); return; }
+
+    const { exerciceId, journalId, dateEcriture, libelle, reference, piece, mouvements } = req.body;
+    if (!exerciceId || !journalId || !dateEcriture || !libelle) { ApiResponse.badRequest(res, 'Exercice, journal, date et libellé sont requis'); return; }
+    if (!Array.isArray(mouvements) || mouvements.length < 2) { ApiResponse.badRequest(res, 'Une écriture doit comporter au moins 2 lignes'); return; }
+
+    const totalDebit = mouvements.reduce((s: number, m: any) => s + (parseFloat(m.debit) || 0), 0);
+    const totalCredit = mouvements.reduce((s: number, m: any) => s + (parseFloat(m.credit) || 0), 0);
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      ApiResponse.badRequest(res, `L'écriture n'est pas équilibrée : débit ${totalDebit.toFixed(2)} ≠ crédit ${totalCredit.toFixed(2)}`);
+      return;
+    }
+    if (totalDebit === 0) { ApiResponse.badRequest(res, 'Les montants ne peuvent pas être tous nuls'); return; }
+
+    const journal = await prisma.journalComptable.findFirst({ where: { id: journalId, societeId: req.user!.societeId } });
+    if (!journal) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
+    const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
+    if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
+
+    const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
+
+    const ecriture = await prisma.$transaction(async (tx) => {
+      const created = await tx.ecritureComptable.create({
+        data: {
+          exerciceId, journalId, numero,
+          dateEcriture: new Date(dateEcriture),
+          libelle, reference: reference || null, piece: piece || null,
+          createurId: req.user!.id,
+          factureId: entree.factureId || undefined,
+          paiementId: entree.paiementId || undefined,
+          mouvements: {
+            create: mouvements.map((m: any) => ({
+              compteId: m.compteId, libelle: m.libelle || null,
+              debit: parseFloat(m.debit) || 0, credit: parseFloat(m.credit) || 0,
+            })),
+          },
+        },
+        include: { journal: true, mouvements: { include: { compte: { select: { numero: true, libelle: true } } } } },
+      });
+      await tx.ecritureEnAttente.update({ where: { id: entree.id }, data: { statut: 'COMPTABILISEE', ecritureId: created.id } });
+      return created;
+    });
+
+    ApiResponse.created(res, ecriture, `Écriture ${numero} comptabilisée`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/ecritures-attente/:id/rejeter', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const entree = await prisma.ecritureEnAttente.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!entree) { ApiResponse.notFound(res, 'Entrée introuvable'); return; }
+    if (entree.statut !== 'EN_ATTENTE') { ApiResponse.badRequest(res, 'Cette entrée a déjà été traitée'); return; }
+    const { motif } = req.body;
+    const updated = await prisma.ecritureEnAttente.update({
+      where: { id: entree.id },
+      data: { statut: 'REJETEE', motifRejet: motif || null },
+    });
+    ApiResponse.success(res, updated, 'Entrée rejetée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+// ===== COMPTA AUTO (génération de suggestions vers la file d'attente) =====
+
+router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    const { dateDebut, dateFin, sources } = req.body as { dateDebut?: string; dateFin?: string; sources?: string[] };
+    const debut = dateDebut ? new Date(dateDebut) : new Date(new Date().getFullYear(), 0, 1);
+    const fin = dateFin ? new Date(dateFin) : new Date();
+    const typesVoulus = new Set(sources && sources.length > 0 ? sources : ['FACTURE', 'FACTURE_FOURNISSEUR', 'PAIEMENT', 'PAIEMENT_FOURNISSEUR', 'DEPENSE']);
+
+    const dejaProposees = await prisma.ecritureEnAttente.findMany({
+      where: { societeId },
+      select: { factureId: true, factureFournisseurId: true, paiementId: true, paiementFournisseurId: true, depenseId: true },
+    });
+    const dejaFacture = new Set(dejaProposees.map(e => e.factureId).filter(Boolean));
+    const dejaFactureFournisseur = new Set(dejaProposees.map(e => e.factureFournisseurId).filter(Boolean));
+    const dejaPaiement = new Set(dejaProposees.map(e => e.paiementId).filter(Boolean));
+    const dejaPaiementFournisseur = new Set(dejaProposees.map(e => e.paiementFournisseurId).filter(Boolean));
+    const dejaDepense = new Set(dejaProposees.map(e => e.depenseId).filter(Boolean));
+
+    const aCreer: any[] = [];
+
+    if (typesVoulus.has('FACTURE')) {
+      const factures = await prisma.facture.findMany({
+        where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dejaFacture] as string[] } },
+        include: { client: { select: { raisonSociale: true } } },
+      });
+      for (const f of factures) {
+        aCreer.push({
+          societeId, source: 'FACTURE', factureId: f.id,
+          libelle: `${f.type === 'AVOIR' ? 'Avoir' : 'Facture'} ${f.numero} — ${f.client?.raisonSociale || ''}`,
+          montant: f.montantTTC, dateOperation: f.dateFacture,
+        });
+      }
+    }
+
+    if (typesVoulus.has('FACTURE_FOURNISSEUR')) {
+      const factures = await prisma.factureFournisseur.findMany({
+        where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dejaFactureFournisseur] as string[] } },
+        include: { fournisseur: { select: { raisonSociale: true } } },
+      });
+      for (const f of factures) {
+        aCreer.push({
+          societeId, source: 'FACTURE_FOURNISSEUR', factureFournisseurId: f.id,
+          libelle: `Facture fournisseur ${f.numero} — ${f.fournisseur?.raisonSociale || ''}`,
+          montant: f.montantTTC, dateOperation: f.dateFacture,
+        });
+      }
+    }
+
+    if (typesVoulus.has('PAIEMENT')) {
+      const paiements = await prisma.paiement.findMany({
+        where: { statut: 'VALIDE', datePaiement: { gte: debut, lte: fin }, id: { notIn: [...dejaPaiement] as string[] }, client: { societeId } },
+      });
+      for (const p of paiements) {
+        aCreer.push({ societeId, source: 'PAIEMENT', paiementId: p.id, libelle: `Paiement client ${p.numero}`, montant: p.montant, dateOperation: p.datePaiement });
+      }
+    }
+
+    if (typesVoulus.has('PAIEMENT_FOURNISSEUR')) {
+      const paiements = await prisma.paiementFournisseur.findMany({
+        where: { societeId, statut: 'VALIDE', datePaiement: { gte: debut, lte: fin }, id: { notIn: [...dejaPaiementFournisseur] as string[] } },
+      });
+      for (const p of paiements) {
+        aCreer.push({ societeId, source: 'PAIEMENT_FOURNISSEUR', paiementFournisseurId: p.id, libelle: `Paiement fournisseur ${p.numero}`, montant: p.montant, dateOperation: p.datePaiement });
+      }
+    }
+
+    if (typesVoulus.has('DEPENSE')) {
+      const depenses = await prisma.depense.findMany({
+        where: { societeId, statut: 'VALIDE', dateDepense: { gte: debut, lte: fin }, id: { notIn: [...dejaDepense] as string[] } },
+      });
+      for (const d of depenses) {
+        aCreer.push({ societeId, source: 'DEPENSE', depenseId: d.id, libelle: `Dépense ${d.numero} — ${d.categorie}`, montant: d.montant, dateOperation: d.dateDepense });
+      }
+    }
+
+    if (aCreer.length > 0) {
+      await prisma.ecritureEnAttente.createMany({ data: aCreer });
+    }
+    ApiResponse.success(res, { suggerees: aCreer.length }, `${aCreer.length} suggestion(s) ajoutée(s) à la file d'attente`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

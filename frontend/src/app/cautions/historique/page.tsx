@@ -40,21 +40,34 @@ export default function CautionsHistoriquePage() {
           <p className="text-sm text-gray-500">Cautions payées</p>
         </div>
 
-        <div className="table-container overflow-x-auto">
-          <table className="w-full">
+        <div className="table-container">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '17%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="table-header">Id caution</th>
-                <th className="table-header">Date caution</th>
-                <th className="table-header">N°Dossier</th>
-                <th className="table-header">N° BL</th>
-                <th className="table-header">Client</th>
-                <th className="table-header text-center">Qte</th>
-                <th className="table-header text-right">Montant Caution</th>
-                <th className="table-header">Compagnie</th>
-                <th className="table-header">Date dépôt Courrier</th>
-                <th className="table-header">Date Paiement</th>
-                <th className="table-header">Observation</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Id caution</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Date caution</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N°Dossier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N° BL</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-center">Qte</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Compagnie</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Dépôt Courrier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Paiement</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Observation</th>
               </tr>
             </thead>
             <tbody>
@@ -64,19 +77,19 @@ export default function CautionsHistoriquePage() {
                 <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune caution payée</td></tr>
               ) : items.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="Id caution">{c.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
-                  <td className="table-cell font-mono text-xs" data-label="N°Dossier">
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
                     {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
                   </td>
-                  <td className="table-cell font-mono text-xs" data-label="N° BL">{c.numeroBL || '-'}</td>
-                  <td className="table-cell" data-label="Client">{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-center" data-label="Qte">{c.quantite}</td>
-                  <td className="table-cell text-right font-mono" data-label="Montant Caution">{fmt(c.montant)}</td>
-                  <td className="table-cell" data-label="Compagnie">{c.compagnie || '-'}</td>
-                  <td className="table-cell text-xs" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
-                  <td className="table-cell text-xs font-medium text-green-600" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
-                  <td className="table-cell text-xs max-w-[200px] truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate font-medium text-green-600" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
                 </tr>
               ))}
             </tbody>

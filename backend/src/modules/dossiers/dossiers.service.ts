@@ -100,8 +100,12 @@ export class DossierService {
           client: { select: { id: true, code: true, raisonSociale: true } },
           agent: { select: { id: true, nom: true, prenom: true } },
           conteneurs: true,
+          processus: { select: { _count: { select: { etapes: true } } } },
           _count: {
-            select: { documents: true, factures: true, proformas: true },
+            select: {
+              documents: true, factures: true, proformas: true,
+              etapesDossier: { where: { statut: 'VALIDEE' } },
+            },
           },
         },
       }),
@@ -199,7 +203,7 @@ export class DossierService {
     }
 
     const data: any = { statut: nouveauStatut };
-    if (nouveauStatut === 'CLOTURE') data.dateCloture = new Date();
+    if (nouveauStatut === 'TERMINE') data.dateCloture = new Date();
     if (nouveauStatut === 'ANNULE') data.dateAnnulation = new Date();
 
     const dossier = await prisma.dossier.update({

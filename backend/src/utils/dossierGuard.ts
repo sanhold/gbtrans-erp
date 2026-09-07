@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 
-export const STATUTS_DOSSIER_FERME = ['CLOTURE', 'ANNULE', 'ARCHIVE'];
+export const STATUTS_DOSSIER_FERME = ['TERMINE', 'ANNULE', 'ARCHIVE'];
 
 export function dossierEstFerme(statut: string) {
   return STATUTS_DOSSIER_FERME.includes(statut);

@@ -80,8 +80,14 @@ export const dossiersApi = {
   bilan: (params?: Record<string, any>) =>
     api.get('/dossiers/bilan', { params }),
   etapes: (id: string) => api.get(`/dossiers/${id}/etapes`),
-  validerEtape: (id: string, etapeProcessusId: string, data: { statut: 'VALIDEE' | 'A_FAIRE'; executantId?: string; dateRealisation?: string; commentaire?: string }) =>
-    api.put(`/dossiers/${id}/etapes/${etapeProcessusId}`, data),
+  validerEtape: (id: string, etapeDossierId: string, data: { statut: 'VALIDEE' | 'A_FAIRE'; executantId?: string; dateRealisation?: string; commentaire?: string }) =>
+    api.put(`/dossiers/${id}/etapes/${etapeDossierId}`, data),
+  ajouterEtape: (id: string, data: { nom: string; description?: string; obligatoire?: boolean }) =>
+    api.post(`/dossiers/${id}/etapes`, data),
+  reorderEtapes: (id: string, ids: string[]) =>
+    api.patch(`/dossiers/${id}/etapes/reorder`, { ids }),
+  supprimerEtape: (id: string, etapeDossierId: string) =>
+    api.delete(`/dossiers/${id}/etapes/${etapeDossierId}`),
 };
 
 // AT (Admissions Temporaires) API
@@ -158,6 +164,8 @@ export const facturesApi = {
   annuler: (id: string) => api.patch(`/factures/${id}/annuler`),
   creerAvoir: (id: string, motif: string) =>
     api.post(`/factures/${id}/avoir`, { motif }),
+  updateNumeroNormalise: (id: string, numeroNormalise: string) =>
+    api.patch(`/factures/${id}/numero-normalise`, { numeroNormalise }),
   payer: (id: string, data: any) =>
     api.post(`/factures/${id}/paiement`, data),
   stats: (annee?: number) =>
@@ -256,12 +264,24 @@ export const comptabiliteApi = {
   exercices: (params?: Record<string, any>) => api.get('/comptabilite/exercices', { params }),
   creerExercice: (data: any) => api.post('/comptabilite/exercices', data),
   journaux: () => api.get('/comptabilite/journaux'),
+  creerJournal: (data: any) => api.post('/comptabilite/journaux', data),
+  modifierJournal: (id: string, data: any) => api.put(`/comptabilite/journaux/${id}`, data),
+  supprimerJournal: (id: string) => api.delete(`/comptabilite/journaux/${id}`),
   ecritures: (params?: Record<string, any>) => api.get('/comptabilite/ecritures', { params }),
   creerEcriture: (data: any) => api.post('/comptabilite/ecritures', data),
   modifierEcriture: (id: string, data: any) => api.put(`/comptabilite/ecritures/${id}`, data),
   validerEcriture: (id: string) => api.patch(`/comptabilite/ecritures/${id}/valider`),
   supprimerEcriture: (id: string) => api.delete(`/comptabilite/ecritures/${id}`),
-  comptes: () => api.get('/comptabilite/comptes'),
+  comptes: (params?: Record<string, any>) => api.get('/comptabilite/comptes', { params }),
+  creerCompte: (data: any) => api.post('/comptabilite/comptes', data),
+  modifierCompte: (id: string, data: any) => api.put(`/comptabilite/comptes/${id}`, data),
+  supprimerCompte: (id: string) => api.delete(`/comptabilite/comptes/${id}`),
+  importerSyscohada: () => api.post('/comptabilite/comptes/importer-syscohada'),
+  ecrituresAttente: (params?: Record<string, any>) => api.get('/comptabilite/ecritures-attente', { params }),
+  ajouterEnAttente: (data: any) => api.post('/comptabilite/ecritures-attente', data),
+  comptabiliserEnAttente: (id: string, data: any) => api.post(`/comptabilite/ecritures-attente/${id}/comptabiliser`, data),
+  rejeterEnAttente: (id: string, motif?: string) => api.post(`/comptabilite/ecritures-attente/${id}/rejeter`, { motif }),
+  genererComptaAuto: (data: { dateDebut?: string; dateFin?: string; sources?: string[] }) => api.post('/comptabilite/compta-auto/generer', data),
   grandLivre: (params?: Record<string, any>) => api.get('/comptabilite/grand-livre', { params }),
   balance: (params?: Record<string, any>) => api.get('/comptabilite/balance', { params }),
   bilan: (params?: Record<string, any>) => api.get('/comptabilite/bilan', { params }),

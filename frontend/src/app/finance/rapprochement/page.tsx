@@ -61,32 +61,42 @@ export default function RapprochementPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rapprochement Bancaire</h1><p className="text-sm text-gray-500">Comparez le solde relevé bancaire au solde comptable</p></div>
-
-        <div className="flex justify-between items-center flex-wrap gap-3">
-          <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte, banque..." className="!w-64" />
-          <button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary disabled:opacity-50">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouveau Rapprochement
-          </button>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rapprochement Bancaire</h1><p className="text-sm text-gray-500">Comparez le solde relevé bancaire au solde comptable</p></div>
+          <div className="flex items-center gap-3">
+            <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte, banque..." className="!w-64" />
+            <button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary disabled:opacity-50">
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouveau Rapprochement
+            </button>
+          </div>
         </div>
         <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Date bancaire</th><th className="table-header">Date comptable</th><th className="table-header text-right">Solde relevé</th><th className="table-header text-right">Solde comptable</th><th className="table-header text-right">Écart</th><th className="table-header">Statut</th><th className="table-header"></th></tr></thead>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
             <tbody>
               {!compteId ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sélectionnez un compte bancaire</td></tr>
               : loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rapprochements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun rapprochement en cours</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">
-                  <td className="table-cell text-xs" data-label="Date bancaire">{new Date(r.dateBancaire).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-xs" data-label="Date comptable">{new Date(r.dateComptable).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="Solde relevé">{fmt(r.soldeReleve)}</td>
-                  <td className="table-cell text-right font-mono" data-label="Solde comptable">{fmt(r.soldeComptable)}</td>
-                  <td className={`table-cell text-right font-mono font-semibold ${Number(r.ecart) === 0 ? 'text-green-600' : 'text-red-600'}`} data-label="Écart">{fmt(r.ecart)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${r.statut === 'VALIDE' || r.statut === 'CLOTURE' ? 'badge-success' : 'badge-warning'}`}>{r.statut}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-xs text-primary-600 hover:underline">Valider</button>}
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date bancaire">{new Date(r.dateBancaire).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date comptable">{new Date(r.dateComptable).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde relevé">{fmt(r.soldeReleve)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde comptable">{fmt(r.soldeComptable)}</td>
+                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.ecart) === 0 ? 'text-green-600' : 'text-red-600'}`} data-label="Écart">{fmt(r.ecart)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${r.statut === 'VALIDE' || r.statut === 'CLOTURE' ? 'badge-success' : 'badge-warning'} !text-[10px] !px-1.5 !py-0`}>{r.statut}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-[10.5px] text-primary-600 hover:underline">Valider</button>}
                   </td>
                 </tr>
               ))}

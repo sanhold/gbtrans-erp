@@ -6,24 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { dossiersApi } from '@/lib/api';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-
-const statutColors: Record<string, string> = {
-  NOUVEAU: 'badge-info', EN_COURS: 'badge-warning', ATTENTE_CLIENT: 'badge-gray',
-  ATTENTE_DOUANE: 'badge-gray', LIQUIDATION: 'badge-warning', PAIEMENT: 'badge-info',
-  MAIN_LEVEE: 'badge-info', LIVRAISON: 'badge-success', CLOTURE: 'badge-success',
-  ANNULE: 'badge-danger', ARCHIVE: 'badge-gray',
-};
-
-const statutLabels: Record<string, string> = {
-  NOUVEAU: 'Nouveau', EN_COURS: 'En cours', ATTENTE_CLIENT: 'Attente Client',
-  ATTENTE_DOUANE: 'Attente Douane', LIQUIDATION: 'Liquidation', PAIEMENT: 'Paiement',
-  MAIN_LEVEE: 'Main levée', LIVRAISON: 'Livraison', CLOTURE: 'Clôturé',
-  ANNULE: 'Annulé', ARCHIVE: 'Archivé',
-};
-
-const workflowSteps = ['NOUVEAU', 'EN_COURS', 'LIQUIDATION', 'PAIEMENT', 'MAIN_LEVEE', 'LIVRAISON', 'CLOTURE'];
-
-const STATUTS_DOSSIER_FERME = ['CLOTURE', 'ANNULE', 'ARCHIVE'];
+import { statutColors, statutLabels, WORKFLOW_STEPS_DOSSIER as workflowSteps, STATUTS_DOSSIER_FERME } from '@/lib/dossierStatut';
 
 const fmt = (n: any) => {
   if (n === null || n === undefined || n === '') return '-';
@@ -86,7 +69,12 @@ export default function DossierDetailPage() {
   const handleChangeStatut = async (statut: string) => {
     if (statut === dossier.statut) return;
     try {
-      await dossiersApi.changeStatut(dossierId, statut);
+      if (statut === 'ARCHIVE') {
+        if (!confirm('Archiver ce dossier ? Plus aucune information ne pourra être ajoutée ou modifiée.')) return;
+        await dossiersApi.archiver(dossierId);
+      } else {
+        await dossiersApi.changeStatut(dossierId, statut);
+      }
       toast.success(`Statut modifié: ${statutLabels[statut]}`);
       load();
     } catch (e: any) {
@@ -229,6 +217,7 @@ export default function DossierDetailPage() {
 
   const currentStep = workflowSteps.indexOf(dossier.statut);
   const isFerme = STATUTS_DOSSIER_FERME.includes(dossier.statut);
+  const peutArchiver = dossier.statut === 'TERMINE';
 
   const EditableField = ({ label, field, type = 'text' }: { label: string; field: string; type?: string }) => (
     <div>
@@ -293,16 +282,18 @@ export default function DossierDetailPage() {
         {/* Workflow */}
         <div className="card !p-4">
           <div className="flex items-center justify-between">
-            {workflowSteps.map((step, i) => (
+            {workflowSteps.map((step, i) => {
+              const clicable = !isFerme || (peutArchiver && step === 'ARCHIVE');
+              return (
               <div key={step} className="flex items-center flex-1">
                 <button
-                  onClick={() => !isFerme && handleChangeStatut(step)}
-                  disabled={isFerme}
-                  title={isFerme ? 'Dossier verrouillé' : `Passer au statut: ${statutLabels[step]}`}
+                  onClick={() => clicable && handleChangeStatut(step)}
+                  disabled={!clicable}
+                  title={clicable ? `Passer au statut: ${statutLabels[step]}` : 'Dossier verrouillé'}
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
                     ${i <= currentStep ? 'bg-primary-500 text-white' : 'bg-gray-200 dark:bg-surface-700 text-gray-500'}
                     ${i === currentStep ? 'ring-4 ring-primary-200' : ''}
-                    ${isFerme ? 'cursor-not-allowed opacity-70' : 'hover:scale-110 cursor-pointer'}`}
+                    ${!clicable ? 'cursor-not-allowed opacity-70' : 'hover:scale-110 cursor-pointer'}`}
                 >
                   {i < currentStep ? '✓' : i + 1}
                 </button>
@@ -310,7 +301,8 @@ export default function DossierDetailPage() {
                   <div className={`flex-1 h-1 mx-1 rounded ${i < currentStep ? 'bg-primary-500' : 'bg-gray-200 dark:bg-surface-700'}`} />
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="flex justify-between mt-2">
             {workflowSteps.map(s => (

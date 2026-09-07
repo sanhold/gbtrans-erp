@@ -43,20 +43,29 @@ export default function ComptesClientsPage() {
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Clients</p><p className="text-base font-bold text-gray-900 dark:text-white">{rows.length}</p></div>
         </div>
         <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Code</th><th className="table-header">Client</th><th className="table-header text-right">Total facturé</th><th className="table-header text-right">Total payé</th><th className="table-header text-right">Reste à payer</th><th className="table-header text-right">Factures</th><th className="table-header"></th></tr></thead>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '26%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
+            </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total facturé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Factures</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rows.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun client facturé</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="Code">{r.code}</td>
-                  <td className="table-cell" data-label="Client">{r.raisonSociale}</td>
-                  <td className="table-cell text-right font-mono" data-label="Total facturé">{fmt(r.totalFacture)}</td>
-                  <td className="table-cell text-right font-mono" data-label="Total payé">{fmt(r.totalPaye)}</td>
-                  <td className={`table-cell text-right font-mono font-semibold ${Number(r.resteAPayer) > 0 ? 'text-red-600' : 'text-green-600'}`} data-label="Reste à payer">{fmt(r.resteAPayer)}</td>
-                  <td className="table-cell text-right" data-label="Factures">{Number(r.nombreFactures)}</td>
-                  <td className="table-cell" data-label="Actions"><button onClick={() => openReleve(r.id)} className="text-xs text-primary-600 hover:underline">Relevé</button></td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{r.code}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={r.raisonSociale}>{r.raisonSociale}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total facturé">{fmt(r.totalFacture)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total payé">{fmt(r.totalPaye)}</td>
+                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.resteAPayer) > 0 ? 'text-red-600' : 'text-green-600'}`} data-label="Reste à payer">{fmt(r.resteAPayer)}</td>
+                  <td className="table-cell text-right !px-1.5 !text-[10.5px] truncate" data-label="Factures">{Number(r.nombreFactures)}</td>
+                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => openReleve(r.id)} className="text-[10.5px] text-primary-600 hover:underline">Relevé</button></td>
                 </tr>
               ))}
             </tbody>

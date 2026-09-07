@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, clientsApi } from '@/lib/api';
+import { STATUTS_DOSSIER_FERME } from '@/lib/dossierStatut';
 import toast from 'react-hot-toast';
 
 export default function EditDossierPage() {
@@ -47,7 +48,7 @@ export default function EditDossierPage() {
         clientsApi.list({ limit: 500 }),
       ]);
       if (!dossierRes.data.data) { toast.error('Dossier non trouvé'); router.push('/dossiers'); return; }
-      if (['CLOTURE', 'ANNULE', 'ARCHIVE'].includes(dossierRes.data.data.statut)) {
+      if (STATUTS_DOSSIER_FERME.includes(dossierRes.data.data.statut)) {
         toast.error('Ce dossier est verrouillé, modification impossible');
         router.push(`/dossiers/${dossierId}`);
         return;

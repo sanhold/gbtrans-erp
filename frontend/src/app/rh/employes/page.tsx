@@ -85,34 +85,40 @@ export default function EmployesPage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Employés</h1>
-            <p className="text-sm text-gray-500">{employes.filter(e => e.actif).length} employé(s) actif(s)</p>
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex-shrink-0 mr-1">
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Employés</h1>
+              <p className="text-[10px] text-gray-500 whitespace-nowrap">{employes.filter(e => e.actif).length} actif(s)</p>
+            </div>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher (nom, matricule, poste)..." className="input-field !py-1.5 text-xs w-56 flex-shrink-0" />
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer flex-shrink-0 whitespace-nowrap">
+              <input type="checkbox" checked={showInactifs} onChange={e => setShowInactifs(e.target.checked)} className="w-3.5 h-3.5 rounded" />
+              Afficher désactivés
+            </label>
+            <div className="flex gap-2 flex-shrink-0 ml-auto">
+              <Link href="/rh/paie" className="btn-secondary !px-3 !py-1.5 text-xs">Paie</Link>
+              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs">+ Nouvel Employé</button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Link href="/rh/paie" className="btn-secondary text-sm">Paie</Link>
-            <button onClick={openCreate} className="btn-primary text-sm">+ Nouvel Employé</button>
-          </div>
-        </div>
-
-        <div className="card !p-3 flex gap-3 flex-wrap items-center">
-          <div className="relative flex-1 min-w-[220px]">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher (nom, matricule, poste)..." className="input-field pl-9 text-sm" />
-          </div>
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
-            <input type="checkbox" checked={showInactifs} onChange={e => setShowInactifs(e.target.checked)} className="w-4 h-4 rounded" />
-            Afficher les employés désactivés
-          </label>
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '19%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">Matricule</th><th className="table-header">Nom</th><th className="table-header">Poste</th>
-              <th className="table-header">Contrat</th><th className="table-header">Embauche</th>
-              <th className="table-header text-right">Salaire de base</th><th className="table-header">Statut</th><th className="table-header">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Matricule</th><th className="table-header !text-[10px] !px-1.5 truncate">Nom</th><th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Contrat</th><th className="table-header !text-[10px] !px-1.5 truncate">Embauche</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Salaire base</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -121,15 +127,15 @@ export default function EmployesPage() {
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun employé</td></tr>
               ) : filtered.map(e => (
                 <tr key={e.id} className="table-row">
-                  <td className="table-cell font-mono text-xs font-medium" data-label="Matricule">{e.matricule}</td>
-                  <td className="table-cell" data-label="Nom">{e.prenom} {e.nom}</td>
-                  <td className="table-cell text-xs" data-label="Poste">{e.poste}{e.departement ? ` — ${e.departement}` : ''}</td>
-                  <td className="table-cell" data-label="Contrat"><span className="badge badge-info">{TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat}</span></td>
-                  <td className="table-cell text-xs" data-label="Embauche">{new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="Salaire de base">{fmt(e.salaireBase)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${e.actif ? 'badge-success' : 'badge-danger'}`}>{e.actif ? 'Actif' : 'Désactivé'}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex gap-2 text-xs">
+                  <td className="table-cell font-mono font-medium !px-1.5 !text-[10.5px] truncate" data-label="Matricule">{e.matricule}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Nom">{e.prenom} {e.nom}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={`${e.poste}${e.departement ? ` — ${e.departement}` : ''}`}>{e.poste}{e.departement ? ` — ${e.departement}` : ''}</td>
+                  <td className="table-cell !px-1.5" data-label="Contrat"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat}</span></td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Embauche">{new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Salaire de base">{fmt(e.salaireBase)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${e.actif ? 'badge-success' : 'badge-danger'} !text-[10px] !px-1.5 !py-0`}>{e.actif ? 'Actif' : 'Désactivé'}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    <div className="flex gap-2 text-[10.5px]">
                       <button onClick={() => openEdit(e)} className="text-primary-500 hover:underline">Modifier</button>
                       <button onClick={() => handleToggleStatut(e)} className={e.actif ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline'}>{e.actif ? 'Désactiver' : 'Réactiver'}</button>
                     </div>

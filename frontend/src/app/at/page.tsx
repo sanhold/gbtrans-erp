@@ -8,6 +8,7 @@ import PickerField from '@/components/ui/PickerField';
 import { atApi, clientsApi, dossiersApi, documentsApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { generateATCertBlob, downloadBlob } from '@/lib/generateATPdf';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
@@ -23,6 +24,8 @@ const emptyForm = {
 };
 
 export default function ATPage() {
+  const { hasPermission } = useAuthStore();
+  const canSignature = hasPermission('DOCUMENTS:SIGNATURE');
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -40,10 +43,10 @@ export default function ATPage() {
   const [saving, setSaving] = useState(false);
 
   const [prolongerAt, setProlongerAt] = useState<any>(null);
-  const [prolongerForm, setProlongerForm] = useState({ nouvelleDateExpiration: '', nouveauNumeroDeclaration: '' });
+  const [prolongerForm, setProlongerForm] = useState({ nouvelleDateExpiration: '', nouveauNumeroDeclaration: '', afficherSignature: false });
 
   const [apurerAt, setApurerAt] = useState<any>(null);
-  const [apurerForm, setApurerForm] = useState({ dateApurement: new Date().toISOString().slice(0, 10), referenceApurement: '' });
+  const [apurerForm, setApurerForm] = useState({ dateApurement: new Date().toISOString().slice(0, 10), referenceApurement: '', afficherSignature: false });
 
   const [historiqueAt, setHistoriqueAt] = useState<any>(null);
   const [historiqueList, setHistoriqueList] = useState<any[]>([]);
@@ -139,7 +142,8 @@ export default function ATPage() {
     type: 'PROLONGATION' | 'APUREMENT',
     at: any,
     data: any,
-    description: string
+    description: string,
+    afficherSignature?: boolean
   ) => {
     try {
       const { blob, filename } = await generateATCertBlob(type, {
@@ -148,7 +152,7 @@ export default function ATPage() {
         nature: at.nature,
         dossierNumero: at.dossiers?.[0]?.numero,
         clientNom: at.client?.raisonSociale,
-      }, data);
+      }, data, canSignature && afficherSignature);
 
       downloadBlob(blob, filename);
 
@@ -176,8 +180,9 @@ export default function ATPage() {
       toast.success('AT prolongée');
       const at = prolongerAt;
       const dateProlongation = new Date().toISOString();
+      const afficherSignature = prolongerForm.afficherSignature;
       setProlongerAt(null);
-      setProlongerForm({ nouvelleDateExpiration: '', nouveauNumeroDeclaration: '' });
+      setProlongerForm({ nouvelleDateExpiration: '', nouveauNumeroDeclaration: '', afficherSignature: false });
       load();
       loadStats();
       archiverCertificat('PROLONGATION', at, {
@@ -186,7 +191,7 @@ export default function ATPage() {
         nouvelleDateExpiration: prolongerForm.nouvelleDateExpiration,
         ancienNumeroDeclaration: at.declarationEntree,
         nouveauNumeroDeclaration: prolongerForm.nouveauNumeroDeclaration,
-      }, `Certificat de prolongation — AT ${at.numero}`);
+      }, `Certificat de prolongation — AT ${at.numero}`, afficherSignature);
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
 
@@ -203,84 +208,87 @@ export default function ATPage() {
       const at = apurerAt;
       const dateApurement = apurerForm.dateApurement;
       const referenceApurement = apurerForm.referenceApurement;
+      const afficherSignature = apurerForm.afficherSignature;
       setApurerAt(null);
-      setApurerForm({ dateApurement: new Date().toISOString().slice(0, 10), referenceApurement: '' });
+      setApurerForm({ dateApurement: new Date().toISOString().slice(0, 10), referenceApurement: '', afficherSignature: false });
       load();
       loadStats();
-      archiverCertificat('APUREMENT', at, { dateApurement, referenceApurement }, `Certificat d'apurement — AT ${at.numero}`);
+      archiverCertificat('APUREMENT', at, { dateApurement, referenceApurement }, `Certificat d'apurement — AT ${at.numero}`, afficherSignature);
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admissions Temporaires</h1>
-            <p className="text-sm text-gray-500">Suivi des AT non apurées, expirées et historique d&apos;apurement</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="stat-card !p-3 !bg-red-50 dark:!bg-red-900/20 border border-red-200 dark:border-red-800 text-center min-w-[130px]">
-              <p className="text-[10px] text-red-700 dark:text-red-300 uppercase font-semibold">AT expire bientôt</p>
-              <p className="text-xl font-bold text-red-600">{stats.expireBientot}</p>
+        <div className="card !p-3 overflow-x-auto">
+          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex-shrink-0 mr-1">
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Admissions Temporaires</h1>
+              <p className="text-[10px] text-gray-500 whitespace-nowrap">Non apurées, expirées &amp; historique</p>
             </div>
-            <div className="stat-card !p-3 !bg-red-50 dark:!bg-red-900/20 border border-red-200 dark:border-red-800 text-center min-w-[130px]">
-              <p className="text-[10px] text-red-700 dark:text-red-300 uppercase font-semibold">AT expiré</p>
-              <p className="text-xl font-bold text-red-600">{stats.expire}</p>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-40 flex-shrink-0" placeholder="N° AT, désignation, déclarant..." />
+            <select value={etatFiltre} onChange={e => { setEtatFiltre(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-36 flex-shrink-0">
+              <option value="">Non apurées + Expirées</option>
+              <option value="NON_APURE">Non apuré uniquement</option>
+              <option value="EXPIRE">Expiré uniquement</option>
+              <option value="TOUS">Toutes (y compris apurées)</option>
+            </select>
+            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
+            <div className="flex items-center gap-1.5 flex-shrink-0 border-x border-gray-200 dark:border-surface-700 px-2">
+              <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="AT expire bientôt">⏳ {stats.expireBientot}</span>
+              <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="AT expiré">⚠ {stats.expire}</span>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/at/historique" className="btn-secondary">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <Link href="/at/historique" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               Historique AT
             </Link>
-            <button onClick={openCreate} className="btn-primary">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            <button type="button" onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Nouvelle AT
             </button>
-          </div>
-        </div>
-
-        <div className="card !p-4">
-          <form onSubmit={handleSearch} className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[250px]">
-              <label className="label">Recherche</label>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field" placeholder="N° AT, désignation, déclarant..." />
-            </div>
-            <div>
-              <label className="label">Etat</label>
-              <select value={etatFiltre} onChange={e => { setEtatFiltre(e.target.value); setPage(1); }} className="input-field w-48">
-                <option value="">Non apurées + Expirées</option>
-                <option value="NON_APURE">Non apuré uniquement</option>
-                <option value="EXPIRE">Expiré uniquement</option>
-                <option value="TOUS">Toutes (y compris apurées)</option>
-              </select>
-            </div>
-            <button type="submit" className="btn-primary">Afficher</button>
           </form>
         </div>
 
-        <div className="table-container overflow-x-auto">
-          <table className="w-full">
+        <div className="table-container">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="table-header">Id. AT</th>
-                <th className="table-header">Date Création</th>
-                <th className="table-header">N° Dossier</th>
-                <th className="table-header">Client</th>
-                <th className="table-header">Designation</th>
-                <th className="table-header">Declarant</th>
-                <th className="table-header">N° déclaration</th>
-                <th className="table-header">Nature</th>
-                <th className="table-header">Bureau</th>
-                <th className="table-header">Date déclaration</th>
-                <th className="table-header">Date Échéance</th>
-                <th className="table-header">Delais</th>
-                <th className="table-header">Temps Alerte</th>
-                <th className="table-header">Temps Restant</th>
-                <th className="table-header text-right">Montant Garantie</th>
-                <th className="table-header">Etat</th>
-                <th className="table-header">Actions</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Id. AT</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Date Créat.</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Designation</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Declarant</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N° déclar.</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Nature</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Bureau</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Date décl.</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Délais</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Alerte</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Restant</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Garantie</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Etat</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -293,39 +301,39 @@ export default function ATPage() {
                 const rowClass = at.etat === 'EXPIRE' ? 'text-red-600' : enAlerte ? 'text-amber-600' : '';
                 return (
                   <tr key={at.id} className={`table-row ${rowClass}`}>
-                    <td className="table-cell font-medium text-primary-600" data-label="Id. AT">{at.numero}</td>
-                    <td className="table-cell text-xs" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
-                    <td className="table-cell font-mono text-xs" data-label="N° Dossier">
+                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Dossier">
                       {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numero}</Link> : '-'}
                     </td>
-                    <td className="table-cell" data-label="Client">{at.client?.raisonSociale || '-'}</td>
-                    <td className="table-cell" data-label="Designation">{at.designation}</td>
-                    <td className="table-cell" data-label="Declarant">{at.declarant || '-'}</td>
-                    <td className="table-cell font-mono text-xs" data-label="N° déclaration">{at.declarationEntree || '-'}</td>
-                    <td className="table-cell" data-label="Nature">{at.nature || '-'}</td>
-                    <td className="table-cell" data-label="Bureau">{at.bureauEntree || '-'}</td>
-                    <td className="table-cell text-xs" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
-                    <td className="table-cell text-xs" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
-                    <td className="table-cell text-center" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois} Mois` : '-'}</td>
-                    <td className="table-cell text-center" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours} Jour(s)` : '-'}</td>
-                    <td className={`table-cell text-center font-semibold ${rowClass}`} data-label="Temps Restant">{at.joursRestants} Jours</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
-                    <td className="table-cell" data-label="Etat"><span className={`badge ${ETAT_BADGE[at.etat]}`}>{ETAT_LABELS[at.etat]}</span></td>
-                    <td className="table-cell" data-label="Actions">
-                      <div className="flex gap-1">
-                        <button onClick={() => openEdit(at)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                          <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
+                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
+                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
+                    <td className={`table-cell text-center font-semibold !text-[10.5px] !px-1 truncate ${rowClass}`} data-label="Temps Restant">{at.joursRestants}j</td>
+                    <td className="table-cell text-right font-mono !text-[10.5px] !px-1.5 truncate" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
+                    <td className="table-cell !px-1.5" data-label="Etat"><span className={`badge ${ETAT_BADGE[at.etat]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[at.etat]}</span></td>
+                    <td className="table-cell !px-1" data-label="Actions">
+                      <div className="flex gap-0.5">
+                        <button onClick={() => openEdit(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
+                          <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
-                        <button onClick={() => openHistorique(at)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Historique des prolongations">
-                          <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                        <button onClick={() => openHistorique(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Historique des prolongations">
+                          <svg className="w-3.5 h-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                         </button>
                         {at.etat !== 'APURE' && (
                           <>
-                            <button onClick={() => setProlongerAt(at)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Prolonger">
-                              <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <button onClick={() => setProlongerAt(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Prolonger">
+                              <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </button>
-                            <button onClick={() => setApurerAt(at)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Apurer">
-                              <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            <button onClick={() => setApurerAt(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Apurer">
+                              <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                             </button>
                           </>
                         )}
@@ -409,6 +417,10 @@ export default function ATPage() {
                     <input type="text" value={prolongerForm.nouveauNumeroDeclaration} onChange={e => setProlongerForm({ ...prolongerForm, nouveauNumeroDeclaration: e.target.value })} className="input-field !bg-amber-50 dark:!bg-amber-900/20 border-amber-300" required />
                   </div>
                 </div>
+                <label className={`flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+                  <input type="checkbox" checked={prolongerForm.afficherSignature} disabled={!canSignature} onChange={e => setProlongerForm({ ...prolongerForm, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
+                  Afficher la signature sur le certificat
+                </label>
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <button type="button" onClick={() => setProlongerAt(null)} className="btn-secondary">Annuler</button>
                   <button type="submit" className="btn-primary !bg-amber-600 hover:!bg-amber-700">Valider</button>
@@ -434,6 +446,10 @@ export default function ATPage() {
                   <input type="date" value={apurerForm.dateApurement} onChange={e => setApurerForm({ ...apurerForm, dateApurement: e.target.value })} className="input-field !bg-red-50 dark:!bg-red-900/20 border-red-300" required />
                 </div>
                 <div><label className="label">Référence apurement</label><input type="text" value={apurerForm.referenceApurement} onChange={e => setApurerForm({ ...apurerForm, referenceApurement: e.target.value })} className="input-field" /></div>
+                <label className={`flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+                  <input type="checkbox" checked={apurerForm.afficherSignature} disabled={!canSignature} onChange={e => setApurerForm({ ...apurerForm, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
+                  Afficher la signature sur le certificat
+                </label>
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <button type="button" onClick={() => setApurerAt(null)} className="btn-secondary">Annuler</button>
                   <button type="submit" className="btn-success">Valider</button>

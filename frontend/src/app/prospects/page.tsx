@@ -75,16 +75,26 @@ export default function ProspectsPage() {
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">Raison Sociale</th>
-              <th className="table-header">Contact</th>
-              <th className="table-header">Téléphone</th>
-              <th className="table-header">Email</th>
-              <th className="table-header">Activité</th>
-              <th className="table-header">Source</th>
-              <th className="table-header">Statut</th>
-              <th className="table-header">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Raison Sociale</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Contact</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Téléphone</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Email</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Activité</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Source</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -93,14 +103,14 @@ export default function ProspectsPage() {
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun prospect. Ajoutez votre premier prospect commercial.</td></tr>
               ) : paged.map(p => (
                 <tr key={p.id} className="table-row">
-                  <td className="table-cell font-medium" data-label="Raison Sociale">{p.raisonSociale}</td>
-                  <td className="table-cell" data-label="Contact">{p.contact || '-'}</td>
-                  <td className="table-cell" data-label="Téléphone">{p.telephone || '-'}</td>
-                  <td className="table-cell" data-label="Email">{p.email || '-'}</td>
-                  <td className="table-cell" data-label="Activité">{p.activite || '-'}</td>
-                  <td className="table-cell" data-label="Source">{p.source || '-'}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'}`}>{p.statut?.replace(/_/g, ' ')}</span></td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(p.createdAt).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Raison Sociale" title={p.raisonSociale}>{p.raisonSociale}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Contact">{p.contact || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Téléphone">{p.telephone || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Email" title={p.email || undefined}>{p.email || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Activité" title={p.activite || undefined}>{p.activite || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Source">{p.source || '-'}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut?.replace(/_/g, ' ')}</span></td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.createdAt).toLocaleDateString('fr-FR')}</td>
                 </tr>
               ))}
             </tbody>

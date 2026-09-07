@@ -95,7 +95,7 @@ async function main() {
     { designation: 'Frais de transport', min: 150000, max: 2000000, categorie: 'TRANSPORT' },
   ];
   const containerTypes = ["20'", "40'", "40'HC", "20' REEFER", "40' REEFER"];
-  const statuts: StatutDossier[] = ['NOUVEAU', 'EN_COURS', 'ATTENTE_CLIENT', 'ATTENTE_DOUANE', 'LIQUIDATION', 'PAIEMENT', 'MAIN_LEVEE', 'LIVRAISON', 'CLOTURE', 'CLOTURE'];
+  const statuts: StatutDossier[] = ['NOUVEAU', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'EN_COURS', 'TERMINE', 'TERMINE'];
 
   const annee = 2026;
   const debut = new Date('2026-01-05');
@@ -152,7 +152,7 @@ async function main() {
         regimeDouanier: nature === 'EXPORT' ? 'Exportation' : 'Mise à la consommation',
         dateCreation,
         dateModification: dateCreation,
-        dateCloture: statut === 'CLOTURE' ? new Date(dateCreation.getTime() + randomInt(7, 45) * 86400000) : null,
+        dateCloture: statut === 'TERMINE' ? new Date(dateCreation.getTime() + randomInt(7, 45) * 86400000) : null,
         numeroDeclaration: statut !== 'NOUVEAU' ? `D${annee}${randomInt(10000, 99999)}` : null,
       },
     });
@@ -200,10 +200,10 @@ async function main() {
 
       let statutFac: StatutFacture = 'BROUILLON';
       let montantPaye = 0;
-      if (['CLOTURE', 'LIVRAISON', 'MAIN_LEVEE'].includes(statut)) {
+      if (statut === 'TERMINE') {
         if (Math.random() > 0.3) { statutFac = 'PAYEE'; montantPaye = montantTTC; }
         else { statutFac = 'PARTIELLEMENT_PAYEE'; montantPaye = Math.round(montantTTC * (randomInt(30, 80) / 100)); }
-      } else if (['PAIEMENT', 'LIQUIDATION'].includes(statut)) {
+      } else if (statut === 'EN_COURS') {
         statutFac = 'VALIDEE';
       }
 

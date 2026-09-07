@@ -132,6 +132,7 @@ async function main() {
     { module: 'DOSSIERS', action: 'CHANGER_STATUT', libelle: 'Changer le statut d\'un dossier' },
     { module: 'COMPTABILITE', action: 'CLOTURER', libelle: 'Clôturer un exercice' },
     { module: 'RH', action: 'PAYER', libelle: 'Marquer un bulletin de paie comme payé' },
+    { module: 'DOCUMENTS', action: 'SIGNATURE', libelle: 'Autoriser l\'affichage de la signature sur les documents imprimés/téléchargés' },
   ];
 
   for (const perm of permissionsSpecifiques) {

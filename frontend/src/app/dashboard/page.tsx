@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
@@ -9,12 +9,44 @@ import { useAuthStore } from '@/stores/authStore';
 interface Stats {
   totalDossiers: number;
   dossiersParAnnee: Record<string, number>;
+  dossiersImport: number;
+  dossiersExport: number;
+  dossiersTransit: number;
   dossiersEnCours: number;
+  totalClients: number;
+  totalFournisseurs: number;
+  montantFacture: number;
   montantFactureMois: number;
+  montantEncaisse: number;
   montantImpaye: number;
-  facturesImpayeesCount: number;
+  totalProformas: number;
+  totalFactures: number;
+  atActives: number;
+  atExpirees: number;
+  totalCautions: number;
   totalCourriers: number;
+  documentsArchives: number;
+  facturesImpayeesCount: number;
 }
+
+interface CAMensuel {
+  mois: number;
+  ca: number;
+  encaisse: number;
+  impaye: number;
+  nombre_factures: number;
+}
+
+interface TopClient {
+  id: string;
+  code: string;
+  raisonSociale: string;
+  nombre_dossiers: number;
+  ca_total: number;
+  impaye: number;
+}
+
+const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 const formatMontant = (montant: number) => {
   if (montant >= 1_000_000) return `${(montant / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M FCFA`;
@@ -23,20 +55,22 @@ const formatMontant = (montant: number) => {
 };
 
 function KpiCard({ label, value, icon, color, trend }: {
-  label: string; value: string; icon: string; color: 'violet' | 'amber' | 'teal' | 'rose'; trend?: { label: string; up?: boolean };
+  label: string; value: string; icon: string; color: 'violet' | 'amber' | 'teal' | 'rose' | 'blue' | 'slate'; trend?: { label: string; up?: boolean };
 }) {
   const iconBg: Record<string, string> = {
     violet: 'bg-primary-100 text-primary-700',
     amber: 'bg-amber-50 text-amber-500',
     teal: 'bg-accent-50 text-accent-600',
     rose: 'bg-[#fdeaef] text-[#c93b63]',
+    blue: 'bg-[#e6effc] text-[#1f6fd6]',
+    slate: 'bg-[#eef0f4] text-[#525a6b]',
   };
   return (
-    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-2xl p-5 shadow-card">
+    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-2xl p-5 shadow-card hover:shadow-lg hover:-translate-y-0.5 transition-all">
       <div className="flex items-center justify-between mb-3.5">
         <div>
           <div className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium">{label}</div>
-          <div className="font-display text-[30px] font-extrabold tracking-tight leading-none mt-0.5 text-gray-900 dark:text-white">{value}</div>
+          <div className="font-display text-[26px] font-extrabold tracking-tight leading-none mt-0.5 text-gray-900 dark:text-white">{value}</div>
         </div>
         <div className={`w-10 h-10 rounded-[11px] flex items-center justify-center flex-shrink-0 ${iconBg[color]}`}>
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -58,101 +92,48 @@ function KpiCard({ label, value, icon, color, trend }: {
   );
 }
 
-interface ModuleItem {
-  name: string;
-  desc: string;
-  href: string;
-  icon: string;
-  color: 'violet' | 'teal' | 'amber' | 'blue' | 'rose' | 'slate';
-  tag?: string;
-}
-
-const colorClasses: Record<ModuleItem['color'], string> = {
-  violet: 'bg-primary-100 text-primary-700',
-  teal: 'bg-accent-50 text-accent-600',
-  amber: 'bg-amber-50 text-amber-500',
-  blue: 'bg-[#e6effc] text-[#1f6fd6]',
-  rose: 'bg-[#fdeaef] text-[#c93b63]',
-  slate: 'bg-[#eef0f4] text-[#525a6b]',
-};
-
-function ModuleCard({ mod }: { mod: ModuleItem }) {
+function SectionCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Link
-      href={mod.href}
-      className="group bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-2xl p-[18px] shadow-card hover:shadow-lg hover:border-primary-100 dark:hover:border-primary-800 hover:-translate-y-0.5 transition-all flex flex-col gap-3 min-h-[132px] relative"
-    >
-      {mod.tag && (
-        <span className={`absolute top-4 right-4 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${colorClasses[mod.color]}`}>
-          {mod.tag}
-        </span>
-      )}
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colorClasses[mod.color]}`}>
-        <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d={mod.icon} />
-        </svg>
+    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-2xl p-5 shadow-card">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
+        {action}
       </div>
-      <div>
-        <h3 className="text-[14.5px] font-bold tracking-tight text-gray-900 dark:text-white">{mod.name}</h3>
-        <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">{mod.desc}</p>
-      </div>
-    </Link>
-  );
-}
-
-function Section({ title, subtitle, items }: { title: string; subtitle: string; items: ModuleItem[] }) {
-  return (
-    <div className="mb-8">
-      <div className="flex items-center gap-2.5 mb-4">
-        <h2 className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h2>
-        <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{subtitle}</span>
-        <div className="flex-1 h-px bg-surface-100 dark:bg-surface-700" />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {items.map((mod) => <ModuleCard key={mod.href} mod={mod} />)}
-      </div>
+      {children}
     </div>
   );
 }
 
-const operationsModules: ModuleItem[] = [
-  { name: 'Dossiers', desc: 'Suivez la progression et organisez vos documents de transit.', href: '/dossiers', icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', color: 'violet' },
-  { name: 'Gestion AT', desc: 'Pilotez le suivi de vos admissions temporaires.', href: '/at', icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', color: 'blue' },
-  { name: 'Gestion Caution', desc: "Gérez et suivez l'état de vos cautions douanières.", href: '/cautions', icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z', color: 'teal' },
-  { name: 'Courrier', desc: 'Suivez vos courriers entrants et sortants.', href: '/courriers', icon: 'M2 7l10 6 10-6M2 4h20v16H2z', color: 'amber' },
-];
-
-const commercialModules: ModuleItem[] = [
-  { name: 'Offres', desc: 'Créez et gérez vos offres commerciales.', href: '/offres', icon: 'M6 4h12v16l-6-3-6 3z', color: 'violet' },
-  { name: 'Catalogue des Prestations', desc: 'Gérez les prestations et leurs tarifs par défaut.', href: '/parametres/catalogue-prestations', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-7.07-7.07a1.998 1.998 0 0 1 0-2.828l4.244-4.243a1.998 1.998 0 0 1 2.828 0l7.07 7.07a1.998 1.998 0 0 1 0 2.828zM11 7h.01', color: 'slate' },
-  { name: 'Proforma', desc: 'Créez et gérez vos factures proforma.', href: '/proformas', icon: 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM14 2v5h5M8 13h8M8 17h5', color: 'blue' },
-  { name: 'Facturation', desc: 'Émettez et suivez vos factures clients.', href: '/facturation', icon: 'M9 14l6-6M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z', color: 'rose' },
-  { name: 'Gestion des Finances', desc: 'Trésorerie, comptabilité et rapports financiers.', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', color: 'teal' },
-  { name: 'Comptabilité', desc: 'Suivez vos écritures et rapports comptables.', href: '/comptabilite', icon: 'M7 21h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2zM9 7h6m-6 10h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01', color: 'slate' },
-  { name: 'Transaction', desc: "Gérez l'ensemble des transactions du logiciel.", href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5', color: 'amber' },
-];
-
-const tiersModules: ModuleItem[] = [
-  { name: 'Clients', desc: 'Gérez les clients et leurs comptes.', href: '/clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6', color: 'violet' },
-  { name: 'Prospects', desc: 'Suivez vos prospects et opportunités commerciales.', href: '/prospects', icon: 'M18 9v6m3-3h-6M7 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20c0-3.5 3-5 6-5s6 1.5 6 5', color: 'blue' },
-  { name: 'Fournisseurs', desc: 'Gérez les fournisseurs et leurs comptes.', href: '/fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5', color: 'blue' },
-  { name: 'Archives numériques', desc: 'Archivez et consultez vos documents numérisés.', href: '/archives', icon: 'M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4', color: 'slate' },
-  { name: 'Statistique', desc: 'Rapports sur dossiers, charges et chiffre d’affaires.', href: '/dashboard/analytique', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z', color: 'teal' },
-];
-
 export default function DashboardHomePage() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [caMensuel, setCaMensuel] = useState<CAMensuel[]>([]);
+  const [topClients, setTopClients] = useState<TopClient[]>([]);
+  const [alertes, setAlertes] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const year = new Date().getFullYear();
 
-  useEffect(() => {
-    dashboardApi
-      .stats(year)
-      .then((res) => setStats(res.data.data))
-      .catch(() => setStats(null))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statsRes, caRes, topRes, alertesRes] = await Promise.all([
+        dashboardApi.stats(year),
+        dashboardApi.caMensuel(year),
+        dashboardApi.topClients(5, year),
+        dashboardApi.alertes(),
+      ]);
+      setStats(statsRes.data.data);
+      setCaMensuel(caRes.data.data || []);
+      setTopClients(topRes.data.data || []);
+      setAlertes(alertesRes.data.data);
+    } catch {
+      setStats(null);
+    } finally {
+      setLoading(false);
+    }
   }, [year]);
+
+  useEffect(() => { load(); }, [load]);
 
   const dossiersAnneePrecedente = stats?.dossiersParAnnee?.[String(year - 1)] || 0;
   const dossiersTrendPct = dossiersAnneePrecedente > 0 && stats
@@ -162,19 +143,42 @@ export default function DashboardHomePage() {
   const today = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
   const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1);
 
+  const maxCA = Math.max(...caMensuel.map(m => m.ca), 1);
+  const graphData = moisLabels.map((_, i) => {
+    const data = caMensuel.find(m => m.mois === i + 1);
+    return {
+      ca: data?.ca || 0,
+      encaisse: data?.encaisse || 0,
+      pctCA: data ? (data.ca / maxCA) * 100 : 0,
+      pctEnc: data ? (data.encaisse / maxCA) * 100 : 0,
+    };
+  });
+
+  const repartition = [
+    { label: 'Import', value: stats?.dossiersImport || 0, color: 'bg-[#1f6fd6]' },
+    { label: 'Export', value: stats?.dossiersExport || 0, color: 'bg-accent-500' },
+    { label: 'Transit', value: stats?.dossiersTransit || 0, color: 'bg-amber-500' },
+  ];
+
+  const nbAlertes = (alertes?.facturesEnRetard?.length || 0) + (alertes?.atExpirationProche?.length || 0) + (alertes?.cautionsCourrierEnAttente?.length || 0);
+
   return (
     <AppLayout>
-      <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 dark:text-white">Bonjour, {user?.prenom || 'admin'} 👋</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Voici l&apos;activité de votre bureau de transit aujourd&apos;hui.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-[11px] px-4 py-2.5 text-[13px] font-medium text-gray-500 dark:text-gray-400 shadow-card">
-          <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="17" rx="2" />
-            <path d="M16 2v4M8 2v4M3 10h18" />
-          </svg>
-          {todayCapitalized}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-700 to-primary-900 px-6 py-6 mb-6 shadow-card">
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-white/5" />
+        <div className="absolute -right-24 -bottom-24 w-64 h-64 rounded-full bg-white/5" />
+        <div className="relative flex items-end justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">Bonjour, {user?.prenom || 'admin'} 👋</h1>
+            <p className="text-sm text-primary-100 mt-1">Voici l&apos;activité de votre bureau de transit aujourd&apos;hui.</p>
+          </div>
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur border border-white/10 rounded-[11px] px-4 py-2.5 text-[13px] font-medium text-white">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="17" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            {todayCapitalized}
+          </div>
         </div>
       </div>
 
@@ -183,40 +187,167 @@ export default function DashboardHomePage() {
           <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <KpiCard
-            label={`Dossiers ${year}`}
-            value={`${stats?.totalDossiers ?? 0}`}
-            icon="M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-            color="violet"
-            trend={dossiersTrendPct !== null ? { label: `${dossiersTrendPct >= 0 ? '+' : ''}${dossiersTrendPct}% vs ${year - 1}`, up: dossiersTrendPct >= 0 } : undefined}
-          />
-          <KpiCard
-            label="Dossiers en cours"
-            value={`${stats?.dossiersEnCours ?? 0}`}
-            icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
-            color="amber"
-            trend={{ label: 'En traitement actuellement' }}
-          />
-          <KpiCard
-            label="Chiffre d'affaires (mois)"
-            value={formatMontant(stats?.montantFactureMois ?? 0)}
-            icon="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
-            color="teal"
-          />
-          <KpiCard
-            label="Créances clients"
-            value={formatMontant(stats?.montantImpaye ?? 0)}
-            icon="M12 2v20M5 5h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h9"
-            color="rose"
-            trend={{ label: `${stats?.facturesImpayeesCount ?? 0} facture(s) impayée(s)` }}
-          />
-        </div>
-      )}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <KpiCard
+              label={`Dossiers ${year}`}
+              value={`${stats?.totalDossiers ?? 0}`}
+              icon="M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
+              color="violet"
+              trend={dossiersTrendPct !== null ? { label: `${dossiersTrendPct >= 0 ? '+' : ''}${dossiersTrendPct}% vs ${year - 1}`, up: dossiersTrendPct >= 0 } : undefined}
+            />
+            <KpiCard
+              label="Dossiers en cours"
+              value={`${stats?.dossiersEnCours ?? 0}`}
+              icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+              color="amber"
+              trend={{ label: 'En traitement actuellement' }}
+            />
+            <KpiCard
+              label="Chiffre d'affaires (mois)"
+              value={formatMontant(stats?.montantFactureMois ?? 0)}
+              icon="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+              color="teal"
+            />
+            <KpiCard
+              label="Créances clients"
+              value={formatMontant(stats?.montantImpaye ?? 0)}
+              icon="M12 2v20M5 5h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h9"
+              color="rose"
+              trend={{ label: `${stats?.facturesImpayeesCount ?? 0} facture(s) impayée(s)` }}
+            />
+          </div>
 
-      <Section title="Opérations" subtitle="Suivi des dossiers de transit" items={operationsModules} />
-      <Section title="Commercial & Finances" subtitle="Offres, facturation et trésorerie" items={commercialModules} />
-      <Section title="Tiers & Outils" subtitle="Clients, fournisseurs et pilotage" items={tiersModules} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <KpiCard
+              label="Clients actifs"
+              value={`${stats?.totalClients ?? 0}`}
+              icon="M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6"
+              color="blue"
+              trend={{ label: `${stats?.totalFournisseurs ?? 0} fournisseur(s)` }}
+            />
+            <KpiCard
+              label="Admissions Temporaires"
+              value={`${stats?.atActives ?? 0}`}
+              icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+              color="slate"
+              trend={stats?.atExpirees ? { label: `${stats.atExpirees} expirée(s)`, up: false } : { label: 'Aucune expirée' }}
+            />
+            <KpiCard
+              label="Cautions en cours"
+              value={`${stats?.totalCautions ?? 0}`}
+              icon="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"
+              color="teal"
+            />
+            <KpiCard
+              label="Documents archivés"
+              value={`${stats?.documentsArchives ?? 0}`}
+              icon="M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"
+              color="violet"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            <div className="lg:col-span-2">
+              <SectionCard
+                title={`Chiffre d'affaires mensuel — ${year}`}
+                action={
+                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary-500" />Facturé</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-accent-500" />Encaissé</span>
+                    <Link href="/dashboard/analytique" className="text-primary-600 hover:underline font-medium">Détails →</Link>
+                  </div>
+                }
+              >
+                <div className="h-48 flex items-end justify-between gap-2 px-1">
+                  {moisLabels.map((mois, i) => (
+                    <div key={mois} className="flex-1 flex flex-col items-center gap-1 group relative">
+                      <div className="w-full flex gap-0.5 items-end h-36">
+                        <div className="flex-1 bg-primary-400 dark:bg-primary-500 rounded-t-sm transition-all hover:bg-primary-600"
+                          style={{ height: `${Math.max(graphData[i].pctCA, 2)}%` }} />
+                        <div className="flex-1 bg-accent-400 dark:bg-accent-500 rounded-t-sm transition-all hover:bg-accent-600"
+                          style={{ height: `${Math.max(graphData[i].pctEnc, graphData[i].ca > 0 ? 2 : 0)}%` }} />
+                      </div>
+                      <span className="text-[10px] text-gray-500">{mois}</span>
+                      {graphData[i].ca > 0 && (
+                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                          <div>CA: {new Intl.NumberFormat('fr-FR').format(graphData[i].ca)} F</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+
+            <SectionCard title="Alertes" action={nbAlertes > 0 ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{nbAlertes}</span> : undefined}>
+              <div className="space-y-2.5 max-h-56 overflow-y-auto">
+                {alertes?.facturesEnRetard?.slice(0, 4).map((f: any) => (
+                  <div key={f.id} className="p-2.5 rounded-lg border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/10">
+                    <span className="text-[9.5px] font-semibold uppercase text-gray-500">Facture en retard</span>
+                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{f.numero} — {f.client?.raisonSociale}</p>
+                  </div>
+                ))}
+                {alertes?.atExpirationProche?.slice(0, 4).map((at: any) => (
+                  <div key={at.id} className="p-2.5 rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/10">
+                    <span className="text-[9.5px] font-semibold uppercase text-gray-500">AT expire bientôt</span>
+                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{at.numero} — {new Date(at.dateExpiration).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                ))}
+                {alertes?.cautionsCourrierEnAttente?.slice(0, 4).map((c: any) => (
+                  <div key={c.id} className="p-2.5 rounded-lg border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/10">
+                    <span className="text-[9.5px] font-semibold uppercase text-gray-500">Courrier caution en attente</span>
+                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">Caution N°{c.numero}</p>
+                  </div>
+                ))}
+                {nbAlertes === 0 && <p className="text-sm text-gray-400 text-center py-6">Aucune alerte 🎉</p>}
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SectionCard title={`Répartition des dossiers — ${year}`}>
+              <div className="space-y-4">
+                {repartition.map((item) => {
+                  const pct = (item.value / (stats?.totalDossiers || 1)) * 100;
+                  return (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{item.label}</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value} ({pct.toFixed(0)}%)</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-gray-100 dark:bg-surface-700 rounded-full overflow-hidden">
+                        <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+            <SectionCard title={`Meilleurs clients — ${year}`} action={<Link href="/clients" className="text-xs text-primary-600 hover:underline font-medium">Voir tous →</Link>}>
+              {topClients.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">Aucune facturation cette année</p>
+              ) : (
+                <div className="space-y-2">
+                  {topClients.map((c, i) => (
+                    <div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-700 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-6 h-6 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-[11px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 truncate">{c.raisonSociale}</p>
+                          <p className="text-[11px] text-gray-400">{c.nombre_dossiers} dossier(s)</p>
+                        </div>
+                      </div>
+                      <span className="text-[13px] font-bold text-gray-900 dark:text-white flex-shrink-0">{formatMontant(c.ca_total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        </>
+      )}
     </AppLayout>
   );
 }

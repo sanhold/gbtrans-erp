@@ -52,31 +52,37 @@ export default function FournisseursPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fournisseurs</h1>
-            <p className="text-sm text-gray-500">{total} fournisseur(s)</p>
-          </div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouveau Fournisseur
-          </button>
-        </div>
-
-        <div className="card !p-4">
-          <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(); }} className="flex gap-3">
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field flex-1" placeholder="Rechercher..." />
-            <button type="submit" className="btn-primary">Rechercher</button>
+        <div className="card !p-3 overflow-x-auto">
+          <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(); }} className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex-shrink-0 mr-1">
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Fournisseurs</h1>
+              <p className="text-[10px] text-gray-500 whitespace-nowrap">{total} fournisseur(s)</p>
+            </div>
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-64 flex-shrink-0" placeholder="Rechercher..." />
+            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Rechercher</button>
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouveau Fournisseur
+            </button>
           </form>
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '19%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">Code</th><th className="table-header">Raison Sociale</th>
-              <th className="table-header">Type</th><th className="table-header">Téléphone</th>
-              <th className="table-header">Email</th><th className="table-header">Ville</th>
-              <th className="table-header">Statut</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Raison Sociale</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Type</th><th className="table-header !text-[10px] !px-1.5 truncate">Téléphone</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Email</th><th className="table-header !text-[10px] !px-1.5 truncate">Ville</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -85,13 +91,13 @@ export default function FournisseursPage() {
                 <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun fournisseur. Créez votre premier fournisseur.</td></tr>
               ) : fournisseurs.map((f) => (
                 <tr key={f.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="Code">{f.code}</td>
-                  <td className="table-cell font-medium" data-label="Raison Sociale">{f.raisonSociale}</td>
-                  <td className="table-cell" data-label="Type"><span className="badge badge-info">{typeFournisseurLabels[f.type] || f.type}</span></td>
-                  <td className="table-cell" data-label="Téléphone">{f.telephone || '-'}</td>
-                  <td className="table-cell" data-label="Email">{f.email || '-'}</td>
-                  <td className="table-cell" data-label="Ville">{f.ville || '-'}</td>
-                  <td className="table-cell" data-label="Statut">{f.actif ? <span className="badge badge-success">Actif</span> : <span className="badge badge-gray">Inactif</span>}</td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{f.code}</td>
+                  <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Raison Sociale" title={f.raisonSociale}>{f.raisonSociale}</td>
+                  <td className="table-cell !px-1.5" data-label="Type"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{typeFournisseurLabels[f.type] || f.type}</span></td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Téléphone">{f.telephone || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Email" title={f.email || undefined}>{f.email || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Ville">{f.ville || '-'}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut">{f.actif ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Actif</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Inactif</span>}</td>
                 </tr>
               ))}
             </tbody>

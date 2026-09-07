@@ -4,11 +4,10 @@ import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
+import { STATUTS_DOSSIER_FERME } from '../../utils/dossierGuard';
 
 const router = Router();
 router.use(authenticate, requireSociete);
-
-const STATUTS_DOSSIER_FERME = ['CLOTURE', 'ANNULE', 'ARCHIVE'];
 
 // ===== CATALOGUE PRESTATIONS =====
 
@@ -178,6 +177,24 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       },
       include: { lignes: { orderBy: { ordre: 'asc' } }, client: { select: { raisonSociale: true } } },
     });
+
+    if (dossierId) {
+      const dossierActuel = await prisma.dossier.findFirst({ where: { id: dossierId }, select: { statut: true, numero: true } });
+      if (dossierActuel?.statut === 'NOUVEAU') {
+        await prisma.dossier.update({ where: { id: dossierId }, data: { statut: 'EN_COURS' } });
+        await prisma.historiqueDossier.create({
+          data: {
+            dossierId,
+            action: 'CHANGEMENT_STATUT',
+            statutAvant: 'NOUVEAU',
+            statutApres: 'EN_COURS',
+            commentaire: `Passage automatique en cours suite à la création de la proforma ${numero}`,
+            utilisateur: 'Système',
+          },
+        });
+      }
+    }
+
     ApiResponse.created(res, proforma, `Proforma ${numero} créée`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -290,6 +307,7 @@ router.post('/:id/transformer-facture', async (req: AuthRequest, res: Response) 
         resteAPayer: proforma.montantTTC,
         montantPrestation: montantPrestation || null,
         tvaPrestation: tvaPrestation || null,
+        afficherSignature: proforma.afficherSignature,
         proformaSourceId: proforma.id,
         tauxTVA: 18,
         lignes: {

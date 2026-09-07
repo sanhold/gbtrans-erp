@@ -88,7 +88,7 @@ export class DashboardService {
         take: 5,
       }),
       prisma.dossier.count({
-        where: { societeId, statut: { notIn: ['CLOTURE', 'ANNULE', 'ARCHIVE'] } },
+        where: { societeId, statut: { notIn: ['TERMINE', 'ANNULE', 'ARCHIVE'] } },
       }),
       prisma.facture.count({
         where: {

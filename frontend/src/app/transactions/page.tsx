@@ -89,36 +89,44 @@ export default function TransactionsPage() {
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Solde net période</p><p className={`text-base font-bold ${soldeNet >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{fmt(soldeNet)} F</p></div>
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Nb. transactions</p><p className="text-base font-bold text-gray-900 dark:text-white">{total}</p></div>
         </div>
-        <div className="flex justify-between items-end flex-wrap gap-3">
-          <div className="flex items-end flex-wrap gap-3">
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} className="input-field !w-auto">
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <select value={filterType} onChange={e => setFilterType(e.target.value)} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
               <option value="">Tous les types</option>
               {Object.entries(TYPE_OPERATION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <PickerField value={filterCompte} onChange={setFilterCompte} options={compteOptions} placeholder="Tous les comptes" title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." className="!w-44" />
-            <div><label className="label !mb-1">Du</label><input type="date" value={filterDateDebut} onChange={e => setFilterDateDebut(e.target.value)} className="input-field !w-auto" /></div>
-            <div><label className="label !mb-1">Au</label><input type="date" value={filterDateFin} onChange={e => setFilterDateFin(e.target.value)} className="input-field !w-auto" /></div>
-            <button onClick={load} className="btn-secondary">Afficher</button>
+            <PickerField value={filterCompte} onChange={setFilterCompte} options={compteOptions} placeholder="Tous les comptes" title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." className="!py-1.5 text-xs w-40 flex-shrink-0" />
+            <input type="date" value={filterDateDebut} onChange={e => setFilterDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Du" />
+            <input type="date" value={filterDateFin} onChange={e => setFilterDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Au" />
+            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
+            <button onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouvelle Opération
+            </button>
           </div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Opération
-          </button>
         </div>
         <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Type</th><th className="table-header">Compte</th><th className="table-header">Libellé</th><th className="table-header text-right">Montant</th></tr></thead>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '14%' }} />
+            </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Type</th><th className="table-header !text-[10px] !px-1.5 truncate">Compte</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : operations.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucune opération enregistrée</td></tr>
               : operations.map(op => (
                 <tr key={op.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="N°">{op.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Type"><span className="badge badge-info">{TYPE_OPERATION_LABELS[op.type] || op.type}</span></td>
-                  <td className="table-cell" data-label="Compte">{op.caisse?.libelle || op.compteBancaire?.libelle || op.compteTiers?.libelle || '-'}</td>
-                  <td className="table-cell" data-label="Libellé">{op.libelle}</td>
-                  <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{op.sens === 'ENTREE' ? '+' : '-'}{fmt(op.montant)}</td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={op.numero}>{op.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5" data-label="Type"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{TYPE_OPERATION_LABELS[op.type] || op.type}</span></td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compte">{op.caisse?.libelle || op.compteBancaire?.libelle || op.compteTiers?.libelle || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={op.libelle}>{op.libelle}</td>
+                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{op.sens === 'ENTREE' ? '+' : '-'}{fmt(op.montant)}</td>
                 </tr>
               ))}
             </tbody>

@@ -87,27 +87,23 @@ export default function PaiePage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Paie</h1>
-            <p className="text-sm text-gray-500">Génération et suivi des bulletins de paie mensuels</p>
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Paie</h1>
+            <select value={mois} onChange={e => setMois(parseInt(e.target.value))} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
+              {MOIS_LABELS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+            <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
+              {[annee - 1, annee, annee + 1].map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <button onClick={handleGenerer} disabled={generating} className="btn-primary !px-3 !py-1.5 text-xs disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
+              {generating ? 'Génération...' : `Générer les bulletins de ${MOIS_LABELS[mois - 1]}`}
+            </button>
+            <Link href="/rh/employes" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">Employés</Link>
           </div>
-          <Link href="/rh/employes" className="btn-secondary text-sm">Employés</Link>
-        </div>
-
-        <div className="card !p-3 flex items-center gap-3 flex-wrap">
-          <select value={mois} onChange={e => setMois(parseInt(e.target.value))} className="input-field !w-auto text-sm">
-            {MOIS_LABELS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-          </select>
-          <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} className="input-field !w-auto text-sm">
-            {[annee - 1, annee, annee + 1].map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <button onClick={handleGenerer} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
-            {generating ? 'Génération...' : `Générer les bulletins de ${MOIS_LABELS[mois - 1]}`}
-          </button>
-          <span className="text-xs text-gray-400 italic ml-auto">
+          <p className="text-[10px] text-gray-400 italic mt-1.5">
             Barème CNPS/ITS indicatif — à faire vérifier par un expert-comptable
-          </span>
+          </p>
         </div>
 
         {bulletins.length > 0 && (
@@ -120,12 +116,23 @@ export default function PaiePage() {
         )}
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '6%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">N° Bulletin</th><th className="table-header">Employé</th><th className="table-header">Poste</th>
-              <th className="table-header text-right">Brut</th><th className="table-header text-right">CNPS</th>
-              <th className="table-header text-right">ITS</th><th className="table-header text-right">Net à payer</th>
-              <th className="table-header">Statut</th><th className="table-header">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Bulletin</th><th className="table-header !text-[10px] !px-1.5 truncate">Employé</th><th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Brut</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">CNPS</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">ITS</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Net à payer</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -134,16 +141,16 @@ export default function PaiePage() {
                 <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucun bulletin pour cette période. Cliquez sur &quot;Générer&quot;.</td></tr>
               ) : bulletins.map(b => (
                 <tr key={b.id} className="table-row cursor-pointer" onClick={() => openDetail(b.id)}>
-                  <td className="table-cell font-mono text-xs font-medium text-primary-600" data-label="N° Bulletin">{b.numero}</td>
-                  <td className="table-cell" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
-                  <td className="table-cell text-xs" data-label="Poste">{b.employe?.poste}</td>
-                  <td className="table-cell text-right font-mono" data-label="Brut">{fmt(b.salaireBrut)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600" data-label="CNPS">{fmt(b.cnpsSalarie)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600" data-label="ITS">{fmt(b.itsSalarie)}</td>
-                  <td className="table-cell text-right font-mono font-bold" data-label="Net à payer">{fmt(b.salaireNet)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'}`}>{b.statut}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-xs text-primary-500 hover:underline">Voir</button>
+                  <td className="table-cell font-mono font-medium text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Bulletin">{b.numero}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={b.employe?.poste}>{b.employe?.poste}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Brut">{fmt(b.salaireBrut)}</td>
+                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="CNPS">{fmt(b.cnpsSalarie)}</td>
+                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="ITS">{fmt(b.itsSalarie)}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Net à payer">{fmt(b.salaireNet)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{b.statut}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-[10.5px] text-primary-500 hover:underline">Voir</button>
                   </td>
                 </tr>
               ))}

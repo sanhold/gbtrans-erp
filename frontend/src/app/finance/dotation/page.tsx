@@ -7,9 +7,14 @@ import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
+import { getSocieteBranding, brandIdentity } from '@/lib/generatePDF';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 export default function DotationPage() {
+  const { hasPermission } = useAuthStore();
+  const canSignature = hasPermission('DOCUMENTS:SIGNATURE');
+  const [afficherSignature, setAfficherSignature] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,12 +112,20 @@ export default function DotationPage() {
   const handlePrintFiche1 = async (d: any) => {
     setPrinting(d.id + '-1');
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
+      const [html2pdf, branding] = await Promise.all([
+        import('html2pdf.js').then(m => m.default),
+        getSocieteBranding(),
+      ]);
+      const brand = brandIdentity(branding);
+      const showSignature = canSignature && afficherSignature;
       const element = document.createElement('div');
       element.style.cssText = "width:210mm;padding:20mm;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;";
       element.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:12px;margin-bottom:20px;">
-          <div><div style="font-weight:800;font-size:16px;color:#12314f;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            ${branding?.logo ? `<img src="${branding.logo}" style="width:38px;height:38px;object-fit:contain;" />` : ''}
+            <div><div style="font-weight:800;font-size:16px;color:#12314f;">${brand.nom}</div><div style="font-size:9px;color:#666;">${brand.slogan}</div></div>
+          </div>
           <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">REÇU DE DOTATION</div><div style="font-size:10px;color:#666;">${d.numero}</div></div>
         </div>
         <table style="width:100%;font-size:11px;margin-bottom:24px;">
@@ -121,11 +134,15 @@ export default function DotationPage() {
           <tr><td style="padding:5px 0;color:#666;">Motif</td><td>${d.motif || '-'}</td></tr>
           <tr><td style="padding:5px 0;color:#666;">Montant alloué</td><td style="font-weight:800;font-size:14px;color:#12314f;">${fmt(d.montant)} XOF</td></tr>
         </table>
-        <div style="display:flex;justify-content:space-between;margin-top:60px;">
+        ${showSignature ? `<div style="display:flex;justify-content:space-between;margin-top:60px;">
           <div style="text-align:center;width:220px;"><div style="font-size:10px;color:#666;margin-bottom:40px;">Signature de l&apos;agent</div><div style="border-top:1px solid #333;padding-top:4px;">${d.agent?.nom} ${d.agent?.prenom}</div></div>
-          <div style="text-align:center;width:220px;"><div style="font-size:10px;color:#666;margin-bottom:40px;">Le Directeur / Cachet &amp; Signature</div><div style="border-top:1px solid #333;padding-top:4px;">GBTRANS SARL</div></div>
-        </div>
-        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:40px;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — GBTRANS SARL</div>
+          <div style="text-align:center;width:220px;">
+            <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '40px'};">Le Directeur / Cachet &amp; Signature</div>
+            ${branding?.signature ? `<img src="${branding.signature}" style="height:32px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
+            <div style="border-top:1px solid #333;padding-top:4px;">${brand.nom}</div>
+          </div>
+        </div>` : ''}
+        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:40px;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — ${brand.nom}</div>
       `;
       document.body.appendChild(element);
       await html2pdf().set({ margin: 0, filename: `Dotation_${d.numero.replace(/\//g, '-')}_Recu.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save();
@@ -137,14 +154,22 @@ export default function DotationPage() {
   const handlePrintFiche2 = async (d: any) => {
     setPrinting(d.id + '-2');
     try {
-      const depRes = await financeApi.depenses.list({ dotationId: d.id, limit: 200 });
+      const [depRes, html2pdf, branding] = await Promise.all([
+        financeApi.depenses.list({ dotationId: d.id, limit: 200 }),
+        import('html2pdf.js').then(m => m.default),
+        getSocieteBranding(),
+      ]);
       const depenses = depRes.data.data || [];
-      const html2pdf = (await import('html2pdf.js')).default;
+      const brand = brandIdentity(branding);
+      const showSignature = canSignature && afficherSignature;
       const element = document.createElement('div');
       element.style.cssText = "width:210mm;padding:15mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;";
       element.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:10px;margin-bottom:16px;">
-          <div><div style="font-weight:800;font-size:16px;color:#12314f;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            ${branding?.logo ? `<img src="${branding.logo}" style="width:34px;height:34px;object-fit:contain;" />` : ''}
+            <div><div style="font-weight:800;font-size:16px;color:#12314f;">${brand.nom}</div><div style="font-size:9px;color:#666;">${brand.slogan}</div></div>
+          </div>
           <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">ÉTAT D&apos;UTILISATION</div><div style="font-size:10px;color:#666;">${d.numero}</div></div>
         </div>
         <table style="width:100%;font-size:10px;margin-bottom:14px;">
@@ -173,7 +198,14 @@ export default function DotationPage() {
             <td style="padding:3px 6px;border-bottom:1px solid #eee;text-align:right;">${fmt(dep.montant)}</td>
           </tr>`).join('') || '<tr><td colspan="5" style="padding:6px;color:#999;">Aucune dépense imputée</td></tr>'}</tbody>
         </table>
-        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:16px;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — GBTRANS SARL</div>
+        ${showSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:26px;">
+          <div style="text-align:center;width:220px;">
+            <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
+            ${branding?.signature ? `<img src="${branding.signature}" style="height:32px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
+            <div style="border-top:1px solid #333;padding-top:4px;">${brand.nom}</div>
+          </div>
+        </div>` : ''}
+        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:16px;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — ${brand.nom}</div>
       `;
       document.body.appendChild(element);
       await html2pdf().set({ margin: 0, filename: `Dotation_${d.numero.replace(/\//g, '-')}_Etat.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save();
@@ -185,53 +217,64 @@ export default function DotationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dotation</h1><p className="text-sm text-gray-500">Gérez les enveloppes budgétaires allouées aux agents pour leurs opérations</p></div>
-
-        <div className="flex justify-between items-end flex-wrap gap-3">
-          <div className="flex items-end flex-wrap gap-3">
-            <div><label className="label !mb-1">N° Dotation</label><input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field !w-auto" placeholder="Rechercher..." /></div>
-            <div>
-              <label className="label !mb-1">Agent</label>
-              <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="!w-44" />
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Dotation</h1>
+            <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field !py-1.5 text-xs !w-32 flex-shrink-0" placeholder="N° Dotation..." />
+            <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="!py-1.5 text-xs w-36 flex-shrink-0" />
+            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
+            <label className={`flex items-center gap-1.5 text-[10.5px] text-gray-600 dark:text-gray-300 flex-shrink-0 whitespace-nowrap ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+              <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300" />
+              Signature sur fiches
+            </label>
+            <div className="flex gap-2 flex-shrink-0 ml-auto">
+              <button onClick={openHistorique} className="btn-secondary !px-3 !py-1.5 text-xs">Historique</button>
+              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs">
+                <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Nouvelle Dotation
+              </button>
             </div>
-            <button onClick={load} className="btn-secondary">Afficher</button>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={openHistorique} className="btn-secondary">Historique Dotation</button>
-            <button onClick={openCreate} className="btn-primary">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouvelle Dotation
-            </button>
           </div>
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '15%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">N° Dotation</th><th className="table-header">Date</th>
-              <th className="table-header text-right">Montant</th><th className="table-header text-right">Utilisé</th>
-              <th className="table-header text-right">Restant</th><th className="table-header">Agent</th>
-              <th className="table-header">Motif</th><th className="table-header">Statut</th><th className="table-header"></th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dotation</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Utilisé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th><th className="table-header !text-[10px] !px-1.5 truncate">Agent</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Motif</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate"></th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune dotation enregistrée</td></tr>
               : rows.map(d => (
                 <tr key={d.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="N° Dotation">{d.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell text-right font-mono text-red-600" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
-                  <td className="table-cell text-right font-mono text-green-600" data-label="Restant">{fmt(d.montantRestant)}</td>
-                  <td className="table-cell" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
-                  <td className="table-cell text-xs max-w-[160px] truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'}`}>{d.statut === 'VALIDE' ? 'Validée' : 'Annulée'}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex gap-2 items-center flex-wrap">
-                      {d.statut === 'VALIDE' && <button onClick={() => openEdit(d)} className="text-xs text-primary-600 hover:underline">Modifier</button>}
-                      {d.statut === 'VALIDE' && <button onClick={() => handleAnnuler(d)} className="text-xs text-red-600 hover:underline">Supprimer</button>}
-                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-xs text-gray-500 hover:underline disabled:opacity-50">Fiche 1</button>
-                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-xs text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
+                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
+                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : 'Annulée'}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    <div className="flex gap-1.5 items-center flex-wrap">
+                      {d.statut === 'VALIDE' && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
+                      {d.statut === 'VALIDE' && <button onClick={() => handleAnnuler(d)} className="text-[10px] text-red-600 hover:underline">Supprimer</button>}
+                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 1</button>
+                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
                     </div>
                   </td>
                 </tr>

@@ -23,7 +23,7 @@ export const CREANCE_STATUT_BADGE: Record<string, string> = {
   VALIDEE: 'badge-info', ENVOYEE: 'badge-info', PARTIELLEMENT_PAYEE: 'badge-warning', EN_RETARD: 'badge-danger',
 };
 
-export const STATUTS_DOSSIER = ['NOUVEAU', 'EN_COURS', 'ATTENTE_CLIENT', 'ATTENTE_DOUANE', 'LIQUIDATION', 'PAIEMENT', 'MAIN_LEVEE', 'LIVRAISON', 'CLOTURE', 'ANNULE', 'ARCHIVE'];
+export { STATUTS_DOSSIER } from './dossierStatut';
 
 export function mergedComptes(caisses: any[], comptes: any[], tiers: any[] = []) {
   return [

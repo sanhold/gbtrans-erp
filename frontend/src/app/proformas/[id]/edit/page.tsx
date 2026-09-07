@@ -62,6 +62,7 @@ export default function ModifierProformaPage() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const { hasPermission } = useAuthStore();
   const canImprimer = hasPermission('PROFORMAS:IMPRIMER');
+  const canSignature = hasPermission('DOCUMENTS:SIGNATURE');
 
   const [loading, setLoading] = useState(true);
   const [proforma, setProforma] = useState<any>(null);
@@ -310,8 +311,8 @@ export default function ModifierProformaPage() {
             <div><label className="label">Titre</label><textarea value={form.titre} onChange={e => setForm({ ...form, titre: e.target.value })} rows={2} className="input-field" placeholder="DEDOUANEMENT..." /></div>
             <div><label className="label">NB / Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} rows={2} className="input-field" /></div>
           </div>
-          <label className="flex items-center gap-2 mt-4 text-sm text-gray-700 dark:text-gray-300 cursor-pointer w-fit">
-            <input type="checkbox" checked={form.afficherSignature} onChange={e => setForm({ ...form, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
+          <label className={`flex items-center gap-2 mt-4 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+            <input type="checkbox" checked={form.afficherSignature} disabled={!canSignature} onChange={e => setForm({ ...form, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
             Afficher la signature sur la proforma
           </label>
         </div>

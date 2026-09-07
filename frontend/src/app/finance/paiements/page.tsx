@@ -35,20 +35,29 @@ export default function PaiementsPage() {
           Les paiements sont enregistrés depuis la fiche facture (bouton "Enregistrer un paiement"). <Link href="/facturation" className="font-semibold underline">Aller à la Facturation</Link>
         </div>
         <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Client</th><th className="table-header">Mode</th><th className="table-header">Facture(s)</th><th className="table-header text-right">Montant</th><th className="table-header">Statut</th></tr></thead>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate">Mode</th><th className="table-header !text-[10px] !px-1.5 truncate">Facture(s)</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : paiements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun paiement enregistré</td></tr>
               : paiements.map(p => (
                 <tr key={p.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="N°">{p.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Client">{p.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell" data-label="Mode"><span className="badge badge-info">{MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement}</span></td>
-                  <td className="table-cell text-xs" data-label="Facture(s)">{(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || '-'}</td>
-                  <td className="table-cell text-right font-mono" data-label="Montant">{fmt(p.montant)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${p.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'}`}>{p.statut}</span></td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={p.numero}>{p.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale || undefined}>{p.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell !px-1.5" data-label="Mode"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement}</span></td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Facture(s)" title={(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || undefined}>{(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || '-'}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(p.montant)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${p.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{p.statut}</span></td>
                 </tr>
               ))}
             </tbody>

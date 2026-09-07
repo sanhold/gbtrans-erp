@@ -90,26 +90,36 @@ export default function FacturationFournisseursPage() {
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">N° Facture</th><th className="table-header">Fournisseur</th>
-              <th className="table-header">Dossier</th><th className="table-header text-right">Total TTC</th>
-              <th className="table-header text-right">Payé</th><th className="table-header text-right">Reste</th>
-              <th className="table-header">Statut</th><th className="table-header">Échéance</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Fournisseur</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : factures.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune facture fournisseur</td></tr>
               : factures.map(f => (
                 <tr key={f.id} className="table-row cursor-pointer" onClick={() => openDetail(f.id)}>
-                  <td className="table-cell font-medium text-primary-600" data-label="N° Facture">{f.numero}</td>
-                  <td className="table-cell" data-label="Fournisseur">{f.fournisseur?.raisonSociale}</td>
-                  <td className="table-cell font-mono text-xs" data-label="Dossier">{f.dossier?.numero || '-'}</td>
-                  <td className="table-cell text-right font-mono font-bold" data-label="Total TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{fmt(f.montantPaye)}</td>
-                  <td className="table-cell text-right font-mono text-red-600" data-label="Reste">{fmt(f.resteAPayer)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'}`}>{f.statut?.replace(/_/g, ' ')}</span></td>
-                  <td className="table-cell text-xs" data-label="Échéance">{new Date(f.dateEcheance).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Fournisseur" title={f.fournisseur?.raisonSociale}>{f.fournisseur?.raisonSociale}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numero || '-'}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
+                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
+                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste">{fmt(f.resteAPayer)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Échéance">{new Date(f.dateEcheance).toLocaleDateString('fr-FR')}</td>
                 </tr>
               ))}
             </tbody>

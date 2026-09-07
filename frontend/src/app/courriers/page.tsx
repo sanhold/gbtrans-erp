@@ -142,51 +142,49 @@ export default function CourriersPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courriers</h1><p className="text-sm text-gray-500">Gestion des courriers entrants et sortants</p></div>
-          <button onClick={openCreate} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouveau Courrier
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit">
-            <button onClick={() => setTab('ENTRANT')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === 'ENTRANT' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}>Courriers Reçus</button>
-            <button onClick={() => setTab('SORTANT')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === 'SORTANT' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}>Courriers Envoyés</button>
-          </div>
-          <Link href="/parametres/modeles-courrier" className="text-sm text-primary-600 hover:underline">Gérer les modèles de courrier →</Link>
-        </div>
-
-        <div className="card !p-4">
-          <form onSubmit={handleSearch} className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[220px]">
-              <label className="label">Recherche</label>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field" placeholder="N°, objet, expéditeur/destinataire..." />
+        <div className="card !p-3 overflow-x-auto">
+          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
+            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1">Courriers</h1>
+            <div className="flex gap-0.5 bg-gray-100 dark:bg-surface-700 rounded-lg p-0.5 flex-shrink-0">
+              <button type="button" onClick={() => setTab('ENTRANT')} className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${tab === 'ENTRANT' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}>Reçus</button>
+              <button type="button" onClick={() => setTab('SORTANT')} className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${tab === 'SORTANT' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}>Envoyés</button>
             </div>
-            <div>
-              <label className="label">Statut</label>
-              <select value={statutFiltre} onChange={e => { setStatutFiltre(e.target.value); setPage(1); }} className="input-field w-40">
-                <option value="">Tous</option>
-                {Object.entries(STATUT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <button type="submit" className="btn-primary">Afficher</button>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-48 flex-shrink-0" placeholder="N°, objet, expéditeur/destinataire..." />
+            <select value={statutFiltre} onChange={e => { setStatutFiltre(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-32 flex-shrink-0">
+              <option value="">Tous statuts</option>
+              {Object.entries(STATUT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
+            <Link href="/parametres/modeles-courrier" className="text-xs text-primary-600 hover:underline flex-shrink-0 whitespace-nowrap">Modèles →</Link>
+            <button type="button" onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouveau Courrier
+            </button>
           </form>
         </div>
 
-        <div className="table-container overflow-x-auto">
-          <table className="w-full">
+        <div className="table-container">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '14%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="table-header">N°</th>
-                <th className="table-header">Date</th>
-                <th className="table-header">{tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}</th>
-                <th className="table-header">Objet</th>
-                <th className="table-header">Dossier</th>
-                <th className="table-header">Priorité</th>
-                <th className="table-header">Statut</th>
-                <th className="table-header">Actions</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N°</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">{tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Objet</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Priorité</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -196,38 +194,38 @@ export default function CourriersPage() {
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun courrier {tab === 'ENTRANT' ? 'reçu' : 'envoyé'}</td></tr>
               ) : items.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="N°">{c.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation)}</td>
-                  <td className="table-cell" data-label={tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}>{(tab === 'ENTRANT' ? c.expediteur : c.destinataire) || '-'}</td>
-                  <td className="table-cell max-w-[280px] truncate" data-label="Objet" title={c.objet}>{c.objet}</td>
-                  <td className="table-cell font-mono text-xs" data-label="Dossier">
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={c.numero}>{c.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label={tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}>{(tab === 'ENTRANT' ? c.expediteur : c.destinataire) || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={c.objet}>{c.objet}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">
                     {c.dossiers?.[0]?.dossier ? <Link href={`/dossiers/${c.dossiers[0].dossier.id}`} className="text-primary-600 hover:underline">{c.dossiers[0].dossier.numeroPhysique || c.dossiers[0].dossier.numero}</Link> : '-'}
                   </td>
-                  <td className="table-cell" data-label="Priorité"><span className={`badge ${PRIORITE_BADGE[c.priorite]}`}>{PRIORITE_LABELS[c.priorite]}</span></td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]}`}>{STATUT_LABELS[c.statut]}</span></td>
-                  <td className="table-cell" data-label="Actions">
+                  <td className="table-cell !px-1.5" data-label="Priorité"><span className={`badge ${PRIORITE_BADGE[c.priorite]} !text-[10px] !px-1.5 !py-0 truncate`}>{PRIORITE_LABELS[c.priorite]}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{STATUT_LABELS[c.statut]}</span></td>
+                  <td className="table-cell !px-1" data-label="Actions">
                     <div className="flex gap-0.5 items-center">
-                      <button onClick={() => openEdit(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      <button onClick={() => openEdit(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
+                        <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
                       {c.statut === 'BROUILLON' && (
-                        <button onClick={() => handleDelete(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onClick={() => handleDelete(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
+                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       )}
                       {tab === 'SORTANT' && c.statut === 'BROUILLON' && (
-                        <button onClick={() => handleStatut(c, 'ENVOYE')} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer envoyé">
-                          <svg className="w-4 h-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                        <button onClick={() => handleStatut(c, 'ENVOYE')} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer envoyé">
+                          <svg className="w-3.5 h-3.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                         </button>
                       )}
                       {(c.statut === 'ENVOYE' || c.statut === 'RECU') && (
-                        <button onClick={() => handleStatut(c, 'TRAITE')} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer traité">
-                          <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        <button onClick={() => handleStatut(c, 'TRAITE')} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer traité">
+                          <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                         </button>
                       )}
                       {['ENVOYE', 'RECU', 'TRAITE'].includes(c.statut) && (
-                        <button onClick={() => handleStatut(c, 'ARCHIVE')} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Archiver">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 01-2-2V4a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                        <button onClick={() => handleStatut(c, 'ARCHIVE')} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Archiver">
+                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 01-2-2V4a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                         </button>
                       )}
                     </div>

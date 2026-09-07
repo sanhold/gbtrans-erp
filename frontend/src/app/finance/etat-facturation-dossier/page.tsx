@@ -180,32 +180,41 @@ export default function EtatFacturationDossierPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">État Facturation Dossier</h1><p className="text-sm text-gray-500">Vérifiez les dossiers facturés et non facturés — cliquez une ligne pour le détail</p></div>
-
-        <div className="flex items-end flex-wrap gap-3">
-          <div><label className="label !mb-1">Année</label><input type="number" value={annee} onChange={e => setAnnee(e.target.value)} className="input-field !w-28" /></div>
-          <div>
-            <label className="label !mb-1">Statut</label>
-            <select value={statut} onChange={e => setStatut(e.target.value)} className="input-field !w-auto">
-              <option value="">Tous</option>
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex-shrink-0 mr-1">
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">État Facturation Dossier</h1>
+              <p className="text-[10px] text-gray-500 whitespace-nowrap">Cliquez une ligne pour le détail</p>
+            </div>
+            <input type="number" value={annee} onChange={e => setAnnee(e.target.value)} className="input-field !py-1.5 text-xs !w-20 flex-shrink-0" title="Année" />
+            <select value={statut} onChange={e => setStatut(e.target.value)} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
+              <option value="">Tous statuts</option>
               {STATUTS_DOSSIER.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+            <PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous clients" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!py-1.5 text-xs w-40 flex-shrink-0" />
+            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
           </div>
-          <div>
-            <label className="label !mb-1">Client</label>
-            <PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!w-44" />
-          </div>
-          <button onClick={load} className="btn-secondary">Afficher</button>
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">N° Dossier</th><th className="table-header">Statut</th>
-              <th className="table-header text-right">Montant Proforma</th><th className="table-header text-right">Montant TVA</th>
-              <th className="table-header text-right">Montant Prestation</th><th className="table-header text-right">Montant Payé</th>
-              <th className="table-header text-right">Montant Restant</th><th className="table-header text-right">Montant Dépensé</th>
-              <th className="table-header">Facturation</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Proforma</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Prestation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Dépensé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Facturation</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Chargement...</td></tr>
@@ -214,15 +223,15 @@ export default function EtatFacturationDossierPage() {
                 const facture = Number(r.montantTVA) > 0 || Number(r.montantPrestation) > 0;
                 return (
                   <tr key={r.id} className="table-row cursor-pointer" onClick={() => openDetail(r.id)}>
-                    <td className="table-cell font-medium text-primary-600" data-label="N° Dossier">{r.numero}</td>
-                    <td className="table-cell" data-label="Statut"><span className="badge badge-info">{r.statut}</span></td>
-                    <td className="table-cell text-right font-mono" data-label="Montant Proforma">{fmt(r.montantProforma)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant TVA">{fmt(r.montantTVA)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant Prestation">{fmt(r.montantPrestation)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant Payé">{fmt(r.montantPaye)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant Restant">{fmt(r.montantRestant)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant Dépensé">{fmt(r.montantDepense)}</td>
-                    <td className="table-cell" data-label="Facturation">{facture ? <span className="badge badge-success">Facturé</span> : <span className="badge badge-gray">Non facturé</span>}</td>
+                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={r.numero}>{r.numero}</td>
+                    <td className="table-cell !px-1.5" data-label="Statut"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{r.statut}</span></td>
+                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Proforma">{fmt(r.montantProforma)}</td>
+                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant TVA">{fmt(r.montantTVA)}</td>
+                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Prestation">{fmt(r.montantPrestation)}</td>
+                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Payé">{fmt(r.montantPaye)}</td>
+                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Restant">{fmt(r.montantRestant)}</td>
+                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Dépensé">{fmt(r.montantDepense)}</td>
+                    <td className="table-cell !px-1.5" data-label="Facturation">{facture ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Facturé</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Non facturé</span>}</td>
                   </tr>
                 );
               })}

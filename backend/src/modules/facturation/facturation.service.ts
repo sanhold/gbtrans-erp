@@ -2,8 +2,7 @@ import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
 import { PaginationParams } from '../../types';
 import { Prisma } from '@prisma/client';
-
-const STATUTS_DOSSIER_FERME = ['CLOTURE', 'ANNULE', 'ARCHIVE'];
+import { STATUTS_DOSSIER_FERME } from '../../utils/dossierGuard';
 
 export class FacturationService {
   async createFacture(societeId: string, createurId: string, data: any) {
@@ -46,6 +45,7 @@ export class FacturationService {
         createurId,
         dateEcheance,
         objet: data.objet,
+        numeroNormalise: data.numeroNormalise || null,
         montantHT,
         montantTVA,
         timbreFiscal,
@@ -57,9 +57,11 @@ export class FacturationService {
         devise: data.devise || 'XOF',
         conditions: data.conditions,
         observations: data.observations,
+        afficherSignature: !!data.afficherSignature,
         lignes: {
           create: data.lignes.map((l: any, index: number) => ({
             ordre: index + 1,
+            categorie: l.categorie,
             codePrestation: l.codePrestation,
             designation: l.designation,
             quantite: l.quantite,
@@ -201,6 +203,7 @@ export class FacturationService {
         lignes: {
           create: factureOrigine.lignes.map((l) => ({
             ordre: l.ordre,
+            categorie: l.categorie,
             designation: l.designation,
             quantite: l.quantite,
             prixUnitaire: l.prixUnitaire,

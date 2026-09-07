@@ -115,28 +115,38 @@ export default function OffresPage() {
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">N°</th><th className="table-header">Client</th><th className="table-header">Objet</th>
-              <th className="table-header text-right">Montant TTC</th><th className="table-header">Date</th>
-              <th className="table-header">Validité</th><th className="table-header">Statut</th><th className="table-header">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate">Objet</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant TTC</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Validité</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
               : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune offre commerciale. Créez votre première offre.</td></tr>
               : offres.map(o => (
                 <tr key={o.id} className="table-row cursor-pointer" onClick={() => router.push(`/offres/${o.id}`)}>
-                  <td className="table-cell font-medium text-primary-600" data-label="N°">{o.numero}</td>
-                  <td className="table-cell" data-label="Client">{o.client?.raisonSociale}</td>
-                  <td className="table-cell" data-label="Objet">{o.objet}</td>
-                  <td className="table-cell text-right font-mono font-bold" data-label="Montant TTC">{fmt(o.montantTTC)}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-xs" data-label="Validité">{new Date(o.dateValidite).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${statutColors[o.statut] || 'badge-gray'}`}>{statutLabels[o.statut] || o.statut}</span></td>
-                  <td className="table-cell" data-label="Actions">
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={o.numero}>{o.numero}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={o.client?.raisonSociale}>{o.client?.raisonSociale}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={o.objet}>{o.objet}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Montant TTC">{fmt(o.montantTTC)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Validité">{new Date(o.dateValidite).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[o.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[o.statut] || o.statut}</span></td>
+                  <td className="table-cell !px-1" data-label="Actions">
                     {!['TRANSFORMEE'].includes(o.statut) && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(o); }} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                        <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(o); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
+                        <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     )}
                   </td>

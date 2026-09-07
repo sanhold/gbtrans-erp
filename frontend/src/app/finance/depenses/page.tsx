@@ -68,30 +68,39 @@ export default function DepensesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dépenses</h1><p className="text-sm text-gray-500">Gérez vos dépenses et sorties de caisse</p></div>
-
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dépenses</h1><p className="text-sm text-gray-500">Gérez vos dépenses et sorties de caisse</p></div>
           <button onClick={() => setShowModal(true)} className="btn-primary">
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Nouvelle Dépense
           </button>
         </div>
         <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Catégorie</th><th className="table-header">Désignation</th><th className="table-header">Compte débité</th><th className="table-header">Dotation</th><th className="table-header text-right">Montant</th><th className="table-header">Statut</th></tr></thead>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+            </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Catégorie</th><th className="table-header !text-[10px] !px-1.5 truncate">Désignation</th><th className="table-header !text-[10px] !px-1.5 truncate">Compte débité</th><th className="table-header !text-[10px] !px-1.5 truncate">Dotation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : depenses.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dépense enregistrée</td></tr>
               : depenses.map(d => (
                 <tr key={d.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="N°">{d.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(d.dateDepense).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Catégorie">{d.categorie}</td>
-                  <td className="table-cell" data-label="Désignation">{d.designation}</td>
-                  <td className="table-cell" data-label="Compte débité">{d.caisse?.libelle || d.compteBancaire?.libelle || '-'}</td>
-                  <td className="table-cell font-mono text-xs" data-label="Dotation">{d.dotation?.numero || '-'}</td>
-                  <td className="table-cell text-right font-mono" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'}`}>{d.statut}</span></td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={d.numero}>{d.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDepense).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Catégorie" title={d.categorie}>{d.categorie}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Désignation" title={d.designation}>{d.designation}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compte débité">{d.caisse?.libelle || d.compteBancaire?.libelle || '-'}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dotation">{d.dotation?.numero || '-'}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut}</span></td>
                 </tr>
               ))}
             </tbody>

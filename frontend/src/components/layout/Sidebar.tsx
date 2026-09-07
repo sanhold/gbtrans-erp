@@ -13,7 +13,6 @@ interface NavItem {
   href: string;
   icon: string;
   badgeKey?: 'dossiers' | 'courriers';
-  sectionLabel?: string;
 }
 
 interface NavGroup {
@@ -40,32 +39,33 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Commercial & Finances',
+    title: 'Commercial',
     items: [
       { name: 'Offres', href: '/offres', icon: 'M6 4h12v16l-6-3-6 3z' },
       { name: 'Proforma', href: '/proformas', icon: 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM14 2v5h5M8 13h8M8 17h5' },
       { name: 'Facturation', href: '/facturation', icon: 'M9 14l6-6M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z' },
       { name: 'Facturation Fournisseur', href: '/facturation-fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
-      { name: 'Comptes Clients', href: '/finance/comptes-clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6', sectionLabel: 'Finance — Comptes tiers' },
-      { name: 'Comptes Fournisseurs', href: '/finance/comptes-fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
-      { name: 'Comptes', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', sectionLabel: 'Finance — Trésorerie' },
+      { name: 'Clients', href: '/clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
+      { name: 'Prospects', href: '/prospects', icon: 'M18 9v6m3-3h-6M7 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20c0-3.5 3-5 6-5s6 1.5 6 5' },
+      { name: 'Fournisseurs', href: '/fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
+    ],
+  },
+  {
+    title: 'Finance & Comptabilité',
+    items: [
+      { name: 'Comptes', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
       { name: 'Transactions', href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5' },
       { name: 'Caisses', href: '/finance/caisses', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
       { name: 'Comptes Bancaires', href: '/finance/comptes-bancaires', icon: 'M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M3 10l9-6 9 6' },
       { name: 'Comptes Tiers', href: '/finance/comptes-tiers', icon: 'M18 9v6m3-3h-6M7 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20c0-3.5 3-5 6-5s6 1.5 6 5' },
-      { name: 'Dotation', href: '/finance/dotation', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22', sectionLabel: 'Finance — Autres' },
+      { name: 'Comptes Clients', href: '/finance/comptes-clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
+      { name: 'Comptes Fournisseurs', href: '/finance/comptes-fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
+      { name: 'Dotation', href: '/finance/dotation', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22' },
       { name: 'État Facturation Dossier', href: '/finance/etat-facturation-dossier', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
       { name: 'Comptabilité', href: '/comptabilite', icon: 'M7 21h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2zM9 7h6m-6 10h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01' },
       { name: 'Compta Réel', href: '/compta-reel', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
       { name: 'Statistique', href: '/statistiques', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z' },
-    ],
-  },
-  {
-    title: 'Tiers',
-    items: [
-      { name: 'Clients', href: '/clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
-      { name: 'Prospects', href: '/prospects', icon: 'M18 9v6m3-3h-6M7 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20c0-3.5 3-5 6-5s6 1.5 6 5' },
-      { name: 'Fournisseurs', href: '/fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
     ],
   },
   {
@@ -119,7 +119,7 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       )}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-[264px] flex-shrink-0 bg-gradient-to-b from-primary-800 to-primary-900 text-white flex flex-col h-screen p-4 overflow-y-auto',
+          'fixed inset-y-0 left-0 z-50 w-[264px] flex-shrink-0 bg-primary-600 text-white flex flex-col h-screen p-4 overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
           'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-0',
           open ? 'translate-x-0' : '-translate-x-full'
@@ -161,11 +161,6 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
 
               return (
                 <div key={item.href}>
-                  {item.sectionLabel && (
-                    <div className="text-[9.5px] uppercase tracking-wider text-white/35 font-semibold px-3 pt-2.5 pb-1">
-                      {item.sectionLabel}
-                    </div>
-                  )}
                   <Link
                     href={item.href}
                     onClick={onClose}
@@ -175,7 +170,7 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
                     )}
                   >
                     {isActive && (
-                      <span className="absolute -left-4 top-2 bottom-2 w-[3px] rounded-r-[4px] bg-accent-500" />
+                      <span className="absolute -left-4 top-2 bottom-2 w-[3px] rounded-r-[4px] bg-amber-500" />
                     )}
                     <svg className="w-[18px] h-[18px] flex-shrink-0 opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d={item.icon} />

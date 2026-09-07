@@ -4,7 +4,7 @@ import { montantEnLettres } from './montantEnLettres';
 import api from './api';
 import QRCode from 'qrcode';
 
-interface SocieteBranding {
+export interface SocieteBranding {
   logo?: string | null;
   signature?: string | null;
   raisonSociale?: string | null;
@@ -21,7 +21,7 @@ interface SocieteBranding {
 }
 let societeBrandingCache: SocieteBranding | null = null;
 
-async function getSocieteBranding(): Promise<SocieteBranding> {
+export async function getSocieteBranding(): Promise<SocieteBranding> {
   if (societeBrandingCache) return societeBrandingCache;
   try {
     const res = await api.get('/parametres/societe');
@@ -39,7 +39,7 @@ async function getSocieteBranding(): Promise<SocieteBranding> {
   return societeBrandingCache;
 }
 
-function brandIdentity(branding?: SocieteBranding) {
+export function brandIdentity(branding?: SocieteBranding) {
   const nom = branding?.raisonSociale || 'GBTRANS SARL';
   const slogan = branding?.slogan || 'Transit · Douane · Logistique';
   const adresseComplete = branding?.adresse || "Cocody Angré 7ème Tranche, Abidjan — Côte d'Ivoire";
@@ -284,13 +284,13 @@ ${(data.fobUnitaire || data.fretUnitaire || data.valeurCAF) ? `<div style="displ
   </table>
 </div>
 
-<div style="display:flex;justify-content:flex-end;margin-top:26px;">
+${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:26px;">
   <div style="text-align:center;width:220px;">
     <div style="color:${BRAND.slate};font-size:9.5px;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
     ${branding?.signature ? `<img src="${branding.signature}" style="height:34px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
     <div style="border-top:1px solid ${BRAND.ink};padding-top:4px;font-weight:700;color:${BRAND.ink};">${brand.nom}</div>
   </div>
-</div>
+</div>` : ''}
 
 <div style="text-align:center;font-size:8px;color:${BRAND.slate};border-top:1px solid ${BRAND.line};padding-top:8px;margin-top:16px;line-height:1.6;">
   ${legalDisclaimer}<br/>

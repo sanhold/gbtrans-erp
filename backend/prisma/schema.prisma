@@ -72,6 +72,7 @@ model Societe {
   modelesCourrier       ModeleCourrier[]
   employes              Employe[]
   bulletinsPaie         BulletinPaie[]
+  ecrituresEnAttente    EcritureEnAttente[]
 
   @@map("societes")
 }
@@ -465,7 +466,11 @@ enum StatutEtapeDossier {
 model EtapeDossier {
   id               String             @id @default(uuid())
   dossierId        String
-  etapeProcessusId String
+  etapeProcessusId String?
+  ordre            Int                @default(0)
+  nom              String?            @db.VarChar(200)
+  description      String?            @db.VarChar(500)
+  obligatoire      Boolean            @default(false)
   statut           StatutEtapeDossier @default(A_FAIRE)
   dateRealisation  DateTime?
   executantId      String?
@@ -473,9 +478,9 @@ model EtapeDossier {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
-  dossier        Dossier        @relation(fields: [dossierId], references: [id], onDelete: Cascade)
-  etapeProcessus EtapeProcessus @relation(fields: [etapeProcessusId], references: [id], onDelete: Cascade)
-  executant      Utilisateur?   @relation(fields: [executantId], references: [id])
+  dossier        Dossier         @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  etapeProcessus EtapeProcessus? @relation(fields: [etapeProcessusId], references: [id], onDelete: Cascade)
+  executant      Utilisateur?    @relation(fields: [executantId], references: [id])
 
   @@unique([dossierId, etapeProcessusId])
   @@index([dossierId])
@@ -518,13 +523,7 @@ enum TypeDossier {
 enum StatutDossier {
   NOUVEAU
   EN_COURS
-  ATTENTE_CLIENT
-  ATTENTE_DOUANE
-  LIQUIDATION
-  PAIEMENT
-  MAIN_LEVEE
-  LIVRAISON
-  CLOTURE
+  TERMINE
   ANNULE
   ARCHIVE
 }
@@ -903,6 +902,7 @@ model Facture {
   dateEcheance DateTime
   objet        String?       @db.VarChar(500)
   statut       StatutFacture @default(BROUILLON)
+  numeroNormalise String?    @db.VarChar(50)
 
   // Montants
   montantHT         Decimal  @default(0) @db.Decimal(18, 2)
@@ -933,6 +933,7 @@ model Facture {
   // QR Code & Signature
   qrCode       String?
   signature    String?
+  afficherSignature Boolean @default(false)
   conditions   String? @db.Text
   observations String? @db.Text
   cheminPDF    String?
@@ -950,6 +951,7 @@ model Facture {
   lignes         LigneFacture[]
   paiements      PaiementFacture[]
   ecritures      EcritureComptable[]
+  ecrituresEnAttente EcritureEnAttente[]
 
   @@unique([societeId, numero])
   @@index([societeId])
@@ -1012,6 +1014,7 @@ model FactureFournisseur {
   createur    Utilisateur                  @relation("FactureFournisseurCreateur", fields: [createurId], references: [id])
   lignes      LigneFactureFournisseur[]
   paiements   PaiementFactureFournisseur[]
+  ecrituresEnAttente EcritureEnAttente[]
 
   @@unique([societeId, numero])
   @@index([societeId])
@@ -1065,6 +1068,7 @@ model PaiementFournisseur {
   compteTiers    CompteTiers?                 @relation(fields: [compteTiersId], references: [id])
   createur       Utilisateur?                 @relation("PaiementFournisseurCreateur", fields: [createurId], references: [id])
   affectations   PaiementFactureFournisseur[]
+  ecrituresEnAttente EcritureEnAttente[]
 
   @@index([societeId])
   @@index([fournisseurId])
@@ -1134,6 +1138,7 @@ model Paiement {
   createur       Utilisateur?        @relation("PaiementCreateur", fields: [createurId], references: [id])
   affectations   PaiementFacture[]
   ecritures      EcritureComptable[]
+  ecrituresEnAttente EcritureEnAttente[]
 
   @@index([clientId])
   @@index([datePaiement])
@@ -1307,6 +1312,52 @@ model MouvementComptable {
   @@index([compteId])
   @@index([lettrage])
   @@map("mouvements_comptables")
+}
+
+enum StatutEcritureAttente {
+  EN_ATTENTE
+  COMPTABILISEE
+  REJETEE
+}
+
+enum SourceEcritureAttente {
+  FACTURE
+  FACTURE_FOURNISSEUR
+  PAIEMENT
+  PAIEMENT_FOURNISSEUR
+  DEPENSE
+  MANUEL
+}
+
+model EcritureEnAttente {
+  id                    String                @id @default(uuid())
+  societeId             String
+  source                SourceEcritureAttente
+  factureId             String?
+  factureFournisseurId  String?
+  paiementId            String?
+  paiementFournisseurId String?
+  depenseId             String?
+  libelle               String                @db.VarChar(500)
+  montant               Decimal               @db.Decimal(18, 2)
+  dateOperation         DateTime
+  statut                StatutEcritureAttente @default(EN_ATTENTE)
+  ecritureId            String?
+  motifRejet            String?               @db.VarChar(500)
+  createurNom           String?               @db.VarChar(200)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  societe             Societe             @relation(fields: [societeId], references: [id])
+  facture             Facture?            @relation(fields: [factureId], references: [id])
+  factureFournisseur  FactureFournisseur? @relation(fields: [factureFournisseurId], references: [id])
+  paiement            Paiement?           @relation(fields: [paiementId], references: [id])
+  paiementFournisseur PaiementFournisseur? @relation(fields: [paiementFournisseurId], references: [id])
+  depense             Depense?            @relation(fields: [depenseId], references: [id])
+
+  @@index([societeId])
+  @@index([statut])
+  @@map("ecritures_en_attente")
 }
 
 enum TypeCompte {
@@ -1501,6 +1552,7 @@ model Depense {
   caisse         Caisse?         @relation(fields: [caisseId], references: [id])
   compteBancaire CompteBancaire? @relation(fields: [compteBancaireId], references: [id])
   dotation       Dotation?       @relation(fields: [dotationId], references: [id])
+  ecrituresEnAttente EcritureEnAttente[]
 
   @@index([societeId])
   @@index([dossierId])

@@ -39,12 +39,20 @@ export default function BalancePage() {
           </select>
         </div>
 
-        <div className="table-container overflow-x-auto">
-          <table className="w-full">
+        <div className="table-container">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '15%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">Compte</th><th className="table-header">Libellé</th>
-              <th className="table-header text-right">Total Débit</th><th className="table-header text-right">Total Crédit</th>
-              <th className="table-header text-right">Solde Débiteur</th><th className="table-header text-right">Solde Créditeur</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Compte</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total Crédit</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde Débiteur</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde Créditeur</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -53,12 +61,12 @@ export default function BalancePage() {
                 <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun mouvement</td></tr>
               ) : lignes.map((l: any) => (
                 <tr key={l.compte} className="table-row">
-                  <td className="table-cell font-mono font-medium text-primary-600" data-label="Compte">{l.compte}</td>
-                  <td className="table-cell" data-label="Libellé">{l.libelle}</td>
-                  <td className="table-cell text-right font-mono" data-label="Total Débit">{fmt(l.debit)}</td>
-                  <td className="table-cell text-right font-mono" data-label="Total Crédit">{fmt(l.credit)}</td>
-                  <td className="table-cell text-right font-mono font-medium text-green-600" data-label="Solde Débiteur">{l.soldeDebiteur > 0 ? fmt(l.soldeDebiteur) : ''}</td>
-                  <td className="table-cell text-right font-mono font-medium text-red-600" data-label="Solde Créditeur">{l.soldeCrediteur > 0 ? fmt(l.soldeCrediteur) : ''}</td>
+                  <td className="table-cell font-mono font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Compte">{l.compte}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={l.libelle}>{l.libelle}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total Débit">{fmt(l.debit)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total Crédit">{fmt(l.credit)}</td>
+                  <td className="table-cell text-right font-mono font-medium text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Solde Débiteur">{l.soldeDebiteur > 0 ? fmt(l.soldeDebiteur) : ''}</td>
+                  <td className="table-cell text-right font-mono font-medium text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Solde Créditeur">{l.soldeCrediteur > 0 ? fmt(l.soldeCrediteur) : ''}</td>
                 </tr>
               ))}
             </tbody>

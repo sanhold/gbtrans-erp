@@ -8,6 +8,7 @@ import api, { facturesApi, financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
 import { downloadPDF, printDocument, generateDocQrDataUrl, type DocData } from '@/lib/generatePDF';
+import { useAuthStore } from '@/stores/authStore';
 
 const CAT_COLORS: Record<string, string> = {
   'DOUANE': '#059669', 'DOUANE & COMPAGNIE': '#059669',
@@ -40,8 +41,16 @@ export default function FactureDetailPage() {
   const params = useParams();
   const router = useRouter();
   const factureId = params.id as string;
+  const { hasPermission } = useAuthStore();
+  const canSignature = hasPermission('DOCUMENTS:SIGNATURE');
 
   const [facture, setFacture] = useState<any>(null);
+  const [branding, setBranding] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/parametres/societe').then(r => setBranding(r.data.data)).catch(() => {});
+  }, []);
+
   const [catalogue, setCatalogue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCatalogue, setShowCatalogue] = useState(false);
@@ -53,6 +62,11 @@ export default function FactureDetailPage() {
   const [paying, setPaying] = useState(false);
   const [comptesOptions, setComptesOptions] = useState<{ value: string; label: string }[]>([]);
   const [paiementForm, setPaiementForm] = useState({ montant: '', modePaiement: 'ESPECES', reference: '', banque: '', compte: '' });
+  const [numeroNormalise, setNumeroNormalise] = useState('');
+  const [savingNumeroNormalise, setSavingNumeroNormalise] = useState(false);
+  const [showAvoir, setShowAvoir] = useState(false);
+  const [motifAvoir, setMotifAvoir] = useState('');
+  const [creatingAvoir, setCreatingAvoir] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -61,12 +75,21 @@ export default function FactureDetailPage() {
         api.get('/proformas/catalogue'),
       ]);
       setFacture(fRes.data.data);
+      setNumeroNormalise(fRes.data.data.numeroNormalise || '');
       setCatalogue(catRes.data.data || []);
     } catch { toast.error('Facture non trouvée'); router.push('/facturation'); }
     finally { setLoading(false); }
   }, [factureId, router]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleToggleSignature = async (checked: boolean) => {
+    if (!canSignature) return;
+    setFacture((prev: any) => prev ? { ...prev, afficherSignature: checked } : prev);
+    try {
+      await api.patch(`/factures/${factureId}/signature`, { afficherSignature: checked });
+    } catch { toast.error('Erreur lors de la mise à jour'); setFacture((prev: any) => prev ? { ...prev, afficherSignature: !checked } : prev); }
+  };
 
   const buildDocData = useCallback((): DocData | null => {
     if (!facture) return null;
@@ -83,6 +106,7 @@ export default function FactureDetailPage() {
       clientPays: facture.client?.pays || undefined,
       dossierNumero: d?.numero,
       titre: facture.titre,
+      afficherSignature: !!facture.afficherSignature,
       montantHT: Number(facture.montantHT),
       montantTVA: Number(facture.montantTVA),
       montantTTC: Number(facture.montantTTC),
@@ -182,6 +206,30 @@ export default function FactureDetailPage() {
     finally { setPaying(false); }
   };
 
+  const handleSaveNumeroNormalise = async () => {
+    if ((facture.numeroNormalise || '') === numeroNormalise.trim()) return;
+    setSavingNumeroNormalise(true);
+    try {
+      await facturesApi.updateNumeroNormalise(factureId, numeroNormalise.trim());
+      setFacture((prev: any) => prev ? { ...prev, numeroNormalise: numeroNormalise.trim() || null } : prev);
+      toast.success('Numéro de facture normalisée enregistré');
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSavingNumeroNormalise(false); }
+  };
+
+  const handleCreerAvoir = async () => {
+    if (!motifAvoir.trim()) { toast.error('Le motif de l\'avoir est requis'); return; }
+    setCreatingAvoir(true);
+    try {
+      const res = await facturesApi.creerAvoir(factureId, motifAvoir.trim());
+      toast.success(`Avoir ${res.data.data.numero} créé`);
+      setShowAvoir(false);
+      setMotifAvoir('');
+      router.push(`/facturation/${res.data.data.id}`);
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setCreatingAvoir(false); }
+  };
+
   const handleDownloadPDF = () => {
     const data = buildDocData();
     if (!data) return;
@@ -242,6 +290,11 @@ export default function FactureDetailPage() {
               <p className="text-primary-100 text-xs">{facture.numero} — {facture.statut}</p>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <label className={`flex items-center gap-1.5 text-xs text-primary-100 ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+              <input type="checkbox" checked={!!facture.afficherSignature} disabled={!canSignature} onChange={e => handleToggleSignature(e.target.checked)} className="rounded border-gray-300" />
+              Afficher la signature
+            </label>
           <div className="flex gap-2">
             {isBrouillon && (
               <button onClick={handleValiderFacture} disabled={validating} className="px-4 py-2 bg-white text-primary-700 rounded-lg font-semibold text-sm hover:bg-primary-50 disabled:opacity-50 flex items-center gap-1">
@@ -254,6 +307,9 @@ export default function FactureDetailPage() {
               PDF
             </button>
             <button onClick={handlePrint} className="px-4 py-2 bg-primary-800 text-white rounded-lg font-semibold text-sm hover:bg-primary-900">Imprimer</button>
+            {facture.type === 'FACTURE' && facture.statut !== 'BROUILLON' && facture.statut !== 'ANNULEE' && (
+              <button onClick={() => setShowAvoir(true)} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-semibold text-sm hover:bg-amber-600">Créer un avoir</button>
+            )}
             {facture.statut !== 'ANNULEE' && facture.statut !== 'PAYEE' && Number(facture.resteAPayer) > 0 && (
               <button onClick={openPaiementModal} className="px-4 py-2 bg-accent-500 text-white rounded-lg font-semibold text-sm hover:bg-accent-600 flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -262,6 +318,27 @@ export default function FactureDetailPage() {
             )}
             <button onClick={() => router.push('/facturation')} className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold text-sm hover:bg-red-600">Fermer</button>
           </div>
+          </div>
+        </div>
+
+        {facture.type === 'AVOIR' && facture.motifAvoir && (
+          <div className="card !p-3 bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300">
+            Avoir — Motif : {facture.motifAvoir}
+          </div>
+        )}
+
+        <div className="card !p-3 flex items-center gap-3 flex-wrap">
+          <label className="text-xs font-bold text-gray-500 uppercase whitespace-nowrap">N° facture normalisée</label>
+          <input
+            type="text"
+            value={numeroNormalise}
+            onChange={e => setNumeroNormalise(e.target.value)}
+            onBlur={handleSaveNumeroNormalise}
+            placeholder="Numéro reçu du système de facturation normalisée (DGI)"
+            disabled={savingNumeroNormalise}
+            className="input-field !py-1.5 text-sm flex-1 min-w-[260px]"
+          />
+          {savingNumeroNormalise && <span className="text-xs text-gray-400">Enregistrement...</span>}
         </div>
 
         {/* Aperçu état */}
@@ -415,12 +492,15 @@ export default function FactureDetailPage() {
             </div>
 
             {/* Signature */}
-            <div className="flex justify-end pt-4">
-              <div className="text-center w-56">
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-9">Le Directeur / Cachet &amp; Signature</p>
-                <div className="border-t border-gray-900 dark:border-white pt-1 font-bold text-gray-900 dark:text-white">GBTRANS SARL</div>
+            {facture.afficherSignature && (
+              <div className="flex justify-end pt-4">
+                <div className="text-center w-56">
+                  <p className={`text-[10px] text-gray-500 dark:text-gray-400 ${branding?.signature ? 'mb-1' : 'mb-9'}`}>Le Directeur / Cachet &amp; Signature</p>
+                  {branding?.signature && <img src={branding.signature} alt="Signature" className="h-9 object-contain mx-auto" />}
+                  <div className="border-t border-gray-900 dark:border-white pt-1 font-bold text-gray-900 dark:text-white">{branding?.raisonSociale || 'GBTRANS SARL'}</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Footer légal */}
@@ -501,6 +581,26 @@ export default function FactureDetailPage() {
               })}
             </div>
             <div className="p-4 border-t flex justify-end"><button onClick={() => setShowCatalogue(false)} className="btn-primary">Fermer</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Avoir */}
+      {showAvoir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b"><h3 className="font-bold text-lg">Créer un avoir</h3><button onClick={() => setShowAvoir(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-gray-500">Un avoir de {fmt(Number(facture.montantTTC))} F sera créé pour la facture {facture.numero}, avec les mêmes lignes.</p>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase">Motif de l&apos;avoir *</label>
+                <textarea value={motifAvoir} onChange={e => setMotifAvoir(e.target.value)} rows={3} className="input-field text-sm" placeholder="Ex : Erreur de facturation, remise commerciale, marchandise retournée..." autoFocus />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t">
+              <button onClick={() => setShowAvoir(false)} className="btn-secondary">Annuler</button>
+              <button onClick={handleCreerAvoir} disabled={creatingAvoir} className="btn-primary disabled:opacity-50">{creatingAvoir ? 'Création...' : "Créer l'avoir"}</button>
+            </div>
           </div>
         </div>
       )}

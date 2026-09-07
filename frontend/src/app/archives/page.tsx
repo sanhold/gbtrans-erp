@@ -193,15 +193,23 @@ export default function ArchivesPage() {
                   </h3>
                 </div>
                 <div className="table-container !shadow-none !border-0">
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
+                    <colgroup>
+                      <col style={{ width: '34%' }} />
+                      <col style={{ width: '20%' }} />
+                      <col style={{ width: '20%' }} />
+                      <col style={{ width: '10%' }} />
+                      <col style={{ width: '10%' }} />
+                      <col style={{ width: '6%' }} />
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th className="table-header">Nom</th>
-                        <th className="table-header">Catégorie</th>
-                        <th className="table-header">Lié à</th>
-                        <th className="table-header">Taille</th>
-                        <th className="table-header">Date</th>
-                        <th className="table-header"></th>
+                        <th className="table-header !text-[10px] !px-1.5 truncate">Nom</th>
+                        <th className="table-header !text-[10px] !px-1.5 truncate">Catégorie</th>
+                        <th className="table-header !text-[10px] !px-1.5 truncate">Lié à</th>
+                        <th className="table-header !text-[10px] !px-1.5 truncate">Taille</th>
+                        <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+                        <th className="table-header !text-[10px] !px-1.5 truncate"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -211,21 +219,21 @@ export default function ArchivesPage() {
                         <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun document archivé</td></tr>
                       ) : documents.map(d => (
                         <tr key={d.id} className="table-row">
-                          <td className="table-cell" data-label="Nom">
-                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline font-medium">{d.nomOriginal}</a>
-                            {d.description && <p className="text-xs text-gray-400">{d.description}</p>}
+                          <td className="table-cell !px-1.5 !text-[11px]" data-label="Nom">
+                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline font-medium block truncate" title={d.nomOriginal}>{d.nomOriginal}</a>
+                            {d.description && <p className="text-[10px] text-gray-400 truncate" title={d.description}>{d.description}</p>}
                           </td>
-                          <td className="table-cell" data-label="Catégorie"><span className="badge badge-gray">{CATEGORIE_LABELS[d.categorie] || d.categorie}</span></td>
-                          <td className="table-cell text-xs" data-label="Lié à">
+                          <td className="table-cell !px-1.5" data-label="Catégorie"><span className="badge badge-gray !text-[10px] !px-1.5 !py-0 truncate">{CATEGORIE_LABELS[d.categorie] || d.categorie}</span></td>
+                          <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Lié à">
                             {d.admissionTemporaire ? <span>AT {d.admissionTemporaire.numero}</span>
                               : d.dossier ? <Link href={`/dossiers/${d.dossier.id}`} className="text-primary-600 hover:underline">{d.dossier.numeroPhysique || d.dossier.numero}</Link>
                               : d.client ? <span>{d.client.raisonSociale}</span> : '-'}
                           </td>
-                          <td className="table-cell text-xs" data-label="Taille">{fmtSize(d.taille)}</td>
-                          <td className="table-cell text-xs" data-label="Date">{fmtDate(d.createdAt)}</td>
-                          <td className="table-cell" data-label="Actions">
-                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700 inline-block" title="Télécharger">
-                              <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                          <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Taille">{fmtSize(d.taille)}</td>
+                          <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{fmtDate(d.createdAt)}</td>
+                          <td className="table-cell !px-1" data-label="Actions">
+                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 inline-block" title="Télécharger">
+                              <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                             </a>
                           </td>
                         </tr>

@@ -20,6 +20,27 @@ router.patch('/:id/annuler', authorize('FACTURATION:ANNULER'), audit('FACTURATIO
 router.post('/:id/avoir', authorize('FACTURATION:CREER'), audit('FACTURATION', 'AVOIR'), (req, res) => controller.creerAvoir(req, res));
 router.post('/:id/paiement', authorize('FACTURATION:PAYER'), audit('FACTURATION', 'PAIEMENT'), (req, res) => controller.payer(req, res));
 
+router.patch('/:id/signature', authorize('DOCUMENTS:SIGNATURE'), audit('FACTURATION', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const facture = await prisma.facture.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!facture) { ApiResponse.notFound(res); return; }
+    const updated = await prisma.facture.update({ where: { id: req.params.id }, data: { afficherSignature: !!req.body.afficherSignature } });
+    ApiResponse.success(res, updated, 'Préférence de signature mise à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.patch('/:id/numero-normalise', authorize('FACTURATION:MODIFIER'), audit('FACTURATION', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const facture = await prisma.facture.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!facture) { ApiResponse.notFound(res); return; }
+    const updated = await prisma.facture.update({
+      where: { id: req.params.id },
+      data: { numeroNormalise: req.body.numeroNormalise ? String(req.body.numeroNormalise).trim() : null },
+    });
+    ApiResponse.success(res, updated, 'Numéro de facture normalisée mis à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
 // Ajouter une ligne à une facture BROUILLON
 router.post('/:id/lignes', async (req: AuthRequest, res: Response) => {
   try {

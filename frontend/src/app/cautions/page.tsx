@@ -160,89 +160,78 @@ export default function CautionsPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestion des Cautions</h1>
-            <p className="text-sm text-gray-500">Dépôts conteneurs auprès des compagnies maritimes</p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="stat-card !p-3 !bg-red-50 dark:!bg-red-900/20 border border-red-200 dark:border-red-800 text-center min-w-[110px]">
-              <p className="text-[10px] text-red-700 dark:text-red-300 uppercase font-semibold">Caution non activé</p>
-              <p className="text-xl font-bold text-red-600">{stats.nonActive}</p>
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex-shrink-0 mr-1">
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Cautions</h1>
+              <p className="text-[10px] text-gray-500 whitespace-nowrap">Dépôts conteneurs</p>
             </div>
-            <div className="stat-card !p-3 !bg-amber-50 dark:!bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-center min-w-[110px]">
-              <p className="text-[10px] text-amber-700 dark:text-amber-300 uppercase font-semibold">Caution en attente</p>
-              <p className="text-xl font-bold text-amber-600">{stats.enAttente}</p>
+            <div className="flex items-center gap-1 flex-shrink-0 border-x border-gray-200 dark:border-surface-700 px-2">
+              <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="Non activé">{stats.nonActive}</span>
+              <span className="badge badge-warning !text-[10px] !px-1.5 !py-0.5" title="En attente">{stats.enAttente}</span>
+              <span className="badge !text-[10px] !px-1.5 !py-0.5 bg-purple-100 text-purple-800" title="Courrier non déposé">{stats.courrierNonDepose}</span>
+              <span className="badge badge-success !text-[10px] !px-1.5 !py-0.5" title="Courrier déposé">{stats.courrierDepose}</span>
             </div>
-            <div className="stat-card !p-3 !bg-purple-50 dark:!bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-center min-w-[110px]">
-              <p className="text-[10px] text-purple-700 dark:text-purple-300 uppercase font-semibold">Courrier non déposé</p>
-              <p className="text-xl font-bold text-purple-600">{stats.courrierNonDepose}</p>
-            </div>
-            <div className="stat-card !p-3 !bg-green-50 dark:!bg-green-900/20 border border-green-200 dark:border-green-800 text-center min-w-[110px]">
-              <p className="text-[10px] text-green-700 dark:text-green-300 uppercase font-semibold">Courrier déposé</p>
-              <p className="text-xl font-bold text-green-600">{stats.courrierDepose}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/cautions/historique" className="btn-secondary">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Date début" />
+            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Date fin" />
+            <PickerField value={dossierFiltre} onChange={setDossierFiltre} options={dossierOptions} placeholder="Dossier" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." className="!py-1.5 text-xs w-28 flex-shrink-0" />
+            <PickerField value={clientFiltre} onChange={setClientFiltre} options={clientOptions} placeholder="Client" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!py-1.5 text-xs w-28 flex-shrink-0" />
+            <input type="text" value={compagnieFiltre} onChange={e => setCompagnieFiltre(e.target.value)} className="input-field !py-1.5 text-xs w-24 flex-shrink-0" placeholder="Compagnie" />
+            <input type="text" value={blFiltre} onChange={e => setBlFiltre(e.target.value)} className="input-field !py-1.5 text-xs w-24 flex-shrink-0" placeholder="N° BL" />
+            <select value={etatFiltre} onChange={e => setEtatFiltre(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0">
+              <option value="">Actives (non payées)</option>
+              <option value="NON_ACTIVE">Non activé</option>
+              <option value="EN_ATTENTE">En attente</option>
+              <option value="COURRIER_DEPOSE">Courrier déposé</option>
+              <option value="TOUS">Toutes (payées incl.)</option>
+            </select>
+            <button onClick={handleAfficher} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
+            <button onClick={handleActualiser} className="btn-secondary !px-2 !py-1.5 flex-shrink-0" title="Actualiser">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
+            <Link href="/cautions/historique" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               Historique
             </Link>
-            <button onClick={openCreate} className="btn-primary">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Ajouter une Caution
+            <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">
+              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Ajouter
             </button>
           </div>
         </div>
 
-        <div className="card !p-4">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div><label className="label">Date début</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field" /></div>
-            <div><label className="label">Date fin</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field" /></div>
-            <div>
-              <label className="label">Dossier</label>
-              <PickerField value={dossierFiltre} onChange={setDossierFiltre} options={dossierOptions} placeholder="Tous" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." className="w-44" />
-            </div>
-            <div>
-              <label className="label">Client</label>
-              <PickerField value={clientFiltre} onChange={setClientFiltre} options={clientOptions} placeholder="Tous" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="w-44" />
-            </div>
-            <div><label className="label">Compagnie</label><input type="text" value={compagnieFiltre} onChange={e => setCompagnieFiltre(e.target.value)} className="input-field w-32" /></div>
-            <div><label className="label">N° BL</label><input type="text" value={blFiltre} onChange={e => setBlFiltre(e.target.value)} className="input-field w-36" /></div>
-            <div>
-              <label className="label">État Caution</label>
-              <select value={etatFiltre} onChange={e => setEtatFiltre(e.target.value)} className="input-field w-40">
-                <option value="">Toutes actives (non payées)</option>
-                <option value="NON_ACTIVE">Non activé</option>
-                <option value="EN_ATTENTE">En attente</option>
-                <option value="COURRIER_DEPOSE">Courrier déposé</option>
-                <option value="TOUS">Toutes (payées incluses)</option>
-              </select>
-            </div>
-            <button onClick={handleAfficher} className="btn-primary">Afficher</button>
-            <button onClick={handleActualiser} className="btn-secondary" title="Actualiser">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            </button>
-          </div>
-        </div>
-
-        <div className="table-container overflow-x-auto">
-          <table className="w-full">
+        <div className="table-container">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="table-header">Id caution</th>
-                <th className="table-header">Date caution</th>
-                <th className="table-header">N°Dossier</th>
-                <th className="table-header">N° BL</th>
-                <th className="table-header">Client</th>
-                <th className="table-header text-center">Qte</th>
-                <th className="table-header text-right">Montant Caution</th>
-                <th className="table-header">Compagnie</th>
-                <th className="table-header">Date dépôt Courrier</th>
-                <th className="table-header">Date Paiement</th>
-                <th className="table-header">État</th>
-                <th className="table-header">Observation</th>
-                <th className="table-header">Actions</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Id caution</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Date caution</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N°Dossier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N° BL</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-center">Qte</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Compagnie</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Dépôt Courrier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Paiement</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">État</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Observation</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -252,47 +241,47 @@ export default function CautionsPage() {
                 <tr><td colSpan={13} className="text-center py-12 text-gray-500">Aucune caution enregistrée</td></tr>
               ) : items.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600" data-label="Id caution">{c.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
-                  <td className="table-cell font-mono text-xs" data-label="N°Dossier">
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
                     {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
                   </td>
-                  <td className="table-cell font-mono text-xs" data-label="N° BL">{c.numeroBL || '-'}</td>
-                  <td className="table-cell" data-label="Client">{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-center" data-label="Qte">{c.quantite}</td>
-                  <td className="table-cell text-right font-mono" data-label="Montant Caution">{fmt(c.montant)}</td>
-                  <td className="table-cell" data-label="Compagnie">{c.compagnie || '-'}</td>
-                  <td className="table-cell text-xs" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
-                  <td className="table-cell text-xs" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
-                  <td className="table-cell" data-label="État"><span className={`badge ${ETAT_BADGE[c.statut]}`}>{ETAT_LABELS[c.statut]}</span></td>
-                  <td className="table-cell text-xs max-w-[200px] truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
-                  <td className="table-cell" data-label="Actions">
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
+                  <td className="table-cell !px-1.5" data-label="État"><span className={`badge ${ETAT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[c.statut]}</span></td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
+                  <td className="table-cell !px-1" data-label="Actions">
                     <div className="flex gap-0.5 items-center">
-                      <button onClick={() => openEdit(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      <button onClick={() => openEdit(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
+                        <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
                       {(c.statut === 'NON_ACTIVE' || c.statut === 'EN_ATTENTE') && (
-                        <button onClick={() => handleDelete(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onClick={() => handleDelete(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
+                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       )}
                       {c.statut !== 'PAYEE' && (
                         <>
                           <span className="w-px h-4 bg-gray-200 dark:bg-surface-600 mx-0.5" />
-                          <button onClick={() => handleToggleActif(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title={c.statut === 'NON_ACTIVE' ? 'Activer' : 'Désactiver'}>
-                            <svg className={`w-4 h-4 ${c.statut === 'NON_ACTIVE' ? 'text-gray-400' : 'text-cyan-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                          <button onClick={() => handleToggleActif(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title={c.statut === 'NON_ACTIVE' ? 'Activer' : 'Désactiver'}>
+                            <svg className={`w-3.5 h-3.5 ${c.statut === 'NON_ACTIVE' ? 'text-gray-400' : 'text-cyan-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                           </button>
                           {c.statut !== 'NON_ACTIVE' && (c.statut === 'COURRIER_DEPOSE' ? (
-                            <button onClick={() => handleAnnulerCourrier(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Annuler dépôt courrier">
-                              <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            <button onClick={() => handleAnnulerCourrier(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Annuler dépôt courrier">
+                              <svg className="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                             </button>
                           ) : (
-                            <button onClick={() => handleMarquerCourrier(c)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer courrier déposé">
-                              <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            <button onClick={() => handleMarquerCourrier(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer courrier déposé">
+                              <svg className="w-3.5 h-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                             </button>
                           ))}
-                          <button onClick={() => { setPayerCaution(c); setDatePaiement(todayISO()); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer payée">
-                            <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          <button onClick={() => { setPayerCaution(c); setDatePaiement(todayISO()); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer payée">
+                            <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                           </button>
                         </>
                       )}
@@ -320,7 +309,7 @@ export default function CautionsPage() {
             <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
                 <h2 className="text-lg font-bold">{editing ? `Modifier Caution N°${editing.numero}` : 'Ajouter une Caution'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <button onClick={() => setShowModal(false)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
               <form onSubmit={handleSave} className="p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

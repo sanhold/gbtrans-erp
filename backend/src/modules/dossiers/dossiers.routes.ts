@@ -5,6 +5,7 @@ import { audit } from '../../middleware/audit';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
+import { dossierEstFerme } from '../../utils/dossierGuard';
 
 const router = Router();
 const controller = new DossierController();
@@ -24,77 +25,141 @@ router.delete('/:id', authorize('DOSSIERS:SUPPRIMER'), audit('DOSSIERS', 'SUPPRI
 
 // ---------- Suivi d'exécution des étapes ----------
 
+function etapeDossierVersUiShape(e: any) {
+  return {
+    id: e.id,
+    etapeProcessusId: e.etapeProcessusId,
+    custom: !e.etapeProcessusId,
+    ordre: e.ordre,
+    code: e.etapeProcessus?.code || null,
+    nom: e.etapeProcessus?.nom || e.nom,
+    description: e.etapeProcessus?.description || e.description,
+    couleur: e.etapeProcessus?.couleur || null,
+    delaiJours: e.etapeProcessus?.delaiJours || null,
+    obligatoire: e.etapeProcessus ? e.etapeProcessus.obligatoire : e.obligatoire,
+    statut: e.statut,
+    dateRealisation: e.dateRealisation,
+    executant: e.executant || null,
+    commentaire: e.commentaire,
+  };
+}
+
 router.get('/:id/etapes', authorize('DOSSIERS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const dossier = await prisma.dossier.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      select: { id: true, processusId: true },
+      select: { id: true, statut: true, processusId: true },
     });
     if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
-    if (!dossier.processusId) { ApiResponse.success(res, []); return; }
+    if (!dossier.processusId) { ApiResponse.success(res, { peutModifier: !dossierEstFerme(dossier.statut), etapes: [] }); return; }
 
-    const [etapesProcessus, etapesDossier] = await Promise.all([
-      prisma.etapeProcessus.findMany({ where: { processusId: dossier.processusId }, orderBy: { ordre: 'asc' } }),
-      prisma.etapeDossier.findMany({
-        where: { dossierId: dossier.id },
-        include: { executant: { select: { id: true, nom: true, prenom: true } } },
-      }),
-    ]);
-    const parEtape = new Map(etapesDossier.map((e) => [e.etapeProcessusId, e]));
+    // Première consultation : matérialise une ligne par étape du processus. Une fois cette
+    // initialisation faite, on ne recrée plus jamais automatiquement d'étapes manquantes —
+    // sinon une étape supprimée par l'utilisateur réapparaîtrait au prochain chargement.
+    const nbEtapesDossierExistantes = await prisma.etapeDossier.count({ where: { dossierId: dossier.id } });
+    if (nbEtapesDossierExistantes === 0) {
+      const etapesProcessus = await prisma.etapeProcessus.findMany({ where: { processusId: dossier.processusId } });
+      if (etapesProcessus.length > 0) {
+        await prisma.etapeDossier.createMany({
+          data: etapesProcessus.map((ep) => ({ dossierId: dossier.id, etapeProcessusId: ep.id, ordre: ep.ordre })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
-    const result = etapesProcessus.map((ep) => {
-      const suivi = parEtape.get(ep.id);
-      return {
-        etapeProcessusId: ep.id,
-        ordre: ep.ordre,
-        code: ep.code,
-        nom: ep.nom,
-        description: ep.description,
-        couleur: ep.couleur,
-        delaiJours: ep.delaiJours,
-        obligatoire: ep.obligatoire,
-        statut: suivi?.statut || 'A_FAIRE',
-        dateRealisation: suivi?.dateRealisation || null,
-        executant: suivi?.executant || null,
-        commentaire: suivi?.commentaire || null,
-      };
+    const etapesDossier = await prisma.etapeDossier.findMany({
+      where: { dossierId: dossier.id },
+      include: { executant: { select: { id: true, nom: true, prenom: true } }, etapeProcessus: true },
+      orderBy: { ordre: 'asc' },
     });
-    ApiResponse.success(res, result);
+
+    ApiResponse.success(res, { peutModifier: !dossierEstFerme(dossier.statut), etapes: etapesDossier.map(etapeDossierVersUiShape) });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.put('/:id/etapes/:etapeProcessusId', authorize('DOSSIERS:MODIFIER'), audit('DOSSIERS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+router.post('/:id/etapes', authorize('DOSSIERS:MODIFIER'), audit('DOSSIERS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { nom, description, obligatoire } = req.body;
+    if (!nom || !String(nom).trim()) { ApiResponse.badRequest(res, "Le nom de l'étape est obligatoire"); return; }
+
+    const dossier = await prisma.dossier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
+    if (dossierEstFerme(dossier.statut)) { ApiResponse.badRequest(res, `Ce dossier est ${dossier.statut.toLowerCase()} : impossible d'ajouter une étape`); return; }
+
+    const dernier = await prisma.etapeDossier.aggregate({ where: { dossierId: dossier.id }, _max: { ordre: true } });
+    const etape = await prisma.etapeDossier.create({
+      data: {
+        dossierId: dossier.id,
+        nom: String(nom).trim(),
+        description: description ? String(description).trim() : null,
+        obligatoire: !!obligatoire,
+        ordre: (dernier._max.ordre || 0) + 1,
+      },
+      include: { executant: { select: { id: true, nom: true, prenom: true } }, etapeProcessus: true },
+    });
+    ApiResponse.success(res, etapeDossierVersUiShape(etape), 'Étape ajoutée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.patch('/:id/etapes/reorder', authorize('DOSSIERS:MODIFIER'), audit('DOSSIERS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) { ApiResponse.badRequest(res, 'Liste des étapes invalide'); return; }
+
+    const dossier = await prisma.dossier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
+    if (dossierEstFerme(dossier.statut)) { ApiResponse.badRequest(res, `Ce dossier est ${dossier.statut.toLowerCase()} : impossible de réordonner les étapes`); return; }
+
+    const etapesExistantes = await prisma.etapeDossier.findMany({ where: { dossierId: dossier.id }, select: { id: true } });
+    const idsValides = new Set(etapesExistantes.map((e) => e.id));
+    if (!ids.every((id: string) => idsValides.has(id))) { ApiResponse.badRequest(res, 'Étape inconnue pour ce dossier'); return; }
+
+    await prisma.$transaction(
+      ids.map((id: string, index: number) => prisma.etapeDossier.update({ where: { id }, data: { ordre: index + 1 } }))
+    );
+    ApiResponse.success(res, null, 'Ordre mis à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.delete('/:id/etapes/:etapeDossierId', authorize('DOSSIERS:MODIFIER'), audit('DOSSIERS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const dossier = await prisma.dossier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
+    if (dossierEstFerme(dossier.statut)) { ApiResponse.badRequest(res, `Ce dossier est ${dossier.statut.toLowerCase()} : impossible de supprimer une étape`); return; }
+
+    const etape = await prisma.etapeDossier.findFirst({ where: { id: req.params.etapeDossierId, dossierId: dossier.id } });
+    if (!etape) { ApiResponse.notFound(res, 'Étape introuvable'); return; }
+
+    await prisma.etapeDossier.delete({ where: { id: etape.id } });
+    ApiResponse.success(res, null, 'Étape supprimée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.put('/:id/etapes/:etapeDossierId', authorize('DOSSIERS:MODIFIER'), audit('DOSSIERS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const { statut, executantId, dateRealisation, commentaire } = req.body;
     if (!['VALIDEE', 'A_FAIRE'].includes(statut)) { ApiResponse.badRequest(res, 'Statut invalide'); return; }
 
     const dossier = await prisma.dossier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
+    if (dossierEstFerme(dossier.statut)) { ApiResponse.badRequest(res, `Ce dossier est ${dossier.statut.toLowerCase()} : impossible de modifier ses étapes`); return; }
 
-    const etapeProcessus = await prisma.etapeProcessus.findFirst({ where: { id: req.params.etapeProcessusId, processusId: dossier.processusId || undefined } });
-    if (!etapeProcessus) { ApiResponse.notFound(res, "Étape introuvable pour le processus de ce dossier"); return; }
+    const etape = await prisma.etapeDossier.findFirst({ where: { id: req.params.etapeDossierId, dossierId: dossier.id } });
+    if (!etape) { ApiResponse.notFound(res, "Étape introuvable pour ce dossier"); return; }
 
     if (statut === 'VALIDEE' && !executantId) { ApiResponse.badRequest(res, 'Le personnel ayant exécuté cette étape est requis'); return; }
 
-    const etape = await prisma.etapeDossier.upsert({
-      where: { dossierId_etapeProcessusId: { dossierId: req.params.id, etapeProcessusId: req.params.etapeProcessusId } },
-      update: {
+    const misAJour = await prisma.etapeDossier.update({
+      where: { id: etape.id },
+      data: {
         statut,
         executantId: statut === 'VALIDEE' ? executantId : null,
         dateRealisation: statut === 'VALIDEE' ? new Date(dateRealisation || Date.now()) : null,
         commentaire: commentaire ?? null,
       },
-      create: {
-        dossierId: req.params.id,
-        etapeProcessusId: req.params.etapeProcessusId,
-        statut,
-        executantId: statut === 'VALIDEE' ? executantId : null,
-        dateRealisation: statut === 'VALIDEE' ? new Date(dateRealisation || Date.now()) : null,
-        commentaire: commentaire ?? null,
-      },
-      include: { executant: { select: { id: true, nom: true, prenom: true } } },
+      include: { executant: { select: { id: true, nom: true, prenom: true } }, etapeProcessus: true },
     });
-    ApiResponse.success(res, etape, statut === 'VALIDEE' ? 'Étape validée' : 'Étape réinitialisée');
+    ApiResponse.success(res, etapeDossierVersUiShape(misAJour), statut === 'VALIDEE' ? 'Étape validée' : 'Étape réinitialisée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

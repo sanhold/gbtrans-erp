@@ -81,42 +81,54 @@ export default function ProformasPage() {
         </div>
 
         <div className="table-container">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
             <thead><tr>
-              <th className="table-header">N° Proforma</th><th className="table-header">Client</th>
-              <th className="table-header">Dossier</th><th className="table-header">Titre</th>
-              <th className="table-header text-right">Total HT</th><th className="table-header text-right">TVA</th>
-              <th className="table-header text-right">Total TTC</th><th className="table-header">Date</th>
-              <th className="table-header">Statut</th>
-              <th className="table-header">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Proforma</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate">Titre</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total HT</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
             </tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
-              : proformas.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
+              {loading ? <tr><td colSpan={10} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
+              : proformas.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
               : proformas.map(p => (
                 <tr key={p.id} className="table-row cursor-pointer" onClick={() => router.push(`/proformas/${p.id}`)}>
-                  <td className="table-cell font-medium text-primary-600" data-label="N° Proforma">{p.numero}</td>
-                  <td className="table-cell" data-label="Client">{p.client?.raisonSociale}</td>
-                  <td className="table-cell font-mono text-xs" data-label="Dossier">{p.dossier?.numero || '-'}</td>
-                  <td className="table-cell" data-label="Titre">{p.titre || '-'}</td>
-                  <td className="table-cell text-right font-mono" data-label="Total HT">{fmt(p.montantHT)}</td>
-                  <td className="table-cell text-right font-mono" data-label="TVA">{fmt(p.montantTVA)}</td>
-                  <td className="table-cell text-right font-mono font-bold" data-label="Total TTC">{fmt(p.montantTTC)}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(p.dateProforma).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'}`}>{p.statut}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex items-center gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(p.id); }} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Télécharger PDF">
-                        <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Proforma" title={p.numero}>{p.numero}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale}>{p.client?.raisonSociale}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numero || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(p.montantTTC)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.dateProforma).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut}</span></td>
+                  <td className="table-cell !px-1" data-label="Actions">
+                    <div className="flex items-center gap-0.5">
+                      <button onClick={(e) => { e.stopPropagation(); handleDownload(p.id); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Télécharger PDF">
+                        <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                       </button>
                       {p.statut !== 'TRANSFORMEE' && (
-                        <button onClick={(e) => { e.stopPropagation(); router.push(`/proformas/${p.id}/edit`); }} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); router.push(`/proformas/${p.id}/edit`); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
+                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                       )}
                       {p.statut !== 'TRANSFORMEE' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(p); }} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(p); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
+                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       )}
                     </div>

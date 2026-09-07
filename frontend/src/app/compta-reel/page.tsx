@@ -13,7 +13,7 @@ const emptyEcritureForm = () => ({ journalId: '', dateEcriture: new Date().toISO
 const emptyExerciceForm = { code: '', libelle: '', dateDebut: '', dateFin: '' };
 
 export default function ComptaReelPage() {
-  const [tab, setTab] = useState<'ecritures' | 'grand-livre' | 'balance' | 'bilan'>('ecritures');
+  const [tab, setTab] = useState<'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan'>('ecritures');
   const [exercices, setExercices] = useState<any[]>([]);
   const [exerciceId, setExerciceId] = useState('');
   const [comptes, setComptes] = useState<any[]>([]);
@@ -73,26 +73,33 @@ export default function ComptaReelPage() {
           </div>
         </div>
 
-        {exercices.length === 0 ? (
+        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
+          {[
+            { id: 'ecritures', label: 'Écritures' },
+            { id: 'attente', label: 'En attente de comptabilisation' },
+            { id: 'rejetees', label: 'Historique des non comptabilisés' },
+            { id: 'grand-livre', label: 'Grand Livre' },
+            { id: 'balance', label: 'Balance' },
+            { id: 'bilan', label: 'Bilan' },
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id as any)} className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${tab === t.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* La file d'attente ne dépend pas d'un exercice réel : Compta Auto peut y déposer
+            des suggestions avant même qu'un exercice réel n'existe. */}
+        {tab === 'attente' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="EN_ATTENTE" />}
+        {tab === 'rejetees' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="REJETEE" />}
+
+        {['ecritures', 'grand-livre', 'balance', 'bilan'].includes(tab) && exercices.length === 0 ? (
           <div className="card text-center py-16 text-gray-500">
             <p className="mb-3">Aucun exercice de comptabilité réelle. Créez-en un pour commencer à saisir vos écritures manuellement.</p>
             <button onClick={() => setShowExerciceModal(true)} className="btn-primary text-sm">+ Nouvel exercice</button>
           </div>
         ) : (
           <>
-            <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit">
-              {[
-                { id: 'ecritures', label: 'Écritures' },
-                { id: 'grand-livre', label: 'Grand Livre' },
-                { id: 'balance', label: 'Balance' },
-                { id: 'bilan', label: 'Bilan' },
-              ].map(t => (
-                <button key={t.id} onClick={() => setTab(t.id as any)} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === t.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
             {tab === 'ecritures' && <EcrituresTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} />}
             {tab === 'grand-livre' && <GrandLivreTab exerciceId={exerciceId} />}
             {tab === 'balance' && <BalanceTab exerciceId={exerciceId} />}
@@ -193,11 +200,21 @@ function EcrituresTab({ exerciceId, comptes, journaux }: { exerciceId: string; c
     <div className="space-y-3">
       <div className="flex justify-end"><button onClick={openCreate} className="btn-primary text-sm">+ Nouvelle écriture</button></div>
       <div className="table-container">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '6%' }} />
+          </colgroup>
           <thead><tr>
-            <th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Journal</th>
-            <th className="table-header">Libellé</th><th className="table-header text-right">Débit</th><th className="table-header text-right">Crédit</th>
-            <th className="table-header">Statut</th><th className="table-header">Actions</th>
+            <th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Journal</th>
+            <th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Crédit</th>
+            <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
           </tr></thead>
           <tbody>
             {loading ? (
@@ -352,8 +369,16 @@ function GrandLivreTab({ exerciceId }: { exerciceId: string }) {
           </button>
           {ouverts[c.compte.id] && (
             <div className="table-container !shadow-none !border-0 !rounded-none border-t border-gray-200 dark:border-surface-700">
-              <table className="w-full">
-                <thead><tr><th className="table-header">Date</th><th className="table-header">Journal</th><th className="table-header">N° Écriture</th><th className="table-header">Libellé</th><th className="table-header text-right">Débit</th><th className="table-header text-right">Crédit</th></tr></thead>
+              <table className="w-full table-fixed">
+                <colgroup>
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '36%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '12%' }} />
+                </colgroup>
+                <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Journal</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Écriture</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Crédit</th></tr></thead>
                 <tbody>
                   {c.mouvements.map((m: any) => (
                     <tr key={m.id} className="table-row">
@@ -389,12 +414,20 @@ function BalanceTab({ exerciceId }: { exerciceId: string }) {
   }, [exerciceId]);
 
   return (
-    <div className="table-container overflow-x-auto">
-      <table className="w-full">
+    <div className="table-container">
+      <table className="w-full table-fixed">
+        <colgroup>
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '15%' }} />
+        </colgroup>
         <thead><tr>
-          <th className="table-header">Compte</th><th className="table-header">Libellé</th>
-          <th className="table-header text-right">Total Débit</th><th className="table-header text-right">Total Crédit</th>
-          <th className="table-header text-right">Solde Débiteur</th><th className="table-header text-right">Solde Créditeur</th>
+          <th className="table-header !text-[10px] !px-1.5 truncate">Compte</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th>
+          <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total Crédit</th>
+          <th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde Débiteur</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde Créditeur</th>
         </tr></thead>
         <tbody>
           {loading ? (
@@ -505,6 +538,240 @@ function BilanTab({ exerciceId }: { exerciceId: string }) {
         <span className="font-semibold text-gray-700 dark:text-gray-300">Résultat Net de l&apos;exercice</span>
         <span className={`text-xl font-bold font-mono ${data.compteResultat.resultatNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(data.compteResultat.resultatNet)} XOF</span>
       </div>
+    </div>
+  );
+}
+
+// ---------- En attente de comptabilisation / Historique des non comptabilisés ----------
+
+const SOURCE_LABELS: Record<string, string> = {
+  FACTURE: 'Facture', FACTURE_FOURNISSEUR: 'Facture fournisseur', PAIEMENT: 'Paiement',
+  PAIEMENT_FOURNISSEUR: 'Paiement fournisseur', DEPENSE: 'Dépense', MANUEL: 'Manuel',
+};
+
+function sourceDetail(e: any): string {
+  if (e.facture) return `${e.facture.numero} — ${e.facture.client?.raisonSociale || ''}`;
+  if (e.factureFournisseur) return `${e.factureFournisseur.numero} — ${e.factureFournisseur.fournisseur?.raisonSociale || ''}`;
+  if (e.paiement) return e.paiement.numero;
+  if (e.paiementFournisseur) return e.paiementFournisseur.numero;
+  if (e.depense) return `${e.depense.numero} — ${e.depense.categorie}`;
+  return '-';
+}
+
+function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exerciceId: string; comptes: any[]; journaux: any[]; statutFiltre: 'EN_ATTENTE' | 'REJETEE' }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ libelle: '', montant: '', dateOperation: new Date().toISOString().slice(0, 10) });
+  const [savingAdd, setSavingAdd] = useState(false);
+  const [comptabilisant, setComptabilisant] = useState<any>(null);
+  const [form, setForm] = useState(emptyEcritureForm());
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    comptabiliteApi.ecrituresAttente({ statut: statutFiltre })
+      .then(r => setItems(r.data.data || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [statutFiltre]);
+
+  const handleAjouter = async () => {
+    if (!addForm.libelle.trim() || !addForm.montant || !addForm.dateOperation) { toast.error('Libellé, montant et date sont requis'); return; }
+    setSavingAdd(true);
+    try {
+      await comptabiliteApi.ajouterEnAttente({ libelle: addForm.libelle.trim(), montant: addForm.montant, dateOperation: addForm.dateOperation });
+      toast.success('Ajouté à la file d\'attente');
+      setShowAdd(false);
+      setAddForm({ libelle: '', montant: '', dateOperation: new Date().toISOString().slice(0, 10) });
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSavingAdd(false); }
+  };
+
+  const handleRejeter = async (item: any) => {
+    const motif = prompt('Motif du rejet (optionnel) :') || undefined;
+    try {
+      await comptabiliteApi.rejeterEnAttente(item.id, motif);
+      toast.success('Entrée rejetée');
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+  };
+
+  const openComptabiliser = (item: any) => {
+    setComptabilisant(item);
+    setForm({ ...emptyEcritureForm(), dateEcriture: item.dateOperation.slice(0, 10), libelle: item.libelle });
+  };
+
+  const updateLigne = (i: number, field: string, value: string) => {
+    setForm((prev: any) => ({ ...prev, lignes: prev.lignes.map((l: any, idx: number) => idx === i ? { ...l, [field]: value } : l) }));
+  };
+  const addLigne = () => setForm((prev: any) => ({ ...prev, lignes: [...prev.lignes, emptyLigne()] }));
+  const removeLigne = (i: number) => setForm((prev: any) => ({ ...prev, lignes: prev.lignes.filter((_: any, idx: number) => idx !== i) }));
+
+  const totalDebit = form.lignes.reduce((s: number, l: any) => s + (parseFloat(l.debit) || 0), 0);
+  const totalCredit = form.lignes.reduce((s: number, l: any) => s + (parseFloat(l.credit) || 0), 0);
+  const equilibre = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+
+  const handleComptabiliser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!exerciceId) { toast.error('Sélectionnez un exercice'); return; }
+    if (!form.journalId) { toast.error('Sélectionnez un journal'); return; }
+    if (!equilibre) { toast.error('L\'écriture doit être équilibrée (débit = crédit)'); return; }
+    const lignesValides = form.lignes.filter((l: any) => l.compteId && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0));
+    if (lignesValides.length < 2) { toast.error('Au moins 2 lignes avec un compte et un montant sont requises'); return; }
+
+    setSaving(true);
+    try {
+      await comptabiliteApi.comptabiliserEnAttente(comptabilisant.id, {
+        exerciceId, journalId: form.journalId, dateEcriture: form.dateEcriture,
+        libelle: form.libelle, reference: form.reference || undefined, piece: form.piece || undefined,
+        mouvements: lignesValides.map((l: any) => ({ compteId: l.compteId, libelle: l.libelle || undefined, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 })),
+      });
+      toast.success('Écriture comptabilisée');
+      setComptabilisant(null);
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="space-y-3">
+      {statutFiltre === 'EN_ATTENTE' && (
+        <div className="flex justify-end">
+          {!showAdd && <button onClick={() => setShowAdd(true)} className="btn-secondary text-sm">+ Ajouter</button>}
+        </div>
+      )}
+
+      {showAdd && (
+        <div className="card !p-3 grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+          <div className="sm:col-span-2">
+            <label className="text-[10px] font-bold text-gray-500 uppercase">Libellé *</label>
+            <input type="text" value={addForm.libelle} onChange={e => setAddForm({ ...addForm, libelle: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="Ex : Facture d'électricité SEPTEMBRE" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase">Montant *</label>
+            <input type="number" value={addForm.montant} onChange={e => setAddForm({ ...addForm, montant: e.target.value })} className="input-field !py-1.5 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase">Date *</label>
+            <input type="date" value={addForm.dateOperation} onChange={e => setAddForm({ ...addForm, dateOperation: e.target.value })} className="input-field !py-1.5 text-sm" />
+          </div>
+          <div className="sm:col-span-4 flex justify-end gap-2">
+            <button onClick={() => setShowAdd(false)} className="btn-secondary text-sm">Annuler</button>
+            <button onClick={handleAjouter} disabled={savingAdd} className="btn-primary text-sm disabled:opacity-50">{savingAdd ? 'Ajout...' : 'Ajouter'}</button>
+          </div>
+        </div>
+      )}
+
+      <div className="table-container">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '28%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: statutFiltre === 'EN_ATTENTE' ? '15%' : '15%' }} />
+          </colgroup>
+          <thead><tr>
+            <th className="table-header !text-[10px] !px-1.5 truncate">Source</th><th className="table-header !text-[10px] !px-1.5 truncate">Référence</th>
+            <th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+            <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
+            <th className="table-header !text-[10px] !px-1.5 truncate">{statutFiltre === 'EN_ATTENTE' ? 'Actions' : 'Motif'}</th>
+          </tr></thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+            ) : items.length === 0 ? (
+              <tr><td colSpan={6} className="text-center py-12 text-gray-500">{statutFiltre === 'EN_ATTENTE' ? 'Aucune entrée en attente' : 'Aucune entrée rejetée'}</td></tr>
+            ) : items.map(item => (
+              <tr key={item.id} className="table-row">
+                <td className="table-cell !text-[10.5px]" data-label="Source"><span className="badge badge-gray !text-[10px]">{SOURCE_LABELS[item.source] || item.source}</span></td>
+                <td className="table-cell !text-[10.5px] truncate" data-label="Référence" title={sourceDetail(item)}>{sourceDetail(item)}</td>
+                <td className="table-cell !text-[11px] truncate" data-label="Libellé" title={item.libelle}>{item.libelle}</td>
+                <td className="table-cell !text-[10.5px]" data-label="Date">{new Date(item.dateOperation).toLocaleDateString('fr-FR')}</td>
+                <td className="table-cell text-right font-mono !text-[10.5px]" data-label="Montant">{fmt(item.montant)}</td>
+                <td className="table-cell !text-[10.5px]" data-label={statutFiltre === 'EN_ATTENTE' ? 'Actions' : 'Motif'}>
+                  {statutFiltre === 'EN_ATTENTE' ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => openComptabiliser(item)} className="text-primary-500 hover:underline">Comptabiliser</button>
+                      <button onClick={() => handleRejeter(item)} className="text-red-500 hover:underline">Rejeter</button>
+                    </div>
+                  ) : (item.motifRejet || '-')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {comptabilisant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
+              <h3 className="font-bold text-lg">Comptabiliser — {comptabilisant.libelle}</h3>
+              <button onClick={() => setComptabilisant(null)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            {!exerciceId ? (
+              <div className="p-6 text-center text-sm text-gray-500">Sélectionnez d&apos;abord un exercice en haut de page.</div>
+            ) : (
+            <form onSubmit={handleComptabiliser} className="p-4 space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div><label className="label">Journal *</label>
+                  <select value={form.journalId} onChange={e => setForm({ ...form, journalId: e.target.value })} className="input-field" required>
+                    <option value="">— Sélectionner —</option>
+                    {journaux.map((j: any) => <option key={j.id} value={j.id}>{j.code} — {j.libelle}</option>)}
+                  </select>
+                </div>
+                <div><label className="label">Date *</label><input type="date" value={form.dateEcriture} onChange={e => setForm({ ...form, dateEcriture: e.target.value })} className="input-field" required /></div>
+                <div><label className="label">Pièce / Référence</label><input type="text" value={form.piece} onChange={e => setForm({ ...form, piece: e.target.value })} className="input-field" /></div>
+              </div>
+              <div><label className="label">Libellé *</label><input type="text" value={form.libelle} onChange={e => setForm({ ...form, libelle: e.target.value })} className="input-field" required /></div>
+
+              <div className="border border-gray-200 dark:border-surface-700 rounded-lg overflow-hidden">
+                <div className="grid grid-cols-[1fr_1fr_110px_110px_28px] bg-gray-100 dark:bg-surface-700 text-[10px] font-bold uppercase text-gray-500">
+                  <div className="px-2 py-2">Compte</div><div className="px-2 py-2">Libellé</div>
+                  <div className="px-2 py-2 text-right">Débit</div><div className="px-2 py-2 text-right">Crédit</div><div></div>
+                </div>
+                {form.lignes.map((l: any, i: number) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_110px_110px_28px] border-t border-gray-100 dark:border-surface-700">
+                    <PickerField
+                      value={l.compteId}
+                      onChange={id => updateLigne(i, 'compteId', id)}
+                      options={comptes.map((c: any) => ({ id: c.id, label: `${c.numero} ${c.libelle}` }))}
+                      placeholder="— Compte —"
+                      title="Sélectionner un compte"
+                      searchPlaceholder="N° ou libellé du compte..."
+                      className="!bg-transparent !border-0 !shadow-none !px-2 !py-1.5 !text-xs !rounded-none"
+                    />
+                    <input type="text" value={l.libelle} onChange={e => updateLigne(i, 'libelle', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none" placeholder="Libellé de la ligne" />
+                    <input type="number" value={l.debit} onChange={e => updateLigne(i, 'debit', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none text-right font-mono" placeholder="0" />
+                    <input type="number" value={l.credit} onChange={e => updateLigne(i, 'credit', e.target.value)} className="text-xs bg-transparent border-0 px-2 py-1.5 outline-none text-right font-mono" placeholder="0" />
+                    <button type="button" onClick={() => removeLigne(i)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                  </div>
+                ))}
+                <div className="p-2 border-t border-gray-100 dark:border-surface-700">
+                  <button type="button" onClick={addLigne} className="text-xs text-primary-500 hover:underline">+ Ajouter une ligne</button>
+                </div>
+                <div className={`grid grid-cols-[1fr_1fr_110px_110px_28px] border-t-2 font-bold text-xs ${equilibre ? 'border-green-300 bg-green-50 dark:bg-green-900/10' : 'border-red-300 bg-red-50 dark:bg-red-900/10'}`}>
+                  <div className="px-2 py-2 col-span-2">{equilibre ? '✓ Équilibrée' : 'Non équilibrée'}</div>
+                  <div className="px-2 py-2 text-right font-mono">{fmt(totalDebit)}</div>
+                  <div className="px-2 py-2 text-right font-mono">{fmt(totalCredit)}</div>
+                  <div></div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-surface-700">
+                <button type="button" onClick={() => setComptabilisant(null)} className="btn-secondary text-sm">Annuler</button>
+                <button type="submit" disabled={saving || !equilibre} className="btn-primary text-sm disabled:opacity-50">{saving ? 'Enregistrement...' : 'Comptabiliser'}</button>
+              </div>
+            </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -42,21 +42,22 @@ export default function GrandLivrePage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <Link href="/comptabilite" className="text-sm text-primary-600 hover:underline mb-2 inline-block">← Comptabilité</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Grand Livre</h1>
-          <p className="text-sm text-gray-500">{comptes.length} compte(s) mouvementé(s)</p>
-        </div>
-
-        <div className="card !p-4 flex flex-wrap gap-3">
-          <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field w-40">
-            {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.code}</option>)}
-            <option value="TOUS">Tous exercices (lent)</option>
-          </select>
-          <select value={classe} onChange={e => setClasse(e.target.value)} className="input-field w-56">
-            <option value="">Toutes classes</option>
-            {[1, 2, 3, 4, 5, 6, 7].map(c => <option key={c} value={c}>Classe {c}</option>)}
-          </select>
+        <div className="card !p-3 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex-shrink-0 mr-1">
+              <Link href="/comptabilite" className="text-[10px] text-primary-600 hover:underline block">← Comptabilité</Link>
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Grand Livre</h1>
+            </div>
+            <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0">
+              {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.code}</option>)}
+              <option value="TOUS">Tous exercices (lent)</option>
+            </select>
+            <select value={classe} onChange={e => setClasse(e.target.value)} className="input-field !py-1.5 text-xs w-40 flex-shrink-0">
+              <option value="">Toutes classes</option>
+              {[1, 2, 3, 4, 5, 6, 7].map(c => <option key={c} value={c}>Classe {c}</option>)}
+            </select>
+            <span className="text-[10.5px] text-gray-500 whitespace-nowrap ml-auto">{comptes.length} compte(s) mouvementé(s)</span>
+          </div>
         </div>
 
         {loading ? (
@@ -81,8 +82,16 @@ export default function GrandLivrePage() {
                 </button>
                 {ouverts[c.compte.id] && (
                   <div className="table-container !shadow-none !border-0 !rounded-none border-t border-gray-200 dark:border-surface-700">
-                    <table className="w-full">
-                      <thead><tr><th className="table-header">Date</th><th className="table-header">Journal</th><th className="table-header">N° Écriture</th><th className="table-header">Libellé</th><th className="table-header text-right">Débit</th><th className="table-header text-right">Crédit</th></tr></thead>
+                    <table className="w-full table-fixed">
+                      <colgroup>
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '36%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '12%' }} />
+                      </colgroup>
+                      <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Journal</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Écriture</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Crédit</th></tr></thead>
                       <tbody>
                         {c.mouvements.map((m: any) => (
                           <tr key={m.id} className="table-row">
