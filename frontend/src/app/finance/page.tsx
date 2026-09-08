@@ -8,6 +8,8 @@ import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import ComptesBancairesManager from '@/components/finance/ComptesBancairesManager';
+import { GraphifyChart } from '@/components/charts';
+import type { GraphifyData } from '@/types/graphify';
 
 type TypeKey = 'CAISSE' | 'BANQUE' | 'TIERS' | 'CLIENT' | 'FOURNISSEUR';
 type IconKind = 'Caisse' | 'Banque' | 'Tiers' | 'Client' | 'Fournisseur';
@@ -177,7 +179,20 @@ export default function ComptesPage() {
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Types de compte</h3>
           {loading ? <div className="card text-center text-gray-500 py-8">Chargement...</div> : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <>
+              {typeTiles.some(t => t.total !== 0) && (
+                <div className="card !p-4 mb-4">
+                  <GraphifyChart
+                    type="bar"
+                    data={{
+                      labels: typeTiles.map(t => TYPE_LABELS[t.type]),
+                      series: [{ label: 'Solde', data: typeTiles.map(t => t.total), color: '#345c80' }],
+                    } as GraphifyData}
+                    config={{ height: 160, yAxisFormatter: (v) => fmt(v) }}
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {typeTiles.map(t => (
                 <div key={t.type} onClick={() => setSelectedType(t.type)} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
                   <span className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
@@ -187,7 +202,8 @@ export default function ComptesPage() {
                   <p className="text-xl font-bold text-gray-900 dark:text-white mt-3">{fmt(t.total)} <span className="text-xs font-normal text-gray-500">XOF</span></p>
                 </div>
               ))}
-            </div>
+              </div>
+            </>
           )}
         </div>
       </div>

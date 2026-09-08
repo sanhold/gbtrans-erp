@@ -4,6 +4,8 @@ export interface GraphifySeries {
   label: string;
   data: number[];
   color?: string;
+  /** Couleur par point (barres uniquement) — prioritaire sur `color` quand fournie. */
+  colors?: string[];
 }
 
 export interface GraphifyData {

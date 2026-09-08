@@ -15,7 +15,7 @@ export function toChartJsData(type: GraphifyChartType, data: GraphifyData): Char
       labels: data.labels,
       datasets: [{
         data: serie?.data || [],
-        backgroundColor: data.labels.map((_, i) => colorAt(i)),
+        backgroundColor: data.labels.map((_, i) => colorAt(i, serie?.colors?.[i])),
         borderWidth: 0,
       }],
     };
@@ -29,7 +29,7 @@ export function toChartJsData(type: GraphifyChartType, data: GraphifyData): Char
       return {
         label: serie.label,
         data: serie.data,
-        backgroundColor: isArea ? `${color}33` : color,
+        backgroundColor: serie.colors && type === 'bar' ? serie.colors : isArea ? `${color}33` : color,
         borderColor: color,
         borderWidth: type === 'bar' ? 0 : 2,
         borderRadius: type === 'bar' ? 4 : undefined,

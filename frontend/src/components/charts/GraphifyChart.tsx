@@ -35,7 +35,10 @@ export default function GraphifyChart({ type, data, config, className }: Graphif
   const options = toChartJsOptions(type, config, isDark);
 
   return (
-    <div className={className} style={{ height: config?.height ?? 280 }}>
+    // position:relative + width:100% + min-width:0 : requis par Chart.js pour calculer
+    // correctement la taille du canvas quand ce composant est placé dans un parent
+    // flex/grid (sinon le graphique peut se dessiner avec une taille quasi nulle).
+    <div className={className} style={{ height: config?.height ?? 280, width: '100%', minWidth: 0, position: 'relative' }}>
       <Component data={chartData} options={options} />
     </div>
   );

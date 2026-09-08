@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
+import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
 
 export default function StatistiquesPage() {
   const [stats, setStats] = useState<any>(null);
@@ -43,14 +44,14 @@ export default function StatistiquesPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="card">
                 <h3 className="text-lg font-semibold mb-4">Répartition par nature</h3>
-                <div className="space-y-3">
-                  {[{ label: 'Import', val: stats?.dossiersImport || 0, color: 'bg-blue-500' }, { label: 'Export', val: stats?.dossiersExport || 0, color: 'bg-green-500' }, { label: 'Transit', val: stats?.dossiersTransit || 0, color: 'bg-orange-500' }].map(i => (
-                    <div key={i.label}>
-                      <div className="flex justify-between text-sm mb-1"><span className="text-gray-600">{i.label}</span><span className="font-bold">{i.val}</span></div>
-                      <div className="w-full h-2 bg-gray-100 rounded-full"><div className={`h-full ${i.color} rounded-full`} style={{ width: `${(i.val / (stats?.totalDossiers || 1)) * 100}%` }} /></div>
-                    </div>
-                  ))}
-                </div>
+                <RepartitionDossiersChart
+                  items={[
+                    { label: 'Import', value: stats?.dossiersImport || 0 },
+                    { label: 'Export', value: stats?.dossiersExport || 0 },
+                    { label: 'Transit', value: stats?.dossiersTransit || 0 },
+                  ]}
+                  height={190}
+                />
               </div>
 
               <div className="card">

@@ -6,6 +6,15 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import api from '@/lib/api';
 import { usePagination } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import { GraphifyChart } from '@/components/charts';
+import type { GraphifyData } from '@/types/graphify';
+
+const PIPELINE_STAGES = [
+  { label: 'Nouveaux', statut: 'NOUVEAU', color: '#345c80' },
+  { label: 'En négociation', statut: 'EN_NEGOCIATION', color: '#e8821e' },
+  { label: 'Gagnés', statut: 'GAGNE', color: '#00b884' },
+  { label: 'Perdus', statut: 'PERDU', color: '#dc2626' },
+];
 
 const statutColors: Record<string, string> = {
   NOUVEAU: 'badge-info', CONTACTE: 'badge-warning', EN_NEGOCIATION: 'badge-warning',
@@ -58,21 +67,39 @@ export default function ProspectsPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Nouveaux', statut: 'NOUVEAU', color: 'blue' },
-            { label: 'En négociation', statut: 'EN_NEGOCIATION', color: 'amber' },
-            { label: 'Gagnés', statut: 'GAGNE', color: 'green' },
-            { label: 'Perdus', statut: 'PERDU', color: 'red' },
-          ].map(s => (
-            <div key={s.label} className="stat-card !p-4">
-              <div className={`w-9 h-9 rounded-lg bg-${s.color}-50 flex items-center justify-center`}>
-                <span className={`text-lg font-bold text-${s.color}-500`}>{prospects.filter(p => p.statut === s.statut).length}</span>
+        {!loading && prospects.length > 0 && (
+          <div className="card">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Pipeline commercial</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+              <GraphifyChart
+                type="doughnut"
+                data={{
+                  labels: PIPELINE_STAGES.map(s => s.label),
+                  series: [{
+                    label: 'Prospects',
+                    data: PIPELINE_STAGES.map(s => prospects.filter(p => p.statut === s.statut).length),
+                    colors: PIPELINE_STAGES.map(s => s.color),
+                  }],
+                } as GraphifyData}
+                config={{ height: 180, showLegend: false }}
+              />
+              <div className="space-y-2">
+                {PIPELINE_STAGES.map(s => {
+                  const count = prospects.filter(p => p.statut === s.statut).length;
+                  return (
+                    <div key={s.label} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                        {s.label}
+                      </span>
+                      <span className="font-bold text-gray-900 dark:text-white">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
-              <div><p className="text-xs text-gray-500 uppercase">{s.label}</p></div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
         <div className="table-container">
           <table className="w-full table-fixed">

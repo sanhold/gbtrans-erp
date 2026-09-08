@@ -4,6 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
+import CAMensuelChart from '@/components/dashboard/CAMensuelChart';
+import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
+import ResumeFinancierChart from '@/components/dashboard/ResumeFinancierChart';
+import DossiersParAnneeChart from '@/components/dashboard/DossiersParAnneeChart';
 
 interface Stats {
   totalDossiers: number;
@@ -44,8 +48,6 @@ const formatMontant = (montant: number) => {
     maximumFractionDigits: 0,
   }).format(montant);
 };
-
-const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 function StatCard({ titre, valeur, icone, couleur, sousTitre }: {
   titre: string; valeur: string | number; icone: string; couleur: string; sousTitre?: string;
@@ -107,18 +109,6 @@ export default function DashboardPage() {
   const handleChangeAnnee = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setAnnee(parseInt(e.target.value));
   };
-
-  // Préparer données graphique
-  const maxCA = Math.max(...caMensuel.map(m => m.ca), 1);
-  const graphData = moisLabels.map((_, i) => {
-    const data = caMensuel.find(m => m.mois === i + 1);
-    return {
-      ca: data?.ca || 0,
-      encaisse: data?.encaisse || 0,
-      pctCA: data ? (data.ca / maxCA) * 100 : 0,
-      pctEnc: data ? (data.encaisse / maxCA) * 100 : 0,
-    };
-  });
 
   if (loading) {
     return (
@@ -205,25 +195,7 @@ export default function DashboardPage() {
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500" />Encaissé</span>
               </div>
             </div>
-            <div className="h-64 flex items-end justify-between gap-2 px-2">
-              {moisLabels.map((mois, i) => (
-                <div key={mois} className="flex-1 flex flex-col items-center gap-1 group relative">
-                  <div className="w-full flex gap-0.5 items-end h-48">
-                    <div className="flex-1 bg-primary-400 dark:bg-primary-500 rounded-t-sm transition-all hover:bg-primary-600"
-                      style={{ height: `${Math.max(graphData[i].pctCA, 2)}%` }} />
-                    <div className="flex-1 bg-green-400 dark:bg-green-500 rounded-t-sm transition-all hover:bg-green-600"
-                      style={{ height: `${Math.max(graphData[i].pctEnc, graphData[i].ca > 0 ? 2 : 0)}%` }} />
-                  </div>
-                  <span className="text-[10px] text-gray-500">{mois}</span>
-                  {graphData[i].ca > 0 && (
-                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                      <div>CA: {new Intl.NumberFormat('fr-FR').format(graphData[i].ca)} F</div>
-                      <div>Enc: {new Intl.NumberFormat('fr-FR').format(graphData[i].encaisse)} F</div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <CAMensuelChart caMensuel={caMensuel} height={230} />
           </div>
 
           {/* Alertes réelles */}
@@ -262,56 +234,23 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Répartition des Dossiers — {annee}</h3>
-            <div className="space-y-4">
-              {[
-                { label: 'Import', value: stats?.dossiersImport || 0, color: 'bg-blue-500' },
-                { label: 'Export', value: stats?.dossiersExport || 0, color: 'bg-green-500' },
-                { label: 'Transit', value: stats?.dossiersTransit || 0, color: 'bg-orange-500' },
-              ].map((item) => {
-                const pct = ((item.value) / (stats?.totalDossiers || 1)) * 100;
-                return (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{item.label}</span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value} ({pct.toFixed(1)}%)</span>
-                    </div>
-                    <div className="w-full h-3 bg-gray-100 dark:bg-surface-700 rounded-full overflow-hidden">
-                      <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <RepartitionDossiersChart
+              items={[
+                { label: 'Import', value: stats?.dossiersImport || 0 },
+                { label: 'Export', value: stats?.dossiersExport || 0 },
+                { label: 'Transit', value: stats?.dossiersTransit || 0 },
+              ]}
+              height={190}
+            />
           </div>
 
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Résumé Financier — {annee}</h3>
-            <div className="space-y-3">
-              {[
-                { label: 'Recettes', value: stats?.recettes || 0, icon: '↑', color: 'text-green-500' },
-                { label: 'Dépenses', value: stats?.depenses || 0, icon: '↓', color: 'text-red-500' },
-                { label: 'Bénéfice', value: stats?.benefice || 0, icon: '=', color: 'text-blue-500' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-surface-700">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-lg font-bold ${item.color}`}>{item.icon}</span>
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{item.label}</span>
-                  </div>
-                  <span className={`text-sm font-bold ${item.color}`}>{formatMontant(item.value)}</span>
-                </div>
-              ))}
-            </div>
+            <ResumeFinancierChart recettes={stats?.recettes || 0} depenses={stats?.depenses || 0} benefice={stats?.benefice || 0} height={150} />
 
             <div className="mt-6">
               <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Dossiers par année</h4>
-              <div className="grid grid-cols-3 gap-2">
-                {Object.entries(stats?.dossiersParAnnee || {}).map(([a, count]) => (
-                  <div key={a} className={`text-center p-2 rounded-lg transition-all ${parseInt(a) === annee ? 'bg-primary-100 dark:bg-primary-900/40 ring-2 ring-primary-500' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
-                    <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{count}</p>
-                    <p className="text-[10px] text-gray-500">{a}</p>
-                  </div>
-                ))}
-              </div>
+              <DossiersParAnneeChart dossiersParAnnee={stats?.dossiersParAnnee || {}} anneeActive={annee} height={140} />
             </div>
           </div>
         </div>

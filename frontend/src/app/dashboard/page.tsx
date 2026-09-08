@@ -5,6 +5,8 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
+import CAMensuelChart from '@/components/dashboard/CAMensuelChart';
+import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
 
 interface Stats {
   totalDossiers: number;
@@ -45,8 +47,6 @@ interface TopClient {
   ca_total: number;
   impaye: number;
 }
-
-const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 const formatMontant = (montant: number) => {
   if (montant >= 1_000_000) return `${(montant / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M FCFA`;
@@ -143,21 +143,10 @@ export default function DashboardHomePage() {
   const today = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
   const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1);
 
-  const maxCA = Math.max(...caMensuel.map(m => m.ca), 1);
-  const graphData = moisLabels.map((_, i) => {
-    const data = caMensuel.find(m => m.mois === i + 1);
-    return {
-      ca: data?.ca || 0,
-      encaisse: data?.encaisse || 0,
-      pctCA: data ? (data.ca / maxCA) * 100 : 0,
-      pctEnc: data ? (data.encaisse / maxCA) * 100 : 0,
-    };
-  });
-
   const repartition = [
-    { label: 'Import', value: stats?.dossiersImport || 0, color: 'bg-[#1f6fd6]' },
-    { label: 'Export', value: stats?.dossiersExport || 0, color: 'bg-accent-500' },
-    { label: 'Transit', value: stats?.dossiersTransit || 0, color: 'bg-amber-500' },
+    { label: 'Import', value: stats?.dossiersImport || 0 },
+    { label: 'Export', value: stats?.dossiersExport || 0 },
+    { label: 'Transit', value: stats?.dossiersTransit || 0 },
   ];
 
   const nbAlertes = (alertes?.facturesEnRetard?.length || 0) + (alertes?.atExpirationProche?.length || 0) + (alertes?.cautionsCourrierEnAttente?.length || 0);
@@ -259,24 +248,7 @@ export default function DashboardHomePage() {
                   </div>
                 }
               >
-                <div className="h-48 flex items-end justify-between gap-2 px-1">
-                  {moisLabels.map((mois, i) => (
-                    <div key={mois} className="flex-1 flex flex-col items-center gap-1 group relative">
-                      <div className="w-full flex gap-0.5 items-end h-36">
-                        <div className="flex-1 bg-primary-400 dark:bg-primary-500 rounded-t-sm transition-all hover:bg-primary-600"
-                          style={{ height: `${Math.max(graphData[i].pctCA, 2)}%` }} />
-                        <div className="flex-1 bg-accent-400 dark:bg-accent-500 rounded-t-sm transition-all hover:bg-accent-600"
-                          style={{ height: `${Math.max(graphData[i].pctEnc, graphData[i].ca > 0 ? 2 : 0)}%` }} />
-                      </div>
-                      <span className="text-[10px] text-gray-500">{mois}</span>
-                      {graphData[i].ca > 0 && (
-                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                          <div>CA: {new Intl.NumberFormat('fr-FR').format(graphData[i].ca)} F</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <CAMensuelChart caMensuel={caMensuel} height={190} />
               </SectionCard>
             </div>
 
@@ -307,22 +279,7 @@ export default function DashboardHomePage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <SectionCard title={`Répartition des dossiers — ${year}`}>
-              <div className="space-y-4">
-                {repartition.map((item) => {
-                  const pct = (item.value / (stats?.totalDossiers || 1)) * 100;
-                  return (
-                    <div key={item.label}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{item.label}</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value} ({pct.toFixed(0)}%)</span>
-                      </div>
-                      <div className="w-full h-2.5 bg-gray-100 dark:bg-surface-700 rounded-full overflow-hidden">
-                        <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <RepartitionDossiersChart items={repartition} height={180} />
             </SectionCard>
 
             <SectionCard title={`Meilleurs clients — ${year}`} action={<Link href="/clients" className="text-xs text-primary-600 hover:underline font-medium">Voir tous →</Link>}>
