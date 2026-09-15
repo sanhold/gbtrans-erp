@@ -55,11 +55,6 @@ const navGroups: NavGroup[] = [
     items: [
       { name: 'Comptes', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
       { name: 'Transactions', href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5' },
-      { name: 'Caisses', href: '/finance/caisses', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
-      { name: 'Comptes Bancaires', href: '/finance/comptes-bancaires', icon: 'M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M3 10l9-6 9 6' },
-      { name: 'Comptes Tiers', href: '/finance/comptes-tiers', icon: 'M18 9v6m3-3h-6M7 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20c0-3.5 3-5 6-5s6 1.5 6 5' },
-      { name: 'Comptes Clients', href: '/finance/comptes-clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
-      { name: 'Comptes Fournisseurs', href: '/finance/comptes-fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
       { name: 'Dotation', href: '/finance/dotation', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22' },
       { name: 'État Facturation Dossier', href: '/finance/etat-facturation-dossier', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
       { name: 'Statistique', href: '/statistiques', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z' },
