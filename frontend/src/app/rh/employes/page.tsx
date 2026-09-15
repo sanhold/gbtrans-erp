@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { rhApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 const TYPE_CONTRAT_LABELS: Record<string, string> = {
@@ -22,6 +23,8 @@ const emptyForm = {
 };
 
 export default function EmployesPage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('RH:VOIR_MONTANTS');
   const [employes, setEmployes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -132,7 +135,7 @@ export default function EmployesPage() {
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={`${e.poste}${e.departement ? ` — ${e.departement}` : ''}`}>{e.poste}{e.departement ? ` — ${e.departement}` : ''}</td>
                   <td className="table-cell !px-1.5" data-label="Contrat"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat}</span></td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Embauche">{new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Salaire de base">{fmt(e.salaireBase)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Salaire de base">{canSeeMontants ? fmt(e.salaireBase) : '•••••••'}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${e.actif ? 'badge-success' : 'badge-danger'} !text-[10px] !px-1.5 !py-0`}>{e.actif ? 'Actif' : 'Désactivé'}</span></td>
                   <td className="table-cell !px-1.5" data-label="Actions">
                     <div className="flex gap-2 text-[10.5px]">

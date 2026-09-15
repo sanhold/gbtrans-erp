@@ -6,9 +6,14 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
+const MONTANT_MASQUE = '•••••••';
+
 export default function ComptesBancairesManager({ onSelectAccount }: { onSelectAccount?: (id: string) => void }) {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const { comptes, loading, reload } = useComptesFinanciers();
   const comptesActifs = comptes.filter(c => c.actif);
   const { paged, page, setPage, pageSize, setPageSize, total, totalPages } = usePagination(comptesActifs);
@@ -58,7 +63,7 @@ export default function ComptesBancairesManager({ onSelectAccount }: { onSelectA
                 <td className="table-cell" data-label="Libellé">{c.libelle}</td>
                 <td className="table-cell" data-label="Banque">{c.banque}</td>
                 <td className="table-cell" data-label="Devise">{c.devise}</td>
-                <td className="table-cell text-right font-mono" data-label="Solde">{fmt(c.solde)}</td>
+                <td className="table-cell text-right font-mono" data-label="Solde">{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</td>
                 <td className="table-cell" data-label="Statut">{c.actif ? <span className="badge badge-success">Actif</span> : <span className="badge badge-gray">Inactif</span>}</td>
                 <td className="table-cell" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); toggleActif(c); }} className="text-xs text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
               </tr>

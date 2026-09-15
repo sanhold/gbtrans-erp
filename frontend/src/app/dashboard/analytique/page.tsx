@@ -4,10 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import CAMensuelChart from '@/components/dashboard/CAMensuelChart';
 import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
 import ResumeFinancierChart from '@/components/dashboard/ResumeFinancierChart';
 import DossiersParAnneeChart from '@/components/dashboard/DossiersParAnneeChart';
+import MontantsMasques from '@/components/ui/MontantsMasques';
+
+const MONTANT_MASQUE = '•••••••';
 
 interface Stats {
   totalDossiers: number;
@@ -80,6 +84,8 @@ function StatCard({ titre, valeur, icone, couleur, sousTitre }: {
 }
 
 export default function DashboardPage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const [annee, setAnnee] = useState(new Date().getFullYear());
   const [stats, setStats] = useState<Stats | null>(null);
   const [caMensuel, setCaMensuel] = useState<CAMensuel[]>([]);
@@ -159,12 +165,12 @@ export default function DashboardPage() {
           <StatCard titre="Dossiers" valeur={stats?.totalDossiers || 0}
             icone="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" couleur="blue"
             sousTitre={`Import: ${stats?.dossiersImport} | Export: ${stats?.dossiersExport} | Transit: ${stats?.dossiersTransit}`} />
-          <StatCard titre="Chiffre d'Affaires" valeur={formatMontant(stats?.montantFacture || 0)}
+          <StatCard titre="Chiffre d'Affaires" valeur={canSeeMontants ? formatMontant(stats?.montantFacture || 0) : MONTANT_MASQUE}
             icone="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" couleur="indigo"
             sousTitre={`${stats?.totalFactures} factures en ${annee}`} />
-          <StatCard titre="Encaissé" valeur={formatMontant(stats?.montantEncaisse || 0)}
+          <StatCard titre="Encaissé" valeur={canSeeMontants ? formatMontant(stats?.montantEncaisse || 0) : MONTANT_MASQUE}
             icone="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" couleur="green" />
-          <StatCard titre="Impayé" valeur={formatMontant(stats?.montantImpaye || 0)}
+          <StatCard titre="Impayé" valeur={canSeeMontants ? formatMontant(stats?.montantImpaye || 0) : MONTANT_MASQUE}
             icone="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" couleur="red" />
         </div>
 
@@ -173,7 +179,7 @@ export default function DashboardPage() {
           <StatCard titre="Clients" valeur={stats?.totalClients || 0}
             icone="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" couleur="green"
             sousTitre={`${stats?.totalFournisseurs} fournisseurs`} />
-          <StatCard titre="Bénéfice" valeur={formatMontant(stats?.benefice || 0)}
+          <StatCard titre="Bénéfice" valeur={canSeeMontants ? formatMontant(stats?.benefice || 0) : MONTANT_MASQUE}
             icone="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" couleur={stats?.benefice && stats.benefice > 0 ? 'green' : 'red'}
             sousTitre="Recettes - Dépenses" />
           <StatCard titre="AT Actives" valeur={stats?.atActives || 0}
@@ -195,7 +201,7 @@ export default function DashboardPage() {
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500" />Encaissé</span>
               </div>
             </div>
-            <CAMensuelChart caMensuel={caMensuel} height={230} />
+            {canSeeMontants ? <CAMensuelChart caMensuel={caMensuel} height={230} /> : <MontantsMasques height={230} label="Chiffre d'affaires masqué" />}
           </div>
 
           {/* Alertes réelles */}
@@ -246,7 +252,11 @@ export default function DashboardPage() {
 
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Résumé Financier — {annee}</h3>
-            <ResumeFinancierChart recettes={stats?.recettes || 0} depenses={stats?.depenses || 0} benefice={stats?.benefice || 0} height={150} />
+            {canSeeMontants ? (
+              <ResumeFinancierChart recettes={stats?.recettes || 0} depenses={stats?.depenses || 0} benefice={stats?.benefice || 0} height={150} />
+            ) : (
+              <MontantsMasques height={150} label="Résumé financier masqué" />
+            )}
 
             <div className="mt-6">
               <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Dossiers par année</h4>

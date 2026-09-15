@@ -6,9 +6,14 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
+const MONTANT_MASQUE = '•••••••';
+
 export default function CaissesPage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const { caisses, loading, reload } = useComptesFinanciers();
   const { paged, page, setPage, pageSize, setPageSize, total, totalPages } = usePagination(caisses);
   const [showModal, setShowModal] = useState(false);
@@ -63,8 +68,8 @@ export default function CaissesPage() {
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{fmt(c.solde)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Plafond">{c.plafond ? fmt(c.plafond) : '-'}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Plafond">{canSeeMontants ? (c.plafond ? fmt(c.plafond) : '-') : MONTANT_MASQUE}</td>
                   <td className="table-cell !px-1.5" data-label="Statut">{c.actif ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Actif</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Inactif</span>}</td>
                   <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => toggleActif(c)} className="text-[10.5px] text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
                 </tr>

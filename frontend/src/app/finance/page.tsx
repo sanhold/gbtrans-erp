@@ -7,9 +7,13 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
+import { useAuthStore } from '@/stores/authStore';
 import ComptesBancairesManager from '@/components/finance/ComptesBancairesManager';
 import { GraphifyChart } from '@/components/charts';
+import MontantsMasques from '@/components/ui/MontantsMasques';
 import type { GraphifyData } from '@/types/graphify';
+
+const MONTANT_MASQUE = '•••••••';
 
 type TypeKey = 'CAISSE' | 'BANQUE' | 'TIERS' | 'CLIENT' | 'FOURNISSEUR';
 type IconKind = 'Caisse' | 'Banque' | 'Tiers' | 'Client' | 'Fournisseur';
@@ -65,7 +69,7 @@ interface AccountCardItem {
   onClick: () => void;
 }
 
-function AccountGrid({ items }: { items: AccountCardItem[] }) {
+function AccountGrid({ items, canSeeMontants }: { items: AccountCardItem[]; canSeeMontants: boolean }) {
   if (items.length === 0) return <div className="card text-center text-gray-500 py-8">Aucun compte dans cette catégorie</div>;
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -75,7 +79,7 @@ function AccountGrid({ items }: { items: AccountCardItem[] }) {
           <AccountIcon kind={c.kind} />
           <h3 className="font-semibold text-gray-900 dark:text-white mt-3 truncate">{c.libelle}</h3>
           <p className="text-xs text-gray-500 truncate">{c.sub}</p>
-          <p className={`text-xl font-bold mt-3 ${(c.kind === 'Client' || c.kind === 'Fournisseur') ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{fmt(c.solde)} <span className="text-xs font-normal text-gray-500">{c.devise}</span></p>
+          <p className={`text-xl font-bold mt-3 ${(c.kind === 'Client' || c.kind === 'Fournisseur') ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE} <span className="text-xs font-normal text-gray-500">{c.devise}</span></p>
         </div>
       ))}
     </div>
@@ -83,6 +87,8 @@ function AccountGrid({ items }: { items: AccountCardItem[] }) {
 }
 
 export default function ComptesPage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const { caisses, comptes, tiers, loading } = useComptesFinanciers();
   const [comptesClients, setComptesClients] = useState<any[]>([]);
   const [comptesFournisseurs, setComptesFournisseurs] = useState<any[]>([]);
@@ -156,7 +162,7 @@ export default function ComptesPage() {
           ) : loading ? (
             <div className="card text-center text-gray-500 py-8">Chargement...</div>
           ) : (
-            <AccountGrid items={ITEMS_BY_TYPE[selectedType]} />
+            <AccountGrid items={ITEMS_BY_TYPE[selectedType]} canSeeMontants={canSeeMontants} />
           )}
         </div>
       </AppLayout>
@@ -170,10 +176,10 @@ export default function ComptesPage() {
         <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptes</h1><p className="text-sm text-gray-500">Vue consolidée de la trésorerie : comptes de caisse et banque, plus les comptes tiers (clients à recevoir, fournisseurs à payer). Ouvrez un type de compte pour voir ses comptes.</p></div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Trésorerie disponible</p><p className="text-lg font-bold text-green-600">{fmt(tresorerie)} F</p><p className="text-xs text-gray-400 mt-0.5">{caissesItems.length + banquesItems.length} comptes</p></div>
-          <Link href="/finance/creances-clients" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Créances clients</p><p className="text-lg font-bold text-green-600">{fmt(totalCreances)} F</p><p className="text-xs text-gray-400 mt-0.5">à recevoir</p></Link>
-          <Link href="/finance/dettes-fournisseurs" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Dettes fournisseurs</p><p className="text-lg font-bold text-amber-600">{fmt(totalDettes)} F</p><p className="text-xs text-gray-400 mt-0.5">à payer</p></Link>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Position nette</p><p className={`text-lg font-bold ${positionNette >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{fmt(positionNette)} F</p><p className="text-xs text-gray-400 mt-0.5">dispo + créances − dettes</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Trésorerie disponible</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(tresorerie)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">{caissesItems.length + banquesItems.length} comptes</p></div>
+          <Link href="/finance/creances-clients" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Créances clients</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(totalCreances)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à recevoir</p></Link>
+          <Link href="/finance/dettes-fournisseurs" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Dettes fournisseurs</p><p className="text-lg font-bold text-amber-600">{canSeeMontants ? `${fmt(totalDettes)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à payer</p></Link>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Position nette</p><p className={`text-lg font-bold ${positionNette >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{canSeeMontants ? `${fmt(positionNette)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">dispo + créances − dettes</p></div>
         </div>
 
         <div>
@@ -182,14 +188,18 @@ export default function ComptesPage() {
             <>
               {typeTiles.some(t => t.total !== 0) && (
                 <div className="card !p-4 mb-4">
-                  <GraphifyChart
-                    type="bar"
-                    data={{
-                      labels: typeTiles.map(t => TYPE_LABELS[t.type]),
-                      series: [{ label: 'Solde', data: typeTiles.map(t => t.total), color: '#345c80' }],
-                    } as GraphifyData}
-                    config={{ height: 160, yAxisFormatter: (v) => fmt(v) }}
-                  />
+                  {canSeeMontants ? (
+                    <GraphifyChart
+                      type="bar"
+                      data={{
+                        labels: typeTiles.map(t => TYPE_LABELS[t.type]),
+                        series: [{ label: 'Solde', data: typeTiles.map(t => t.total), color: '#345c80' }],
+                      } as GraphifyData}
+                      config={{ height: 160, yAxisFormatter: (v) => fmt(v) }}
+                    />
+                  ) : (
+                    <MontantsMasques height={160} label="Soldes masqués" />
+                  )}
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -199,7 +209,7 @@ export default function ComptesPage() {
                   <AccountIcon kind={TYPE_ICON[t.type]} />
                   <h3 className="font-semibold text-gray-900 dark:text-white mt-3">{TYPE_LABELS[t.type]}</h3>
                   <p className="text-xs text-gray-500">{t.count} compte{t.count > 1 ? 's' : ''}</p>
-                  <p className="text-xl font-bold text-gray-900 dark:text-white mt-3">{fmt(t.total)} <span className="text-xs font-normal text-gray-500">XOF</span></p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white mt-3">{canSeeMontants ? fmt(t.total) : MONTANT_MASQUE} <span className="text-xs font-normal text-gray-500">XOF</span></p>
                 </div>
               ))}
               </div>
@@ -212,6 +222,8 @@ export default function ComptesPage() {
 }
 
 function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: 'CAISSE' | 'BANQUE' | 'TIERS'; id: string }; comptesActifs: any[]; onBack: () => void }) {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const c = comptesActifs.find(x => x.id === compte.id);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,7 +254,7 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
       <div>
         <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← {TYPE_LABELS[compte.type]}</button>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{c.kind === 'Banque' ? `${c.libelle} (${c.banque})` : c.libelle}</h2>
-        <p className="text-sm text-gray-500">{c.kind} · Solde courant : <span className="font-bold text-gray-900 dark:text-white">{fmt(c.solde)} {c.devise}</span></p>
+        <p className="text-sm text-gray-500">{c.kind} · Solde courant : <span className="font-bold text-gray-900 dark:text-white">{canSeeMontants ? `${fmt(c.solde)} ${c.devise}` : MONTANT_MASQUE}</span></p>
       </div>
 
       <div className="card">
@@ -266,7 +278,7 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
                   <td className="table-cell" data-label="Sens">{op.sens === 'ENTREE' ? <span className="text-green-600 font-medium">↘ Entrée</span> : <span className="text-red-600 font-medium">↗ Sortie</span>}</td>
                   <td className="table-cell" data-label="Origine">{op.libelle}</td>
                   <td className="table-cell font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
-                  <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{op.sens === 'ENTREE' ? '+' : '-'}{fmt(op.montant)}</td>
+                  <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{canSeeMontants ? `${op.sens === 'ENTREE' ? '+' : '-'}${fmt(op.montant)}` : MONTANT_MASQUE}</td>
                 </tr>
               ))}
             </tbody>
@@ -279,6 +291,8 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
 }
 
 function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR'; id: string; onBack: () => void }) {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { paged, page, setPage, pageSize, setPageSize, total, totalPages } = usePagination((detail?.paiements || []) as any[]);
@@ -302,7 +316,7 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
       <div>
         <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← {TYPE_LABELS[type]}</button>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{tiers?.raisonSociale}</h2>
-        <p className="text-sm text-gray-500">{type === 'CLIENT' ? 'Client' : 'Fournisseur'} · Solde dû : <span className="font-bold text-red-600">{fmt(resteAPayer)} XOF</span></p>
+        <p className="text-sm text-gray-500">{type === 'CLIENT' ? 'Client' : 'Fournisseur'} · Solde dû : <span className="font-bold text-red-600">{canSeeMontants ? `${fmt(resteAPayer)} XOF` : MONTANT_MASQUE}</span></p>
       </div>
 
       <div className="card">
@@ -317,7 +331,7 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
                   <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell font-mono text-xs text-primary-600" data-label="N° Transaction">{p.numero}</td>
                   <td className="table-cell text-xs" data-label="Facture(s)">{(p.affectations || []).map((a: any) => a.facture?.numero || a.factureFournisseur?.numero).join(', ') || '-'}</td>
-                  <td className="table-cell text-right font-mono font-semibold text-green-600" data-label="Montant">{fmt(p.montant)}</td>
+                  <td className="table-cell text-right font-mono font-semibold text-green-600" data-label="Montant">{canSeeMontants ? fmt(p.montant) : MONTANT_MASQUE}</td>
                 </tr>
               ))}
             </tbody>
@@ -337,9 +351,9 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
                 <tr key={f.id} className="table-row">
                   <td className="table-cell font-mono text-xs text-primary-600" data-label="N°">{f.numero}</td>
                   <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{fmt(f.montantPaye)}</td>
-                  <td className="table-cell text-right font-mono text-red-600" data-label="Reste">{fmt(f.resteAPayer)}</td>
+                  <td className="table-cell text-right font-mono" data-label="TTC">{canSeeMontants ? fmt(f.montantTTC) : MONTANT_MASQUE}</td>
+                  <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{canSeeMontants ? fmt(f.montantPaye) : MONTANT_MASQUE}</td>
+                  <td className="table-cell text-right font-mono text-red-600" data-label="Reste">{canSeeMontants ? fmt(f.resteAPayer) : MONTANT_MASQUE}</td>
                   <td className="table-cell" data-label="Statut"><span className="badge badge-info">{f.statut}</span></td>
                 </tr>
               ))}

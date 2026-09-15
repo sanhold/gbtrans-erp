@@ -87,8 +87,14 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
       </button>
 
       {/* Module courant */}
-      <div className="flex-1 flex items-center min-w-0">
+      <div className="flex-1 flex items-center min-w-0 gap-4">
         <h1 className="text-[15.5px] font-bold text-gray-900 dark:text-white truncate">{moduleName}</h1>
+        {pathname === '/dashboard' && (
+          <div className="hidden md:block border-l border-surface-200 dark:border-surface-600 pl-4 min-w-0">
+            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">Bonjour, {user?.prenom || 'admin'} 👋</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Voici l&apos;activité de votre bureau de transit aujourd&apos;hui.</p>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

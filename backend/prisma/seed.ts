@@ -133,6 +133,8 @@ async function main() {
     { module: 'COMPTABILITE', action: 'CLOTURER', libelle: 'Clôturer un exercice' },
     { module: 'RH', action: 'PAYER', libelle: 'Marquer un bulletin de paie comme payé' },
     { module: 'DOCUMENTS', action: 'SIGNATURE', libelle: 'Autoriser l\'affichage de la signature sur les documents imprimés/téléchargés' },
+    { module: 'FINANCE', action: 'VOIR_MONTANTS', libelle: 'Voir les montants financiers sensibles (CA, soldes, trésorerie)' },
+    { module: 'RH', action: 'VOIR_MONTANTS', libelle: 'Voir les montants de paie (salaires)' },
   ];
 
   for (const perm of permissionsSpecifiques) {
@@ -175,6 +177,8 @@ async function main() {
         { module: 'FOURNISSEURS', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'VALIDER'] } },
         { module: 'DOSSIERS', action: 'LIRE' },
         { module: 'COMPTABILITE', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER', 'EXPORTER', 'IMPRIMER'] } },
+        { module: 'FINANCE', action: 'VOIR_MONTANTS' },
+        { module: 'RH', action: { in: ['LIRE', 'VOIR_MONTANTS'] } },
       ],
     },
   });

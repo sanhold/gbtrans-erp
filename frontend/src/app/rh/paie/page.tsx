@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { rhApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 const MOIS_LABELS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
@@ -18,6 +19,9 @@ const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number
 const now = new Date();
 
 export default function PaiePage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('RH:VOIR_MONTANTS');
+  const money = (n: any) => (canSeeMontants ? fmt(n) : '•••••••');
   const [mois, setMois] = useState(now.getMonth() + 1);
   const [annee, setAnnee] = useState(now.getFullYear());
   const [bulletins, setBulletins] = useState<any[]>([]);
@@ -108,10 +112,10 @@ export default function PaiePage() {
 
         {bulletins.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Masse brute</p><p className="text-sm font-bold">{fmt(totaux.brut)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">CNPS (salarié+patronal)</p><p className="text-sm font-bold text-amber-600">{fmt(totaux.cnps)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">ITS retenu</p><p className="text-sm font-bold text-amber-600">{fmt(totaux.its)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Coût total employeur</p><p className="text-sm font-bold text-primary-700">{fmt(totaux.coutTotal)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Masse brute</p><p className="text-sm font-bold">{money(totaux.brut)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">CNPS (salarié+patronal)</p><p className="text-sm font-bold text-amber-600">{money(totaux.cnps)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">ITS retenu</p><p className="text-sm font-bold text-amber-600">{money(totaux.its)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Coût total employeur</p><p className="text-sm font-bold text-primary-700">{money(totaux.coutTotal)} F</p></div>
           </div>
         )}
 
@@ -144,10 +148,10 @@ export default function PaiePage() {
                   <td className="table-cell font-mono font-medium text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Bulletin">{b.numero}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={b.employe?.poste}>{b.employe?.poste}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Brut">{fmt(b.salaireBrut)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="CNPS">{fmt(b.cnpsSalarie)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="ITS">{fmt(b.itsSalarie)}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Net à payer">{fmt(b.salaireNet)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Brut">{money(b.salaireBrut)}</td>
+                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="CNPS">{money(b.cnpsSalarie)}</td>
+                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="ITS">{money(b.itsSalarie)}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Net à payer">{money(b.salaireNet)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{b.statut}</span></td>
                   <td className="table-cell !px-1.5" data-label="Actions">
                     <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-[10.5px] text-primary-500 hover:underline">Voir</button>
@@ -181,25 +185,25 @@ export default function PaiePage() {
 
               <table className="w-full text-sm border border-gray-100 dark:border-surface-700 rounded-lg overflow-hidden">
                 <tbody>
-                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Salaire de base</td><td className="px-3 py-1.5 text-right font-mono">{fmt(selected.salaireBase)}</td></tr>
-                  {Number(selected.primes) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Primes</td><td className="px-3 py-1.5 text-right font-mono">{fmt(selected.primes)}</td></tr>}
-                  {Number(selected.indemnites) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Indemnités</td><td className="px-3 py-1.5 text-right font-mono">{fmt(selected.indemnites)}</td></tr>}
-                  <tr className="border-b border-gray-100 dark:border-surface-700 font-bold bg-gray-50 dark:bg-surface-700/40"><td className="px-3 py-1.5">Salaire brut</td><td className="px-3 py-1.5 text-right font-mono">{fmt(selected.salaireBrut)}</td></tr>
-                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">CNPS salarié (6,3%)</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{fmt(selected.cnpsSalarie)}</td></tr>
-                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">ITS</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{fmt(selected.itsSalarie)}</td></tr>
-                  {Number(selected.autresRetenues) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Autres retenues</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{fmt(selected.autresRetenues)}</td></tr>}
-                  {Number(selected.avance) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Avance sur salaire</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{fmt(selected.avance)}</td></tr>}
+                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Salaire de base</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.salaireBase)}</td></tr>
+                  {Number(selected.primes) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Primes</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.primes)}</td></tr>}
+                  {Number(selected.indemnites) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Indemnités</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.indemnites)}</td></tr>}
+                  <tr className="border-b border-gray-100 dark:border-surface-700 font-bold bg-gray-50 dark:bg-surface-700/40"><td className="px-3 py-1.5">Salaire brut</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.salaireBrut)}</td></tr>
+                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">CNPS salarié (6,3%)</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.cnpsSalarie)}</td></tr>
+                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">ITS</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.itsSalarie)}</td></tr>
+                  {Number(selected.autresRetenues) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Autres retenues</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.autresRetenues)}</td></tr>}
+                  {Number(selected.avance) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Avance sur salaire</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.avance)}</td></tr>}
                   <tr><td colSpan={2} className="p-0">
                     <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white flex justify-between px-3 py-2.5 font-extrabold">
-                      <span>NET À PAYER</span><span className="font-mono">{fmt(selected.salaireNet)} XOF</span>
+                      <span>NET À PAYER</span><span className="font-mono">{money(selected.salaireNet)} XOF</span>
                     </div>
                   </td></tr>
                 </tbody>
               </table>
 
               <div className="text-xs text-gray-400 flex justify-between">
-                <span>CNPS patronal : {fmt(selected.cnpsPatronal)} F</span>
-                <span>Coût total employeur : {fmt(selected.coutTotalEmployeur)} F</span>
+                <span>CNPS patronal : {money(selected.cnpsPatronal)} F</span>
+                <span>Coût total employeur : {money(selected.coutTotalEmployeur)} F</span>
               </div>
 
               {selected.statut === 'PAYE' && (
@@ -226,7 +230,7 @@ export default function PaiePage() {
               <button onClick={() => setShowPayer(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form onSubmit={handlePayer} className="p-4 space-y-3">
-              <p className="text-sm text-gray-500">Net à payer : <span className="font-mono font-bold text-gray-900 dark:text-white">{fmt(selected.salaireNet)} XOF</span></p>
+              <p className="text-sm text-gray-500">Net à payer : <span className="font-mono font-bold text-gray-900 dark:text-white">{money(selected.salaireNet)} XOF</span></p>
               <div><label className="label">Mode de paiement</label>
                 <select value={payerForm.modePaiement} onChange={e => setPayerForm({ ...payerForm, modePaiement: e.target.value })} className="input-field">
                   {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

@@ -6,9 +6,14 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
+const MONTANT_MASQUE = '•••••••';
+
 export default function ComptesClientsPage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<any>(null);
@@ -38,8 +43,8 @@ export default function ComptesClientsPage() {
         <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptes Clients</h1><p className="text-sm text-gray-500">Solde de chaque client au titre des factures validées</p></div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total dû par les clients</p><p className="text-base font-bold text-red-600">{fmt(totalDu)} F</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total facturé (validé)</p><p className="text-base font-bold text-gray-900 dark:text-white">{fmt(totalFacture)} F</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total dû par les clients</p><p className="text-base font-bold text-red-600">{canSeeMontants ? `${fmt(totalDu)} F` : MONTANT_MASQUE}</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total facturé (validé)</p><p className="text-base font-bold text-gray-900 dark:text-white">{canSeeMontants ? `${fmt(totalFacture)} F` : MONTANT_MASQUE}</p></div>
           <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Clients</p><p className="text-base font-bold text-gray-900 dark:text-white">{rows.length}</p></div>
         </div>
         <div className="table-container">
@@ -61,9 +66,9 @@ export default function ComptesClientsPage() {
                 <tr key={r.id} className="table-row">
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{r.code}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={r.raisonSociale}>{r.raisonSociale}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total facturé">{fmt(r.totalFacture)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total payé">{fmt(r.totalPaye)}</td>
-                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.resteAPayer) > 0 ? 'text-red-600' : 'text-green-600'}`} data-label="Reste à payer">{fmt(r.resteAPayer)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total facturé">{canSeeMontants ? fmt(r.totalFacture) : MONTANT_MASQUE}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total payé">{canSeeMontants ? fmt(r.totalPaye) : MONTANT_MASQUE}</td>
+                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.resteAPayer) > 0 ? 'text-red-600' : 'text-green-600'}`} data-label="Reste à payer">{canSeeMontants ? fmt(r.resteAPayer) : MONTANT_MASQUE}</td>
                   <td className="table-cell text-right !px-1.5 !text-[10.5px] truncate" data-label="Factures">{Number(r.nombreFactures)}</td>
                   <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => openReleve(r.id)} className="text-[10.5px] text-primary-600 hover:underline">Relevé</button></td>
                 </tr>
@@ -88,9 +93,9 @@ export default function ComptesClientsPage() {
                           <tr key={f.id} className="table-row">
                             <td className="table-cell" data-label="N°">{f.numero}</td>
                             <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
-                            <td className="table-cell text-right font-mono" data-label="TTC">{fmt(f.montantTTC)}</td>
-                            <td className="table-cell text-right font-mono" data-label="Payé">{fmt(f.montantPaye)}</td>
-                            <td className="table-cell text-right font-mono" data-label="Reste">{fmt(f.resteAPayer)}</td>
+                            <td className="table-cell text-right font-mono" data-label="TTC">{canSeeMontants ? fmt(f.montantTTC) : MONTANT_MASQUE}</td>
+                            <td className="table-cell text-right font-mono" data-label="Payé">{canSeeMontants ? fmt(f.montantPaye) : MONTANT_MASQUE}</td>
+                            <td className="table-cell text-right font-mono" data-label="Reste">{canSeeMontants ? fmt(f.resteAPayer) : MONTANT_MASQUE}</td>
                             <td className="table-cell" data-label="Statut"><span className="badge badge-info">{f.statut}</span></td>
                           </tr>
                         ))}</tbody>
@@ -105,7 +110,7 @@ export default function ComptesClientsPage() {
                             <td className="table-cell" data-label="N°">{p.numero}</td>
                             <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
                             <td className="table-cell text-xs" data-label="Facture(s)">{(p.affectations || []).map((a: any) => a.facture?.numero).join(', ')}</td>
-                            <td className="table-cell text-right font-mono" data-label="Montant">{fmt(p.montant)}</td>
+                            <td className="table-cell text-right font-mono" data-label="Montant">{canSeeMontants ? fmt(p.montant) : MONTANT_MASQUE}</td>
                           </tr>
                         ))}</tbody>
                       </table>

@@ -7,6 +7,9 @@ import { dashboardApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import CAMensuelChart from '@/components/dashboard/CAMensuelChart';
 import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
+import MontantsMasques from '@/components/ui/MontantsMasques';
+
+const MONTANT_MASQUE = '•••••••';
 
 interface Stats {
   totalDossiers: number;
@@ -105,7 +108,8 @@ function SectionCard({ title, action, children }: { title: string; action?: Reac
 }
 
 export default function DashboardHomePage() {
-  const { user } = useAuthStore();
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const [stats, setStats] = useState<Stats | null>(null);
   const [caMensuel, setCaMensuel] = useState<CAMensuel[]>([]);
   const [topClients, setTopClients] = useState<TopClient[]>([]);
@@ -140,9 +144,6 @@ export default function DashboardHomePage() {
     ? Math.round(((stats.totalDossiers - dossiersAnneePrecedente) / dossiersAnneePrecedente) * 100)
     : null;
 
-  const today = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
-  const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1);
-
   const repartition = [
     { label: 'Import', value: stats?.dossiersImport || 0 },
     { label: 'Export', value: stats?.dossiersExport || 0 },
@@ -153,24 +154,6 @@ export default function DashboardHomePage() {
 
   return (
     <AppLayout>
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-700 to-primary-900 px-6 py-6 mb-6 shadow-card">
-        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-white/5" />
-        <div className="absolute -right-24 -bottom-24 w-64 h-64 rounded-full bg-white/5" />
-        <div className="relative flex items-end justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">Bonjour, {user?.prenom || 'admin'} 👋</h1>
-            <p className="text-sm text-primary-100 mt-1">Voici l&apos;activité de votre bureau de transit aujourd&apos;hui.</p>
-          </div>
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur border border-white/10 rounded-[11px] px-4 py-2.5 text-[13px] font-medium text-white">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="17" rx="2" />
-              <path d="M16 2v4M8 2v4M3 10h18" />
-            </svg>
-            {todayCapitalized}
-          </div>
-        </div>
-      </div>
-
       {loading ? (
         <div className="flex items-center justify-center h-40">
           <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
@@ -194,13 +177,13 @@ export default function DashboardHomePage() {
             />
             <KpiCard
               label="Chiffre d'affaires (mois)"
-              value={formatMontant(stats?.montantFactureMois ?? 0)}
+              value={canSeeMontants ? formatMontant(stats?.montantFactureMois ?? 0) : MONTANT_MASQUE}
               icon="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
               color="teal"
             />
             <KpiCard
               label="Créances clients"
-              value={formatMontant(stats?.montantImpaye ?? 0)}
+              value={canSeeMontants ? formatMontant(stats?.montantImpaye ?? 0) : MONTANT_MASQUE}
               icon="M12 2v20M5 5h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h9"
               color="rose"
               trend={{ label: `${stats?.facturesImpayeesCount ?? 0} facture(s) impayée(s)` }}
@@ -248,7 +231,7 @@ export default function DashboardHomePage() {
                   </div>
                 }
               >
-                <CAMensuelChart caMensuel={caMensuel} height={190} />
+                {canSeeMontants ? <CAMensuelChart caMensuel={caMensuel} height={190} /> : <MontantsMasques height={190} label="Chiffre d'affaires masqué" />}
               </SectionCard>
             </div>
 
@@ -296,7 +279,7 @@ export default function DashboardHomePage() {
                           <p className="text-[11px] text-gray-400">{c.nombre_dossiers} dossier(s)</p>
                         </div>
                       </div>
-                      <span className="text-[13px] font-bold text-gray-900 dark:text-white flex-shrink-0">{formatMontant(c.ca_total)}</span>
+                      <span className="text-[13px] font-bold text-gray-900 dark:text-white flex-shrink-0">{canSeeMontants ? formatMontant(c.ca_total) : MONTANT_MASQUE}</span>
                     </div>
                   ))}
                 </div>

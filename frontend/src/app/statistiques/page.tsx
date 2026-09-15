@@ -3,9 +3,14 @@
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
 
+const MONTANT_MASQUE = '•••••••';
+
 export default function StatistiquesPage() {
+  const { hasPermission } = useAuthStore();
+  const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
   const [stats, setStats] = useState<any>(null);
   const [topClients, setTopClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +42,7 @@ export default function StatistiquesPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="card text-center"><p className="text-3xl font-bold text-primary-600">{stats?.totalDossiers || 0}</p><p className="text-sm text-gray-500 mt-1">Dossiers Total</p></div>
-              <div className="card text-center"><p className="text-3xl font-bold text-green-600">{fmt(stats?.montantFacture || 0)}</p><p className="text-sm text-gray-500 mt-1">Chiffre d&apos;Affaires (XOF)</p></div>
+              <div className="card text-center"><p className="text-3xl font-bold text-green-600">{canSeeMontants ? fmt(stats?.montantFacture || 0) : MONTANT_MASQUE}</p><p className="text-sm text-gray-500 mt-1">Chiffre d&apos;Affaires (XOF)</p></div>
               <div className="card text-center"><p className="text-3xl font-bold text-blue-600">{stats?.totalClients || 0}</p><p className="text-sm text-gray-500 mt-1">Clients Actifs</p></div>
             </div>
 
@@ -61,7 +66,7 @@ export default function StatistiquesPage() {
                     {topClients.map((c: any, i: number) => (
                       <div key={c.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-surface-700">
                         <div className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-xs font-bold">{i + 1}</span><span className="text-sm font-medium">{c.raisonSociale}</span></div>
-                        <span className="text-sm font-bold text-primary-600">{fmt(c.ca_total)} F</span>
+                        <span className="text-sm font-bold text-primary-600">{canSeeMontants ? `${fmt(c.ca_total)} F` : MONTANT_MASQUE}</span>
                       </div>
                     ))}
                   </div>
