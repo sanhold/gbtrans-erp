@@ -139,6 +139,7 @@ export default function ComptaReelPage() {
 function EcrituresTab({ exerciceId, comptes, journaux }: { exerciceId: string; comptes: any[]; journaux: any[] }) {
   const [ecritures, setEcritures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [journalFiltre, setJournalFiltre] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyEcritureForm());
   const [saving, setSaving] = useState(false);
@@ -146,12 +147,14 @@ function EcrituresTab({ exerciceId, comptes, journaux }: { exerciceId: string; c
 
   const load = () => {
     setLoading(true);
-    comptabiliteApi.ecritures({ exerciceId, limit: 100 })
+    const params: any = { exerciceId, limit: 100 };
+    if (journalFiltre) params.journalId = journalFiltre;
+    comptabiliteApi.ecritures(params)
       .then(r => setEcritures(r.data.data || []))
       .catch(() => setEcritures([]))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { if (exerciceId) load(); }, [exerciceId]);
+  useEffect(() => { if (exerciceId) load(); }, [exerciceId, journalFiltre]);
 
   const openCreate = () => { setForm(emptyEcritureForm()); setShowModal(true); };
 
@@ -198,7 +201,13 @@ function EcrituresTab({ exerciceId, comptes, journaux }: { exerciceId: string; c
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end"><button onClick={openCreate} className="btn-primary text-sm">+ Nouvelle écriture</button></div>
+      <div className="flex items-center justify-between gap-2">
+        <select value={journalFiltre} onChange={e => setJournalFiltre(e.target.value)} className="input-field !w-auto text-sm">
+          <option value="">Tous les journaux</option>
+          {journaux.map((j: any) => <option key={j.id} value={j.id}>{j.code} — {j.libelle}</option>)}
+        </select>
+        <button onClick={openCreate} className="btn-primary text-sm">+ Nouvelle écriture</button>
+      </div>
       <div className="table-container">
         <table className="w-full table-fixed">
           <colgroup>

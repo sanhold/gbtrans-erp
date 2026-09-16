@@ -27,7 +27,7 @@ export default function ComptabilitePage() {
     if (!form.code || !form.libelle || !form.dateDebut || !form.dateFin) { toast.error('Tous les champs sont requis'); return; }
     setSaving(true);
     try {
-      await comptabiliteApi.creerExercice(form);
+      await comptabiliteApi.creerExercice({ ...form, source: 'REEL' });
       toast.success('Exercice créé');
       setShowNouvel(false);
       setForm({ code: '', libelle: '', dateDebut: '', dateFin: '' });
@@ -39,20 +39,16 @@ export default function ComptabilitePage() {
   const cartes = [
     { titre: 'Journaux', desc: 'Achats, Ventes, Banque, Caisse, OD', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', color: 'blue', href: '/comptabilite/journaux' },
     { titre: 'Plan comptable', desc: 'Gestion des comptes, import SYSCOHADA', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', color: 'indigo', href: '/comptabilite/plan-comptable' },
-    { titre: 'Grand Livre', desc: 'Comptes détaillés avec mouvements', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z', color: 'green', href: '/comptabilite/grand-livre' },
-    { titre: 'Balance', desc: 'Balance générale et auxiliaire', icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3', color: 'purple', href: '/comptabilite/balance' },
-    { titre: 'Bilan & CR', desc: 'Bilan et compte de résultat OHADA', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', color: 'orange', href: '/comptabilite/bilan' },
-    { titre: 'Compta Auto', desc: 'Suggestions d\'écritures depuis les documents validés', icon: 'M13 10V3L4 14h7v7l9-11h-7z', color: 'amber', href: '/comptabilite/compta-auto' },
   ];
 
   return (
     <AppLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptabilité</h1><p className="text-sm text-gray-500">SYSCOHADA Révisé - Plan comptable OHADA</p></div>
+          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptabilité</h1><p className="text-sm text-gray-500">Paramétrage comptable — SYSCOHADA Révisé. Les opérations (saisie, grand livre, balance, bilan) se trouvent dans Compta Réel et Compta Auto.</p></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {cartes.map(item => (
             <Link key={item.titre} href={item.href} className="card hover:shadow-elevated cursor-pointer transition-all group">
               <div className={`w-12 h-12 rounded-xl bg-${item.color}-50 dark:bg-${item.color}-900/20 flex items-center justify-center mb-4`}>
