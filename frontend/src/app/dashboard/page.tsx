@@ -69,20 +69,20 @@ function KpiCard({ label, value, icon, color, trend }: {
     slate: 'bg-[#eef0f4] text-[#525a6b]',
   };
   return (
-    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-2xl p-5 shadow-card hover:shadow-lg hover:-translate-y-0.5 transition-all">
-      <div className="flex items-center justify-between mb-3.5">
-        <div>
-          <div className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium">{label}</div>
-          <div className="font-display text-[26px] font-extrabold tracking-tight leading-none mt-0.5 text-gray-900 dark:text-white">{value}</div>
+    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl p-3.5 shadow-card hover:shadow-lg transition-all">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="min-w-0">
+          <div className="text-[12px] text-gray-400 truncate dark:text-gray-500 font-medium">{label}</div>
+          <div className="font-display text-[21px] xl:text-[23px] font-extrabold tracking-tight leading-tight mt-0.5 whitespace-nowrap text-gray-900 dark:text-white">{value}</div>
         </div>
-        <div className={`w-10 h-10 rounded-[11px] flex items-center justify-center flex-shrink-0 ${iconBg[color]}`}>
+        <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 ${iconBg[color]}`}>
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d={icon} />
           </svg>
         </div>
       </div>
       {trend && (
-        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${trend.up ? 'bg-accent-50 text-accent-600' : 'bg-surface-100 dark:bg-surface-700 text-gray-500 dark:text-gray-400'}`}>
+        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${trend.up ? 'bg-accent-50 text-accent-600' : 'bg-surface-100 dark:bg-surface-700 text-gray-500 dark:text-gray-400'}`}>
           {trend.up && (
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 17L17 7M17 7H9M17 7v8" />
@@ -97,8 +97,8 @@ function KpiCard({ label, value, icon, color, trend }: {
 
 function SectionCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-2xl p-5 shadow-card">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl p-4 shadow-card">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
         {action}
       </div>
@@ -160,7 +160,7 @@ export default function DashboardHomePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <KpiCard
               label={`Dossiers ${year}`}
               value={`${stats?.totalDossiers ?? 0}`}
@@ -190,7 +190,7 @@ export default function DashboardHomePage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <KpiCard
               label="Clients actifs"
               value={`${stats?.totalClients ?? 0}`}
@@ -219,7 +219,7 @@ export default function DashboardHomePage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
             <div className="lg:col-span-2">
               <SectionCard
                 title={`Chiffre d'affaires mensuel — ${year}`}
@@ -231,12 +231,12 @@ export default function DashboardHomePage() {
                   </div>
                 }
               >
-                {canSeeMontants ? <CAMensuelChart caMensuel={caMensuel} height={190} /> : <MontantsMasques height={190} label="Chiffre d'affaires masqué" />}
+                {canSeeMontants ? <CAMensuelChart caMensuel={caMensuel} height={170} /> : <MontantsMasques height={170} label="Chiffre d'affaires masqué" />}
               </SectionCard>
             </div>
 
             <SectionCard title="Alertes" action={nbAlertes > 0 ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{nbAlertes}</span> : undefined}>
-              <div className="space-y-2.5 max-h-56 overflow-y-auto">
+              <div className="space-y-2.5 max-h-[220px] overflow-y-auto">
                 {alertes?.facturesEnRetard?.slice(0, 4).map((f: any) => (
                   <div key={f.id} className="p-2.5 rounded-lg border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/10">
                     <span className="text-[9.5px] font-semibold uppercase text-gray-500">Facture en retard</span>
@@ -260,9 +260,9 @@ export default function DashboardHomePage() {
             </SectionCard>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <SectionCard title={`Répartition des dossiers — ${year}`}>
-              <RepartitionDossiersChart items={repartition} height={180} />
+              <RepartitionDossiersChart items={repartition} height={160} />
             </SectionCard>
 
             <SectionCard title={`Meilleurs clients — ${year}`} action={<Link href="/clients" className="text-xs text-primary-600 hover:underline font-medium">Voir tous →</Link>}>

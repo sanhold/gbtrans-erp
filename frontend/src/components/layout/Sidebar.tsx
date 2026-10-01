@@ -126,15 +126,15 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       )}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-[264px] flex-shrink-0 bg-primary-600 text-white flex flex-col h-screen p-4 overflow-y-auto',
+          'fixed inset-y-0 left-0 z-50 w-[232px] xl:w-[256px] flex-shrink-0 bg-primary-600 text-white flex flex-col h-screen p-3 xl:p-4 overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
           'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Brand */}
-        <div className="flex items-center gap-3 px-2 pt-1 pb-5">
-          <img src="/brand/logo-icon.png" alt="GBTrans" className="w-11 h-11 rounded-xl flex-shrink-0" />
+        <div className="flex items-center gap-3 px-2 pt-1 pb-3">
+          <img src="/brand/logo-icon.png" alt="GBTrans" className="w-9 h-9 rounded-lg flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="font-display font-extrabold text-[19px] tracking-tight leading-none">GBTrans</div>
             <div className="text-[11px] text-white/60 mt-0.5 font-medium">Gestion Bureau de Transit</div>
@@ -158,8 +158,8 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
           if (visibleItems.length === 0) return null;
 
           return (
-          <div key={group.title} className="mt-3">
-            <div className="text-[10.5px] uppercase tracking-wider text-white/40 font-semibold px-3 pb-2">
+          <div key={group.title} className="mt-2">
+            <div className="text-[10px] uppercase tracking-wider text-white/40 font-semibold px-3 pb-1">
               {group.title}
             </div>
             {visibleItems.map((item) => {
@@ -172,7 +172,7 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
                     href={item.href}
                     onClick={onClose}
                     className={clsx(
-                      'flex items-center gap-3 px-3 py-2 rounded-[10px] text-[13.5px] font-medium relative transition-colors duration-150',
+                      'flex items-center gap-2.5 px-3 py-[7px] rounded-[10px] text-[13px] font-medium relative transition-colors duration-150',
                       isActive ? 'bg-white/[.14] text-white' : 'text-white/80 hover:bg-white/[.08] hover:text-white'
                     )}
                   >

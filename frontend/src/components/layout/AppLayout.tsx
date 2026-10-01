@@ -46,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 min-w-0 flex flex-col">
         <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
           {authorized ? children : (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center gap-3">
               <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
