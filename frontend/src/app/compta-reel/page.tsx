@@ -28,7 +28,12 @@ export default function ComptaReelPage() {
     comptabiliteApi.exercices({ source: 'REEL' }).then(r => {
       const data = r.data.data || [];
       setExercices(data);
-      if (data.length > 0 && !exerciceId) setExerciceId(data[0].id);
+      if (data.length > 0 && !exerciceId) {
+        const voulu = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('exercice') : null;
+        const maintenant = Date.now();
+        const enCours = data.find((e: any) => !e.cloture && new Date(e.dateDebut).getTime() <= maintenant && new Date(e.dateFin).getTime() >= maintenant);
+        setExerciceId((data.find((e: any) => e.id === voulu) || enCours || data.find((e: any) => !e.cloture) || data[0]).id);
+      }
     }).catch(() => {});
   };
 
@@ -67,7 +72,7 @@ export default function ComptaReelPage() {
           <div className="flex gap-2 items-center">
             <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field !w-auto text-sm">
               {exercices.length === 0 && <option value="">Aucun exercice réel</option>}
-              {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.libelle} ({ex.code})</option>)}
+              {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.libelle} ({ex.code}){ex.cloture ? ' — clôturé' : ''}</option>)}
             </select>
             <button onClick={() => setShowExerciceModal(true)} className="btn-secondary text-sm">+ Nouvel exercice</button>
           </div>

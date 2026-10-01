@@ -95,9 +95,20 @@ router.get('/exercices', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest
     const { source } = req.query;
     const data = await prisma.exercice.findMany({
       where: { societeId: req.user!.societeId, ...(source && { source: source as any }) },
-      orderBy: { code: 'desc' },
+      orderBy: [{ dateDebut: 'desc' }, { code: 'desc' }],
+      include: { _count: { select: { ecritures: true } } },
     });
-    ApiResponse.success(res, data);
+    const nonValidees = await prisma.ecritureComptable.groupBy({
+      by: ['exerciceId'],
+      where: { validee: false, exercice: { societeId: req.user!.societeId } },
+      _count: true,
+    });
+    const mapNonValidees = new Map(nonValidees.map(n => [n.exerciceId, n._count]));
+    ApiResponse.success(res, data.map(ex => ({
+      ...ex,
+      nbEcritures: ex._count.ecritures,
+      nbNonValidees: mapNonValidees.get(ex.id) || 0,
+    })));
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
@@ -105,6 +116,13 @@ router.post('/exercices', authorize('COMPTABILITE:CREER'), async (req: AuthReque
   try {
     const { code, libelle, dateDebut, dateFin, source } = req.body;
     if (!code || !libelle || !dateDebut || !dateFin) { ApiResponse.badRequest(res, 'Code, libellé, date de début et date de fin sont requis'); return; }
+    const debut = new Date(dateDebut); const fin = new Date(dateFin);
+    if (isNaN(debut.getTime()) || isNaN(fin.getTime()) || fin <= debut) { ApiResponse.badRequest(res, 'La date de fin doit être postérieure à la date de début'); return; }
+    const sourceExo = source === 'REEL' ? 'REEL' : 'AUTO';
+    const chevauche = await prisma.exercice.findFirst({
+      where: { societeId: req.user!.societeId, source: sourceExo, dateDebut: { lte: fin }, dateFin: { gte: debut } },
+    });
+    if (chevauche) { ApiResponse.badRequest(res, `Cette période chevauche l'exercice ${chevauche.code} (${chevauche.libelle})`); return; }
     const exercice = await prisma.exercice.create({
       data: {
         societeId: req.user!.societeId, code, libelle,
@@ -114,6 +132,28 @@ router.post('/exercices', authorize('COMPTABILITE:CREER'), async (req: AuthReque
     });
     ApiResponse.created(res, exercice, 'Exercice créé');
   } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Un exercice avec ce code existe déjà pour ce type de comptabilité' : e.message); }
+});
+
+router.patch('/exercices/:id/cloturer', authorize('COMPTABILITE:VALIDER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const exo = await prisma.exercice.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!exo) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    if (exo.cloture) { ApiResponse.badRequest(res, 'Cet exercice est déjà clôturé'); return; }
+    const nonValidees = await prisma.ecritureComptable.count({ where: { exerciceId: exo.id, validee: false } });
+    if (nonValidees > 0) { ApiResponse.badRequest(res, `${nonValidees} écriture(s) non validée(s) : validez-les avant de clôturer l'exercice`); return; }
+    const updated = await prisma.exercice.update({ where: { id: exo.id }, data: { cloture: true, dateCloture: new Date() } });
+    ApiResponse.success(res, updated, `Exercice ${exo.code} clôturé`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.patch('/exercices/:id/rouvrir', authorize('COMPTABILITE:VALIDER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const exo = await prisma.exercice.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!exo) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    if (!exo.cloture) { ApiResponse.badRequest(res, "Cet exercice n'est pas clôturé"); return; }
+    const updated = await prisma.exercice.update({ where: { id: exo.id }, data: { cloture: false, dateCloture: null } });
+    ApiResponse.success(res, updated, `Exercice ${exo.code} rouvert`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 // ===== JOURNAUX =====
@@ -215,6 +255,7 @@ router.post('/ecritures', authorize('COMPTABILITE:CREER'), async (req: AuthReque
     const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
     if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
+    { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
 
     const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
     const ecriture = await prisma.ecritureComptable.create({
@@ -245,8 +286,14 @@ router.put('/ecritures/:id', authorize('COMPTABILITE:MODIFIER'), async (req: Aut
     });
     if (!existing) { ApiResponse.notFound(res, 'Écriture introuvable'); return; }
     if (existing.validee) { ApiResponse.badRequest(res, 'Une écriture validée ne peut plus être modifiée'); return; }
+    const exoEcriture = await prisma.exercice.findUnique({ where: { id: existing.exerciceId } });
+    if (exoEcriture?.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
 
     const { dateEcriture, libelle, reference, piece, mouvements } = req.body;
+    if (dateEcriture && exoEcriture) {
+      const d = new Date(dateEcriture);
+      if (d < exoEcriture.dateDebut || d > exoEcriture.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exoEcriture.code}`); return; }
+    }
     if (mouvements) {
       if (!Array.isArray(mouvements) || mouvements.length < 2) { ApiResponse.badRequest(res, 'Une écriture doit comporter au moins 2 lignes'); return; }
       const totalDebit = mouvements.reduce((s: number, m: any) => s + (parseFloat(m.debit) || 0), 0);
@@ -364,6 +411,7 @@ router.post('/ecritures-attente/:id/comptabiliser', authorize('COMPTABILITE:CREE
     const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
     if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
+    { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
 
     const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
 
@@ -412,9 +460,11 @@ router.post('/ecritures-attente/:id/rejeter', authorize('COMPTABILITE:MODIFIER')
 router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
-    const { dateDebut, dateFin, sources } = req.body as { dateDebut?: string; dateFin?: string; sources?: string[] };
-    const debut = dateDebut ? new Date(dateDebut) : new Date(new Date().getFullYear(), 0, 1);
-    const fin = dateFin ? new Date(dateFin) : new Date();
+    const { dateDebut, dateFin, sources, exerciceId } = req.body as { dateDebut?: string; dateFin?: string; sources?: string[]; exerciceId?: string };
+    const exo = exerciceId ? await prisma.exercice.findFirst({ where: { id: exerciceId, societeId } }) : null;
+    if (exerciceId && !exo) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    const debut = dateDebut ? new Date(dateDebut) : (exo ? exo.dateDebut : new Date(new Date().getFullYear(), 0, 1));
+    const fin = dateFin ? new Date(dateFin) : (exo ? exo.dateFin : new Date());
     const typesVoulus = new Set(sources && sources.length > 0 ? sources : ['FACTURE', 'FACTURE_FOURNISSEUR', 'PAIEMENT', 'PAIEMENT_FOURNISSEUR', 'DEPENSE']);
 
     const dejaProposees = await prisma.ecritureEnAttente.findMany({

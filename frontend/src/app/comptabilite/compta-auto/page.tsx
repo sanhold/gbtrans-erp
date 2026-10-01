@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { comptabiliteApi } from '@/lib/api';
@@ -30,7 +30,26 @@ export default function ComptaAutoPage() {
   const [dateFin, setDateFin] = useState(today.toISOString().slice(0, 10));
   const [sources, setSources] = useState<string[]>(SOURCES.map(s => s.id));
   const [generating, setGenerating] = useState(false);
+  const [exercices, setExercices] = useState<any[]>([]);
+  const [exerciceId, setExerciceId] = useState('');
   const [dernierResultat, setDernierResultat] = useState<number | null>(null);
+
+  useEffect(() => {
+    comptabiliteApi.exercices({ source: 'AUTO' }).then(r => {
+      const data = r.data.data || [];
+      setExercices(data);
+      const now = Date.now();
+      const courant = data.find((e: any) => !e.cloture && new Date(e.dateDebut).getTime() <= now && new Date(e.dateFin).getTime() >= now);
+      if (courant) choisirExercice(courant.id, data);
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const choisirExercice = (id: string, liste = exercices) => {
+    setExerciceId(id);
+    const ex = liste.find((e: any) => e.id === id);
+    if (ex) { setDateDebut(ex.dateDebut.slice(0, 10)); setDateFin(ex.dateFin.slice(0, 10)); }
+  };
 
   const toggleSource = (id: string) => {
     setSources(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
@@ -40,7 +59,7 @@ export default function ComptaAutoPage() {
     if (sources.length === 0) { toast.error('Sélectionnez au moins un type de document'); return; }
     setGenerating(true);
     try {
-      const res = await comptabiliteApi.genererComptaAuto({ dateDebut, dateFin, sources });
+      const res = await comptabiliteApi.genererComptaAuto({ dateDebut, dateFin, sources, exerciceId: exerciceId || undefined });
       setDernierResultat(res.data.data.suggerees);
       toast.success(res.data.message);
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
@@ -83,7 +102,14 @@ export default function ComptaAutoPage() {
 
         <div className="card !p-4 space-y-3">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white">Générer des suggestions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Exercice</label>
+              <select value={exerciceId} onChange={e => choisirExercice(e.target.value)} className="input-field text-sm">
+                <option value="">Période libre</option>
+                {exercices.map(ex => <option key={ex.id} value={ex.id} disabled={ex.cloture}>{ex.libelle} ({ex.code}){ex.cloture ? ' — clôturé' : ''}</option>)}
+              </select>
+            </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase">Date de début</label>
               <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field text-sm" />

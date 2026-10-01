@@ -11,7 +11,8 @@ export default function ComptabilitePage() {
   const [loading, setLoading] = useState(true);
   const [showNouvel, setShowNouvel] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ code: '', libelle: '', dateDebut: '', dateFin: '' });
+  const [form, setForm] = useState({ code: '', libelle: '', dateDebut: '', dateFin: '', source: 'REEL' });
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -27,13 +28,25 @@ export default function ComptabilitePage() {
     if (!form.code || !form.libelle || !form.dateDebut || !form.dateFin) { toast.error('Tous les champs sont requis'); return; }
     setSaving(true);
     try {
-      await comptabiliteApi.creerExercice({ ...form, source: 'REEL' });
+      await comptabiliteApi.creerExercice(form);
       toast.success('Exercice créé');
       setShowNouvel(false);
-      setForm({ code: '', libelle: '', dateDebut: '', dateFin: '' });
+      setForm({ code: '', libelle: '', dateDebut: '', dateFin: '', source: 'REEL' });
       load();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
     finally { setSaving(false); }
+  };
+
+  const toggleCloture = async (ex: any) => {
+    const action = ex.cloture ? 'rouvrir' : 'clôturer';
+    if (!confirm(`Voulez-vous ${action} l'exercice ${ex.code} ?${ex.cloture ? '' : ' Plus aucune écriture ne pourra y être saisie.'}`)) return;
+    setBusyId(ex.id);
+    try {
+      const res = await (ex.cloture ? comptabiliteApi.rouvrirExercice(ex.id) : comptabiliteApi.cloturerExercice(ex.id));
+      toast.success(res.data.message);
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setBusyId(null); }
   };
 
   const cartes = [
@@ -67,7 +80,14 @@ export default function ComptabilitePage() {
           </div>
 
           {showNouvel && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-surface-700/30 grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+            <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-surface-700/30 grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Type *</label>
+                <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} className="input-field !py-1.5 text-sm">
+                  <option value="REEL">Compta Réel</option>
+                  <option value="AUTO">Compta Auto</option>
+                </select>
+              </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase">Code *</label>
                 <input type="text" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="2027" />
@@ -84,7 +104,7 @@ export default function ComptabilitePage() {
                 <label className="text-[10px] font-bold text-gray-500 uppercase">Fin *</label>
                 <input type="date" value={form.dateFin} onChange={e => setForm({ ...form, dateFin: e.target.value })} className="input-field !py-1.5 text-sm" />
               </div>
-              <div className="sm:col-span-4 flex justify-end gap-2">
+              <div className="sm:col-span-5 flex justify-end gap-2">
                 <button onClick={() => setShowNouvel(false)} className="btn-secondary text-sm">Annuler</button>
                 <button onClick={handleCreerExercice} disabled={saving} className="btn-primary text-sm disabled:opacity-50">{saving ? 'Création...' : 'Créer'}</button>
               </div>
@@ -93,19 +113,30 @@ export default function ComptabilitePage() {
 
           <div className="table-container !shadow-none !border-0">
             <table className="w-full">
-              <thead><tr><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header">Statut</th></tr></thead>
+              <thead><tr><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Type</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header text-right">Écritures</th><th className="table-header">Statut</th><th className="table-header">Actions</th></tr></thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
                 ) : exercices.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-gray-500">Aucun exercice comptable</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-500">Aucun exercice comptable</td></tr>
                 ) : exercices.map(ex => (
                   <tr className="table-row" key={ex.id}>
                     <td className="table-cell font-medium" data-label="Code">{ex.code}</td>
                     <td className="table-cell" data-label="Libellé">{ex.libelle}</td>
+                    <td className="table-cell" data-label="Type"><span className={`badge ${ex.source === 'REEL' ? 'badge-info' : 'badge-gray'}`}>{ex.source === 'REEL' ? 'Réel' : 'Auto'}</span></td>
                     <td className="table-cell" data-label="Début">{new Date(ex.dateDebut).toLocaleDateString('fr-FR')}</td>
                     <td className="table-cell" data-label="Fin">{new Date(ex.dateFin).toLocaleDateString('fr-FR')}</td>
+                    <td className="table-cell text-right font-mono" data-label="Écritures">
+                      {ex.nbEcritures ?? 0}
+                      {ex.nbNonValidees > 0 && <span className="ml-1 text-[10px] text-amber-600" title="Écritures non validées">({ex.nbNonValidees} à valider)</span>}
+                    </td>
                     <td className="table-cell" data-label="Statut"><span className={`badge ${ex.cloture ? 'badge-gray' : 'badge-success'}`}>{ex.cloture ? 'Clôturé' : 'Actif'}</span></td>
+                    <td className="table-cell" data-label="Actions">
+                      <div className="flex items-center gap-3 justify-end">
+                        <Link href={ex.source === 'REEL' ? `/compta-reel?exercice=${ex.id}` : '/comptabilite/compta-auto'} className="text-xs text-primary-600 hover:underline">Ouvrir</Link>
+                        <button onClick={() => toggleCloture(ex)} disabled={busyId === ex.id} className="text-xs text-gray-600 hover:underline disabled:opacity-50">{ex.cloture ? 'Rouvrir' : 'Clôturer'}</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
