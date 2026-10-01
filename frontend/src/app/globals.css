@@ -216,6 +216,35 @@
   }
 }
 
+/* Tableaux desktop : colonnes auto-dimensionnées, plus de texte coupé par des "…".
+   Le texte libre passe à la ligne ; les montants / nombres / dates restent sur une ligne. */
+@media (min-width: 768px) {
+  .table-container table.table-fixed {
+    table-layout: auto;
+  }
+
+  .table-container .table-cell.truncate {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    min-width: 5.5rem;
+  }
+
+  .table-container .table-cell.truncate.text-right,
+  .table-container .table-cell.truncate.text-center,
+  .table-container .table-cell.truncate.font-mono {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    min-width: 0;
+  }
+
+  .table-container .table-header.truncate {
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+
 /* Scrollbar custom */
 ::-webkit-scrollbar {
   width: 6px;

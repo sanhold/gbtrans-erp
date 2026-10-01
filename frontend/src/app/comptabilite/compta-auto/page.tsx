@@ -62,18 +62,18 @@ export default function ComptaAutoPage() {
 
         <div className="card">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Règles débit / crédit par défaut</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="text-left text-[10px] text-gray-500 uppercase border-b border-gray-100 dark:border-surface-700">
-                <th className="p-2">Document source</th><th className="p-2">Journal</th><th className="p-2">Débit</th><th className="p-2">Crédit</th>
+          <div className="table-container">
+            <table className="w-full">
+              <thead><tr>
+                <th className="table-header">Document source</th><th className="table-header">Journal</th><th className="table-header">Débit</th><th className="table-header">Crédit</th>
               </tr></thead>
               <tbody>
                 {REGLES.map(r => (
-                  <tr key={r.source} className="border-b border-gray-50 dark:border-surface-700/50">
-                    <td className="p-2 font-medium">{r.source}</td>
-                    <td className="p-2"><span className="badge badge-gray !text-[10px]">{r.journal}</span></td>
-                    <td className="p-2 text-xs text-gray-600 dark:text-gray-300">{r.debit}</td>
-                    <td className="p-2 text-xs text-gray-600 dark:text-gray-300">{r.credit}</td>
+                  <tr key={r.source} className="table-row">
+                    <td className="table-cell font-medium" data-label="Document source">{r.source}</td>
+                    <td className="table-cell" data-label="Journal"><span className="badge badge-gray !text-[10px]">{r.journal}</span></td>
+                    <td className="table-cell !whitespace-normal" data-label="Débit">{r.debit}</td>
+                    <td className="table-cell !whitespace-normal" data-label="Crédit">{r.credit}</td>
                   </tr>
                 ))}
               </tbody>
