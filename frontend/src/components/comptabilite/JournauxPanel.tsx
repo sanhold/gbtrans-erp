@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import AppLayout from '@/components/layout/AppLayout';
 import { comptabiliteApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const TYPES_JOURNAL = ['ACHAT', 'VENTE', 'BANQUE', 'CAISSE', 'OD', 'SITUATION', 'TRESORERIE'];
 
-export default function JournauxPage() {
+export default function JournauxPanel({ source }: { source: 'REEL' | 'AUTO' }) {
   const [journaux, setJournaux] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,16 +15,18 @@ export default function JournauxPage() {
 
   const loadJournaux = () => {
     setLoading(true);
-    comptabiliteApi.journaux().then(r => setJournaux(r.data.data || [])).catch(() => setJournaux([])).finally(() => setLoading(false));
+    comptabiliteApi.journaux(source).then(r => setJournaux(r.data.data || [])).catch(() => setJournaux([])).finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadJournaux(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadJournaux(); }, [source]);
 
   const handleCreerJournal = async () => {
     if (!journalForm.code.trim() || !journalForm.libelle.trim()) { toast.error('Code et libellé sont requis'); return; }
     setSavingJournal(true);
     try {
       await comptabiliteApi.creerJournal({
+        source,
         code: journalForm.code.trim(), libelle: journalForm.libelle.trim(),
         type: journalForm.type, compteContrepartie: journalForm.compteContrepartie || undefined,
       });
@@ -54,12 +54,11 @@ export default function JournauxPage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6">
         <div>
-          <Link href="/comptabilite" className="text-xs font-medium text-primary-600 hover:underline mb-1 inline-block">← Comptabilité</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Journaux comptables</h1>
-          <p className="text-sm text-gray-500">Paramétrage des journaux (Achats, Ventes, Banque, Caisse, OD...). Les écritures se saisissent dans Compta Réel.</p>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Journaux {source === 'REEL' ? 'Compta Réel' : 'Compta Auto'}</h2>
+          <p className="text-sm text-gray-500">Paramétrage des journaux (Achats, Ventes, Banque, Caisse, OD...). Ces journaux sont propres à cette comptabilité.</p>
         </div>
 
         <div className="card !p-4 space-y-3">
@@ -116,6 +115,6 @@ export default function JournauxPage() {
           </table>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

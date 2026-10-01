@@ -9,13 +9,34 @@ import syscohadaPlanReference from '../../../prisma/data/syscohada-plan-referenc
 const router = Router();
 router.use(authenticate, requireSociete);
 
+type Source = 'AUTO' | 'REEL';
+const LIBELLE_SOURCE: Record<Source, string> = { AUTO: 'Compta Auto', REEL: 'Compta Réel' };
+
+/** La comptabilité visée (Réel ou Auto) est obligatoire : plan comptable, journaux et exercices sont indépendants. */
+function sourceDe(req: AuthRequest, res: Response): Source | null {
+  const v = (req.query.source ?? req.body?.source) as string | undefined;
+  if (v !== 'AUTO' && v !== 'REEL') { ApiResponse.badRequest(res, 'Le type de comptabilité (AUTO ou REEL) est requis'); return null; }
+  return v;
+}
+
+/** Vérifie qu'un journal et des comptes appartiennent bien à la comptabilité de l'exercice. */
+async function verifierCoherenceSource(societeId: string, exercice: { source: Source }, journal: { source: Source }, compteIds: string[]): Promise<string | null> {
+  if (journal.source !== exercice.source) return `Ce journal appartient à ${LIBELLE_SOURCE[journal.source]} : l'exercice choisi est celui de ${LIBELLE_SOURCE[exercice.source]}`;
+  const ids = [...new Set(compteIds.filter(Boolean))];
+  if (ids.length === 0) return 'Aucun compte renseigné';
+  const ok = await prisma.compteComptable.count({ where: { id: { in: ids }, societeId, source: exercice.source } });
+  if (ok !== ids.length) return `Un ou plusieurs comptes n'appartiennent pas au plan comptable de ${LIBELLE_SOURCE[exercice.source]}`;
+  return null;
+}
+
 // ===== COMPTES (plan comptable) =====
 
 router.get('/comptes', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { tous } = req.query;
+    const source = sourceDe(req, res); if (!source) return;
     const comptes = await prisma.compteComptable.findMany({
-      where: { societeId: req.user!.societeId, ...(tous !== '1' && { actif: true }) },
+      where: { societeId: req.user!.societeId, source, ...(tous !== '1' && { actif: true }) },
       orderBy: { numero: 'asc' },
     });
     ApiResponse.success(res, comptes);
@@ -25,17 +46,18 @@ router.get('/comptes', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, 
 router.post('/comptes', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { numero, libelle, classe, type, nature, sens, parent, collectif, lettrable, rapprochable } = req.body;
+    const source = sourceDe(req, res); if (!source) return;
     if (!numero || !libelle || !classe || !type || !nature) { ApiResponse.badRequest(res, 'Numéro, libellé, classe, type et nature sont requis'); return; }
     const compte = await prisma.compteComptable.create({
       data: {
-        societeId: req.user!.societeId, numero: String(numero).trim(), libelle, classe: parseInt(classe),
+        societeId: req.user!.societeId, source, numero: String(numero).trim(), libelle, classe: parseInt(classe),
         type, nature, sens: sens || 'DEBITEUR', parent: parent || null,
         niveau: String(numero).trim().length <= 2 ? 1 : String(numero).trim().length,
         collectif: !!collectif, lettrable: !!lettrable, rapprochable: !!rapprochable,
       },
     });
     ApiResponse.created(res, compte, 'Compte créé');
-  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce numéro de compte existe déjà' : e.message); }
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce numéro de compte existe déjà dans ce plan comptable' : e.message); }
 });
 
 router.put('/comptes/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
@@ -76,9 +98,10 @@ router.delete('/comptes/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: A
 router.post('/comptes/importer-syscohada', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
+    const source = sourceDe(req, res); if (!source) return;
     const result = await prisma.compteComptable.createMany({
       data: syscohadaPlanReference.map(c => ({
-        societeId, numero: c.numero, libelle: c.libelle, classe: c.classe,
+        societeId, source, numero: c.numero, libelle: c.libelle, classe: c.classe,
         type: c.type as any, nature: c.nature as any, sens: c.sens as any,
         niveau: c.numero.length,
       })),
@@ -160,8 +183,9 @@ router.patch('/exercices/:id/rouvrir', authorize('COMPTABILITE:VALIDER'), async 
 
 router.get('/journaux', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
+    const source = sourceDe(req, res); if (!source) return;
     const data = await prisma.journalComptable.findMany({
-      where: { societeId: req.user!.societeId },
+      where: { societeId: req.user!.societeId, source },
       orderBy: { code: 'asc' },
     });
     ApiResponse.success(res, data);
@@ -171,12 +195,13 @@ router.get('/journaux', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest,
 router.post('/journaux', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { code, libelle, type, compteContrepartie } = req.body;
+    const source = sourceDe(req, res); if (!source) return;
     if (!code || !libelle || !type) { ApiResponse.badRequest(res, 'Code, libellé et type sont requis'); return; }
     const journal = await prisma.journalComptable.create({
-      data: { societeId: req.user!.societeId, code: String(code).trim().toUpperCase(), libelle, type, compteContrepartie: compteContrepartie || null },
+      data: { societeId: req.user!.societeId, source, code: String(code).trim().toUpperCase(), libelle, type, compteContrepartie: compteContrepartie || null },
     });
     ApiResponse.created(res, journal, 'Journal créé');
-  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce code de journal existe déjà' : e.message); }
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce code de journal existe déjà dans cette comptabilité' : e.message); }
 });
 
 router.put('/journaux/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
@@ -254,6 +279,7 @@ router.post('/ecritures', authorize('COMPTABILITE:CREER'), async (req: AuthReque
     if (!journal) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
     const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
     if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    { const err = await verifierCoherenceSource(req.user!.societeId, exercice, journal, mouvements.map((m: any) => m.compteId)); if (err) { ApiResponse.badRequest(res, err); return; } }
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
     { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
 
@@ -302,6 +328,11 @@ router.put('/ecritures/:id', authorize('COMPTABILITE:MODIFIER'), async (req: Aut
         ApiResponse.badRequest(res, `L'écriture n'est pas équilibrée : débit ${totalDebit.toFixed(2)} ≠ crédit ${totalCredit.toFixed(2)}`);
         return;
       }
+    }
+
+    if (mouvements && exoEcriture) {
+      const journalEcr = await prisma.journalComptable.findUnique({ where: { id: existing.journalId } });
+      if (journalEcr) { const err = await verifierCoherenceSource(req.user!.societeId, exoEcriture, journalEcr, mouvements.map((m: any) => m.compteId)); if (err) { ApiResponse.badRequest(res, err); return; } }
     }
 
     const ecriture = await prisma.$transaction(async (tx) => {
@@ -410,6 +441,7 @@ router.post('/ecritures-attente/:id/comptabiliser', authorize('COMPTABILITE:CREE
     if (!journal) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
     const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
     if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    { const err = await verifierCoherenceSource(req.user!.societeId, exercice, journal, mouvements.map((m: any) => m.compteId)); if (err) { ApiResponse.badRequest(res, err); return; } }
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
     { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
 

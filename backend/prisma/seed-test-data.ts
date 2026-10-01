@@ -138,9 +138,9 @@ async function main() {
   const agentUsers = [transitaire, admin, commercial];
   const createurUsers = [transitaire, admin, commercial, comptable];
 
-  const comptes = await prisma.compteComptable.findMany({ where: { societeId: societe.id } });
+  const comptes = await prisma.compteComptable.findMany({ where: { societeId: societe.id, source: 'AUTO' } });
   const compte = (numero: string) => comptes.find(c => c.numero === numero)!.numero;
-  const journaux = await prisma.journalComptable.findMany({ where: { societeId: societe.id } });
+  const journaux = await prisma.journalComptable.findMany({ where: { societeId: societe.id, source: 'AUTO' } });
   const journal = (code: string) => journaux.find(j => j.code === code)!;
 
   // --------------------------------------------------------------------

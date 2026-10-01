@@ -39,7 +39,7 @@ export default function ComptaReelPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([comptabiliteApi.comptes(), comptabiliteApi.journaux()])
+    Promise.all([comptabiliteApi.comptes({ source: 'REEL' }), comptabiliteApi.journaux('REEL')])
       .then(([cRes, jRes]) => { setComptes(cRes.data.data || []); setJournaux(jRes.data.data || []); })
       .finally(() => setLoading(false));
     loadExercices();

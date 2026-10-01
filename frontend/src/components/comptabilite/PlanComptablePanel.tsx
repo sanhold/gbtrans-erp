@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import AppLayout from '@/components/layout/AppLayout';
 import { comptabiliteApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -14,7 +12,7 @@ function compteVide() {
   return { numero: '', libelle: '', classe: '6', type: 'GESTION', nature: 'CHARGE', sens: 'DEBITEUR', parent: '', collectif: false, lettrable: false, rapprochable: false };
 }
 
-export default function PlanComptablePage() {
+export default function PlanComptablePanel({ source }: { source: 'REEL' | 'AUTO' }) {
   const [comptes, setComptes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -27,13 +25,14 @@ export default function PlanComptablePage() {
 
   const load = () => {
     setLoading(true);
-    comptabiliteApi.comptes({ tous: '1' })
+    comptabiliteApi.comptes({ tous: '1', source })
       .then(r => setComptes(r.data.data || []))
       .catch(() => setComptes([]))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [source]);
 
   const filtered = useMemo(() => comptes.filter(c => {
     if (classe && String(c.classe) !== classe) return false;
@@ -63,6 +62,7 @@ export default function PlanComptablePage() {
         toast.success('Compte modifié');
       } else {
         await comptabiliteApi.creerCompte({
+          source,
           numero: form.numero.trim(), libelle: form.libelle.trim(), classe: form.classe, type: form.type, nature: form.nature, sens: form.sens,
           parent: form.parent || undefined, collectif: form.collectif, lettrable: form.lettrable, rapprochable: form.rapprochable,
         });
@@ -94,7 +94,7 @@ export default function PlanComptablePage() {
     if (!confirm("Importer le plan comptable SYSCOHADA de référence ? Les comptes déjà existants (même numéro) ne seront pas dupliqués.")) return;
     setImporting(true);
     try {
-      const res = await comptabiliteApi.importerSyscohada();
+      const res = await comptabiliteApi.importerSyscohada(source);
       toast.success(res.data.message);
       load();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
@@ -102,13 +102,12 @@ export default function PlanComptablePage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-4">
         <div>
-          <Link href="/comptabilite" className="text-[11px] text-primary-600 hover:underline block mb-1">← Comptabilité</Link>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Plan comptable</h1>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Plan comptable {source === 'REEL' ? 'Compta Réel' : 'Compta Auto'}</h2>
               <p className="text-sm text-gray-500">{comptes.length} compte(s)</p>
             </div>
             <div className="flex gap-2">
@@ -250,6 +249,6 @@ export default function PlanComptablePage() {
           </div>
         </div>
       )}
-    </AppLayout>
+    </>
   );
 }
