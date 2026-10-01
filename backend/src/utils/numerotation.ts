@@ -119,5 +119,9 @@ function getPrefixeDefault(module: string): string {
     ECRITURE_CA: 'ECA',
     ECRITURE_OD: 'EOD',
   };
+  if (module.startsWith('ECRITURE_AUTO_')) {
+    const base = prefixes['ECRITURE_' + module.slice('ECRITURE_AUTO_'.length)];
+    return base ? 'A' + base.slice(1) : 'AUT';
+  }
   return prefixes[module] || module.substring(0, 3).toUpperCase();
 }

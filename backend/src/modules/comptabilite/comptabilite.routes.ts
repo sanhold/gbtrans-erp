@@ -283,7 +283,7 @@ router.post('/ecritures', authorize('COMPTABILITE:CREER'), async (req: AuthReque
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
     { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
 
-    const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
+    const numero = await genererNumero(req.user!.societeId, journal.source === 'AUTO' ? `ECRITURE_AUTO_${journal.code}` : `ECRITURE_${journal.code}`);
     const ecriture = await prisma.ecritureComptable.create({
       data: {
         exerciceId, journalId, numero,
@@ -445,7 +445,7 @@ router.post('/ecritures-attente/:id/comptabiliser', authorize('COMPTABILITE:CREE
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
     { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
 
-    const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
+    const numero = await genererNumero(req.user!.societeId, journal.source === 'AUTO' ? `ECRITURE_AUTO_${journal.code}` : `ECRITURE_${journal.code}`);
 
     const ecriture = await prisma.$transaction(async (tx) => {
       const created = await tx.ecritureComptable.create({
@@ -493,83 +493,142 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
   try {
     const societeId = req.user!.societeId;
     const { dateDebut, dateFin, sources, exerciceId } = req.body as { dateDebut?: string; dateFin?: string; sources?: string[]; exerciceId?: string };
-    const exo = exerciceId ? await prisma.exercice.findFirst({ where: { id: exerciceId, societeId } }) : null;
-    if (exerciceId && !exo) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
-    const debut = dateDebut ? new Date(dateDebut) : (exo ? exo.dateDebut : new Date(new Date().getFullYear(), 0, 1));
-    const fin = dateFin ? new Date(dateFin) : (exo ? exo.dateFin : new Date());
+    if (!exerciceId) { ApiResponse.badRequest(res, 'Choisissez un exercice Compta Auto'); return; }
+    const exo = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId } });
+    if (!exo) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
+    if (exo.source !== 'AUTO') { ApiResponse.badRequest(res, "Cet exercice n'appartient pas à Compta Auto"); return; }
+    if (exo.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
+
+    const debut = new Date(Math.max(dateDebut ? new Date(dateDebut).getTime() : 0, exo.dateDebut.getTime()));
+    const fin = new Date(Math.min(dateFin ? new Date(dateFin).getTime() : Infinity, exo.dateFin.getTime()));
     const typesVoulus = new Set(sources && sources.length > 0 ? sources : ['FACTURE', 'FACTURE_FOURNISSEUR', 'PAIEMENT', 'PAIEMENT_FOURNISSEUR', 'DEPENSE']);
 
-    const dejaProposees = await prisma.ecritureEnAttente.findMany({
-      where: { societeId },
-      select: { factureId: true, factureFournisseurId: true, paiementId: true, paiementFournisseurId: true, depenseId: true },
-    });
-    const dejaFacture = new Set(dejaProposees.map(e => e.factureId).filter(Boolean));
-    const dejaFactureFournisseur = new Set(dejaProposees.map(e => e.factureFournisseurId).filter(Boolean));
-    const dejaPaiement = new Set(dejaProposees.map(e => e.paiementId).filter(Boolean));
-    const dejaPaiementFournisseur = new Set(dejaProposees.map(e => e.paiementFournisseurId).filter(Boolean));
-    const dejaDepense = new Set(dejaProposees.map(e => e.depenseId).filter(Boolean));
+    // Plan comptable et journaux propres à Compta Auto
+    const [comptes, journaux] = await Promise.all([
+      prisma.compteComptable.findMany({ where: { societeId, source: 'AUTO', actif: true }, select: { id: true, numero: true } }),
+      prisma.journalComptable.findMany({ where: { societeId, source: 'AUTO', actif: true }, select: { id: true, code: true, type: true } }),
+    ]);
+    const cid = (...nums: string[]) => { for (const n of nums) { const c = comptes.find(x => x.numero === n); if (c) return c.id; } return null; };
+    const jrn = (type: string) => journaux.find(j => j.type === type) || null;
+    const C = {
+      clients: cid('411'), ventes: cid('706'), tvaFact: cid('443', '4431'),
+      fournisseurs: cid('401'), tvaRecup: cid('445', '4451'),
+      banque: cid('512'), caisse: cid('571'),
+      achats: cid('605', '604', '601'), services: cid('63', '628', '605'),
+    };
+    const manquantsComptes = Object.entries({ '411 Clients': C.clients, '706 Prestations': C.ventes, '443 TVA facturée': C.tvaFact, '401 Fournisseurs': C.fournisseurs, '445 TVA récupérable': C.tvaRecup, '512 Banques': C.banque, '571 Caisse': C.caisse, '605 Achats': C.achats }).filter(([, v]) => !v).map(([k]) => k);
+    const J = { vente: jrn('VENTE'), achat: jrn('ACHAT'), banque: jrn('BANQUE'), caisse: jrn('CAISSE'), od: jrn('OD') };
+    const manquantsJournaux = Object.entries({ Ventes: J.vente, Achats: J.achat, Banque: J.banque, Caisse: J.caisse, OD: J.od }).filter(([, v]) => !v).map(([k]) => k);
+    if (manquantsComptes.length || manquantsJournaux.length) {
+      ApiResponse.badRequest(res, `Le paramétrage de Compta Auto est incomplet. ${manquantsComptes.length ? `Comptes manquants : ${manquantsComptes.join(', ')}. ` : ''}${manquantsJournaux.length ? `Journaux manquants : ${manquantsJournaux.join(', ')}. ` : ''}Complétez-le dans Paramètres Auto.`);
+      return;
+    }
+    const codeJournal = new Map(journaux.map(j => [j.id, j.code]));
 
-    const aCreer: any[] = [];
+    // Documents déjà comptabilisés dans Compta Auto
+    const deja = await prisma.ecritureComptable.findMany({
+      where: { exercice: { societeId, source: 'AUTO' } },
+      select: { factureId: true, paiementId: true, factureFournisseurId: true, paiementFournisseurId: true, depenseId: true },
+    });
+    const dejaSet = (k: keyof (typeof deja)[number]) => new Set(deja.map(e => e[k]).filter(Boolean) as string[]);
+    const dFact = dejaSet('factureId'), dPai = dejaSet('paiementId'), dFF = dejaSet('factureFournisseurId'), dPF = dejaSet('paiementFournisseurId'), dDep = dejaSet('depenseId');
+
+    type Ligne = { compteId: string; debit: number; credit: number; libelle?: string };
+    type Plan = { journalId: string; date: Date; libelle: string; reference: string; lignes: Ligne[]; origine: Record<string, string> };
+    const plans: Plan[] = [];
+    let ignorees = 0;
+    const n = (v: any) => Math.abs(Number(v) || 0);
+    const tresorerie = (caisseId?: string | null, banqueId?: string | null, mode?: string) => {
+      if (caisseId || (!banqueId && mode === 'ESPECES')) return { compte: C.caisse!, journal: J.caisse!.id };
+      if (banqueId || mode) return { compte: C.banque!, journal: J.banque!.id };
+      return null;
+    };
 
     if (typesVoulus.has('FACTURE')) {
       const factures = await prisma.facture.findMany({
-        where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dejaFacture] as string[] } },
+        where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dFact] } },
         include: { client: { select: { raisonSociale: true } } },
       });
       for (const f of factures) {
-        aCreer.push({
-          societeId, source: 'FACTURE', factureId: f.id,
-          libelle: `${f.type === 'AVOIR' ? 'Avoir' : 'Facture'} ${f.numero} — ${f.client?.raisonSociale || ''}`,
-          montant: f.montantTTC, dateOperation: f.dateFacture,
-        });
+        const ttc = n(f.montantTTC), tva = n(f.montantTVA), ht = ttc - tva;
+        if (ttc === 0) { ignorees++; continue; }
+        const avoir = f.type === 'AVOIR';
+        const lignes: Ligne[] = avoir
+          ? [{ compteId: C.ventes!, debit: ht, credit: 0 }, ...(tva > 0 ? [{ compteId: C.tvaFact!, debit: tva, credit: 0 }] : []), { compteId: C.clients!, debit: 0, credit: ttc }]
+          : [{ compteId: C.clients!, debit: ttc, credit: 0 }, { compteId: C.ventes!, debit: 0, credit: ht }, ...(tva > 0 ? [{ compteId: C.tvaFact!, debit: 0, credit: tva }] : [])];
+        plans.push({ journalId: J.vente!.id, date: f.dateFacture, libelle: `${avoir ? 'Avoir' : 'Facture'} ${f.numero} — ${f.client?.raisonSociale || ''}`, reference: f.numero, lignes, origine: { factureId: f.id } });
       }
     }
 
     if (typesVoulus.has('FACTURE_FOURNISSEUR')) {
       const factures = await prisma.factureFournisseur.findMany({
-        where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dejaFactureFournisseur] as string[] } },
+        where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dFF] } },
         include: { fournisseur: { select: { raisonSociale: true } } },
       });
       for (const f of factures) {
-        aCreer.push({
-          societeId, source: 'FACTURE_FOURNISSEUR', factureFournisseurId: f.id,
-          libelle: `Facture fournisseur ${f.numero} — ${f.fournisseur?.raisonSociale || ''}`,
-          montant: f.montantTTC, dateOperation: f.dateFacture,
+        const ttc = n(f.montantTTC), tva = n(f.montantTVA), ht = ttc - tva;
+        if (ttc === 0) { ignorees++; continue; }
+        plans.push({
+          journalId: J.achat!.id, date: f.dateFacture, libelle: `Facture fournisseur ${f.numero} — ${f.fournisseur?.raisonSociale || ''}`, reference: f.numero,
+          lignes: [{ compteId: C.achats!, debit: ht, credit: 0 }, ...(tva > 0 ? [{ compteId: C.tvaRecup!, debit: tva, credit: 0 }] : []), { compteId: C.fournisseurs!, debit: 0, credit: ttc }],
+          origine: { factureFournisseurId: f.id },
         });
       }
     }
 
     if (typesVoulus.has('PAIEMENT')) {
       const paiements = await prisma.paiement.findMany({
-        where: { statut: 'VALIDE', datePaiement: { gte: debut, lte: fin }, id: { notIn: [...dejaPaiement] as string[] }, client: { societeId } },
+        where: { statut: 'VALIDE', datePaiement: { gte: debut, lte: fin }, id: { notIn: [...dPai] }, client: { societeId } },
       });
       for (const p of paiements) {
-        aCreer.push({ societeId, source: 'PAIEMENT', paiementId: p.id, libelle: `Paiement client ${p.numero}`, montant: p.montant, dateOperation: p.datePaiement });
+        const t = tresorerie(p.caisseId, p.compteBancaireId, p.modePaiement); const m = n(p.montant);
+        if (!t || m === 0) { ignorees++; continue; }
+        plans.push({ journalId: t.journal, date: p.datePaiement, libelle: `Paiement client ${p.numero}`, reference: p.numero, lignes: [{ compteId: t.compte, debit: m, credit: 0 }, { compteId: C.clients!, debit: 0, credit: m }], origine: { paiementId: p.id } });
       }
     }
 
     if (typesVoulus.has('PAIEMENT_FOURNISSEUR')) {
       const paiements = await prisma.paiementFournisseur.findMany({
-        where: { societeId, statut: 'VALIDE', datePaiement: { gte: debut, lte: fin }, id: { notIn: [...dejaPaiementFournisseur] as string[] } },
+        where: { societeId, statut: 'VALIDE', datePaiement: { gte: debut, lte: fin }, id: { notIn: [...dPF] } },
       });
       for (const p of paiements) {
-        aCreer.push({ societeId, source: 'PAIEMENT_FOURNISSEUR', paiementFournisseurId: p.id, libelle: `Paiement fournisseur ${p.numero}`, montant: p.montant, dateOperation: p.datePaiement });
+        const t = tresorerie(p.caisseId, p.compteBancaireId, p.modePaiement); const m = n(p.montant);
+        if (!t || m === 0) { ignorees++; continue; }
+        plans.push({ journalId: t.journal, date: p.datePaiement, libelle: `Paiement fournisseur ${p.numero}`, reference: p.numero, lignes: [{ compteId: C.fournisseurs!, debit: m, credit: 0 }, { compteId: t.compte, debit: 0, credit: m }], origine: { paiementFournisseurId: p.id } });
       }
     }
 
     if (typesVoulus.has('DEPENSE')) {
       const depenses = await prisma.depense.findMany({
-        where: { societeId, statut: 'VALIDE', dateDepense: { gte: debut, lte: fin }, id: { notIn: [...dejaDepense] as string[] } },
+        where: { societeId, statut: 'VALIDE', dateDepense: { gte: debut, lte: fin }, id: { notIn: [...dDep] } },
       });
       for (const d of depenses) {
-        aCreer.push({ societeId, source: 'DEPENSE', depenseId: d.id, libelle: `Dépense ${d.numero} — ${d.categorie}`, montant: d.montant, dateOperation: d.dateDepense });
+        const m = n(d.montant);
+        if (m === 0) { ignorees++; continue; }
+        const t = d.caisseId || d.compteBancaireId ? tresorerie(d.caisseId, d.compteBancaireId, d.modePaiement) : null;
+        const contrepartie = t ? t.compte : C.fournisseurs!;
+        plans.push({ journalId: t ? t.journal : J.od!.id, date: d.dateDepense, libelle: `Dépense ${d.numero} — ${d.categorie}`, reference: d.numero, lignes: [{ compteId: C.services || C.achats!, debit: m, credit: 0 }, { compteId: contrepartie, debit: 0, credit: m }], origine: { depenseId: d.id } });
       }
     }
 
-    if (aCreer.length > 0) {
-      await prisma.ecritureEnAttente.createMany({ data: aCreer });
+    // Création par lots (un appel ne traite pas plus de 300 documents)
+    const LOT = 300;
+    const lot = plans.slice(0, LOT);
+    let generees = 0;
+    for (const pl of lot) {
+      const numero = await genererNumero(societeId, `ECRITURE_AUTO_${codeJournal.get(pl.journalId)}`);
+      await prisma.ecritureComptable.create({
+        data: {
+          exerciceId: exo.id, journalId: pl.journalId, numero, dateEcriture: pl.date, libelle: pl.libelle, reference: pl.reference,
+          createurId: req.user!.id, validee: true, dateValidation: new Date(), ...pl.origine,
+          mouvements: { create: pl.lignes.map(l => ({ compteId: l.compteId, libelle: l.libelle || null, debit: l.debit, credit: l.credit })) },
+        },
+      });
+      generees++;
     }
-    ApiResponse.success(res, { suggerees: aCreer.length }, `${aCreer.length} suggestion(s) ajoutée(s) à la file d'attente`);
+    const restantes = plans.length - lot.length;
+    ApiResponse.success(res, { generees, ignorees, restantes },
+      `${generees} écriture(s) générée(s) dans ${exo.code}${restantes > 0 ? ` — ${restantes} restante(s), relancez la génération` : ''}${ignorees > 0 ? ` (${ignorees} document(s) ignoré(s) : montant nul ou compte de trésorerie inconnu)` : ''}`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

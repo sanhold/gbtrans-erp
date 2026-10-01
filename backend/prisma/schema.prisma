@@ -1277,6 +1277,9 @@ model EcritureComptable {
   piece          String?   @db.VarChar(100)
   factureId      String?
   paiementId     String?
+  factureFournisseurId  String?
+  paiementFournisseurId String?
+  depenseId             String?
   createurId     String
   validee        Boolean   @default(false)
   dateValidation DateTime?
@@ -1292,6 +1295,9 @@ model EcritureComptable {
 
   @@index([exerciceId])
   @@index([journalId])
+  @@index([factureFournisseurId])
+  @@index([paiementFournisseurId])
+  @@index([depenseId])
   @@index([dateEcriture])
   @@index([numero])
   @@map("ecritures_comptables")
