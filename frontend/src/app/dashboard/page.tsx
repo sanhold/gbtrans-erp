@@ -72,17 +72,17 @@ function KpiCard({ label, value, icon, color, trend }: {
     <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl p-3.5 shadow-card hover:shadow-lg transition-all">
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="min-w-0">
-          <div className="text-[12px] text-gray-400 truncate dark:text-gray-500 font-medium">{label}</div>
-          <div className="font-display text-[21px] xl:text-[23px] font-extrabold tracking-tight leading-tight mt-0.5 whitespace-nowrap text-gray-900 dark:text-white">{value}</div>
+          <div className="text-[11px] text-gray-400 truncate dark:text-gray-500 font-medium">{label}</div>
+          <div className="font-display text-[17px] xl:text-[19px] font-extrabold tracking-tight leading-tight mt-0.5 whitespace-nowrap text-gray-900 dark:text-white">{value}</div>
         </div>
-        <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 ${iconBg[color]}`}>
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg[color]}`}>
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d={icon} />
           </svg>
         </div>
       </div>
       {trend && (
-        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${trend.up ? 'bg-accent-50 text-accent-600' : 'bg-surface-100 dark:bg-surface-700 text-gray-500 dark:text-gray-400'}`}>
+        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-full truncate ${trend.up ? 'bg-accent-50 text-accent-600' : 'bg-surface-100 dark:bg-surface-700 text-gray-500 dark:text-gray-400'}`}>
           {trend.up && (
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 17L17 7M17 7H9M17 7v8" />
@@ -99,7 +99,7 @@ function SectionCard({ title, action, children }: { title: string; action?: Reac
   return (
     <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl p-4 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
+        <h3 className="text-[13px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
         {action}
       </div>
       {children}
@@ -224,7 +224,7 @@ export default function DashboardHomePage() {
               <SectionCard
                 title={`Chiffre d'affaires mensuel — ${year}`}
                 action={
-                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-3 text-[11px] whitespace-nowrap text-gray-500 dark:text-gray-400">
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary-500" />Facturé</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-accent-500" />Encaissé</span>
                     <Link href="/dashboard/analytique" className="text-primary-600 hover:underline font-medium">Détails →</Link>
@@ -238,21 +238,21 @@ export default function DashboardHomePage() {
             <SectionCard title="Alertes" action={nbAlertes > 0 ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{nbAlertes}</span> : undefined}>
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto">
                 {alertes?.facturesEnRetard?.slice(0, 4).map((f: any) => (
-                  <div key={f.id} className="p-2.5 rounded-lg border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/10">
-                    <span className="text-[9.5px] font-semibold uppercase text-gray-500">Facture en retard</span>
-                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{f.numero} — {f.client?.raisonSociale}</p>
+                  <div key={f.id} className="px-2.5 py-1.5 rounded-lg border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/10">
+                    <span className="text-[9px] font-semibold uppercase text-gray-500">Facture en retard</span>
+                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">{f.numero} — {f.client?.raisonSociale}</p>
                   </div>
                 ))}
                 {alertes?.atExpirationProche?.slice(0, 4).map((at: any) => (
-                  <div key={at.id} className="p-2.5 rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/10">
-                    <span className="text-[9.5px] font-semibold uppercase text-gray-500">AT expire bientôt</span>
-                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{at.numero} — {new Date(at.dateExpiration).toLocaleDateString('fr-FR')}</p>
+                  <div key={at.id} className="px-2.5 py-1.5 rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/10">
+                    <span className="text-[9px] font-semibold uppercase text-gray-500">AT expire bientôt</span>
+                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">{at.numero} — {new Date(at.dateExpiration).toLocaleDateString('fr-FR')}</p>
                   </div>
                 ))}
                 {alertes?.cautionsCourrierEnAttente?.slice(0, 4).map((c: any) => (
-                  <div key={c.id} className="p-2.5 rounded-lg border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/10">
-                    <span className="text-[9.5px] font-semibold uppercase text-gray-500">Courrier caution en attente</span>
-                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">Caution N°{c.numero}</p>
+                  <div key={c.id} className="px-2.5 py-1.5 rounded-lg border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/10">
+                    <span className="text-[9px] font-semibold uppercase text-gray-500">Courrier caution en attente</span>
+                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">Caution N°{c.numero}</p>
                   </div>
                 ))}
                 {nbAlertes === 0 && <p className="text-sm text-gray-400 text-center py-6">Aucune alerte 🎉</p>}
@@ -275,11 +275,11 @@ export default function DashboardHomePage() {
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="w-6 h-6 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-[11px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                         <div className="min-w-0">
-                          <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 truncate">{c.raisonSociale}</p>
+                          <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate">{c.raisonSociale}</p>
                           <p className="text-[11px] text-gray-400">{c.nombre_dossiers} dossier(s)</p>
                         </div>
                       </div>
-                      <span className="text-[13px] font-bold text-gray-900 dark:text-white flex-shrink-0">{canSeeMontants ? formatMontant(c.ca_total) : MONTANT_MASQUE}</span>
+                      <span className="text-[12px] font-bold text-gray-900 dark:text-white flex-shrink-0">{canSeeMontants ? formatMontant(c.ca_total) : MONTANT_MASQUE}</span>
                     </div>
                   ))}
                 </div>
