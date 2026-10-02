@@ -220,21 +220,21 @@ export default function ATPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
+        <div className="card !p-3">
+          <form onSubmit={handleSearch} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <div className="flex-shrink-0 mr-1 w-full sm:w-auto">
               <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Admissions Temporaires</h1>
               <p className="text-[10px] text-gray-500 whitespace-nowrap">Non apurées, expirées &amp; historique</p>
             </div>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-40 flex-shrink-0" placeholder="N° AT, désignation, déclarant..." />
-            <select value={etatFiltre} onChange={e => { setEtatFiltre(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-36 flex-shrink-0">
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-full sm:w-40 flex-shrink-0" placeholder="N° AT, désignation, déclarant..." />
+            <select value={etatFiltre} onChange={e => { setEtatFiltre(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs flex-1 sm:flex-initial sm:w-36 min-w-0">
               <option value="">Non apurées + Expirées</option>
               <option value="NON_APURE">Non apuré uniquement</option>
               <option value="EXPIRE">Expiré uniquement</option>
               <option value="TOUS">Toutes (y compris apurées)</option>
             </select>
             <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <div className="flex items-center gap-1.5 flex-shrink-0 border-x border-gray-200 dark:border-surface-700 px-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0 sm:border-x border-gray-200 dark:border-surface-700 sm:px-2">
               <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="AT expire bientôt">⏳ {stats.expireBientot}</span>
               <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="AT expiré">⚠ {stats.expire}</span>
             </div>
@@ -302,22 +302,22 @@ export default function ATPage() {
                 return (
                   <tr key={at.id} className={`table-row ${rowClass}`}>
                     <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Dossier">
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° Dossier">
                       {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numero}</Link> : '-'}
                     </td>
                     <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
                     <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
                     <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
-                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
-                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
+                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
+                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
                     <td className={`table-cell text-center font-semibold !text-[10.5px] !px-1 truncate ${rowClass}`} data-label="Temps Restant">{at.joursRestants}j</td>
-                    <td className="table-cell text-right font-mono !text-[10.5px] !px-1.5 truncate" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
+                    <td className="table-cell text-right font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
                     <td className="table-cell !px-1.5" data-label="Etat"><span className={`badge ${ETAT_BADGE[at.etat]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[at.etat]}</span></td>
                     <td className="table-cell !px-1" data-label="Actions">
                       <div className="flex gap-0.5">

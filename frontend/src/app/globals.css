@@ -24,10 +24,17 @@
 
   body {
     @apply bg-surface-50 text-gray-900 dark:bg-surface-900 dark:text-surface-50 font-sans antialiased;
+    font-feature-settings: 'tnum' 1, 'cv05' 1;
   }
 
   h1, h2, h3, h4 {
     @apply font-display;
+  }
+
+  /* Alignement des chiffres en colonnes (grilles de type SAP) : toujours la meme largeur par chiffre. */
+  .table-container,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -87,14 +94,16 @@
   }
 
   .table-header {
-    @apply px-3 py-2 text-left text-[11px] font-bold text-gray-600 uppercase tracking-wide
+    @apply px-3 py-2 text-left text-[10.5px] font-bold text-gray-600 uppercase tracking-wider
            bg-gray-100 border border-gray-300 border-b-2 border-b-gray-400 whitespace-nowrap
            dark:bg-surface-700 dark:text-gray-300 dark:border-surface-700 dark:border-b-surface-900;
+    letter-spacing: 0.04em;
   }
 
   .table-cell {
     @apply px-3 py-1.5 text-[12.5px] text-gray-800 border border-gray-200 whitespace-nowrap
            dark:text-gray-200 dark:border-surface-700;
+    letter-spacing: 0.01em;
   }
 
   .table-row {
@@ -147,10 +156,10 @@
     min-height: 44px;
   }
 
-  /* Tableaux -> zones répétées (une "carte" par ligne), au lieu du défilement horizontal */
+  /* Tableaux -> vraies cartes d'appli mobile : titre en haut, infos en grille 2 colonnes,
+     actions en pleine largeur en bas. Plus de defilement horizontal, plus de liste a rallonge. */
   .table-container table,
-  .table-container tbody,
-  .table-container tr {
+  .table-container tbody {
     display: block;
     width: 100%;
   }
@@ -160,11 +169,12 @@
   }
 
   .table-row {
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     border: 1px solid #e5e7eb;
     border-radius: 0.625rem;
     margin: 0 0.5rem 0.625rem;
-    padding: 0.25rem 0.75rem;
+    overflow: hidden;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   }
 
@@ -172,43 +182,96 @@
     border-color: theme('colors.surface.700');
   }
 
+  /* Colonnes jugees secondaires sur petit ecran (cf. className="col-opt" sur le <td>) :
+     restent dans le tableau desktop, disparaissent uniquement de la carte mobile. */
+  .col-opt {
+    display: none !important;
+  }
+
   .table-cell {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.15rem;
     width: 100%;
-    padding: 0.55rem 0;
+    min-width: 0;
+    padding: 0.45rem 0.75rem;
     border: none !important;
     border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
     white-space: normal;
-    text-align: right;
+    text-align: left;
   }
 
   .dark .table-cell {
-    border-bottom-color: theme('colors.surface.700');
+    border-color: theme('colors.surface.700');
   }
 
-  .table-cell:last-child {
-    border-bottom: none;
+  .table-cell:nth-child(2n) {
+    border-right: none;
   }
 
   .table-cell::before {
     content: attr(data-label);
-    flex-shrink: 0;
-    font-size: 10.5px;
+    font-size: 9.5px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
     color: #9ca3af;
-    text-align: left;
   }
 
-  /* Lignes "Chargement..." / "Aucune donnée" : une seule cellule, pas d'étiquette */
+  .table-cell > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* 1ere colonne = identifiant de la ligne : bandeau titre en pleine largeur, mis en avant */
+  .table-row > .table-cell:first-child:not(:only-child) {
+    grid-column: 1 / -1;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.6rem 0.75rem 0.5rem;
+    background: rgba(0, 0, 0, 0.015);
+  }
+
+  .dark .table-row > .table-cell:first-child:not(:only-child) {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom-color: theme('colors.surface.700');
+  }
+
+  .table-row > .table-cell:first-child:not(:only-child) > *,
+  .table-row > .table-cell:first-child:not(:only-child) {
+    font-size: 13.5px !important;
+    font-weight: 700;
+  }
+
+  /* Derniere colonne = actions : barre pleine largeur, boutons centres, pas d'etiquette */
+  .table-row > .table-cell:last-child:not(:only-child) {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-bottom: none;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.015);
+  }
+
+  .dark .table-row > .table-cell:last-child:not(:only-child) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .table-row > .table-cell:last-child:not(:only-child)::before {
+    content: none;
+  }
+
+  /* Lignes "Chargement..." / "Aucune donnée" : une seule cellule centree, pas d'etiquette */
   .table-cell:only-child {
     display: block;
+    grid-column: 1 / -1;
     text-align: center;
     padding: 0.75rem 0;
+    border: none !important;
   }
 
   .table-cell:only-child::before {
