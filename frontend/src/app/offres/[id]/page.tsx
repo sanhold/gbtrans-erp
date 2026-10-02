@@ -15,7 +15,7 @@ const statutLabels: Record<string, string> = {
   BROUILLON: 'Brouillon', ENVOYEE: 'Envoyée', ACCEPTEE: 'Acceptée',
   REFUSEE: 'Refusée', EXPIREE: 'Expirée', TRANSFORMEE: 'Transformée', ANNULEE: 'Annulée',
 };
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function OffreDetailPage() {
   const params = useParams();

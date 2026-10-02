@@ -14,7 +14,7 @@ const statutColors: Record<string, string> = {
   PARTIELLEMENT_PAYEE: 'badge-warning', PAYEE: 'badge-success',
   EN_RETARD: 'badge-danger', ANNULEE: 'badge-danger', CONTENTIEUX: 'badge-danger',
 };
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FacturationFournisseursPage() {
   const router = useRouter();

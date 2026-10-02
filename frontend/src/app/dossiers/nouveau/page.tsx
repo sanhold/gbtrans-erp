@@ -288,7 +288,7 @@ export default function NouveauDossierPage() {
                         <td className="table-cell" data-label="Type">{a.type || '-'}</td>
                         <td className="table-cell" data-label="Quantité">{a.quantite || 1}</td>
                         <td className="table-cell" data-label="Unité">{a.unite || '-'}</td>
-                        <td className="table-cell text-right font-mono" data-label="Valeur">{a.valeur ? new Intl.NumberFormat('fr-FR').format(Number(a.valeur)) : '-'}</td>
+                        <td className="table-cell text-right font-mono" data-label="Valeur">{a.valeur ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(a.valeur)) : '-'}</td>
                         <td className="table-cell" data-label="Actions">
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => openEditArticleModal(i)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">

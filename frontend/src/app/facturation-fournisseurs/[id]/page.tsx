@@ -12,7 +12,7 @@ const MODE_PAIEMENT_LABELS: Record<string, string> = {
   MOBILE_MONEY: 'Mobile Money', ORANGE_MONEY: 'Orange Money', MTN_MONEY: 'MTN Money',
   WAVE: 'Wave', MOOV_MONEY: 'Moov Money', CARTE_BANCAIRE: 'Carte bancaire', COMPENSATION: 'Compensation',
 };
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 function parseCompteValue(value: string): { type: 'CAISSE' | 'BANQUE' | 'TIERS'; id: string } | null {
   if (!value) return null;

@@ -11,7 +11,7 @@ import { statutColors, statutLabels, WORKFLOW_STEPS_DOSSIER as workflowSteps, ST
 const fmt = (n: any) => {
   if (n === null || n === undefined || n === '') return '-';
   const num = Number(n);
-  return isNaN(num) ? String(n) : new Intl.NumberFormat('fr-FR').format(num);
+  return isNaN(num) ? String(n) : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(num);
 };
 
 const textFields = [

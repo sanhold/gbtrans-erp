@@ -17,7 +17,7 @@ const CI_FLAG = (
   </span>
 );
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function ProformaDetailPage() {
   const params = useParams();

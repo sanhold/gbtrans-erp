@@ -18,7 +18,7 @@ interface LigneFactureForm {
   tauxTVA: string;
 }
 
-const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n || 0));
+const fmt = (n: number) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(n || 0));
 
 function ligneVide(): LigneFactureForm {
   return { categorie: 'DIVERS', codePrestation: '', designation: '', quantite: '1', unite: '', prixUnitaire: '0', tauxTVA: '18' };

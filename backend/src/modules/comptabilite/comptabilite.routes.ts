@@ -117,18 +117,31 @@ router.delete('/comptes/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: A
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
+router.get('/comptes/syscohada-reference', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existants = await prisma.compteComptable.findMany({ where: { societeId: req.user!.societeId }, select: { numero: true } });
+    const presents = new Set(existants.map(c => c.numero));
+    ApiResponse.success(res, syscohadaPlanReference.map(c => ({ ...c, dejaPresent: presents.has(c.numero) })));
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
 router.post('/comptes/importer-syscohada', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
+    const { numeros } = req.body as { numeros?: string[] };
+    const aImporter = Array.isArray(numeros) && numeros.length > 0
+      ? syscohadaPlanReference.filter(c => numeros.includes(c.numero))
+      : syscohadaPlanReference;
+    if (aImporter.length === 0) { ApiResponse.badRequest(res, 'Aucun compte sélectionné'); return; }
     const result = await prisma.compteComptable.createMany({
-      data: syscohadaPlanReference.map(c => ({
+      data: aImporter.map(c => ({
         societeId, numero: c.numero, libelle: c.libelle, classe: c.classe,
         type: c.type as any, nature: c.nature as any, sens: c.sens as any,
         niveau: c.numero.length,
       })),
       skipDuplicates: true,
     });
-    ApiResponse.success(res, { importes: result.count, total: syscohadaPlanReference.length }, `${result.count} compte(s) importé(s) (${syscohadaPlanReference.length - result.count} déjà présent(s))`);
+    ApiResponse.success(res, { importes: result.count, total: aImporter.length }, `${result.count} compte(s) ajouté(s)${aImporter.length - result.count > 0 ? ` (${aImporter.length - result.count} déjà présent(s))` : ''}`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
@@ -416,6 +429,85 @@ router.get('/ecritures-attente', authorize('COMPTABILITE:LIRE'), async (req: Aut
       orderBy: { dateOperation: 'desc' },
     });
     ApiResponse.success(res, data);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+/** Propose une écriture équilibrée pour une pièce en attente, sur le même principe que Compta Auto —
+ *  l'utilisateur ajuste ensuite la proposition avant de comptabiliser (cf. "écriture pré-remplie" de référence). */
+router.get('/ecritures-attente/:id/proposition', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    const entree = await prisma.ecritureEnAttente.findFirst({
+      where: { id: req.params.id, societeId },
+      include: {
+        facture: { select: { montantTTC: true, montantTVA: true, type: true } },
+        factureFournisseur: { select: { montantTTC: true, montantTVA: true } },
+        paiement: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true } },
+        paiementFournisseur: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true } },
+        depense: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true, categorie: true } },
+      },
+    });
+    if (!entree) { ApiResponse.notFound(res, 'Entrée introuvable'); return; }
+
+    const [comptes, journaux] = await Promise.all([
+      prisma.compteComptable.findMany({ where: { societeId, actif: true }, select: { id: true, numero: true } }),
+      prisma.journalComptable.findMany({ where: { societeId, actif: true }, select: { id: true, code: true, type: true } }),
+    ]);
+    const cid = (...nums: string[]) => { for (const n of nums) { const c = comptes.find(x => x.numero === n); if (c) return c.id; } return null; };
+    const jrn = (type: string) => journaux.find(j => j.type === type) || null;
+    const C = {
+      clients: cid('411'), ventes: cid('706'), tvaFact: cid('443', '4431'),
+      fournisseurs: cid('401'), tvaRecup: cid('445', '4451'),
+      banque: cid('512'), caisse: cid('571'), services: cid('63', '628', '605'), achats: cid('605', '604', '601'),
+    };
+    const J = { vente: jrn('VENTE'), achat: jrn('ACHAT'), banque: jrn('BANQUE'), caisse: jrn('CAISSE'), od: jrn('OD') };
+    const n = (v: any) => Math.abs(Number(v) || 0);
+    const tresorerie = (caisseId?: string | null, banqueId?: string | null, mode?: string) => {
+      if (caisseId || (!banqueId && mode === 'ESPECES')) return C.caisse && J.caisse ? { compte: C.caisse, journal: J.caisse.id } : null;
+      if (banqueId || mode) return C.banque && J.banque ? { compte: C.banque, journal: J.banque.id } : null;
+      return null;
+    };
+
+    let journalId: string | null = null;
+    let lignes: { compteId: string; libelle?: string; debit: number; credit: number }[] = [];
+    const montant = n(entree.montant);
+
+    if (entree.source === 'FACTURE' && entree.facture) {
+      const ttc = n(entree.facture.montantTTC), tva = n(entree.facture.montantTVA), ht = ttc - tva;
+      const avoir = entree.facture.type === 'AVOIR';
+      if (J.vente && C.clients && C.ventes) {
+        journalId = J.vente.id;
+        lignes = avoir
+          ? [{ compteId: C.ventes, debit: ht, credit: 0 }, ...(tva > 0 && C.tvaFact ? [{ compteId: C.tvaFact, debit: tva, credit: 0 }] : []), { compteId: C.clients, debit: 0, credit: ttc }]
+          : [{ compteId: C.clients, debit: ttc, credit: 0 }, { compteId: C.ventes, debit: 0, credit: ht }, ...(tva > 0 && C.tvaFact ? [{ compteId: C.tvaFact, debit: 0, credit: tva }] : [])];
+      }
+    } else if (entree.source === 'FACTURE_FOURNISSEUR' && entree.factureFournisseur) {
+      const ttc = n(entree.factureFournisseur.montantTTC), tva = n(entree.factureFournisseur.montantTVA), ht = ttc - tva;
+      if (J.achat && C.achats && C.fournisseurs) {
+        journalId = J.achat.id;
+        lignes = [{ compteId: C.achats, debit: ht, credit: 0 }, ...(tva > 0 && C.tvaRecup ? [{ compteId: C.tvaRecup, debit: tva, credit: 0 }] : []), { compteId: C.fournisseurs, debit: 0, credit: ttc }];
+      }
+    } else if (entree.source === 'PAIEMENT' && entree.paiement && C.clients) {
+      const t = tresorerie(entree.paiement.caisseId, entree.paiement.compteBancaireId, entree.paiement.modePaiement);
+      if (t) { journalId = t.journal; lignes = [{ compteId: t.compte, debit: montant, credit: 0 }, { compteId: C.clients, debit: 0, credit: montant }]; }
+    } else if (entree.source === 'PAIEMENT_FOURNISSEUR' && entree.paiementFournisseur && C.fournisseurs) {
+      const t = tresorerie(entree.paiementFournisseur.caisseId, entree.paiementFournisseur.compteBancaireId, entree.paiementFournisseur.modePaiement);
+      if (t) { journalId = t.journal; lignes = [{ compteId: C.fournisseurs, debit: montant, credit: 0 }, { compteId: t.compte, debit: 0, credit: montant }]; }
+    } else if (entree.source === 'DEPENSE' && entree.depense) {
+      const t = tresorerie(entree.depense.caisseId, entree.depense.compteBancaireId, entree.depense.modePaiement);
+      const charge = C.services || C.achats;
+      if (charge) {
+        journalId = t ? t.journal : (J.od ? J.od.id : null);
+        const contrepartie = t ? t.compte : C.fournisseurs;
+        if (contrepartie) lignes = [{ compteId: charge, debit: montant, credit: 0 }, { compteId: contrepartie, debit: 0, credit: montant }];
+      }
+    }
+
+    const avertissement = lignes.length === 0
+      ? (entree.source === 'MANUEL' ? "Pièce manuelle : choisissez vous-même les comptes." : "Le plan comptable ne permet pas de proposer une écriture complète pour cette pièce : complétez-le, ou choisissez les comptes vous-même.")
+      : undefined;
+
+    ApiResponse.success(res, { journalId, libelle: entree.libelle, dateEcriture: entree.dateOperation, lignes, avertissement });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 

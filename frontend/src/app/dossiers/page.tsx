@@ -184,7 +184,7 @@ export default function DossiersPage() {
                     <td className="table-cell font-mono !text-[10.5px] !px-2 truncate" data-label="Déclaration" title={d.numeroDeclaration || undefined}>{d.numeroDeclaration || '-'}</td>
                     <td className="table-cell text-right font-mono !px-2 !text-[10.5px] truncate" data-label="Valeur CAF">
                       {d.valeurCAF
-                        ? new Intl.NumberFormat('fr-FR').format(Number(d.valeurCAF))
+                        ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(d.valeurCAF))
                         : '-'}
                     </td>
                     <td className="table-cell text-center !px-1" data-label="Proformas">

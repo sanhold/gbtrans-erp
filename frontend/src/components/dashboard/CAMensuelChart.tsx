@@ -15,7 +15,7 @@ interface CAMensuelChartProps {
 }
 
 const MOIS_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-const fmtXOF = (v: number) => `${new Intl.NumberFormat('fr-FR').format(v)} F`;
+const fmtXOF = (v: number) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)} F`;
 
 /**
  * Graphique "Chiffre d'affaires mensuel" (Facturé/Encaissé), utilisé sur le dashboard

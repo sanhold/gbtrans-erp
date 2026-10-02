@@ -14,7 +14,7 @@ const SITUATION_LABELS: Record<string, string> = {
   CELIBATAIRE: 'Célibataire', MARIE: 'Marié(e)', DIVORCE: 'Divorcé(e)', VEUF: 'Veuf/Veuve',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const emptyForm = {
   matricule: '', nom: '', prenom: '', dateNaissance: '', sexe: '', situationFamiliale: 'CELIBATAIRE',

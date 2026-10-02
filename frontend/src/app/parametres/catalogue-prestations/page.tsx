@@ -28,7 +28,7 @@ const CAT_COLORS: Record<string, string> = {
   'DIVERS': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const emptyForm = { categorie: CATEGORIES[0], code: '', designation: '', montantDefaut: '', tauxTVA: '18', estTVA: true };
 

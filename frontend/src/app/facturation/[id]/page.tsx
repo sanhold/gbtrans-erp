@@ -35,7 +35,7 @@ const CI_FLAG = (
     <span className="w-2 h-2.5 bg-[#009e60]" />
   </span>
 );
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FactureDetailPage() {
   const params = useParams();

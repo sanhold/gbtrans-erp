@@ -52,9 +52,9 @@ interface TopClient {
 }
 
 const formatMontant = (montant: number) => {
-  if (montant >= 1_000_000) return `${(montant / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M FCFA`;
-  if (montant >= 1_000) return `${(montant / 1_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} K FCFA`;
-  return `${montant} FCFA`;
+  if (montant >= 1_000_000) return `${Math.round(montant / 1_000_000).toLocaleString('fr-FR')} M FCFA`;
+  if (montant >= 1_000) return `${Math.round(montant / 1_000).toLocaleString('fr-FR')} K FCFA`;
+  return `${Math.round(montant)} FCFA`;
 };
 
 function KpiCard({ label, value, icon, color, trend }: {

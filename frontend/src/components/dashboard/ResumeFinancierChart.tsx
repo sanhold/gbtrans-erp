@@ -10,7 +10,7 @@ interface ResumeFinancierChartProps {
   height?: number;
 }
 
-const fmtXOF = (v: number) => `${new Intl.NumberFormat('fr-FR').format(v)} F`;
+const fmtXOF = (v: number) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)} F`;
 
 /** Comparaison Recettes / Dépenses / Bénéfice (dashboard analytique). */
 export default function ResumeFinancierChart({ recettes, depenses, benefice, height = 160 }: ResumeFinancierChartProps) {

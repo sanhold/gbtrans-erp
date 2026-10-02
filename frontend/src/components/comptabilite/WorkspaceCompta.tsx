@@ -9,7 +9,7 @@ import GenerationAutoTab from './GenerationAutoTab';
 import PlanComptablePanel from './PlanComptablePanel';
 import toast from 'react-hot-toast';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const emptyLigne = () => ({ compteId: '', libelle: '', debit: '', credit: '' });
 const emptyEcritureForm = () => ({ journalId: '', dateEcriture: new Date().toISOString().slice(0, 10), libelle: '', reference: '', piece: '', lignes: [emptyLigne(), emptyLigne()] });
@@ -601,6 +601,7 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
   const [comptabilisant, setComptabilisant] = useState<any>(null);
   const [form, setForm] = useState(emptyEcritureForm());
   const [saving, setSaving] = useState(false);
+  const [chargementProposition, setChargementProposition] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -633,9 +634,27 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
-  const openComptabiliser = (item: any) => {
+  const openComptabiliser = async (item: any) => {
     setComptabilisant(item);
     setForm({ ...emptyEcritureForm(), dateEcriture: item.dateOperation.slice(0, 10), libelle: item.libelle });
+    setChargementProposition(true);
+    try {
+      const res = await comptabiliteApi.propositionEnAttente(item.id);
+      const prop = res.data.data;
+      if (prop.avertissement) toast(prop.avertissement, { icon: 'ℹ️' });
+      setForm((prev: any) => ({
+        ...prev,
+        journalId: prop.journalId || '',
+        lignes: prop.lignes?.length >= 2
+          ? prop.lignes.map((l: any) => ({ compteId: l.compteId, libelle: l.libelle || '', debit: l.debit > 0 ? String(l.debit) : '', credit: l.credit > 0 ? String(l.credit) : '' }))
+          : [{ ...emptyLigne(), debit: String(item.montant) }, emptyLigne()],
+      }));
+    } catch {
+      // Pas de proposition disponible : l'utilisateur saisit les comptes lui-même.
+      setForm((prev: any) => ({ ...prev, lignes: [{ ...emptyLigne(), debit: String(item.montant) }, emptyLigne()] }));
+    } finally {
+      setChargementProposition(false);
+    }
   };
 
   const updateLigne = (i: number, field: string, value: string) => {
@@ -745,7 +764,10 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <h3 className="font-bold text-lg">Comptabiliser — {comptabilisant.libelle}</h3>
+              <div>
+                <h3 className="font-bold text-lg">Comptabiliser — {comptabilisant.libelle}</h3>
+                {chargementProposition && <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5"><span className="animate-spin w-3 h-3 border-2 border-primary-500 border-t-transparent rounded-full" />Préparation de la proposition...</p>}
+              </div>
               <button onClick={() => setComptabilisant(null)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             {!exerciceId ? (

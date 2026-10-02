@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
+import ImporterSyscohadaModal from './ImporterSyscohadaModal';
 import toast from 'react-hot-toast';
 
 const TYPES_COMPTE = ['BILAN', 'GESTION', 'HORS_BILAN'];
@@ -31,7 +32,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState(compteVide());
   const [saving, setSaving] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -109,17 +110,6 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
-  const handleImporterSyscohada = async () => {
-    if (!confirm("Importer le plan comptable SYSCOHADA de référence ? Les comptes déjà existants (même numéro) ne seront pas dupliqués.")) return;
-    setImporting(true);
-    try {
-      const res = await comptabiliteApi.importerSyscohada();
-      toast.success(res.data.message);
-      load();
-    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
-    finally { setImporting(false); }
-  };
-
   return (
     <>
       <div className="space-y-4">
@@ -131,9 +121,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
             </div>
             {!lectureSeule && (
               <div className="flex gap-2">
-                <button onClick={handleImporterSyscohada} disabled={importing} className="btn-secondary text-sm disabled:opacity-50">
-                  {importing ? 'Import...' : 'Importer le plan SYSCOHADA'}
-                </button>
+                <button onClick={() => setShowImport(true)} className="btn-secondary text-sm">Importer le plan SYSCOHADA</button>
                 <button onClick={openCreate} className="btn-primary text-sm">+ Nouveau compte</button>
               </div>
             )}
@@ -293,6 +281,8 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
           </div>
         </div>
       )}
+
+      {showImport && <ImporterSyscohadaModal onClose={() => setShowImport(false)} onImported={load} />}
     </>
   );
 }

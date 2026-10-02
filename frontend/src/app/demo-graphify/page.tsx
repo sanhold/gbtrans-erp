@@ -6,7 +6,7 @@ import { GraphifyContainer } from '@/components/charts';
 import { useGraphify } from '@/hooks/useGraphify';
 import type { GraphifyData } from '@/types/graphify';
 
-const fmtXOF = (v: number) => `${new Intl.NumberFormat('fr-FR').format(v)} F`;
+const fmtXOF = (v: number) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)} F`;
 
 // --- Données de démonstration uniquement (jamais utilisées dans les modules métier) ---
 

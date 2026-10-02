@@ -18,7 +18,7 @@ const statutLabels: Record<string, string> = {
   REFUSEE: 'Refusée', EXPIREE: 'Expirée', TRANSFORMEE: 'Transformée', ANNULEE: 'Annulée',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const ligneVide = () => ({ designation: '', quantite: '1', unite: 'FORFAIT', prixUnitaire: '', tauxTVA: 18 });
 

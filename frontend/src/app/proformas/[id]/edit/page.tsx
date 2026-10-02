@@ -35,7 +35,7 @@ const CAT_COLORS: Record<string, string> = {
   'DIVERS': '#6b7280',
 };
 
-const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n || 0));
+const fmt = (n: number) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(n || 0));
 
 function suggestCode(catalogue: any[], categorie: string): string {
   const codes = catalogue.filter(p => p.categorie === categorie).map(p => p.code as string).filter(Boolean);

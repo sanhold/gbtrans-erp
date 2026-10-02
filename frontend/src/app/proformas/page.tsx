@@ -15,7 +15,7 @@ const statutColors: Record<string, string> = {
   ACCEPTEE: 'badge-success', TRANSFORMEE: 'badge-success', EXPIREE: 'badge-danger', ANNULEE: 'badge-danger',
 };
 
-const fmt = (n: any) => n ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function ProformasPage() {
   const router = useRouter();

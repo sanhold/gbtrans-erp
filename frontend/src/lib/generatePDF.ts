@@ -50,7 +50,7 @@ export function brandIdentity(branding?: SocieteBranding) {
   return { nom, slogan, adresseComplete, telephone, email, rccm, ncc };
 }
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
+const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const BRAND = {
   primary: '#12314f',
