@@ -120,8 +120,7 @@ export default function DossiersPage() {
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '5%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '8%' }} />
+              <col style={{ width: '12%' }} />
               <col style={{ width: '12%' }} />
               <col style={{ width: '7%' }} />
               <col style={{ width: '7%' }} />
@@ -133,13 +132,12 @@ export default function DossiersPage() {
               <col style={{ width: '7%' }} />
               <col style={{ width: '8%' }} />
               <col style={{ width: '5%' }} />
-                <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
             </colgroup>
             <thead>
               <tr>
                 <th className="table-header !text-[10px] !px-2 truncate">Actions</th>
                 <th className="table-header !text-[10px] !px-2 truncate">N° Dossier</th>
-                <th className="table-header !text-[10px] !px-2 truncate">N° Physique</th>
                 <th className="table-header !text-[10px] !px-2 truncate">Client</th>
                 <th className="table-header !text-[10px] !px-2 truncate">Nature</th>
                 <th className="table-header !text-[10px] !px-2 truncate">BL</th>
@@ -156,14 +154,14 @@ export default function DossiersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={14} className="text-center py-12 text-gray-500">
+                  <td colSpan={13} className="text-center py-12 text-gray-500">
                     <div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />
                     Chargement...
                   </td>
                 </tr>
               ) : dossiers.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="text-center py-12 text-gray-500">
+                  <td colSpan={13} className="text-center py-12 text-gray-500">
                     Aucun dossier trouvé
                   </td>
                 </tr>
@@ -194,12 +192,11 @@ export default function DossiersPage() {
                         )}
                       </div>
                     </td>
-                    <td className="table-cell font-medium text-primary-600 !px-2 !text-[11px] truncate" data-label="N° Dossier" title={d.numero}>
+                    <td className="table-cell font-medium text-primary-600 !px-2 !text-[11px] truncate" data-label="N° Dossier" title={d.numeroPhysique || d.numero}>
                       <Link href={`/dossiers/${d.id}`} className="hover:underline block truncate">
-                        {d.numero}
+                        {d.numeroPhysique || d.numero}
                       </Link>
                     </td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate" data-label="N° Physique" title={d.numeroPhysique || undefined}>{d.numeroPhysique || '-'}</td>
                     <td className="table-cell !px-2 !text-[11px] truncate" data-label="Client" title={d.client?.raisonSociale}>{d.client?.raisonSociale}</td>
                     <td className="table-cell !px-2" data-label="Nature">
                       <span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{natureLabels[d.nature] || d.nature}</span>
