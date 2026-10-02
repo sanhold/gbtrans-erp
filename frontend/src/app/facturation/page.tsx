@@ -79,7 +79,7 @@ export default function FacturationPage() {
       downloadPDF({
         type: 'FACTURE', numero: f.numero,
         date: new Date(f.dateFacture).toLocaleDateString('fr-FR'),
-        client: f.client?.raisonSociale || '', dossierNumero: f.dossier?.numero, titre: f.titre,
+        client: f.client?.raisonSociale || '', dossierNumero: f.dossier?.numeroPhysique || f.dossier?.numero, titre: f.titre,
         afficherSignature: !!f.afficherSignature,
         montantHT: Number(f.montantHT), montantTVA: Number(f.montantTVA), montantTTC: Number(f.montantTTC),
         montantPrestation: f.montantPrestation ? Number(f.montantPrestation) : undefined,
@@ -175,7 +175,7 @@ export default function FacturationPage() {
                     <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
                     <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="N° normalisé" title={f.numeroNormalise}>{f.numeroNormalise || '-'}</td>
                     <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={f.client?.raisonSociale}>{f.client?.raisonSociale}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numero || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numeroPhysique || f.dossier?.numero || '-'}</td>
                     <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate text-center" data-label="Proforma">{f.proformaSourceId ? '✓' : '-'}</td>
                     <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
                     <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
@@ -201,7 +201,7 @@ export default function FacturationPage() {
                   <div className="flex items-center gap-3 mb-1">
                     <span className="font-bold font-mono text-primary-600">{p.numero}</span>
                     <span className="badge badge-warning">En attente</span>
-                    {p.dossier && <span className="text-xs text-gray-500">Dossier: {p.dossier.numero}</span>}
+                    {p.dossier && <span className="text-xs text-gray-500">Dossier: {p.dossier.numeroPhysique || p.dossier.numero}</span>}
                   </div>
                   <p className="text-sm">{p.client?.raisonSociale}</p>
                   {p.titre && <p className="text-xs text-gray-500 mt-0.5">{p.titre}</p>}

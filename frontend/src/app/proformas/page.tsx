@@ -57,7 +57,7 @@ export default function ProformasPage() {
       downloadPDF({
         type: 'PROFORMA', numero: p.numero,
         date: new Date(p.dateProforma).toLocaleDateString('fr-FR'),
-        client: p.client?.raisonSociale || '', dossierNumero: p.dossier?.numero, titre: p.titre,
+        client: p.client?.raisonSociale || '', dossierNumero: p.dossier?.numeroPhysique || p.dossier?.numero, titre: p.titre,
         fobUnitaire: p.fobUnitaire ? Number(p.fobUnitaire) : undefined,
         fretUnitaire: p.fretUnitaire ? Number(p.fretUnitaire) : undefined,
         assurance: p.assurance ? Number(p.assurance) : undefined,
@@ -131,7 +131,7 @@ export default function ProformasPage() {
                   </td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Proforma" title={p.numero}>{p.numero}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale}>{p.client?.raisonSociale}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numero || '-'}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numeroPhysique || p.dossier?.numero || '-'}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>

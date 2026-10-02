@@ -358,7 +358,7 @@ export default function CautionsPage() {
                 <button onClick={() => setPayerCaution(null)} className="p-1 rounded hover:bg-white/10"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
               <form onSubmit={handlePayer} className="p-6 space-y-4">
-                <div><label className="label">Dossier</label><input type="text" readOnly value={payerCaution.dossier?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
+                <div><label className="label">Dossier</label><input type="text" readOnly value={payerCaution.dossier?.numeroPhysique || payerCaution.dossier?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                 <div><label className="label">Compagnie</label><input type="text" readOnly value={payerCaution.compagnie || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                 <div><label className="label">Montant Caution</label><input type="text" readOnly value={`${fmt(payerCaution.montant)} F`} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                 <div>

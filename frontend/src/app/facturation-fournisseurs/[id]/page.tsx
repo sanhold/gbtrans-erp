@@ -150,7 +150,7 @@ export default function FactureFournisseurDetailPage() {
         {/* Infos */}
         <div className="card grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div><span className="text-gray-500 text-xs block">Fournisseur</span><span className="font-bold">{facture.fournisseur?.raisonSociale}</span></div>
-          <div><span className="text-gray-500 text-xs block">Dossier</span><span className="font-mono">{facture.dossier?.numero || '-'}</span></div>
+          <div><span className="text-gray-500 text-xs block">Dossier</span><span className="font-mono">{facture.dossier?.numeroPhysique || facture.dossier?.numero || '-'}</span></div>
           <div><span className="text-gray-500 text-xs block">Date facture</span><span>{new Date(facture.dateFacture).toLocaleDateString('fr-FR')}</span></div>
           <div><span className="text-gray-500 text-xs block">Échéance</span><span>{new Date(facture.dateEcheance).toLocaleDateString('fr-FR')}</span></div>
           <div><span className="text-gray-500 text-xs block">Référence</span><span>{facture.reference || '-'}</span></div>

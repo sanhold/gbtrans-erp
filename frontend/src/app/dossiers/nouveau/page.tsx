@@ -141,7 +141,7 @@ export default function NouveauDossierPage() {
         }
       }
 
-      toast.success(`Dossier ${nouveauDossier.numero} créé avec succès${articles.length ? ` (${articles.length} article(s))` : ''}`);
+      toast.success(`Dossier ${nouveauDossier.numeroPhysique || nouveauDossier.numero} créé avec succès${articles.length ? ` (${articles.length} article(s))` : ''}`);
       router.push(`/dossiers/${nouveauDossier.id}`);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erreur lors de la création');

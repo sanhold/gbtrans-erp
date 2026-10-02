@@ -31,7 +31,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         orderBy: { dateOffre: 'desc' },
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
-          dossier: { select: { id: true, numero: true } },
+          dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           _count: { select: { lignes: true } },
         },
       }),

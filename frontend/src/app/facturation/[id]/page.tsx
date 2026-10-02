@@ -104,7 +104,7 @@ export default function FactureDetailPage() {
       clientEmail: facture.client?.email || undefined,
       clientNcc: facture.client?.ncc || undefined,
       clientPays: facture.client?.pays || undefined,
-      dossierNumero: d?.numero,
+      dossierNumero: d?.numeroPhysique || d?.numero,
       titre: facture.titre,
       afficherSignature: !!facture.afficherSignature,
       montantHT: Number(facture.montantHT),
@@ -260,7 +260,7 @@ export default function FactureDetailPage() {
   const detailsRows = [
     ['N° Facture', facture.numero, true],
     ['Date', new Date(facture.dateFacture).toLocaleDateString('fr-FR'), false],
-    ['Réf. Dossier', d?.numero, false],
+    ['Réf. Dossier', d?.numeroPhysique || d?.numero, false],
   ].filter(([, v]) => v);
 
   const clientInfoRows = [

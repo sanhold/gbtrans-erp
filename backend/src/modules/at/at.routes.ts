@@ -11,7 +11,7 @@ router.use(authenticate, requireSociete);
 
 const INCLUDE_AT = {
   client: { select: { id: true, code: true, raisonSociale: true } },
-  dossiers: { select: { id: true, numero: true } },
+  dossiers: { select: { id: true, numero: true, numeroPhysique: true } },
 };
 
 function withEtat(at: any) {

@@ -246,7 +246,7 @@ export default function DossierDetailPage() {
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{dossier.numero}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{dossier.numeroPhysique || dossier.numero}</h1>
                 {dossier.numeroPhysique && (
                   <span className="badge badge-gray font-mono">N° physique: {dossier.numeroPhysique}</span>
                 )}

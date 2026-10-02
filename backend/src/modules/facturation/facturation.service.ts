@@ -112,7 +112,7 @@ export class FacturationService {
         orderBy: { [sortBy]: sortOrder },
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
-          dossier: { select: { id: true, numero: true } },
+          dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           _count: { select: { paiements: true } },
         },
       }),
@@ -130,7 +130,7 @@ export class FacturationService {
         client: true,
         dossier: {
           select: {
-            id: true, numero: true, nature: true, designation: true,
+            id: true, numero: true, numeroPhysique: true, nature: true, designation: true,
             numeroBL: true, navire: true, portOrigine: true, portDestination: true, incoterm: true,
             poidsBrut: true, volume: true, nombreColis: true,
             agent: { select: { nom: true, prenom: true } },

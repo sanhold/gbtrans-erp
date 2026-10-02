@@ -77,7 +77,7 @@ export default function OffreDetailPage() {
               {offre.numero}
               <span className={`badge ${statutColors[offre.statut] || 'badge-gray'}`}>{statutLabels[offre.statut] || offre.statut}</span>
             </h1>
-            <p className="text-sm text-gray-500 mt-1">{offre.client?.raisonSociale} {offre.dossier && <>— Dossier <Link href={`/dossiers/${offre.dossier.id}`} className="text-primary-600 hover:underline">{offre.dossier.numero}</Link></>}</p>
+            <p className="text-sm text-gray-500 mt-1">{offre.client?.raisonSociale} {offre.dossier && <>— Dossier <Link href={`/dossiers/${offre.dossier.id}`} className="text-primary-600 hover:underline">{offre.dossier.numeroPhysique || offre.dossier.numero}</Link></>}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {offre.statut === 'BROUILLON' && <button disabled={busy} onClick={() => handleChangerStatut('ENVOYEE')} className="btn-secondary">Marquer envoyée</button>}

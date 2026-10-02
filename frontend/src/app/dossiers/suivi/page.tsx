@@ -173,7 +173,7 @@ export default function SuiviDossiersPage() {
                   <div>
                     <h2 className="font-bold text-gray-900 dark:text-white">{dossier?.numeroPhysique || dossier?.numero} — {dossier?.client?.raisonSociale}</h2>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      N° dossier {dossier?.numero} · {dossier?.processus ? <>Processus : <span className="font-medium">{dossier.processus.nom}</span></> : 'Aucun processus de suivi assigné à ce dossier'}
+                      N° dossier {dossier?.numeroPhysique || dossier?.numero} · {dossier?.processus ? <>Processus : <span className="font-medium">{dossier.processus.nom}</span></> : 'Aucun processus de suivi assigné à ce dossier'}
                     </p>
                     {!peutModifier && (
                       <p className="text-[11px] text-amber-600 mt-1">Dossier {dossier?.statut?.toLowerCase()} : les étapes ne peuvent plus être ajoutées, déplacées ou supprimées.</p>

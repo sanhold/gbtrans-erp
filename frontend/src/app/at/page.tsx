@@ -150,7 +150,7 @@ export default function ATPage() {
         numero: at.numero,
         designation: at.designation,
         nature: at.nature,
-        dossierNumero: at.dossiers?.[0]?.numero,
+        dossierNumero: at.dossiers?.[0]?.numeroPhysique || at.dossiers?.[0]?.numero,
         clientNom: at.client?.raisonSociale,
       }, data, canSignature && afficherSignature);
 
@@ -324,7 +324,7 @@ export default function ATPage() {
                     <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
                     <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
                     <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° Dossier">
-                      {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numero}</Link> : '-'}
+                      {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numeroPhysique || at.dossiers[0].numero}</Link> : '-'}
                     </td>
                     <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
                     <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>

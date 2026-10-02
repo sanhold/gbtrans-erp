@@ -27,7 +27,7 @@ router.get('/', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res: Re
         orderBy: { dateFacture: 'desc' },
         include: {
           fournisseur: { select: { id: true, code: true, raisonSociale: true } },
-          dossier: { select: { id: true, numero: true } },
+          dossier: { select: { id: true, numero: true, numeroPhysique: true } },
         },
       }),
       prisma.factureFournisseur.count({ where }),
@@ -43,7 +43,7 @@ router.get('/:id', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res:
       include: {
         lignes: { orderBy: { ordre: 'asc' } },
         fournisseur: true,
-        dossier: { select: { id: true, numero: true } },
+        dossier: { select: { id: true, numero: true, numeroPhysique: true } },
         paiements: {
           include: {
             paiementFournisseur: {

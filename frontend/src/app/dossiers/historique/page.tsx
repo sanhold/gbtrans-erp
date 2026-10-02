@@ -149,7 +149,7 @@ export default function DossiersHistoriquePage() {
               ) : dossiers.map(d => (
                 <tr key={d.id} className="table-row">
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={d.numero}>
-                    <Link href={`/dossiers/${d.id}`} className="hover:underline">{d.numero}</Link>
+                    <Link href={`/dossiers/${d.id}`} className="hover:underline">{d.numeroPhysique || d.numero}</Link>
                   </td>
                   <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Physique">{d.numeroPhysique || '-'}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={d.client?.raisonSociale || undefined}>{d.client?.raisonSociale || '-'}</td>

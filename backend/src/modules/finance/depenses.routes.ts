@@ -34,7 +34,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
         where, skip, take: parseInt(limit as string),
         orderBy: { dateDepense: 'desc' },
         include: {
-          dossier: { select: { id: true, numero: true } },
+          dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           fournisseur: { select: { id: true, raisonSociale: true } },
           caisse: { select: { id: true, code: true, libelle: true } },
           compteBancaire: { select: { id: true, code: true, libelle: true } },

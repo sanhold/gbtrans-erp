@@ -90,7 +90,7 @@ router.get('/en-attente', async (req: AuthRequest, res: Response) => {
       },
       include: {
         client: { select: { id: true, code: true, raisonSociale: true } },
-        dossier: { select: { id: true, numero: true } },
+        dossier: { select: { id: true, numero: true, numeroPhysique: true } },
         lignes: { orderBy: { ordre: 'asc' } },
       },
       orderBy: { dateProforma: 'desc' },

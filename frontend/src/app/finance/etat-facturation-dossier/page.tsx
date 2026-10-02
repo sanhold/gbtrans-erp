@@ -82,7 +82,7 @@ export default function EtatFacturationDossierPage() {
       element.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:10px;margin-bottom:14px;">
           <div><div style="font-weight:800;font-size:16px;color:#12314f;">GBTRANS SARL</div><div style="font-size:9px;color:#666;">Bureau de Transit &amp; Douane</div></div>
-          <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">ÉTAT DU DOSSIER</div><div style="font-size:10px;color:#666;">${dossier.numero}</div></div>
+          <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">ÉTAT DU DOSSIER</div><div style="font-size:10px;color:#666;">${dossier.numeroPhysique || dossier.numero}</div></div>
         </div>
         <table style="width:100%;font-size:10px;margin-bottom:14px;">
           <tr><td style="padding:2px 0;color:#666;width:120px;">Client</td><td style="font-weight:700;">${dossier.client?.raisonSociale || '-'}</td></tr>
@@ -165,7 +165,7 @@ export default function EtatFacturationDossierPage() {
       await html2pdf()
         .set({
           margin: 0,
-          filename: `Etat_Dossier_${dossier.numero.replace(/\//g, '-')}.pdf`,
+          filename: `Etat_Dossier_${(dossier.numeroPhysique || dossier.numero).replace(/\//g, '-')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, logging: false },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -244,7 +244,7 @@ export default function EtatFacturationDossierPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
             <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-                <h3 className="font-bold text-lg">Dossier — {detail.dossier?.numero || ''}</h3>
+                <h3 className="font-bold text-lg">Dossier — {detail.dossier?.numeroPhysique || detail.dossier?.numero || ''}</h3>
                 <div className="flex items-center gap-2">
                   <button onClick={handleDownloadPdf} disabled={downloading || loadingDetail} className="btn-primary text-xs disabled:opacity-50">
                     {downloading ? 'Génération...' : 'Télécharger l’état PDF'}
