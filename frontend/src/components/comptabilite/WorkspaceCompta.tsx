@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
 import GenerationAutoTab from './GenerationAutoTab';
+import PlanComptablePanel from './PlanComptablePanel';
 import toast from 'react-hot-toast';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR').format(Number(n)) : '0';
@@ -16,7 +17,8 @@ const emptyExerciceForm = { code: '', libelle: '', dateDebut: '', dateFin: '' };
 
 export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' }) {
   const estReel = source === 'REEL';
-  const [tab, setTab] = useState<'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan'>(estReel ? 'ecritures' : 'generation');
+  const origine: 'AUTO' | 'MANUEL' = estReel ? 'MANUEL' : 'AUTO';
+  const [tab, setTab] = useState<'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan' | 'plan'>(estReel ? 'ecritures' : 'generation');
   const [exercices, setExercices] = useState<any[]>([]);
   const [exerciceId, setExerciceId] = useState('');
   const [comptes, setComptes] = useState<any[]>([]);
@@ -28,7 +30,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
   const [savingExercice, setSavingExercice] = useState(false);
 
   const loadExercices = () => {
-    comptabiliteApi.exercices({ source }).then(r => {
+    comptabiliteApi.exercices().then(r => {
       const data = r.data.data || [];
       setExercices(data);
       if (data.length > 0 && !exerciceId) {
@@ -42,7 +44,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([comptabiliteApi.comptes({ source }), comptabiliteApi.journaux(source)])
+    Promise.all([comptabiliteApi.comptes(), comptabiliteApi.journaux()])
       .then(([cRes, jRes]) => { setComptes(cRes.data.data || []); setJournaux(jRes.data.data || []); })
       .finally(() => setLoading(false));
     loadExercices();
@@ -52,7 +54,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
     e.preventDefault();
     setSavingExercice(true);
     try {
-      const res = await comptabiliteApi.creerExercice({ ...exerciceForm, source });
+      const res = await comptabiliteApi.creerExercice(exerciceForm);
       toast.success('Exercice créé');
       setShowExerciceModal(false);
       setExerciceForm(emptyExerciceForm);
@@ -69,29 +71,30 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{estReel ? 'Compta Réel' : 'Compta Auto'}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{estReel ? 'Compta Manuelle' : 'Compta Auto'}</h1>
             <p className="text-sm text-gray-500">{estReel
-              ? 'Comptabilité saisie manuellement, indépendante de Compta Auto'
-              : 'Comptabilité générée automatiquement depuis les factures, paiements et dépenses, indépendante de Compta Réel'}</p>
+              ? 'Comptabilisez les pièces en attente ou passez des écritures diverses — même plan comptable que Compta Auto'
+              : 'Écritures générées et validées automatiquement depuis les factures, paiements et dépenses — même plan comptable que Compta Manuelle'}</p>
           </div>
           <div className="flex gap-2 items-center">
             <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field !w-auto text-sm">
-              {exercices.length === 0 && <option value="">{estReel ? 'Aucun exercice réel' : 'Aucun exercice automatique'}</option>}
+              {exercices.length === 0 && <option value="">Aucun exercice</option>}
               {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.libelle} ({ex.code}){ex.cloture ? ' — clôturé' : ''}</option>)}
             </select>
             <button onClick={() => setShowExerciceModal(true)} className="btn-secondary text-sm">+ Nouvel exercice</button>
-            <Link href={estReel ? '/compta-reel/parametres' : '/comptabilite/compta-auto/parametres'} className="btn-secondary text-sm">Paramètres</Link>
+            <Link href="/comptabilite/plan-comptable" className="btn-secondary text-sm">Paramètres</Link>
           </div>
         </div>
 
         <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
           {[
             ...(estReel ? [] : [{ id: 'generation', label: 'Génération' }]),
-            { id: 'ecritures', label: 'Écritures' },
-            ...(estReel ? [{ id: 'attente', label: 'En attente de comptabilisation' }, { id: 'rejetees', label: 'Historique des non comptabilisés' }] : []),
+            { id: 'ecritures', label: estReel ? 'Journal manuel' : 'Journal automatique' },
+            ...(estReel ? [{ id: 'attente', label: 'Pièces à comptabiliser' }, { id: 'rejetees', label: 'Pièces rejetées' }] : []),
             { id: 'grand-livre', label: 'Grand Livre' },
             { id: 'balance', label: 'Balance' },
             { id: 'bilan', label: 'Bilan' },
+            { id: 'plan', label: 'Plan comptable' },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)} className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${tab === t.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
               {t.label}
@@ -99,14 +102,16 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
           ))}
         </div>
 
-        {/* La file d'attente ne dépend pas d'un exercice réel : Compta Auto peut y déposer
-            des suggestions avant même qu'un exercice réel n'existe. */}
+        {/* Les pièces à comptabiliser ne dépendent pas d'un exercice : Compta Auto peut en
+            déposer avant même qu'un exercice ne soit ouvert. */}
         {estReel && tab === 'attente' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="EN_ATTENTE" />}
         {estReel && tab === 'rejetees' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="REJETEE" />}
 
+        {tab === 'plan' && <PlanComptablePanel lectureSeule />}
+
         {tab === 'generation' && !estReel && (exercices.length === 0 ? (
           <div className="card text-center py-16 text-gray-500">
-            <p className="mb-3">Aucun exercice Compta Auto. Créez-en un pour générer vos écritures.</p>
+            <p className="mb-3">Aucun exercice. Créez-en un pour générer vos écritures.</p>
             <button onClick={() => setShowExerciceModal(true)} className="btn-primary text-sm">+ Nouvel exercice</button>
           </div>
         ) : (
@@ -115,14 +120,14 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
 
         {['ecritures', 'grand-livre', 'balance', 'bilan'].includes(tab) && exercices.length === 0 ? (
           <div className="card text-center py-16 text-gray-500">
-            <p className="mb-3">{estReel ? 'Aucun exercice de comptabilité réelle. Créez-en un pour commencer à saisir vos écritures manuellement.' : 'Aucun exercice Compta Auto.'}</p>
+            <p className="mb-3">{estReel ? 'Aucun exercice. Créez-en un pour commencer à saisir vos écritures manuellement.' : 'Aucun exercice.'}</p>
             <button onClick={() => setShowExerciceModal(true)} className="btn-primary text-sm">+ Nouvel exercice</button>
           </div>
         ) : (
           <>
-            {tab === 'ecritures' && <EcrituresTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} lectureSeule={!estReel} />}
-            {tab === 'grand-livre' && <GrandLivreTab exerciceId={exerciceId} />}
-            {tab === 'balance' && <BalanceTab exerciceId={exerciceId} />}
+            {tab === 'ecritures' && <EcrituresTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} origine={origine} lectureSeule={!estReel} />}
+            {tab === 'grand-livre' && <GrandLivreTab exerciceId={exerciceId} origine={origine} />}
+            {tab === 'balance' && <BalanceTab exerciceId={exerciceId} origine={origine} />}
             {tab === 'bilan' && <BilanTab exerciceId={exerciceId} />}
           </>
         )}
@@ -132,7 +137,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <h3 className="font-bold text-lg">Nouvel exercice ({estReel ? 'Compta Réel' : 'Compta Auto'})</h3>
+              <h3 className="font-bold text-lg">Nouvel exercice</h3>
               <button onClick={() => setShowExerciceModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form onSubmit={handleCreerExercice} className="p-4 space-y-3">
@@ -156,7 +161,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
 
 // ---------- Écritures ----------
 
-function EcrituresTab({ exerciceId, comptes, journaux, lectureSeule = false }: { exerciceId: string; comptes: any[]; journaux: any[]; lectureSeule?: boolean }) {
+function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = false }: { exerciceId: string; comptes: any[]; journaux: any[]; origine: 'AUTO' | 'MANUEL'; lectureSeule?: boolean }) {
   const [ecritures, setEcritures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [journalFiltre, setJournalFiltre] = useState('');
@@ -167,14 +172,14 @@ function EcrituresTab({ exerciceId, comptes, journaux, lectureSeule = false }: {
 
   const load = () => {
     setLoading(true);
-    const params: any = { exerciceId, limit: 100 };
+    const params: any = { exerciceId, origine, limit: 100 };
     if (journalFiltre) params.journalId = journalFiltre;
     comptabiliteApi.ecritures(params)
       .then(r => setEcritures(r.data.data || []))
       .catch(() => setEcritures([]))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { if (exerciceId) load(); }, [exerciceId, journalFiltre]);
+  useEffect(() => { if (exerciceId) load(); }, [exerciceId, journalFiltre, origine]);
 
   const openCreate = () => { setForm(emptyEcritureForm()); setShowModal(true); };
 
@@ -364,7 +369,7 @@ function EcrituresTab({ exerciceId, comptes, journaux, lectureSeule = false }: {
 
 // ---------- Grand Livre ----------
 
-function GrandLivreTab({ exerciceId }: { exerciceId: string }) {
+function GrandLivreTab({ exerciceId, origine }: { exerciceId: string; origine: 'AUTO' | 'MANUEL' }) {
   const [comptes, setComptes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [ouverts, setOuverts] = useState<Record<string, boolean>>({});
@@ -372,8 +377,8 @@ function GrandLivreTab({ exerciceId }: { exerciceId: string }) {
   useEffect(() => {
     if (!exerciceId) return;
     setLoading(true);
-    comptabiliteApi.grandLivre({ exerciceId }).then(r => setComptes(r.data.data || [])).catch(() => setComptes([])).finally(() => setLoading(false));
-  }, [exerciceId]);
+    comptabiliteApi.grandLivre({ exerciceId, origine }).then(r => setComptes(r.data.data || [])).catch(() => setComptes([])).finally(() => setLoading(false));
+  }, [exerciceId, origine]);
 
   const toggle = (id: string) => setOuverts(o => ({ ...o, [id]: !o[id] }));
 
@@ -431,7 +436,7 @@ function GrandLivreTab({ exerciceId }: { exerciceId: string }) {
 
 // ---------- Balance ----------
 
-function BalanceTab({ exerciceId }: { exerciceId: string }) {
+function BalanceTab({ exerciceId, origine }: { exerciceId: string; origine: 'AUTO' | 'MANUEL' }) {
   const [lignes, setLignes] = useState<any[]>([]);
   const [totaux, setTotaux] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -439,8 +444,8 @@ function BalanceTab({ exerciceId }: { exerciceId: string }) {
   useEffect(() => {
     if (!exerciceId) return;
     setLoading(true);
-    comptabiliteApi.balance({ exerciceId }).then(r => { setLignes(r.data.data.lignes || []); setTotaux(r.data.data.totaux); }).catch(() => { setLignes([]); setTotaux(null); }).finally(() => setLoading(false));
-  }, [exerciceId]);
+    comptabiliteApi.balance({ exerciceId, origine }).then(r => { setLignes(r.data.data.lignes || []); setTotaux(r.data.data.totaux); }).catch(() => { setLignes([]); setTotaux(null); }).finally(() => setLoading(false));
+  }, [exerciceId, origine]);
 
   return (
     <div className="table-container">

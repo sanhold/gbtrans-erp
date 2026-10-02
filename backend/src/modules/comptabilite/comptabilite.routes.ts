@@ -9,34 +9,34 @@ import syscohadaPlanReference from '../../../prisma/data/syscohada-plan-referenc
 const router = Router();
 router.use(authenticate, requireSociete);
 
-type Source = 'AUTO' | 'REEL';
-const LIBELLE_SOURCE: Record<Source, string> = { AUTO: 'Compta Auto', REEL: 'Compta Réel' };
-
-/** La comptabilité visée (Réel ou Auto) est obligatoire : plan comptable, journaux et exercices sont indépendants. */
-function sourceDe(req: AuthRequest, res: Response): Source | null {
-  const v = (req.query.source ?? req.body?.source) as string | undefined;
-  if (v !== 'AUTO' && v !== 'REEL') { ApiResponse.badRequest(res, 'Le type de comptabilité (AUTO ou REEL) est requis'); return null; }
-  return v;
+/**
+ * Architecture reprise du modele observe chez un produit comparable : UN SEUL plan comptable,
+ * UN SEUL jeu de journaux, UN SEUL jeu d'exercices, partages par Compta Automatique et Compta
+ * Manuelle. Une ecriture est "automatique" (generee et validee directement par Compta Auto,
+ * lecture seule) si son numero porte le prefixe reserve a la generation automatique (cf.
+ * utils/numerotation.ts) ; sinon elle est "manuelle" (saisie libre ou pieces comptabilisees
+ * a la main depuis la file d'attente).
+ */
+const PREFIXES_AUTO = ['AVE', 'AAC', 'ABQ', 'ACA', 'AOD', 'AUT'];
+function estOrigineAuto(numero: string): boolean {
+  return PREFIXES_AUTO.some(p => numero.startsWith(p + '/'));
+}
+function origineDe(numero: string): 'AUTO' | 'MANUEL' {
+  return estOrigineAuto(numero) ? 'AUTO' : 'MANUEL';
+}
+function filtreOrigine(origine?: string) {
+  if (origine === 'AUTO') return { OR: PREFIXES_AUTO.map(p => ({ numero: { startsWith: `${p}/` } })) };
+  if (origine === 'MANUEL') return { NOT: { OR: PREFIXES_AUTO.map(p => ({ numero: { startsWith: `${p}/` } })) } };
+  return {};
 }
 
-/** Vérifie qu'un journal et des comptes appartiennent bien à la comptabilité de l'exercice. */
-async function verifierCoherenceSource(societeId: string, exercice: { source: Source }, journal: { source: Source }, compteIds: string[]): Promise<string | null> {
-  if (journal.source !== exercice.source) return `Ce journal appartient à ${LIBELLE_SOURCE[journal.source]} : l'exercice choisi est celui de ${LIBELLE_SOURCE[exercice.source]}`;
-  const ids = [...new Set(compteIds.filter(Boolean))];
-  if (ids.length === 0) return 'Aucun compte renseigné';
-  const ok = await prisma.compteComptable.count({ where: { id: { in: ids }, societeId, source: exercice.source } });
-  if (ok !== ids.length) return `Un ou plusieurs comptes n'appartiennent pas au plan comptable de ${LIBELLE_SOURCE[exercice.source]}`;
-  return null;
-}
-
-// ===== COMPTES (plan comptable) =====
+// ===== COMPTES (plan comptable, partage) =====
 
 router.get('/comptes', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { tous } = req.query;
-    const source = sourceDe(req, res); if (!source) return;
     const comptes = await prisma.compteComptable.findMany({
-      where: { societeId: req.user!.societeId, source, ...(tous !== '1' && { actif: true }) },
+      where: { societeId: req.user!.societeId, ...(tous !== '1' && { actif: true }) },
       orderBy: { numero: 'asc' },
     });
     ApiResponse.success(res, comptes);
@@ -46,18 +46,17 @@ router.get('/comptes', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, 
 router.post('/comptes', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { numero, libelle, classe, type, nature, sens, parent, collectif, lettrable, rapprochable } = req.body;
-    const source = sourceDe(req, res); if (!source) return;
     if (!numero || !libelle || !classe || !type || !nature) { ApiResponse.badRequest(res, 'Numéro, libellé, classe, type et nature sont requis'); return; }
     const compte = await prisma.compteComptable.create({
       data: {
-        societeId: req.user!.societeId, source, numero: String(numero).trim(), libelle, classe: parseInt(classe),
+        societeId: req.user!.societeId, numero: String(numero).trim(), libelle, classe: parseInt(classe),
         type, nature, sens: sens || 'DEBITEUR', parent: parent || null,
         niveau: String(numero).trim().length <= 2 ? 1 : String(numero).trim().length,
         collectif: !!collectif, lettrable: !!lettrable, rapprochable: !!rapprochable,
       },
     });
     ApiResponse.created(res, compte, 'Compte créé');
-  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce numéro de compte existe déjà dans ce plan comptable' : e.message); }
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce numéro de compte existe déjà' : e.message); }
 });
 
 router.put('/comptes/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
@@ -65,6 +64,10 @@ router.put('/comptes/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthR
     const existing = await prisma.compteComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
     const { libelle, classe, type, nature, sens, parent, collectif, lettrable, rapprochable, actif } = req.body;
+    if (existing.verrouille && (libelle !== undefined || classe !== undefined || type !== undefined || nature !== undefined || sens !== undefined || parent !== undefined)) {
+      ApiResponse.badRequest(res, 'Ce compte est verrouillé : déverrouillez-le avant de modifier ses caractéristiques.');
+      return;
+    }
     const compte = await prisma.compteComptable.update({
       where: { id: req.params.id },
       data: {
@@ -84,10 +87,29 @@ router.put('/comptes/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthR
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
+router.patch('/comptes/:id/verrouiller', authorize('COMPTABILITE:VALIDER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.compteComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
+    const compte = await prisma.compteComptable.update({ where: { id: req.params.id }, data: { verrouille: true } });
+    ApiResponse.success(res, compte, `Compte ${compte.numero} verrouillé`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.patch('/comptes/:id/deverrouiller', authorize('COMPTABILITE:VALIDER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.compteComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
+    const compte = await prisma.compteComptable.update({ where: { id: req.params.id }, data: { verrouille: false } });
+    ApiResponse.success(res, compte, `Compte ${compte.numero} déverrouillé`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
 router.delete('/comptes/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.compteComptable.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
+    if (existing.verrouille) { ApiResponse.badRequest(res, 'Ce compte est verrouillé : déverrouillez-le avant de le supprimer.'); return; }
     const mouvement = await prisma.mouvementComptable.findFirst({ where: { compteId: req.params.id } });
     if (mouvement) { ApiResponse.badRequest(res, 'Ce compte a des mouvements comptables : il ne peut pas être supprimé, seulement désactivé'); return; }
     await prisma.compteComptable.delete({ where: { id: req.params.id } });
@@ -98,10 +120,9 @@ router.delete('/comptes/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: A
 router.post('/comptes/importer-syscohada', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
-    const source = sourceDe(req, res); if (!source) return;
     const result = await prisma.compteComptable.createMany({
       data: syscohadaPlanReference.map(c => ({
-        societeId, source, numero: c.numero, libelle: c.libelle, classe: c.classe,
+        societeId, numero: c.numero, libelle: c.libelle, classe: c.classe,
         type: c.type as any, nature: c.nature as any, sens: c.sens as any,
         niveau: c.numero.length,
       })),
@@ -111,13 +132,12 @@ router.post('/comptes/importer-syscohada', authorize('COMPTABILITE:CREER'), asyn
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-// ===== EXERCICES =====
+// ===== EXERCICES (partages) =====
 
 router.get('/exercices', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const { source } = req.query;
     const data = await prisma.exercice.findMany({
-      where: { societeId: req.user!.societeId, ...(source && { source: source as any }) },
+      where: { societeId: req.user!.societeId },
       orderBy: [{ dateDebut: 'desc' }, { code: 'desc' }],
       include: { _count: { select: { ecritures: true } } },
     });
@@ -137,24 +157,19 @@ router.get('/exercices', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest
 
 router.post('/exercices', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
-    const { code, libelle, dateDebut, dateFin, source } = req.body;
+    const { code, libelle, dateDebut, dateFin } = req.body;
     if (!code || !libelle || !dateDebut || !dateFin) { ApiResponse.badRequest(res, 'Code, libellé, date de début et date de fin sont requis'); return; }
     const debut = new Date(dateDebut); const fin = new Date(dateFin);
     if (isNaN(debut.getTime()) || isNaN(fin.getTime()) || fin <= debut) { ApiResponse.badRequest(res, 'La date de fin doit être postérieure à la date de début'); return; }
-    const sourceExo = source === 'REEL' ? 'REEL' : 'AUTO';
     const chevauche = await prisma.exercice.findFirst({
-      where: { societeId: req.user!.societeId, source: sourceExo, dateDebut: { lte: fin }, dateFin: { gte: debut } },
+      where: { societeId: req.user!.societeId, dateDebut: { lte: fin }, dateFin: { gte: debut } },
     });
     if (chevauche) { ApiResponse.badRequest(res, `Cette période chevauche l'exercice ${chevauche.code} (${chevauche.libelle})`); return; }
     const exercice = await prisma.exercice.create({
-      data: {
-        societeId: req.user!.societeId, code, libelle,
-        dateDebut: new Date(dateDebut), dateFin: new Date(dateFin),
-        source: source === 'REEL' ? 'REEL' : 'AUTO',
-      },
+      data: { societeId: req.user!.societeId, code, libelle, dateDebut: debut, dateFin: fin },
     });
     ApiResponse.created(res, exercice, 'Exercice créé');
-  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Un exercice avec ce code existe déjà pour ce type de comptabilité' : e.message); }
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Un exercice avec ce code existe déjà' : e.message); }
 });
 
 router.patch('/exercices/:id/cloturer', authorize('COMPTABILITE:VALIDER'), async (req: AuthRequest, res: Response) => {
@@ -179,13 +194,12 @@ router.patch('/exercices/:id/rouvrir', authorize('COMPTABILITE:VALIDER'), async 
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-// ===== JOURNAUX =====
+// ===== JOURNAUX (partages) =====
 
 router.get('/journaux', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const source = sourceDe(req, res); if (!source) return;
     const data = await prisma.journalComptable.findMany({
-      where: { societeId: req.user!.societeId, source },
+      where: { societeId: req.user!.societeId },
       orderBy: { code: 'asc' },
     });
     ApiResponse.success(res, data);
@@ -195,13 +209,12 @@ router.get('/journaux', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest,
 router.post('/journaux', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { code, libelle, type, compteContrepartie } = req.body;
-    const source = sourceDe(req, res); if (!source) return;
     if (!code || !libelle || !type) { ApiResponse.badRequest(res, 'Code, libellé et type sont requis'); return; }
     const journal = await prisma.journalComptable.create({
-      data: { societeId: req.user!.societeId, source, code: String(code).trim().toUpperCase(), libelle, type, compteContrepartie: compteContrepartie || null },
+      data: { societeId: req.user!.societeId, code: String(code).trim().toUpperCase(), libelle, type, compteContrepartie: compteContrepartie || null },
     });
     ApiResponse.created(res, journal, 'Journal créé');
-  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce code de journal existe déjà dans cette comptabilité' : e.message); }
+  } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce code de journal existe déjà' : e.message); }
 });
 
 router.put('/journaux/:id', authorize('COMPTABILITE:MODIFIER'), async (req: AuthRequest, res: Response) => {
@@ -233,17 +246,17 @@ router.delete('/journaux/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req: 
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-// ===== ECRITURES (détail d'un journal) =====
+// ===== ECRITURES =====
 
 router.get('/ecritures', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const { page = '1', limit = '30', journalId, exerciceId, source, dateDebut, dateFin } = req.query;
+    const { page = '1', limit = '30', journalId, exerciceId, origine, dateDebut, dateFin } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const where: any = {
       journal: { societeId: req.user!.societeId },
       ...(journalId && { journalId }),
       ...(exerciceId && { exerciceId }),
-      ...(source && { exercice: { source: source as any } }),
+      ...filtreOrigine(origine as string),
       ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
     };
     const [data, total] = await Promise.all([
@@ -257,7 +270,7 @@ router.get('/ecritures', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest
       }),
       prisma.ecritureComptable.count({ where }),
     ]);
-    ApiResponse.paginated(res, data, total, parseInt(page as string), parseInt(limit as string));
+    ApiResponse.paginated(res, data.map(e => ({ ...e, origine: origineDe(e.numero) })), total, parseInt(page as string), parseInt(limit as string));
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
@@ -279,11 +292,13 @@ router.post('/ecritures', authorize('COMPTABILITE:CREER'), async (req: AuthReque
     if (!journal) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
     const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
     if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
-    { const err = await verifierCoherenceSource(req.user!.societeId, exercice, journal, mouvements.map((m: any) => m.compteId)); if (err) { ApiResponse.badRequest(res, err); return; } }
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
     { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
+    const ids = [...new Set(mouvements.map((m: any) => m.compteId).filter(Boolean))];
+    const nbComptes = await prisma.compteComptable.count({ where: { id: { in: ids }, societeId: req.user!.societeId } });
+    if (nbComptes !== ids.length) { ApiResponse.badRequest(res, 'Un ou plusieurs comptes sont introuvables'); return; }
 
-    const numero = await genererNumero(req.user!.societeId, journal.source === 'AUTO' ? `ECRITURE_AUTO_${journal.code}` : `ECRITURE_${journal.code}`);
+    const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
     const ecriture = await prisma.ecritureComptable.create({
       data: {
         exerciceId, journalId, numero,
@@ -311,6 +326,7 @@ router.put('/ecritures/:id', authorize('COMPTABILITE:MODIFIER'), async (req: Aut
       where: { id: req.params.id, journal: { societeId: req.user!.societeId } },
     });
     if (!existing) { ApiResponse.notFound(res, 'Écriture introuvable'); return; }
+    if (estOrigineAuto(existing.numero)) { ApiResponse.badRequest(res, "Cette écriture a été générée par Compta Auto : elle ne peut pas être modifiée manuellement."); return; }
     if (existing.validee) { ApiResponse.badRequest(res, 'Une écriture validée ne peut plus être modifiée'); return; }
     const exoEcriture = await prisma.exercice.findUnique({ where: { id: existing.exerciceId } });
     if (exoEcriture?.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
@@ -328,11 +344,9 @@ router.put('/ecritures/:id', authorize('COMPTABILITE:MODIFIER'), async (req: Aut
         ApiResponse.badRequest(res, `L'écriture n'est pas équilibrée : débit ${totalDebit.toFixed(2)} ≠ crédit ${totalCredit.toFixed(2)}`);
         return;
       }
-    }
-
-    if (mouvements && exoEcriture) {
-      const journalEcr = await prisma.journalComptable.findUnique({ where: { id: existing.journalId } });
-      if (journalEcr) { const err = await verifierCoherenceSource(req.user!.societeId, exoEcriture, journalEcr, mouvements.map((m: any) => m.compteId)); if (err) { ApiResponse.badRequest(res, err); return; } }
+      const ids = [...new Set(mouvements.map((m: any) => m.compteId).filter(Boolean))];
+      const nbComptes = await prisma.compteComptable.count({ where: { id: { in: ids }, societeId: req.user!.societeId } });
+      if (nbComptes !== ids.length) { ApiResponse.badRequest(res, 'Un ou plusieurs comptes sont introuvables'); return; }
     }
 
     const ecriture = await prisma.$transaction(async (tx) => {
@@ -376,13 +390,14 @@ router.delete('/ecritures/:id', authorize('COMPTABILITE:SUPPRIMER'), async (req:
   try {
     const existing = await prisma.ecritureComptable.findFirst({ where: { id: req.params.id, journal: { societeId: req.user!.societeId } } });
     if (!existing) { ApiResponse.notFound(res, 'Écriture introuvable'); return; }
+    if (estOrigineAuto(existing.numero)) { ApiResponse.badRequest(res, "Cette écriture a été générée par Compta Auto : elle ne peut pas être supprimée manuellement."); return; }
     if (existing.validee) { ApiResponse.badRequest(res, 'Une écriture validée ne peut pas être supprimée'); return; }
     await prisma.ecritureComptable.delete({ where: { id: req.params.id } });
     ApiResponse.success(res, null, 'Écriture supprimée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-// ===== ÉCRITURES EN ATTENTE DE COMPTABILISATION (Compta Réel) =====
+// ===== PIÈCES À COMPTABILISER (Compta Manuelle) =====
 
 const ecritureAttenteInclude = {
   facture: { select: { id: true, numero: true, client: { select: { raisonSociale: true } } } },
@@ -415,7 +430,7 @@ router.post('/ecritures-attente', authorize('COMPTABILITE:CREER'), async (req: A
         createurNom: `${req.user!.prenom || ''} ${req.user!.nom || ''}`.trim() || null,
       },
     });
-    ApiResponse.created(res, entree, 'Entrée ajoutée à la file d\'attente');
+    ApiResponse.created(res, entree, 'Pièce ajoutée à la file d\'attente');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
@@ -441,11 +456,13 @@ router.post('/ecritures-attente/:id/comptabiliser', authorize('COMPTABILITE:CREE
     if (!journal) { ApiResponse.notFound(res, 'Journal introuvable'); return; }
     const exercice = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId: req.user!.societeId } });
     if (!exercice) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
-    { const err = await verifierCoherenceSource(req.user!.societeId, exercice, journal, mouvements.map((m: any) => m.compteId)); if (err) { ApiResponse.badRequest(res, err); return; } }
     if (exercice.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
     { const d = new Date(dateEcriture); if (d < exercice.dateDebut || d > exercice.dateFin) { ApiResponse.badRequest(res, `La date de l'écriture doit être comprise dans l'exercice ${exercice.code} (${exercice.dateDebut.toLocaleDateString('fr-FR')} – ${exercice.dateFin.toLocaleDateString('fr-FR')})`); return; } }
+    const ids = [...new Set(mouvements.map((m: any) => m.compteId).filter(Boolean))];
+    const nbComptes = await prisma.compteComptable.count({ where: { id: { in: ids }, societeId: req.user!.societeId } });
+    if (nbComptes !== ids.length) { ApiResponse.badRequest(res, 'Un ou plusieurs comptes sont introuvables'); return; }
 
-    const numero = await genererNumero(req.user!.societeId, journal.source === 'AUTO' ? `ECRITURE_AUTO_${journal.code}` : `ECRITURE_${journal.code}`);
+    const numero = await genererNumero(req.user!.societeId, `ECRITURE_${journal.code}`);
 
     const ecriture = await prisma.$transaction(async (tx) => {
       const created = await tx.ecritureComptable.create({
@@ -455,7 +472,10 @@ router.post('/ecritures-attente/:id/comptabiliser', authorize('COMPTABILITE:CREE
           libelle, reference: reference || null, piece: piece || null,
           createurId: req.user!.id,
           factureId: entree.factureId || undefined,
+          factureFournisseurId: entree.factureFournisseurId || undefined,
           paiementId: entree.paiementId || undefined,
+          paiementFournisseurId: entree.paiementFournisseurId || undefined,
+          depenseId: entree.depenseId || undefined,
           mouvements: {
             create: mouvements.map((m: any) => ({
               compteId: m.compteId, libelle: m.libelle || null,
@@ -483,30 +503,28 @@ router.post('/ecritures-attente/:id/rejeter', authorize('COMPTABILITE:MODIFIER')
       where: { id: entree.id },
       data: { statut: 'REJETEE', motifRejet: motif || null },
     });
-    ApiResponse.success(res, updated, 'Entrée rejetée');
+    ApiResponse.success(res, updated, 'Pièce rejetée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-// ===== COMPTA AUTO (génération de suggestions vers la file d'attente) =====
+// ===== COMPTA AUTO (génération directe dans le grand livre partagé) =====
 
 router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
     const { dateDebut, dateFin, sources, exerciceId } = req.body as { dateDebut?: string; dateFin?: string; sources?: string[]; exerciceId?: string };
-    if (!exerciceId) { ApiResponse.badRequest(res, 'Choisissez un exercice Compta Auto'); return; }
+    if (!exerciceId) { ApiResponse.badRequest(res, 'Choisissez un exercice'); return; }
     const exo = await prisma.exercice.findFirst({ where: { id: exerciceId, societeId } });
     if (!exo) { ApiResponse.notFound(res, 'Exercice introuvable'); return; }
-    if (exo.source !== 'AUTO') { ApiResponse.badRequest(res, "Cet exercice n'appartient pas à Compta Auto"); return; }
     if (exo.cloture) { ApiResponse.badRequest(res, 'Cet exercice est clôturé'); return; }
 
     const debut = new Date(Math.max(dateDebut ? new Date(dateDebut).getTime() : 0, exo.dateDebut.getTime()));
     const fin = new Date(Math.min(dateFin ? new Date(dateFin).getTime() : Infinity, exo.dateFin.getTime()));
     const typesVoulus = new Set(sources && sources.length > 0 ? sources : ['FACTURE', 'FACTURE_FOURNISSEUR', 'PAIEMENT', 'PAIEMENT_FOURNISSEUR', 'DEPENSE']);
 
-    // Plan comptable et journaux propres à Compta Auto
     const [comptes, journaux] = await Promise.all([
-      prisma.compteComptable.findMany({ where: { societeId, source: 'AUTO', actif: true }, select: { id: true, numero: true } }),
-      prisma.journalComptable.findMany({ where: { societeId, source: 'AUTO', actif: true }, select: { id: true, code: true, type: true } }),
+      prisma.compteComptable.findMany({ where: { societeId, actif: true }, select: { id: true, numero: true } }),
+      prisma.journalComptable.findMany({ where: { societeId, actif: true }, select: { id: true, code: true, type: true } }),
     ]);
     const cid = (...nums: string[]) => { for (const n of nums) { const c = comptes.find(x => x.numero === n); if (c) return c.id; } return null; };
     const jrn = (type: string) => journaux.find(j => j.type === type) || null;
@@ -520,14 +538,14 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
     const J = { vente: jrn('VENTE'), achat: jrn('ACHAT'), banque: jrn('BANQUE'), caisse: jrn('CAISSE'), od: jrn('OD') };
     const manquantsJournaux = Object.entries({ Ventes: J.vente, Achats: J.achat, Banque: J.banque, Caisse: J.caisse, OD: J.od }).filter(([, v]) => !v).map(([k]) => k);
     if (manquantsComptes.length || manquantsJournaux.length) {
-      ApiResponse.badRequest(res, `Le paramétrage de Compta Auto est incomplet. ${manquantsComptes.length ? `Comptes manquants : ${manquantsComptes.join(', ')}. ` : ''}${manquantsJournaux.length ? `Journaux manquants : ${manquantsJournaux.join(', ')}. ` : ''}Complétez-le dans Paramètres Auto.`);
+      ApiResponse.badRequest(res, `Le plan comptable est incomplet pour la génération automatique. ${manquantsComptes.length ? `Comptes manquants : ${manquantsComptes.join(', ')}. ` : ''}${manquantsJournaux.length ? `Journaux manquants : ${manquantsJournaux.join(', ')}. ` : ''}Complétez-le dans Plan comptable.`);
       return;
     }
     const codeJournal = new Map(journaux.map(j => [j.id, j.code]));
 
-    // Documents déjà comptabilisés dans Compta Auto
+    // Documents déjà comptabilisés (manuellement ou automatiquement, peu importe) : jamais deux fois.
     const deja = await prisma.ecritureComptable.findMany({
-      where: { exercice: { societeId, source: 'AUTO' } },
+      where: { journal: { societeId } },
       select: { factureId: true, paiementId: true, factureFournisseurId: true, paiementFournisseurId: true, depenseId: true },
     });
     const dejaSet = (k: keyof (typeof deja)[number]) => new Set(deja.map(e => e[k]).filter(Boolean) as string[]);
@@ -636,12 +654,9 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
 
 router.get('/grand-livre', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const { exerciceId, compteId, classe, source, dateDebut, dateFin } = req.query;
+    const { exerciceId, compteId, classe, origine, dateDebut, dateFin } = req.query;
     const societeId = req.user!.societeId;
 
-    // Une seule requête pour tous les mouvements (au lieu d'une par compte) : c'était
-    // le principal goulot d'étranglement de cette page (jusqu'à plusieurs dizaines de
-    // requêtes séquentielles). On groupe par compte côté application.
     const mouvements = await prisma.mouvementComptable.findMany({
       where: {
         compte: {
@@ -651,7 +666,7 @@ router.get('/grand-livre', authorize('COMPTABILITE:LIRE'), async (req: AuthReque
         },
         ecriture: {
           ...(exerciceId && { exerciceId: exerciceId as string }),
-          ...(source && { exercice: { source: source as any } }),
+          ...filtreOrigine(origine as string),
           ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
         },
       },
@@ -683,18 +698,18 @@ router.get('/grand-livre', authorize('COMPTABILITE:LIRE'), async (req: AuthReque
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-// ===== BALANCE (générale) =====
+// ===== BALANCE =====
 
 router.get('/balance', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const { exerciceId, source, dateDebut, dateFin } = req.query;
+    const { exerciceId, origine, dateDebut, dateFin } = req.query;
     const societeId = req.user!.societeId;
 
     const comptes = await prisma.compteComptable.findMany({ where: { societeId }, orderBy: { numero: 'asc' } });
 
     const ecritureFilter: any = {
       ...(exerciceId && { exerciceId }),
-      ...(source && { exercice: { source: source as any } }),
+      ...filtreOrigine(origine as string),
       ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
     };
 
@@ -727,11 +742,11 @@ router.get('/balance', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, 
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-// ===== BILAN & COMPTE DE RESULTAT (simplifié SYSCOHADA) =====
+// ===== BILAN & COMPTE DE RESULTAT (simplifié SYSCOHADA, toujours consolidé Auto + Manuel) =====
 
 router.get('/bilan', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const { exerciceId, source } = req.query;
+    const { exerciceId } = req.query;
     const societeId = req.user!.societeId;
 
     const comptes = await prisma.compteComptable.findMany({ where: { societeId } });
@@ -739,10 +754,7 @@ router.get('/bilan', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, re
       by: ['compteId'],
       where: {
         compte: { societeId },
-        ecriture: {
-          ...(exerciceId && { exerciceId: exerciceId as string }),
-          ...(source && { exercice: { source: source as any } }),
-        },
+        ecriture: { ...(exerciceId && { exerciceId: exerciceId as string }) },
       },
       _sum: { debit: true, credit: true },
     });

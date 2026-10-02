@@ -175,9 +175,9 @@ async function main() {
   const exerciceParAnnee: Record<number, string> = {};
   for (const ex of exercices) exerciceParAnnee[parseInt(ex.code, 10)] = ex.id;
 
-  const comptes = await prisma.compteComptable.findMany({ where: { societeId: societe.id, source: 'AUTO' } });
+  const comptes = await prisma.compteComptable.findMany({ where: { societeId: societe.id } });
   const compteId = (numero: string) => comptes.find(c => c.numero === numero)!.id;
-  const journaux = await prisma.journalComptable.findMany({ where: { societeId: societe.id, source: 'AUTO' } });
+  const journaux = await prisma.journalComptable.findMany({ where: { societeId: societe.id } });
   const journal = (code: string) => journaux.find(j => j.code === code)!;
 
   console.log('📦 Infrastructure (comptes bancaires, caisses, fournisseurs)...');

@@ -48,3 +48,6 @@ coverage/
 
 # Docker
 docker/postgres_data/
+
+.vercel
+.env*

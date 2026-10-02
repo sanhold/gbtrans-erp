@@ -61,17 +61,11 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Compta Réel',
+    title: 'Comptabilité',
     items: [
-      { name: 'Opérations', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
-      { name: 'Paramètres', href: '/compta-reel/parametres', icon: 'M4 6h16M4 12h16M4 18h16' },
-    ],
-  },
-  {
-    title: 'Compta Auto',
-    items: [
-      { name: 'Opérations', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-      { name: 'Paramètres', href: '/comptabilite/compta-auto/parametres', icon: 'M4 6h16M4 12h16M4 18h16' },
+      { name: 'Plan comptable', href: '/comptabilite/plan-comptable', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
     ],
   },
   {

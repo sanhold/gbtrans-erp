@@ -368,14 +368,12 @@ async function main() {
     { numero: '77', libelle: 'Revenus financiers', classe: 7, type: 'GESTION' as const, nature: 'PRODUIT' as const, sens: 'CREDITEUR' as const },
   ];
 
-  for (const source of ['AUTO', 'REEL'] as const) {
-    for (const compte of planComptable) {
-      await prisma.compteComptable.upsert({
-        where: { societeId_numero_source: { societeId: societe.id, numero: compte.numero, source } },
-        update: {},
-        create: { societeId: societe.id, ...compte, source, niveau: compte.numero.length },
-      });
-    }
+  for (const compte of planComptable) {
+    await prisma.compteComptable.upsert({
+      where: { societeId_numero: { societeId: societe.id, numero: compte.numero } },
+      update: {},
+      create: { societeId: societe.id, ...compte, niveau: compte.numero.length },
+    });
   }
 
   // Journaux comptables
@@ -387,14 +385,12 @@ async function main() {
     { code: 'OD', libelle: 'Journal des opérations diverses', type: 'OD' as const },
   ];
 
-  for (const source of ['AUTO', 'REEL'] as const) {
-    for (const journal of journaux) {
-      await prisma.journalComptable.upsert({
-        where: { societeId_code_source: { societeId: societe.id, code: journal.code, source } },
-        update: {},
-        create: { societeId: societe.id, ...journal, source },
-      });
-    }
+  for (const journal of journaux) {
+    await prisma.journalComptable.upsert({
+      where: { societeId_code: { societeId: societe.id, code: journal.code } },
+      update: {},
+      create: { societeId: societe.id, ...journal },
+    });
   }
 
   // Numérotations

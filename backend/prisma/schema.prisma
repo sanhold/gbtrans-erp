@@ -1197,21 +1197,15 @@ model Exercice {
   cloture     Boolean      @default(false)
   dateCloture DateTime?
   actif       Boolean      @default(true)
-  source      SourceCompta @default(AUTO)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   societe   Societe             @relation(fields: [societeId], references: [id])
   ecritures EcritureComptable[]
 
-  @@unique([societeId, code, source])
+  @@unique([societeId, code])
   @@index([societeId])
   @@map("exercices")
-}
-
-enum SourceCompta {
-  AUTO
-  REEL
 }
 
 model CompteComptable {
@@ -1229,16 +1223,15 @@ model CompteComptable {
   lettrable    Boolean      @default(false)
   rapprochable Boolean      @default(false)
   actif        Boolean      @default(true)
-  source       SourceCompta @default(AUTO)
+  verrouille   Boolean      @default(false)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   societe    Societe              @relation(fields: [societeId], references: [id])
   mouvements MouvementComptable[]
 
-  @@unique([societeId, numero, source])
+  @@unique([societeId, numero])
   @@index([societeId])
-  @@index([source])
   @@index([classe])
   @@index([numero])
   @@map("comptes_comptables")
@@ -1252,16 +1245,14 @@ model JournalComptable {
   type               TypeJournal
   compteContrepartie String?     @db.VarChar(20)
   actif              Boolean     @default(true)
-  source             SourceCompta @default(AUTO)
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
   societe   Societe             @relation(fields: [societeId], references: [id])
   ecritures EcritureComptable[]
 
-  @@unique([societeId, code, source])
+  @@unique([societeId, code])
   @@index([societeId])
-  @@index([source])
   @@map("journaux_comptables")
 }
 

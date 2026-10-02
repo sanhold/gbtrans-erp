@@ -8,40 +8,25 @@ import PlanComptablePanel from './PlanComptablePanel';
 import JournauxPanel from './JournauxPanel';
 
 const ONGLETS = [
-  { id: 'exercices', label: 'Exercices' },
   { id: 'plan', label: 'Plan comptable' },
   { id: 'journaux', label: 'Journaux' },
+  { id: 'exercices', label: 'Exercices' },
 ] as const;
 
-const CONFIG = {
-  REEL: {
-    titre: 'Paramètres — Compta Réel',
-    desc: 'Exercices, plan comptable et journaux propres à la comptabilité réelle (saisie manuelle). Ils sont indépendants de Compta Auto.',
-    retour: { href: '/compta-reel', label: '← Compta Réel' },
-    accent: 'bg-primary-600 text-white',
-  },
-  AUTO: {
-    titre: 'Paramètres — Compta Auto',
-    desc: 'Exercices, plan comptable et journaux propres à la comptabilité automatique. Ils sont indépendants de Compta Réel.',
-    retour: { href: '/comptabilite/compta-auto', label: '← Compta Auto' },
-    accent: 'bg-accent-600 text-white',
-  },
-} as const;
-
-export default function ParametresCompta({ source }: { source: 'REEL' | 'AUTO' }) {
-  const [onglet, setOnglet] = useState<(typeof ONGLETS)[number]['id']>('exercices');
-  const cfg = CONFIG[source];
+export default function ParametresCompta() {
+  const [onglet, setOnglet] = useState<(typeof ONGLETS)[number]['id']>('plan');
 
   return (
     <AppLayout>
       <div className="space-y-4">
         <div>
-          <Link href={cfg.retour.href} className="text-[11px] text-primary-600 hover:underline block mb-1">{cfg.retour.label}</Link>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{cfg.titre}</h1>
-            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${cfg.accent}`}>{source === 'REEL' ? 'Réel' : 'Auto'}</span>
+            <Link href="/comptabilite/compta-auto" className="text-[11px] text-primary-600 hover:underline">Compta Auto</Link>
+            <span className="text-[11px] text-gray-300">·</span>
+            <Link href="/compta-reel" className="text-[11px] text-primary-600 hover:underline">Compta Manuelle</Link>
           </div>
-          <p className="text-sm text-gray-500">{cfg.desc}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Plan comptable</h1>
+          <p className="text-sm text-gray-500">Créez le plan, les journaux et les exercices ; verrouillez les comptes sensibles. Utilisés par Compta Auto et Compta Manuelle.</p>
         </div>
 
         <div className="flex gap-1 border-b border-gray-200 dark:border-surface-700">
@@ -56,9 +41,9 @@ export default function ParametresCompta({ source }: { source: 'REEL' | 'AUTO' }
           ))}
         </div>
 
-        {onglet === 'exercices' && <ExercicesPanel source={source} />}
-        {onglet === 'plan' && <PlanComptablePanel source={source} />}
-        {onglet === 'journaux' && <JournauxPanel source={source} />}
+        {onglet === 'plan' && <PlanComptablePanel />}
+        {onglet === 'journaux' && <JournauxPanel />}
+        {onglet === 'exercices' && <ExercicesPanel />}
       </div>
     </AppLayout>
   );
