@@ -168,26 +168,26 @@ export default function FactureFournisseurDetailPage() {
           <div className="table-container">
             <table className="w-full text-sm">
               <thead><tr>
+                {isBrouillon && <th className="table-header"></th>}
                 <th className="table-header">Désignation</th><th className="table-header text-right">Quantité</th>
                 <th className="table-header text-right">Prix unitaire</th><th className="table-header text-right">Taux TVA</th>
                 <th className="table-header text-right">Montant HT</th><th className="table-header text-right">Montant TVA</th>
-                {isBrouillon && <th className="table-header"></th>}
               </tr></thead>
               <tbody>
                 {lignes.length === 0 ? <tr><td colSpan={isBrouillon ? 7 : 6} className="text-center py-8 text-gray-500">Aucune ligne. {isBrouillon ? 'Ajoutez-en une.' : ''}</td></tr>
                 : lignes.map((l: any) => (
                   <tr key={l.id} className="table-row">
+                    {isBrouillon && (
+                      <td className="table-cell" data-label="Actions">
+                        <button onClick={() => handleDeleteLigne(l.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
+                      </td>
+                    )}
                     <td className="table-cell" data-label="Désignation">{l.designation}</td>
                     <td className="table-cell text-right font-mono" data-label="Quantité">{Number(l.quantite)}</td>
                     <td className="table-cell text-right font-mono" data-label="Prix unitaire">{fmt(l.prixUnitaire)}</td>
                     <td className="table-cell text-right font-mono" data-label="Taux TVA">{Number(l.tauxTVA)}%</td>
                     <td className="table-cell text-right font-mono" data-label="Montant HT">{fmt(l.montantHT)}</td>
                     <td className="table-cell text-right font-mono" data-label="Montant TVA">{fmt(l.montantTVA)}</td>
-                    {isBrouillon && (
-                      <td className="table-cell" data-label="Actions">
-                        <button onClick={() => handleDeleteLigne(l.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
-                      </td>
-                    )}
                   </tr>
                 ))}
               </tbody>

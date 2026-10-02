@@ -128,6 +128,7 @@ export default function FacturationPage() {
           <div className="table-container">
             <table className="w-full table-fixed">
               <colgroup>
+                <col style={{ width: '8%' }} />
                 <col style={{ width: '9%' }} />
                 <col style={{ width: '9%' }} />
                 <col style={{ width: '15%' }} />
@@ -138,30 +139,29 @@ export default function FacturationPage() {
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '9%' }} />
                 <col style={{ width: '9%' }} />
+                  <col style={{ width: '8%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '9%' }} />
                 <col style={{ width: '8%' }} />
               </colgroup>
               <thead><tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">N° normalisé</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate">Proforma</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">N° normalisé</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Proforma</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
               </tr></thead>
               <tbody>
                 {loading ? <tr><td colSpan={11} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
                 : factures.length === 0 ? <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune facture</td></tr>
                 : factures.map(f => (
                   <tr key={f.id} className="table-row cursor-pointer" onClick={() => openFactureDetail(f.id)}>
-                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
-                    <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="N° normalisé" title={f.numeroNormalise}>{f.numeroNormalise || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={f.client?.raisonSociale}>{f.client?.raisonSociale}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numero || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate text-center" data-label="Proforma">{f.proformaSourceId ? '✓' : '-'}</td>
-                    <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
-                    <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
-                    <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste">{fmt(f.resteAPayer)}</td>
-                    <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
                     <td className="table-cell !px-1" data-label="Actions">
                       <div className="flex gap-0.5">
                         <button onClick={(e) => { e.stopPropagation(); openFactureDetail(f.id); }} className="p-0.5 rounded hover:bg-gray-100" title="Voir">
@@ -172,6 +172,16 @@ export default function FacturationPage() {
                         </button>
                       </div>
                     </td>
+                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
+                    <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="N° normalisé" title={f.numeroNormalise}>{f.numeroNormalise || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={f.client?.raisonSociale}>{f.client?.raisonSociale}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numero || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate text-center" data-label="Proforma">{f.proformaSourceId ? '✓' : '-'}</td>
+                    <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
+                    <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
+                    <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste">{fmt(f.resteAPayer)}</td>
+                    <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
                   </tr>
                 ))}
               </tbody>

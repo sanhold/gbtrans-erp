@@ -185,17 +185,10 @@ export default function CataloguePrestationsPage() {
                 </div>
                 <div className="table-container !shadow-none !border-0">
                   <table className="w-full">
-                    <thead><tr><th className="table-header">Code</th><th className="table-header">Désignation</th><th className="table-header text-right">Montant par défaut</th><th className="table-header">TVA</th><th className="table-header">Statut</th><th className="table-header">Actions</th></tr></thead>
+                    <thead><tr><th className="table-header">Actions</th><th className="table-header">Code</th><th className="table-header">Désignation</th><th className="table-header text-right">Montant par défaut</th><th className="table-header">TVA</th><th className="table-header">Statut</th></tr></thead>
                     <tbody>
                       {items.map(p => (
                         <tr key={p.id} className="table-row">
-                          <td className="table-cell font-mono text-xs font-semibold text-primary-600" data-label="Code">{p.code}</td>
-                          <td className="table-cell" data-label="Désignation">{p.designation}</td>
-                          <td className="table-cell text-right font-mono" data-label="Montant">{p.montantDefaut != null ? `${fmt(p.montantDefaut)} XOF` : '-'}</td>
-                          <td className="table-cell text-xs" data-label="TVA">{p.estTVA ? `${fmt(p.tauxTVA)}%` : 'Exonéré'}</td>
-                          <td className="table-cell" data-label="Statut">
-                            <button onClick={() => toggleActif(p)} className={`badge ${p.actif ? 'badge-success' : 'badge-gray'} cursor-pointer`}>{p.actif ? 'Actif' : 'Inactif'}</button>
-                          </td>
                           <td className="table-cell" data-label="Actions">
                             <div className="flex gap-1">
                               <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
@@ -205,6 +198,13 @@ export default function CataloguePrestationsPage() {
                                 <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                               </button>
                             </div>
+                          </td>
+                          <td className="table-cell font-mono text-xs font-semibold text-primary-600" data-label="Code">{p.code}</td>
+                          <td className="table-cell" data-label="Désignation">{p.designation}</td>
+                          <td className="table-cell text-right font-mono" data-label="Montant">{p.montantDefaut != null ? `${fmt(p.montantDefaut)} XOF` : '-'}</td>
+                          <td className="table-cell text-xs" data-label="TVA">{p.estTVA ? `${fmt(p.tauxTVA)}%` : 'Exonéré'}</td>
+                          <td className="table-cell" data-label="Statut">
+                            <button onClick={() => toggleActif(p)} className={`badge ${p.actif ? 'badge-success' : 'badge-gray'} cursor-pointer`}>{p.actif ? 'Actif' : 'Inactif'}</button>
                           </td>
                         </tr>
                       ))}

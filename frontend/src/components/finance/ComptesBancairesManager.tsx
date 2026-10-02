@@ -53,19 +53,19 @@ export default function ComptesBancairesManager({ onSelectAccount }: { onSelectA
       </div>
       <div className="table-container">
         <table className="w-full">
-          <thead><tr><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Banque</th><th className="table-header">Devise</th><th className="table-header text-right">Solde</th><th className="table-header">Statut</th><th className="table-header"></th></tr></thead>
+          <thead><tr><th className="table-header"></th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Banque</th><th className="table-header">Devise</th><th className="table-header text-right">Solde</th><th className="table-header">Statut</th></tr></thead>
           <tbody>
             {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
             : comptesActifs.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun compte bancaire actif. Créez-en un.</td></tr>
             : paged.map(c => (
               <tr key={c.id} className={`table-row ${onSelectAccount ? 'cursor-pointer' : ''}`} onClick={() => onSelectAccount?.(c.id)}>
+                <td className="table-cell" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); toggleActif(c); }} className="text-xs text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
                 <td className="table-cell font-medium text-primary-600" data-label="Code">{c.code}</td>
                 <td className="table-cell" data-label="Libellé">{c.libelle}</td>
                 <td className="table-cell" data-label="Banque">{c.banque}</td>
                 <td className="table-cell" data-label="Devise">{c.devise}</td>
                 <td className="table-cell text-right font-mono" data-label="Solde">{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</td>
                 <td className="table-cell" data-label="Statut">{c.actif ? <span className="badge badge-success">Actif</span> : <span className="badge badge-gray">Inactif</span>}</td>
-                <td className="table-cell" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); toggleActif(c); }} className="text-xs text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
               </tr>
             ))}
           </tbody>

@@ -86,8 +86,12 @@ export default function JournauxPanel() {
       <div className="table-container">
         <table className="w-full">
           <thead><tr>
-            <th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Type</th>
-            <th className="table-header">Contrepartie</th><th className="table-header">Statut</th><th className="table-header"></th>
+            <th className="table-header"></th>
+            <th className="table-header">Code</th>
+            <th className="table-header">Libellé</th>
+            <th className="table-header">Type</th>
+            <th className="table-header">Contrepartie</th>
+            <th className="table-header">Statut</th>
           </tr></thead>
           <tbody>
             {loading ? (
@@ -96,16 +100,16 @@ export default function JournauxPanel() {
               <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun journal. Créez-en un ci-dessus.</td></tr>
             ) : journaux.map(j => (
               <tr key={j.id} className="table-row">
-                <td className="table-cell font-mono font-semibold text-primary-600" data-label="Code">{j.code}</td>
-                <td className="table-cell" data-label="Libellé">{j.libelle}</td>
-                <td className="table-cell text-xs text-gray-500" data-label="Type">{j.type}</td>
-                <td className="table-cell text-xs text-gray-500" data-label="Contrepartie">{j.compteContrepartie || '-'}</td>
-                <td className="table-cell" data-label="Statut"><button onClick={() => handleToggleActifJournal(j)} className={`badge ${j.actif ? 'badge-success' : 'badge-gray'}`}>{j.actif ? 'Actif' : 'Inactif'}</button></td>
                 <td className="table-cell text-right" data-label="Actions">
                   <button onClick={() => handleSupprimerJournal(j.id)} className="text-gray-300 hover:text-red-500" title="Supprimer">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </td>
+                <td className="table-cell font-mono font-semibold text-primary-600" data-label="Code">{j.code}</td>
+                <td className="table-cell" data-label="Libellé">{j.libelle}</td>
+                <td className="table-cell text-xs text-gray-500" data-label="Type">{j.type}</td>
+                <td className="table-cell text-xs text-gray-500" data-label="Contrepartie">{j.compteContrepartie || '-'}</td>
+                <td className="table-cell" data-label="Statut"><button onClick={() => handleToggleActifJournal(j)} className={`badge ${j.actif ? 'badge-success' : 'badge-gray'}`}>{j.actif ? 'Actif' : 'Inactif'}</button></td>
               </tr>
             ))}
           </tbody>

@@ -119,6 +119,7 @@ export default function DossiersPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '5%' }} />
               <col style={{ width: '11%' }} />
               <col style={{ width: '8%' }} />
               <col style={{ width: '12%' }} />
@@ -132,10 +133,11 @@ export default function DossiersPage() {
               <col style={{ width: '7%' }} />
               <col style={{ width: '8%' }} />
               <col style={{ width: '5%' }} />
-              <col style={{ width: '5%' }} />
+                <col style={{ width: '5%' }} />
             </colgroup>
             <thead>
               <tr>
+                <th className="table-header !text-[10px] !px-2 truncate">Actions</th>
                 <th className="table-header !text-[10px] !px-2 truncate">N° Dossier</th>
                 <th className="table-header !text-[10px] !px-2 truncate">N° Physique</th>
                 <th className="table-header !text-[10px] !px-2 truncate">Client</th>
@@ -149,7 +151,6 @@ export default function DossiersPage() {
                 <th className="table-header !text-[10px] !px-2 truncate">Statut</th>
                 <th className="table-header !text-[10px] !px-2 truncate">Suivi</th>
                 <th className="table-header !text-[10px] !px-2 truncate">Date</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -169,6 +170,30 @@ export default function DossiersPage() {
               ) : (
                 dossiers.map((d) => (
                   <tr key={d.id} className="table-row">
+                    <td className="table-cell !px-1" data-label="Actions">
+                      <div className="flex gap-1">
+                        <Link
+                          href={`/dossiers/${d.id}`}
+                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"
+                          title="Voir"
+                        >
+                          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </Link>
+                        {!STATUTS_DOSSIER_FERME.includes(d.statut) && (
+                          <Link
+                            href={`/dossiers/${d.id}/edit`}
+                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"
+                            title="Modifier"
+                          >
+                            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </Link>
+                        )}
+                      </div>
+                    </td>
                     <td className="table-cell font-medium text-primary-600 !px-2 !text-[11px] truncate" data-label="N° Dossier" title={d.numero}>
                       <Link href={`/dossiers/${d.id}`} className="hover:underline block truncate">
                         {d.numero}
@@ -216,30 +241,6 @@ export default function DossiersPage() {
                     </td>
                     <td className="table-cell !text-[10.5px] !px-2 truncate" data-label="Date">
                       {new Date(d.dateCreation).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="table-cell !px-1" data-label="Actions">
-                      <div className="flex gap-1">
-                        <Link
-                          href={`/dossiers/${d.id}`}
-                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"
-                          title="Voir"
-                        >
-                          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </Link>
-                        {!STATUTS_DOSSIER_FERME.includes(d.statut) && (
-                          <Link
-                            href={`/dossiers/${d.id}/edit`}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"
-                            title="Modifier"
-                          >
-                            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </Link>
-                        )}
-                      </div>
                     </td>
                   </tr>
                 ))

@@ -47,24 +47,29 @@ export default function ComptesBancairesHistoriquePage() {
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
               <col style={{ width: '26%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '18%' }} />
+                <col style={{ width: '26%' }} />
               <col style={{ width: '18%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '18%' }} />
               <col style={{ width: '14%' }} />
             </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Banque</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Banque</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : comptesDesactives.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun compte bancaire désactivé</td></tr>
               : paged.map(c => (
                 <tr key={c.id} className="table-row cursor-pointer" onClick={() => setSelectedId(c.id)}>
+                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); reactiver(c.id); }} className="text-[10.5px] text-primary-600 hover:underline">Réactiver</button></td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Banque">{c.banque}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{fmt(c.solde)}</td>
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); reactiver(c.id); }} className="text-[10.5px] text-primary-600 hover:underline">Réactiver</button></td>
                 </tr>
               ))}
             </tbody>

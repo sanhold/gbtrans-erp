@@ -117,6 +117,7 @@ export default function OffresPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '10%' }} />
               <col style={{ width: '8%' }} />
               <col style={{ width: '16%' }} />
               <col style={{ width: '24%' }} />
@@ -124,25 +125,22 @@ export default function OffresPage() {
               <col style={{ width: '9%' }} />
               <col style={{ width: '9%' }} />
               <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
+              </colgroup>
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate">Objet</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant TTC</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Validité</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N°</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Objet</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant TTC</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Validité</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
               : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune offre commerciale. Créez votre première offre.</td></tr>
               : offres.map(o => (
                 <tr key={o.id} className="table-row cursor-pointer" onClick={() => router.push(`/offres/${o.id}`)}>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={o.numero}>{o.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={o.client?.raisonSociale}>{o.client?.raisonSociale}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={o.objet}>{o.objet}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Montant TTC">{fmt(o.montantTTC)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Validité">{new Date(o.dateValidite).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[o.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[o.statut] || o.statut}</span></td>
                   <td className="table-cell !px-1" data-label="Actions">
                     {!['TRANSFORMEE'].includes(o.statut) && (
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(o); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
@@ -150,6 +148,13 @@ export default function OffresPage() {
                       </button>
                     )}
                   </td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={o.numero}>{o.numero}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={o.client?.raisonSociale}>{o.client?.raisonSociale}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={o.objet}>{o.objet}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Montant TTC">{fmt(o.montantTTC)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Validité">{new Date(o.dateValidite).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[o.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[o.statut] || o.statut}</span></td>
                 </tr>
               ))}
             </tbody>

@@ -240,6 +240,7 @@ export default function DotationPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '15%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '8%' }} />
               <col style={{ width: '10%' }} />
@@ -248,27 +249,23 @@ export default function DotationPage() {
               <col style={{ width: '14%' }} />
               <col style={{ width: '14%' }} />
               <col style={{ width: '9%' }} />
-              <col style={{ width: '15%' }} />
-            </colgroup>
+              </colgroup>
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dotation</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Utilisé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th><th className="table-header !text-[10px] !px-1.5 truncate">Agent</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Motif</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate"></th>
+              <th className="table-header !text-[10px] !px-1.5 truncate"></th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dotation</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Utilisé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Agent</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Motif</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune dotation enregistrée</td></tr>
               : rows.map(d => (
                 <tr key={d.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : 'Annulée'}</span></td>
                   <td className="table-cell !px-1.5" data-label="Actions">
                     <div className="flex gap-1.5 items-center flex-wrap">
                       {d.statut === 'VALIDE' && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
@@ -277,6 +274,14 @@ export default function DotationPage() {
                       <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
                     </div>
                   </td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
+                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
+                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : 'Annulée'}</span></td>
                 </tr>
               ))}
             </tbody>

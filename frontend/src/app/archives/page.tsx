@@ -195,21 +195,21 @@ export default function ArchivesPage() {
                 <div className="table-container !shadow-none !border-0">
                   <table className="w-full table-fixed">
                     <colgroup>
+                      <col style={{ width: '6%' }} />
                       <col style={{ width: '34%' }} />
                       <col style={{ width: '20%' }} />
                       <col style={{ width: '20%' }} />
                       <col style={{ width: '10%' }} />
                       <col style={{ width: '10%' }} />
-                      <col style={{ width: '6%' }} />
-                    </colgroup>
+                      </colgroup>
                     <thead>
                       <tr>
+                        <th className="table-header !text-[10px] !px-1.5 truncate"></th>
                         <th className="table-header !text-[10px] !px-1.5 truncate">Nom</th>
                         <th className="table-header !text-[10px] !px-1.5 truncate">Catégorie</th>
                         <th className="table-header !text-[10px] !px-1.5 truncate">Lié à</th>
                         <th className="table-header !text-[10px] !px-1.5 truncate">Taille</th>
                         <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-                        <th className="table-header !text-[10px] !px-1.5 truncate"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -219,6 +219,11 @@ export default function ArchivesPage() {
                         <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun document archivé</td></tr>
                       ) : documents.map(d => (
                         <tr key={d.id} className="table-row">
+                          <td className="table-cell !px-1" data-label="Actions">
+                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 inline-block" title="Télécharger">
+                              <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            </a>
+                          </td>
                           <td className="table-cell !px-1.5 !text-[11px]" data-label="Nom">
                             <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline font-medium block truncate" title={d.nomOriginal}>{d.nomOriginal}</a>
                             {d.description && <p className="text-[10px] text-gray-400 truncate" title={d.description}>{d.description}</p>}
@@ -231,11 +236,6 @@ export default function ArchivesPage() {
                           </td>
                           <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Taille">{fmtSize(d.taille)}</td>
                           <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{fmtDate(d.createdAt)}</td>
-                          <td className="table-cell !px-1" data-label="Actions">
-                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 inline-block" title="Télécharger">
-                              <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            </a>
-                          </td>
                         </tr>
                       ))}
                     </tbody>

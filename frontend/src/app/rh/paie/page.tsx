@@ -122,6 +122,7 @@ export default function PaiePage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '6%' }} />
               <col style={{ width: '13%' }} />
               <col style={{ width: '18%' }} />
               <col style={{ width: '15%' }} />
@@ -130,13 +131,17 @@ export default function PaiePage() {
               <col style={{ width: '9%' }} />
               <col style={{ width: '12%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '6%' }} />
-            </colgroup>
+              </colgroup>
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Bulletin</th><th className="table-header !text-[10px] !px-1.5 truncate">Employé</th><th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Brut</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">CNPS</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">ITS</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Net à payer</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Bulletin</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Employé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Brut</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">CNPS</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">ITS</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Net à payer</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -145,6 +150,9 @@ export default function PaiePage() {
                 <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucun bulletin pour cette période. Cliquez sur &quot;Générer&quot;.</td></tr>
               ) : bulletins.map(b => (
                 <tr key={b.id} className="table-row cursor-pointer" onClick={() => openDetail(b.id)}>
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-[10.5px] text-primary-500 hover:underline">Voir</button>
+                  </td>
                   <td className="table-cell font-mono font-medium text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Bulletin">{b.numero}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={b.employe?.poste}>{b.employe?.poste}</td>
@@ -153,9 +161,6 @@ export default function PaiePage() {
                   <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="ITS">{money(b.itsSalarie)}</td>
                   <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Net à payer">{money(b.salaireNet)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{b.statut}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-[10.5px] text-primary-500 hover:underline">Voir</button>
-                  </td>
                 </tr>
               ))}
             </tbody>

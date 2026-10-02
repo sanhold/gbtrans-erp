@@ -50,27 +50,27 @@ export default function ComptesClientsPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '9%' }} />
               <col style={{ width: '12%' }} />
               <col style={{ width: '26%' }} />
               <col style={{ width: '15%' }} />
               <col style={{ width: '13%' }} />
               <col style={{ width: '15%' }} />
               <col style={{ width: '10%' }} />
-              <col style={{ width: '9%' }} />
-            </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total facturé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Factures</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
+              </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total facturé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Factures</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rows.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun client facturé</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">
+                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => openReleve(r.id)} className="text-[10.5px] text-primary-600 hover:underline">Relevé</button></td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{r.code}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={r.raisonSociale}>{r.raisonSociale}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total facturé">{canSeeMontants ? fmt(r.totalFacture) : MONTANT_MASQUE}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total payé">{canSeeMontants ? fmt(r.totalPaye) : MONTANT_MASQUE}</td>
                   <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.resteAPayer) > 0 ? 'text-red-600' : 'text-green-600'}`} data-label="Reste à payer">{canSeeMontants ? fmt(r.resteAPayer) : MONTANT_MASQUE}</td>
                   <td className="table-cell text-right !px-1.5 !text-[10.5px] truncate" data-label="Factures">{Number(r.nombreFactures)}</td>
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => openReleve(r.id)} className="text-[10.5px] text-primary-600 hover:underline">Relevé</button></td>
                 </tr>
               ))}
             </tbody>

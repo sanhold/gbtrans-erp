@@ -399,6 +399,7 @@ export default function DossierDetailPage() {
                 <table className="w-full">
                   <thead>
                     <tr>
+                      {!isFerme && <th className="table-header">Actions</th>}
                       <th className="table-header">N°</th>
                       <th className="table-header">Désignation</th>
                       <th className="table-header">Type</th>
@@ -408,21 +409,11 @@ export default function DossierDetailPage() {
                       <th className="table-header">Poids</th>
                       <th className="table-header">Valeur</th>
                       <th className="table-header">Bon Livraison</th>
-                      {!isFerme && <th className="table-header">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {dossier.articles.map((a: any) => (
                       <tr key={a.id} className="table-row">
-                        <td className="table-cell font-medium" data-label="N°">{a.numero}</td>
-                        <td className="table-cell" data-label="Désignation">{a.designation}</td>
-                        <td className="table-cell" data-label="Type">{a.type || '-'}</td>
-                        <td className="table-cell" data-label="Marque">{a.marque || '-'}</td>
-                        <td className="table-cell text-center" data-label="Qté">{fmt(a.quantite)}</td>
-                        <td className="table-cell font-mono text-xs" data-label="Position Tarifaire">{a.positionTarifaire || '-'}</td>
-                        <td className="table-cell text-right" data-label="Poids">{a.poids ? `${fmt(a.poids)} kg` : '-'}</td>
-                        <td className="table-cell text-right font-mono" data-label="Valeur">{a.valeur ? `${fmt(a.valeur)} F` : '-'}</td>
-                        <td className="table-cell" data-label="Bon Livraison">{a.bonLivraison || '-'}</td>
                         {!isFerme && (
                           <td className="table-cell" data-label="Actions">
                             <div className="flex gap-1">
@@ -435,6 +426,15 @@ export default function DossierDetailPage() {
                             </div>
                           </td>
                         )}
+                        <td className="table-cell font-medium" data-label="N°">{a.numero}</td>
+                        <td className="table-cell" data-label="Désignation">{a.designation}</td>
+                        <td className="table-cell" data-label="Type">{a.type || '-'}</td>
+                        <td className="table-cell" data-label="Marque">{a.marque || '-'}</td>
+                        <td className="table-cell text-center" data-label="Qté">{fmt(a.quantite)}</td>
+                        <td className="table-cell font-mono text-xs" data-label="Position Tarifaire">{a.positionTarifaire || '-'}</td>
+                        <td className="table-cell text-right" data-label="Poids">{a.poids ? `${fmt(a.poids)} kg` : '-'}</td>
+                        <td className="table-cell text-right font-mono" data-label="Valeur">{a.valeur ? `${fmt(a.valeur)} F` : '-'}</td>
+                        <td className="table-cell" data-label="Bon Livraison">{a.bonLivraison || '-'}</td>
                       </tr>
                     ))}
                   </tbody>

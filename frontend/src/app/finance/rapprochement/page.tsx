@@ -74,30 +74,30 @@ export default function RapprochementPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
               <col style={{ width: '12%' }} />
-            </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {!compteId ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sélectionnez un compte bancaire</td></tr>
               : loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : rapprochements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun rapprochement en cours</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-[10.5px] text-primary-600 hover:underline">Valider</button>}
+                  </td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date bancaire">{new Date(r.dateBancaire).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date comptable">{new Date(r.dateComptable).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde relevé">{fmt(r.soldeReleve)}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde comptable">{fmt(r.soldeComptable)}</td>
                   <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.ecart) === 0 ? 'text-green-600' : 'text-red-600'}`} data-label="Écart">{fmt(r.ecart)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${r.statut === 'VALIDE' || r.statut === 'CLOTURE' ? 'badge-success' : 'badge-warning'} !text-[10px] !px-1.5 !py-0`}>{r.statut}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-[10.5px] text-primary-600 hover:underline">Valider</button>}
-                  </td>
                 </tr>
               ))}
             </tbody>

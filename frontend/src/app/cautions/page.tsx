@@ -204,7 +204,19 @@ export default function CautionsPage() {
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
               <col style={{ width: '6%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '12%' }} />
+                <col style={{ width: '6%' }} />
               <col style={{ width: '7%' }} />
               <col style={{ width: '7%' }} />
               <col style={{ width: '11%' }} />
@@ -219,6 +231,7 @@ export default function CautionsPage() {
             </colgroup>
             <thead>
               <tr>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Id caution</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Date caution</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">N°Dossier</th>
@@ -231,7 +244,6 @@ export default function CautionsPage() {
                 <th className="table-header !text-[10px] !px-1.5 truncate">Paiement</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">État</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Observation</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -241,20 +253,6 @@ export default function CautionsPage() {
                 <tr><td colSpan={13} className="text-center py-12 text-gray-500">Aucune caution enregistrée</td></tr>
               ) : items.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
-                    {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
-                  </td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
-                  <td className="table-cell !px-1.5" data-label="État"><span className={`badge ${ETAT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[c.statut]}</span></td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
                   <td className="table-cell !px-1" data-label="Actions">
                     <div className="flex gap-0.5 items-center">
                       <button onClick={() => openEdit(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
@@ -287,6 +285,20 @@ export default function CautionsPage() {
                       )}
                     </div>
                   </td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
+                    {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
+                  </td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
+                  <td className="table-cell !px-1.5" data-label="État"><span className={`badge ${ETAT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[c.statut]}</span></td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
                 </tr>
               ))}
             </tbody>

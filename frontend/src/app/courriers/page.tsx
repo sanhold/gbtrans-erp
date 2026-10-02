@@ -166,6 +166,7 @@ export default function CourriersPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '14%' }} />
               <col style={{ width: '9%' }} />
               <col style={{ width: '8%' }} />
               <col style={{ width: '14%' }} />
@@ -173,10 +174,15 @@ export default function CourriersPage() {
               <col style={{ width: '10%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '10%' }} />
+                <col style={{ width: '25%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
               <col style={{ width: '14%' }} />
             </colgroup>
             <thead>
               <tr>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">N°</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">{tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}</th>
@@ -184,7 +190,6 @@ export default function CourriersPage() {
                 <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Priorité</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -194,15 +199,6 @@ export default function CourriersPage() {
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun courrier {tab === 'ENTRANT' ? 'reçu' : 'envoyé'}</td></tr>
               ) : items.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={c.numero}>{c.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label={tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}>{(tab === 'ENTRANT' ? c.expediteur : c.destinataire) || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={c.objet}>{c.objet}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">
-                    {c.dossiers?.[0]?.dossier ? <Link href={`/dossiers/${c.dossiers[0].dossier.id}`} className="text-primary-600 hover:underline">{c.dossiers[0].dossier.numeroPhysique || c.dossiers[0].dossier.numero}</Link> : '-'}
-                  </td>
-                  <td className="table-cell !px-1.5" data-label="Priorité"><span className={`badge ${PRIORITE_BADGE[c.priorite]} !text-[10px] !px-1.5 !py-0 truncate`}>{PRIORITE_LABELS[c.priorite]}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{STATUT_LABELS[c.statut]}</span></td>
                   <td className="table-cell !px-1" data-label="Actions">
                     <div className="flex gap-0.5 items-center">
                       <button onClick={() => openEdit(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
@@ -230,6 +226,15 @@ export default function CourriersPage() {
                       )}
                     </div>
                   </td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={c.numero}>{c.numero}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation)}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label={tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}>{(tab === 'ENTRANT' ? c.expediteur : c.destinataire) || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={c.objet}>{c.objet}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">
+                    {c.dossiers?.[0]?.dossier ? <Link href={`/dossiers/${c.dossiers[0].dossier.id}`} className="text-primary-600 hover:underline">{c.dossiers[0].dossier.numeroPhysique || c.dossiers[0].dossier.numero}</Link> : '-'}
+                  </td>
+                  <td className="table-cell !px-1.5" data-label="Priorité"><span className={`badge ${PRIORITE_BADGE[c.priorite]} !text-[10px] !px-1.5 !py-0 truncate`}>{PRIORITE_LABELS[c.priorite]}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{STATUT_LABELS[c.statut]}</span></td>
                 </tr>
               ))}
             </tbody>

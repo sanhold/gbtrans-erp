@@ -273,22 +273,17 @@ export default function NouveauDossierPage() {
                 <table className="w-full">
                   <thead>
                     <tr>
+                      <th className="table-header">Actions</th>
                       <th className="table-header">Désignation</th>
                       <th className="table-header">Type</th>
                       <th className="table-header">Quantité</th>
                       <th className="table-header">Unité</th>
                       <th className="table-header">Valeur</th>
-                      <th className="table-header">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {articles.map((a, i) => (
                       <tr key={i} className="table-row">
-                        <td className="table-cell font-medium" data-label="Désignation">{a.designation}</td>
-                        <td className="table-cell" data-label="Type">{a.type || '-'}</td>
-                        <td className="table-cell" data-label="Quantité">{a.quantite || 1}</td>
-                        <td className="table-cell" data-label="Unité">{a.unite || '-'}</td>
-                        <td className="table-cell text-right font-mono" data-label="Valeur">{a.valeur ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(a.valeur)) : '-'}</td>
                         <td className="table-cell" data-label="Actions">
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => openEditArticleModal(i)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
@@ -299,6 +294,11 @@ export default function NouveauDossierPage() {
                             </button>
                           </div>
                         </td>
+                        <td className="table-cell font-medium" data-label="Désignation">{a.designation}</td>
+                        <td className="table-cell" data-label="Type">{a.type || '-'}</td>
+                        <td className="table-cell" data-label="Quantité">{a.quantite || 1}</td>
+                        <td className="table-cell" data-label="Unité">{a.unite || '-'}</td>
+                        <td className="table-cell text-right font-mono" data-label="Valeur">{a.valeur ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(a.valeur)) : '-'}</td>
                       </tr>
                     ))}
                   </tbody>

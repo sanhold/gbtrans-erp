@@ -83,6 +83,7 @@ export default function ProformasPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '8%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '15%' }} />
               <col style={{ width: '9%' }} />
@@ -92,30 +93,25 @@ export default function ProformasPage() {
               <col style={{ width: '9%' }} />
               <col style={{ width: '7%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
             </colgroup>
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Proforma</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate">Titre</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total HT</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">N° Proforma</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Titre</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total HT</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={10} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
               : proformas.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
               : proformas.map(p => (
                 <tr key={p.id} className="table-row cursor-pointer" onClick={() => router.push(`/proformas/${p.id}`)}>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Proforma" title={p.numero}>{p.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale}>{p.client?.raisonSociale}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numero || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(p.montantTTC)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.dateProforma).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut}</span></td>
                   <td className="table-cell !px-1" data-label="Actions">
                     <div className="flex items-center gap-0.5">
                       <button onClick={(e) => { e.stopPropagation(); handleDownload(p.id); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Télécharger PDF">
@@ -133,6 +129,15 @@ export default function ProformasPage() {
                       )}
                     </div>
                   </td>
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Proforma" title={p.numero}>{p.numero}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale}>{p.client?.raisonSociale}</td>
+                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numero || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>
+                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(p.montantTTC)}</td>
+                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.dateProforma).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut}</span></td>
                 </tr>
               ))}
             </tbody>

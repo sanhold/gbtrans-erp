@@ -51,27 +51,27 @@ export default function CaissesPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '8%' }} />
               <col style={{ width: '14%' }} />
               <col style={{ width: '26%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '16%' }} />
               <col style={{ width: '16%' }} />
               <col style={{ width: '10%' }} />
-              <col style={{ width: '8%' }} />
-            </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Plafond</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate"></th></tr></thead>
+              </colgroup>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Plafond</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
               : caisses.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucune caisse. Créez-en une.</td></tr>
               : paged.map(c => (
                 <tr key={c.id} className="table-row">
+                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => toggleActif(c)} className="text-[10.5px] text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Plafond">{canSeeMontants ? (c.plafond ? fmt(c.plafond) : '-') : MONTANT_MASQUE}</td>
                   <td className="table-cell !px-1.5" data-label="Statut">{c.actif ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Actif</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Inactif</span>}</td>
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => toggleActif(c)} className="text-[10.5px] text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
                 </tr>
               ))}
             </tbody>

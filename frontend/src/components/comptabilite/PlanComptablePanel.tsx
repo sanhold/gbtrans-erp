@@ -150,6 +150,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '18%' }} />
               <col style={{ width: '9%' }} />
               <col style={{ width: '26%' }} />
               <col style={{ width: '6%' }} />
@@ -157,9 +158,9 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
               <col style={{ width: '10%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '9%' }} />
-              <col style={{ width: '18%' }} />
-            </colgroup>
+              </colgroup>
             <thead><tr>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Numéro</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th>
               <th className="table-header !text-[10px] !px-1.5 truncate text-center">Classe</th>
@@ -167,7 +168,6 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
               <th className="table-header !text-[10px] !px-1.5 truncate">Nature</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Sens</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -176,22 +176,6 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun compte</td></tr>
               ) : filtered.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-mono font-semibold !px-1.5 !text-[11px]" data-label="Numéro">
-                    <span className="inline-flex items-center gap-1">
-                      {c.verrouille && <svg className="w-3 h-3 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 116 0v3H9z" /></svg>}
-                      {c.numero}
-                    </span>
-                  </td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] text-center" data-label="Classe">{c.classe}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Type">{c.type}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Nature">{c.nature}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Sens">{c.sens}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut">
-                    {lectureSeule
-                      ? <span className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</span>
-                      : <button onClick={() => handleToggleActif(c)} className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</button>}
-                  </td>
                   <td className="table-cell !px-1" data-label="Actions">
                     {!lectureSeule && (
                       <div className="flex gap-0.5">
@@ -210,6 +194,22 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
                         </button>
                       </div>
                     )}
+                  </td>
+                  <td className="table-cell font-mono font-semibold !px-1.5 !text-[11px]" data-label="Numéro">
+                    <span className="inline-flex items-center gap-1">
+                      {c.verrouille && <svg className="w-3 h-3 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 116 0v3H9z" /></svg>}
+                      {c.numero}
+                    </span>
+                  </td>
+                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
+                  <td className="table-cell !px-1.5 !text-[11px] text-center" data-label="Classe">{c.classe}</td>
+                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Type">{c.type}</td>
+                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Nature">{c.nature}</td>
+                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Sens">{c.sens}</td>
+                  <td className="table-cell !px-1.5" data-label="Statut">
+                    {lectureSeule
+                      ? <span className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</span>
+                      : <button onClick={() => handleToggleActif(c)} className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</button>}
                   </td>
                 </tr>
               ))}

@@ -110,7 +110,14 @@ export default function EmployesPage() {
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
               <col style={{ width: '17%' }} />
+              <col style={{ width: '19%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '9%' }} />
+                <col style={{ width: '17%' }} />
               <col style={{ width: '19%' }} />
               <col style={{ width: '11%' }} />
               <col style={{ width: '11%' }} />
@@ -119,9 +126,14 @@ export default function EmployesPage() {
               <col style={{ width: '11%' }} />
             </colgroup>
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Matricule</th><th className="table-header !text-[10px] !px-1.5 truncate">Nom</th><th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Contrat</th><th className="table-header !text-[10px] !px-1.5 truncate">Embauche</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Salaire base</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Matricule</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Nom</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Contrat</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Embauche</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Salaire base</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -130,6 +142,12 @@ export default function EmployesPage() {
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun employé</td></tr>
               ) : filtered.map(e => (
                 <tr key={e.id} className="table-row">
+                  <td className="table-cell !px-1.5" data-label="Actions">
+                    <div className="flex gap-2 text-[10.5px]">
+                      <button onClick={() => openEdit(e)} className="text-primary-500 hover:underline">Modifier</button>
+                      <button onClick={() => handleToggleStatut(e)} className={e.actif ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline'}>{e.actif ? 'Désactiver' : 'Réactiver'}</button>
+                    </div>
+                  </td>
                   <td className="table-cell font-mono font-medium !px-1.5 !text-[10.5px] truncate" data-label="Matricule">{e.matricule}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Nom">{e.prenom} {e.nom}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={`${e.poste}${e.departement ? ` — ${e.departement}` : ''}`}>{e.poste}{e.departement ? ` — ${e.departement}` : ''}</td>
@@ -137,12 +155,6 @@ export default function EmployesPage() {
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Embauche">{new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Salaire de base">{canSeeMontants ? fmt(e.salaireBase) : '•••••••'}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${e.actif ? 'badge-success' : 'badge-danger'} !text-[10px] !px-1.5 !py-0`}>{e.actif ? 'Actif' : 'Désactivé'}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <div className="flex gap-2 text-[10.5px]">
-                      <button onClick={() => openEdit(e)} className="text-primary-500 hover:underline">Modifier</button>
-                      <button onClick={() => handleToggleStatut(e)} className={e.actif ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline'}>{e.actif ? 'Désactiver' : 'Réactiver'}</button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>

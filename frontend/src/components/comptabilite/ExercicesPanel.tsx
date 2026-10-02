@@ -83,7 +83,7 @@ export default function ExercicesPanel() {
 
         <div className="table-container !shadow-none !border-0">
           <table className="w-full">
-            <thead><tr><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header text-right">Écritures</th><th className="table-header">Statut</th><th className="table-header">Actions</th></tr></thead>
+            <thead><tr><th className="table-header">Actions</th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header text-right">Écritures</th><th className="table-header">Statut</th></tr></thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={7} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
@@ -91,6 +91,9 @@ export default function ExercicesPanel() {
                 <tr><td colSpan={7} className="text-center py-8 text-gray-500">Aucun exercice comptable</td></tr>
               ) : exercices.map(ex => (
                 <tr className="table-row" key={ex.id}>
+                  <td className="table-cell" data-label="Actions">
+                    <button onClick={() => toggleCloture(ex)} disabled={busyId === ex.id} className="text-xs text-gray-600 hover:underline disabled:opacity-50">{ex.cloture ? 'Rouvrir' : 'Clôturer'}</button>
+                  </td>
                   <td className="table-cell font-medium" data-label="Code">{ex.code}</td>
                   <td className="table-cell" data-label="Libellé">{ex.libelle}</td>
                   <td className="table-cell" data-label="Début">{new Date(ex.dateDebut).toLocaleDateString('fr-FR')}</td>
@@ -100,9 +103,6 @@ export default function ExercicesPanel() {
                     {ex.nbNonValidees > 0 && <span className="ml-1 text-[10px] text-amber-600" title="Écritures non validées">({ex.nbNonValidees} à valider)</span>}
                   </td>
                   <td className="table-cell" data-label="Statut"><span className={`badge ${ex.cloture ? 'badge-gray' : 'badge-success'}`}>{ex.cloture ? 'Clôturé' : 'Actif'}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    <button onClick={() => toggleCloture(ex)} disabled={busyId === ex.id} className="text-xs text-gray-600 hover:underline disabled:opacity-50">{ex.cloture ? 'Rouvrir' : 'Clôturer'}</button>
-                  </td>
                 </tr>
               ))}
             </tbody>

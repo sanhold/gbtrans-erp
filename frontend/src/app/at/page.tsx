@@ -252,6 +252,7 @@ export default function ATPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '8%' }} />
               <col style={{ width: '7%' }} />
               <col style={{ width: '5%' }} />
               <col style={{ width: '6%' }} />
@@ -268,10 +269,10 @@ export default function ATPage() {
               <col style={{ width: '5%' }} />
               <col style={{ width: '6%' }} />
               <col style={{ width: '5%' }} />
-              <col style={{ width: '8%' }} />
-            </colgroup>
+              </colgroup>
             <thead>
               <tr>
+                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Id. AT</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Date Créat.</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th>
@@ -288,7 +289,6 @@ export default function ATPage() {
                 <th className="table-header !text-[10px] !px-1.5 truncate">Restant</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate text-right">Garantie</th>
                 <th className="table-header !text-[10px] !px-1.5 truncate">Etat</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -301,24 +301,6 @@ export default function ATPage() {
                 const rowClass = at.etat === 'EXPIRE' ? 'text-red-600' : enAlerte ? 'text-amber-600' : '';
                 return (
                   <tr key={at.id} className={`table-row ${rowClass}`}>
-                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° Dossier">
-                      {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numero}</Link> : '-'}
-                    </td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
-                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
-                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
-                    <td className={`table-cell text-center font-semibold !text-[10.5px] !px-1 truncate ${rowClass}`} data-label="Temps Restant">{at.joursRestants}j</td>
-                    <td className="table-cell text-right font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
-                    <td className="table-cell !px-1.5" data-label="Etat"><span className={`badge ${ETAT_BADGE[at.etat]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[at.etat]}</span></td>
                     <td className="table-cell !px-1" data-label="Actions">
                       <div className="flex gap-0.5">
                         <button onClick={() => openEdit(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
@@ -339,6 +321,24 @@ export default function ATPage() {
                         )}
                       </div>
                     </td>
+                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° Dossier">
+                      {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numero}</Link> : '-'}
+                    </td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
+                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
+                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
+                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
+                    <td className={`table-cell text-center font-semibold !text-[10.5px] !px-1 truncate ${rowClass}`} data-label="Temps Restant">{at.joursRestants}j</td>
+                    <td className="table-cell text-right font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
+                    <td className="table-cell !px-1.5" data-label="Etat"><span className={`badge ${ETAT_BADGE[at.etat]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[at.etat]}</span></td>
                   </tr>
                 );
               })}
