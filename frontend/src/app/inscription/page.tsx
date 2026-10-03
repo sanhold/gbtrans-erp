@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { saasApi } from '@/lib/api';
+import PlansGrid from '@/components/marketing/PlansGrid';
 import toast from 'react-hot-toast';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
@@ -12,9 +13,17 @@ function slugify(v: string) {
 }
 
 export default function InscriptionPage() {
+  return (
+    <Suspense fallback={null}>
+      <InscriptionForm />
+    </Suspense>
+  );
+}
+
+function InscriptionForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [plans, setPlans] = useState<any[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(true);
   const [planCode, setPlanCode] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -25,12 +34,14 @@ export default function InscriptionPage() {
   const [dispoCheck, setDispoCheck] = useState<{ checking: boolean; disponible: boolean | null; raison?: string }>({ checking: false, disponible: null });
 
   useEffect(() => {
+    const demande = searchParams.get('plan');
     saasApi.plans().then(r => {
       const data = r.data.data || [];
       setPlans(data);
-      const defaut = data.find((p: any) => p.misEnAvant) || data[0];
+      const defaut = (demande && data.find((p: any) => p.code === demande)) || data.find((p: any) => p.misEnAvant) || data[0];
       if (defaut) setPlanCode(defaut.code);
-    }).catch(() => toast.error('Impossible de charger les formules')).finally(() => setLoadingPlans(false));
+    }).catch(() => toast.error('Impossible de charger les formules'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -90,32 +101,8 @@ export default function InscriptionPage() {
           <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Essai gratuit, sans engagement — annulable à tout moment</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-          {loadingPlans ? (
-            <div className="col-span-3 text-center py-8 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
-          ) : plans.map(p => (
-            <button
-              key={p.code}
-              type="button"
-              onClick={() => setPlanCode(p.code)}
-              className={`text-left rounded-2xl p-5 border-2 transition-all bg-white dark:bg-surface-800 ${planCode === p.code ? 'border-primary-500 shadow-elevated' : 'border-gray-200 dark:border-surface-700 hover:border-gray-300'}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold text-lg text-gray-900 dark:text-white">{p.nom}</h3>
-                {p.misEnAvant && <span className="badge badge-info !text-[10px]">Recommandé</span>}
-              </div>
-              <p className="text-sm text-gray-500 mb-3">{p.description}</p>
-              <div className="text-2xl font-extrabold text-gray-900 dark:text-white">{fmt(p.prixMensuel)} <span className="text-sm font-medium text-gray-400">FCFA / mois</span></div>
-              <ul className="mt-3 space-y-1.5">
-                {(p.fonctionnalites || []).map((f: string, i: number) => (
-                  <li key={i} className="text-xs text-gray-600 dark:text-gray-300 flex items-start gap-1.5">
-                    <svg className="w-3.5 h-3.5 text-accent-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </button>
-          ))}
+        <div className="mb-8">
+          <PlansGrid selectedCode={planCode} onSelect={setPlanCode} compact />
         </div>
 
         <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-8 max-w-2xl mx-auto">
