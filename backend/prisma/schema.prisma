@@ -198,14 +198,16 @@ model PaiementAbonnement {
 
 /// Administrateurs de la plateforme (vous), distincts des comptes Utilisateur de chaque societe cliente.
 model PlatformAdmin {
-  id         String   @id @default(uuid())
-  email      String   @unique @db.VarChar(200)
-  motDePasse String   @db.VarChar(255)
-  nom        String   @db.VarChar(100)
-  prenom     String   @db.VarChar(100)
-  actif      Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid())
+  email       String   @unique @db.VarChar(200)
+  motDePasse  String   @db.VarChar(255)
+  nom         String   @db.VarChar(100)
+  prenom      String   @db.VarChar(100)
+  /// false = lecture seule (ex: compte de demonstration) : ne peut pas modifier abonnements ou formules.
+  superAdmin  Boolean  @default(true)
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("platform_admins")
 }

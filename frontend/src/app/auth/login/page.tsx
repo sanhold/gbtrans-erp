@@ -246,6 +246,11 @@ export default function LoginPage() {
           <p className="text-center text-xs text-gray-400 mt-6">
             GBTRANS ERP v1.0.0 - Tous droits réservés
           </p>
+          <div className="text-center mt-2">
+            <a href="/admin/login" className="text-[11px] text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500">
+              Administration
+            </a>
+          </div>
         </div>
       </div>
     </div>

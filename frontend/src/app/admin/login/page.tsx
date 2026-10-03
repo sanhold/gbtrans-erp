@@ -11,6 +11,11 @@ export default function AdminLoginPage() {
   const [motDePasse, setMotDePasse] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const remplirCompteDemo = () => {
+    setEmail('demo-admin@gbtrans.ci');
+    setMotDePasse('Demo@2026!');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -47,6 +52,14 @@ export default function AdminLoginPage() {
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={remplirCompteDemo}
+          className="mt-4 w-full text-center text-xs text-white/40 hover:text-white/70 transition-colors"
+        >
+          Remplir le compte de démonstration (tests)
+        </button>
       </div>
     </div>
   );

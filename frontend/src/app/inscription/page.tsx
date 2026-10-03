@@ -9,7 +9,16 @@ import toast from 'react-hot-toast';
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 function slugify(v: string) {
-  return v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+  return v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+}
+
+// Les sous-domaines ne sont pas encore activés (pas de domaine propre configuré) : le champ
+// est masqué et une valeur technique est générée en coulisses, avec un suffixe aléatoire pour
+// limiter le risque de collision puisqu'il n'y a plus de vérification de disponibilité visible.
+function genererSousDomaineTechnique(raisonSociale: string) {
+  const base = slugify(raisonSociale) || 'societe';
+  const suffixe = Math.random().toString(36).slice(2, 8);
+  return `${base}-${suffixe}`.slice(0, 30);
 }
 
 export default function InscriptionPage() {
@@ -28,10 +37,8 @@ function InscriptionForm() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    raisonSociale: '', sousDomaine: '', nom: '', prenom: '', email: '', telephone: '', motDePasse: '', confirmation: '',
+    raisonSociale: '', nom: '', prenom: '', email: '', telephone: '', motDePasse: '', confirmation: '',
   });
-  const [sousDomaineEdited, setSousDomaineEdited] = useState(false);
-  const [dispoCheck, setDispoCheck] = useState<{ checking: boolean; disponible: boolean | null; raison?: string }>({ checking: false, disponible: null });
 
   useEffect(() => {
     const demande = searchParams.get('plan');
@@ -44,29 +51,10 @@ function InscriptionForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (sousDomaineEdited) return;
-    setForm(prev => ({ ...prev, sousDomaine: slugify(prev.raisonSociale) }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.raisonSociale, sousDomaineEdited]);
-
-  useEffect(() => {
-    const slug = slugify(form.sousDomaine);
-    if (slug.length < 3) { setDispoCheck({ checking: false, disponible: null }); return; }
-    setDispoCheck({ checking: true, disponible: null });
-    const t = setTimeout(() => {
-      saasApi.sousDomaineDisponible(slug)
-        .then(r => setDispoCheck({ checking: false, disponible: r.data.data.disponible, raison: r.data.data.raison }))
-        .catch(() => setDispoCheck({ checking: false, disponible: null }));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [form.sousDomaine]);
-
   const planChoisi = useMemo(() => plans.find(p => p.code === planCode), [plans, planCode]);
 
   const updateField = (field: string, value: string) => {
-    if (field === 'sousDomaine') setSousDomaineEdited(true);
-    setForm(prev => ({ ...prev, [field]: field === 'sousDomaine' ? slugify(value) : value }));
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,14 +62,13 @@ function InscriptionForm() {
     if (!planCode) { toast.error('Choisissez une formule'); return; }
     if (form.motDePasse.length < 8) { toast.error('Le mot de passe doit comporter au moins 8 caractères'); return; }
     if (form.motDePasse !== form.confirmation) { toast.error('Les mots de passe ne correspondent pas'); return; }
-    if (dispoCheck.disponible === false) { toast.error('Ce sous-domaine est déjà pris'); return; }
 
     setSaving(true);
     try {
       const res = await saasApi.inscription({
         raisonSociale: form.raisonSociale, email: form.email, motDePasse: form.motDePasse,
         nom: form.nom, prenom: form.prenom, telephone: form.telephone || undefined,
-        sousDomaine: form.sousDomaine, planCode,
+        sousDomaine: genererSousDomaineTechnique(form.raisonSociale), planCode,
       });
       toast.success(res.data.message, { duration: 6000 });
       router.push('/auth/login');
@@ -110,19 +97,6 @@ function InscriptionForm() {
             <div>
               <label className="label">Nom de votre entreprise *</label>
               <input type="text" value={form.raisonSociale} onChange={e => updateField('raisonSociale', e.target.value)} className="input-field" placeholder="Ex: Transit Express SARL" required />
-            </div>
-
-            <div>
-              <label className="label">Sous-domaine *</label>
-              <div className="flex items-center gap-2">
-                <input type="text" value={form.sousDomaine} onChange={e => updateField('sousDomaine', e.target.value)} className="input-field flex-1" placeholder="transit-express" required minLength={3} />
-                <span className="text-sm text-gray-400 whitespace-nowrap">.gbtrans.app</span>
-              </div>
-              {form.sousDomaine.length >= 3 && (
-                <p className={`text-xs mt-1 ${dispoCheck.checking ? 'text-gray-400' : dispoCheck.disponible ? 'text-accent-600' : 'text-red-500'}`}>
-                  {dispoCheck.checking ? 'Vérification...' : dispoCheck.disponible ? '✓ Disponible' : dispoCheck.raison || 'Déjà utilisé'}
-                </p>
-              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

@@ -26,6 +26,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
+      {admin && !admin.superAdmin && (
+        <div className="bg-amber-500 text-amber-950 text-center text-xs font-semibold py-1.5">
+          Compte de démonstration — lecture seule, aucune modification possible
+        </div>
+      )}
       <header className="bg-surface-900 text-white">
         <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
