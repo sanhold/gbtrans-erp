@@ -18,7 +18,7 @@ app.use(cors({
   origin: config.cors.origin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Slug'],
 }));
 
 // Rate Limiting

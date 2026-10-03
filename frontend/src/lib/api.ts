@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getTenantSlug } from './tenant';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -15,6 +16,10 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('gbtrans_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const tenant = getTenantSlug();
+    if (tenant) {
+      config.headers['X-Tenant-Slug'] = tenant;
     }
   }
   return config;
@@ -347,4 +352,16 @@ export const rhApi = {
       api.patch(`/rh/bulletins/${id}/payer`, { modePaiement, datePaiement }),
     delete: (id: string) => api.delete(`/rh/bulletins/${id}`),
   },
+};
+
+// SaaS : formules, inscription, abonnement (hors authentification applicative)
+export const saasApi = {
+  plans: () => api.get('/saas/plans'),
+  sousDomaineDisponible: (valeur: string) => api.get('/saas/sous-domaine-disponible', { params: { valeur } }),
+  inscription: (data: { raisonSociale: string; email: string; motDePasse: string; nom: string; prenom: string; telephone?: string; sousDomaine: string; planCode: string }) =>
+    api.post('/saas/inscription', data),
+  abonnement: () => api.get('/saas/abonnement'),
+  correspondants: () => api.get('/saas/correspondants'),
+  payerAbonnement: (correspondant: string, telephone: string) => api.post('/saas/abonnement/paiement', { correspondant, telephone }),
+  statutPaiement: (depositId: string) => api.get(`/saas/paiements/${depositId}/statut`),
 };

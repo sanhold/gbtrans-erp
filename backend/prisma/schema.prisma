@@ -43,9 +43,13 @@ model Societe {
   smtpPass       String?  @db.VarChar(200)
   smtpSecure     Boolean  @default(true)
   actif          Boolean  @default(true)
+  // --- SaaS : identification du tenant et abonnement ---
+  sousDomaine    String?  @unique @db.VarChar(63)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  abonnement            Abonnement?
+  paiementsAbonnement   PaiementAbonnement[]
   agences               Agence[]
   utilisateurs          Utilisateur[]
   exercices             Exercice[]
@@ -97,6 +101,113 @@ model Agence {
 
   @@unique([societeId, code])
   @@map("agences")
+}
+
+// ============================================================================
+// SAAS : FORMULES D'ABONNEMENT, ABONNEMENTS, PAIEMENTS (PawaPay)
+// ============================================================================
+
+model Plan {
+  id                 String   @id @default(uuid())
+  code               String   @unique @db.VarChar(30)
+  nom                String   @db.VarChar(100)
+  description        String?  @db.Text
+  prixMensuel        Decimal  @db.Decimal(12, 2)
+  prixAnnuel         Decimal? @db.Decimal(12, 2)
+  devise             String   @default("XOF") @db.VarChar(10)
+  maxUtilisateurs    Int? // null = illimité
+  maxDossiersParMois Int? // null = illimité
+  fonctionnalites    Json? // liste de points affichés sur la grille tarifaire
+  essaiJours         Int      @default(14)
+  misEnAvant         Boolean  @default(false)
+  ordre              Int      @default(0)
+  actif              Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  abonnements Abonnement[]
+
+  @@map("plans")
+}
+
+enum StatutAbonnement {
+  ESSAI
+  ACTIF
+  IMPAYE
+  SUSPENDU
+  ANNULE
+  EXPIRE
+}
+
+enum Periodicite {
+  MENSUEL
+  ANNUEL
+}
+
+model Abonnement {
+  id                   String           @id @default(uuid())
+  societeId            String           @unique
+  planId               String
+  statut               StatutAbonnement @default(ESSAI)
+  periodicite          Periodicite      @default(MENSUEL)
+  dateDebut            DateTime         @default(now())
+  dateFinEssai         DateTime?
+  dateProchainPaiement DateTime?
+  dateFin              DateTime?
+  renouvellementAuto   Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  societe   Societe              @relation(fields: [societeId], references: [id])
+  plan      Plan                 @relation(fields: [planId], references: [id])
+  paiements PaiementAbonnement[]
+
+  @@map("abonnements")
+}
+
+enum StatutPaiementAbonnement {
+  EN_ATTENTE
+  REUSSI
+  ECHEC
+  ANNULE
+}
+
+model PaiementAbonnement {
+  id               String                   @id @default(uuid())
+  abonnementId     String
+  societeId        String
+  montant          Decimal                  @db.Decimal(12, 2)
+  devise           String                   @default("XOF") @db.VarChar(10)
+  statut           StatutPaiementAbonnement @default(EN_ATTENTE)
+  fournisseur      String                   @default("PAWAPAY") @db.VarChar(30)
+  referenceExterne String?                  @db.VarChar(100) // depositId PawaPay
+  moyenPaiement    String?                  @db.VarChar(30) // ex: MTN_MOMO_CIV, ORANGE_CIV, MOOV_CIV, WAVE_CIV
+  numeroTelephone  String?                  @db.VarChar(30)
+  payloadBrut      Json?
+  datePaiement     DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  abonnement Abonnement @relation(fields: [abonnementId], references: [id])
+  societe    Societe    @relation(fields: [societeId], references: [id])
+
+  @@index([societeId])
+  @@index([referenceExterne])
+  @@map("paiements_abonnements")
+}
+
+/// Administrateurs de la plateforme (vous), distincts des comptes Utilisateur de chaque societe cliente.
+model PlatformAdmin {
+  id         String   @id @default(uuid())
+  email      String   @unique @db.VarChar(200)
+  motDePasse String   @db.VarChar(255)
+  nom        String   @db.VarChar(100)
+  prenom     String   @db.VarChar(100)
+  actif      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("platform_admins")
 }
 
 // ============================================================================

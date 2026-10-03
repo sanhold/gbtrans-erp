@@ -30,6 +30,8 @@ import comptesClientsRoutes from '../modules/finance/comptes-clients.routes';
 import comptesFournisseursRoutes from '../modules/finance/comptes-fournisseurs.routes';
 import dotationsRoutes from '../modules/finance/dotations.routes';
 import documentsRoutes from '../modules/documents/documents.routes';
+import saasRoutes from '../modules/saas/saas.routes';
+import platformRoutes from '../modules/saas/platform.routes';
 
 const router = Router();
 
@@ -64,6 +66,8 @@ router.use('/finance/comptes-clients', comptesClientsRoutes);
 router.use('/finance/comptes-fournisseurs', comptesFournisseursRoutes);
 router.use('/finance/dotations', dotationsRoutes);
 router.use('/documents', documentsRoutes);
+router.use('/saas', saasRoutes);
+router.use('/platform', platformRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({
