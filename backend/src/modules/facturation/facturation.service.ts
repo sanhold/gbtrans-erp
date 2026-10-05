@@ -232,6 +232,7 @@ export class FacturationService {
     const facture = await prisma.facture.findFirst({ where: { id: factureId, societeId }, include: { client: true } });
     if (!facture) throw new Error('Facture non trouvée');
 
+    if (!(montant > 0)) throw new Error('Montant invalide');
     const resteAPayer = Number(facture.resteAPayer);
     if (montant > resteAPayer) throw new Error('Le montant dépasse le reste à payer');
 

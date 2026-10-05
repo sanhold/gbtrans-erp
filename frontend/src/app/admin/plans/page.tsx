@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
-import { platformApi } from '@/lib/platformApi';
+import { platformApi, platformAuth } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
 
 export default function AdminPlansPage() {
@@ -12,6 +12,9 @@ export default function AdminPlansPage() {
   const [form, setForm] = useState<any>({});
   const [featuresText, setFeaturesText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => { setIsSuperAdmin(!!platformAuth.getAdmin()?.superAdmin); }, []);
 
   const load = () => {
     setLoading(true);
@@ -73,7 +76,14 @@ export default function AdminPlansPage() {
                 <p className="text-xs text-gray-400 mb-3">
                   {p.maxUtilisateurs ?? 'Illimité'} utilisateur(s) · {p.maxDossiersParMois ?? 'Illimité'} dossier(s)/mois · {p.essaiJours}j d&apos;essai
                 </p>
-                <button onClick={() => openEdit(p)} className="btn-secondary w-full text-sm">Modifier</button>
+                <button
+                  onClick={() => openEdit(p)}
+                  disabled={!isSuperAdmin}
+                  title={!isSuperAdmin ? 'Compte de démonstration : lecture seule' : undefined}
+                  className="btn-secondary w-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Modifier
+                </button>
               </div>
             ))}
           </div>

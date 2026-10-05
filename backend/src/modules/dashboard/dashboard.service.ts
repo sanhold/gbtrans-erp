@@ -52,6 +52,7 @@ export class DashboardService {
         where: {
           statut: 'VALIDE',
           datePaiement: { gte: dateDebutAnnee, lt: dateFinAnnee },
+          OR: [{ client: { societeId } }, { createur: { societeId } }],
         },
         _sum: { montant: true },
       }),
@@ -68,13 +69,14 @@ export class DashboardService {
           dateFacture: { gte: dateDebutAnnee, lt: dateFinAnnee },
         },
       }),
-      prisma.admissionTemporaire.count({ where: { statut: 'ACTIVE' } }),
-      prisma.admissionTemporaire.count({ where: { statut: 'EXPIREE' } }),
+      prisma.admissionTemporaire.count({ where: { societeId, statut: 'ACTIVE' } }),
+      prisma.admissionTemporaire.count({ where: { societeId, statut: 'EXPIREE' } }),
       prisma.caution.count({ where: { societeId, statut: { not: 'PAYEE' } } }),
       prisma.courrier.count(),
-      prisma.document.count({ where: { archive: true } }),
+      prisma.document.count({ where: { societeId, archive: true } }),
       prisma.depense.aggregate({
         where: {
+          societeId,
           dateDepense: { gte: dateDebutAnnee, lt: dateFinAnnee },
           statut: 'VALIDE',
         },
@@ -193,6 +195,7 @@ export class DashboardService {
     const [atExpirationProche, cautionsCourrierEnAttente, facturesEnRetard] = await Promise.all([
       prisma.admissionTemporaire.findMany({
         where: {
+          societeId,
           statut: 'ACTIVE',
           dateExpiration: { lte: dans30jours, gte: maintenant },
         },

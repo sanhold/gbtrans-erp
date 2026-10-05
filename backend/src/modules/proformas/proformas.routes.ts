@@ -32,6 +32,8 @@ router.post('/catalogue', async (req: AuthRequest, res: Response) => {
 
 router.put('/catalogue/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const existing = await prisma.prestationCatalogue.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res); return; }
     const p = await prisma.prestationCatalogue.update({ where: { id: req.params.id }, data: req.body });
     ApiResponse.success(res, p, 'Prestation modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
@@ -39,6 +41,8 @@ router.put('/catalogue/:id', async (req: AuthRequest, res: Response) => {
 
 router.delete('/catalogue/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const existing = await prisma.prestationCatalogue.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res); return; }
     await prisma.prestationCatalogue.delete({ where: { id: req.params.id } });
     ApiResponse.success(res, null, 'Prestation supprimée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
@@ -102,7 +106,7 @@ router.get('/en-attente', async (req: AuthRequest, res: Response) => {
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.proforma.findFirst({
-      where: { id: req.params.id },
+      where: { id: req.params.id, client: { societeId: req.user!.societeId } },
       include: {
         client: true,
         dossier: {
@@ -201,6 +205,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const existing = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
+    if (!existing) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
+
     const { titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes, afficherSignature } = req.body;
 
     if (lignes) {
@@ -246,7 +253,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 
 router.patch('/:id/valider', async (req: AuthRequest, res: Response) => {
   try {
-    const proforma = await prisma.proforma.findFirst({ where: { id: req.params.id } });
+    const proforma = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!proforma) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
     if (proforma.factureId) { ApiResponse.badRequest(res, 'Proforma déjà facturée'); return; }
     if (proforma.statut !== 'BROUILLON') { ApiResponse.badRequest(res, 'Seule une proforma en brouillon peut être validée'); return; }
@@ -267,7 +274,7 @@ router.patch('/:id/valider', async (req: AuthRequest, res: Response) => {
 router.post('/:id/transformer-facture', async (req: AuthRequest, res: Response) => {
   try {
     const proforma = await prisma.proforma.findFirst({
-      where: { id: req.params.id },
+      where: { id: req.params.id, client: { societeId: req.user!.societeId } },
       include: { lignes: { orderBy: { ordre: 'asc' } }, client: true },
     });
 
@@ -340,7 +347,8 @@ router.post('/:id/transformer-facture', async (req: AuthRequest, res: Response) 
 
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const p = await prisma.proforma.findFirst({ where: { id: req.params.id } });
+    const p = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
+    if (!p) { ApiResponse.notFound(res); return; }
     if (p?.factureId) { ApiResponse.badRequest(res, 'Impossible de supprimer: déjà transformée en facture'); return; }
     await prisma.proforma.delete({ where: { id: req.params.id } });
     ApiResponse.success(res, null, 'Proforma supprimée');

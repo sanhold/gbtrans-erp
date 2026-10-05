@@ -64,6 +64,14 @@ router.put('/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, 
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
 
     const { nom, prenom, telephone, profilId, agenceId } = req.body;
+
+    if (profilId !== undefined && profilId && !req.user!.estAdmin) {
+      const profilCible = await prisma.profil.findUnique({ where: { id: profilId }, select: { estAdmin: true } });
+      if (profilCible?.estAdmin) {
+        ApiResponse.forbidden(res, "Seul un administrateur peut attribuer un profil administrateur"); return;
+      }
+    }
+
     const utilisateur = await prisma.utilisateur.update({
       where: { id: req.params.id },
       data: {

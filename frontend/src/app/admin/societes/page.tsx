@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
-import { platformApi } from '@/lib/platformApi';
+import { platformApi, platformAuth } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
 
 const STATUT_BADGE: Record<string, string> = {
@@ -21,6 +21,9 @@ export default function AdminSocietesPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => { setIsSuperAdmin(!!platformAuth.getAdmin()?.superAdmin); }, []);
 
   const load = () => {
     setLoading(true);
@@ -95,9 +98,10 @@ export default function AdminSocietesPage() {
                     {s.abonnement && (
                       <select
                         value={s.abonnement.statut}
-                        disabled={busyId === s.id}
+                        disabled={busyId === s.id || !isSuperAdmin}
+                        title={!isSuperAdmin ? 'Compte de démonstration : lecture seule' : undefined}
                         onChange={e => changerStatut(s.id, e.target.value)}
-                        className="input-field !py-1 !text-xs !w-auto"
+                        className="input-field !py-1 !text-xs !w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {STATUTS.map(st => <option key={st} value={st}>{STATUT_LABEL[st]}</option>)}
                       </select>

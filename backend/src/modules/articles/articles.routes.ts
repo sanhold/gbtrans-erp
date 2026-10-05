@@ -15,6 +15,8 @@ router.use(authenticate, requireSociete);
 // Liste articles d'un dossier
 router.get('/dossier/:dossierId', async (req: AuthRequest, res: Response) => {
   try {
+    const dossier = await prisma.dossier.findFirst({ where: { id: req.params.dossierId, societeId: req.user!.societeId } });
+    if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
     const articles = await prisma.article.findMany({
       where: { dossierId: req.params.dossierId },
       orderBy: { numero: 'asc' },

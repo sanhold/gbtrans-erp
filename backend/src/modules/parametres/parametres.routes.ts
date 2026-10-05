@@ -13,7 +13,10 @@ router.get('/societe', authorize('PARAMETRES:LIRE'), async (req: AuthRequest, re
   try {
     const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId } });
     if (!societe) { ApiResponse.notFound(res, 'Société introuvable'); return; }
-    ApiResponse.success(res, societe);
+    // smtpPass ne doit jamais transiter en clair par l'API, meme vers la propre societe
+    // (le formulaire ne le pre-remplit jamais — cf. frontend parametres/page.tsx).
+    const { smtpPass, ...safe } = societe;
+    ApiResponse.success(res, { ...safe, smtpConfigure: !!smtpPass });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 

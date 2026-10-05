@@ -39,13 +39,18 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const p = await prisma.prospect.update({ where: { id: req.params.id }, data: req.body });
+    const existing = await prisma.prospect.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res); return; }
+    const { societeId, ...data } = req.body;
+    const p = await prisma.prospect.update({ where: { id: req.params.id }, data });
     ApiResponse.success(res, p, 'Prospect modifié');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const existing = await prisma.prospect.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res); return; }
     await prisma.prospect.delete({ where: { id: req.params.id } });
     ApiResponse.success(res, null, 'Prospect supprimé');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

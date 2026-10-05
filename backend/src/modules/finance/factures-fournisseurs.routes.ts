@@ -164,8 +164,12 @@ router.post('/:id/paiement', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISS
 
     const facture = await prisma.factureFournisseur.findFirst({ where: { id: factureId, societeId }, include: { fournisseur: true } });
     if (!facture) { ApiResponse.notFound(res, 'Facture fournisseur non trouvée'); return; }
+    if (!['VALIDEE', 'PARTIELLEMENT_PAYEE'].includes(facture.statut)) {
+      ApiResponse.badRequest(res, 'Seule une facture validée peut recevoir un paiement'); return;
+    }
 
     const montantNum = Number(montant);
+    if (!(montantNum > 0)) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
     const resteAPayer = Number(facture.resteAPayer);
     if (montantNum > resteAPayer) { ApiResponse.badRequest(res, 'Le montant dépasse le reste à payer'); return; }
 
@@ -223,13 +227,17 @@ router.post('/:id/paiement', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISS
 });
 
 async function recalculerTotauxFactureFournisseur(factureFournisseurId: string) {
-  const lignes = await prisma.ligneFactureFournisseur.findMany({ where: { factureFournisseurId } });
+  const [lignes, facture] = await Promise.all([
+    prisma.ligneFactureFournisseur.findMany({ where: { factureFournisseurId } }),
+    prisma.factureFournisseur.findUnique({ where: { id: factureFournisseurId }, select: { montantPaye: true } }),
+  ]);
   const montantHT = lignes.reduce((s, l) => s + Number(l.montantHT), 0);
   const montantTVA = lignes.reduce((s, l) => s + Number(l.montantTVA), 0);
   const montantTTC = montantHT + montantTVA;
+  const resteAPayer = montantTTC - Number(facture?.montantPaye || 0);
   await prisma.factureFournisseur.update({
     where: { id: factureFournisseurId },
-    data: { montantHT, montantTVA, montantTTC, resteAPayer: montantTTC },
+    data: { montantHT, montantTVA, montantTTC, resteAPayer },
   });
 }
 

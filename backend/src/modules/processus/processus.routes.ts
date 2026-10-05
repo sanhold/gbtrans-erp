@@ -64,6 +64,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Modifier processus
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const existing = await prisma.processusSuivi.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res); return; }
+
     const { code, nom, description, nature, actif, etapes } = req.body;
 
     if (etapes) {
@@ -97,6 +100,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Supprimer processus
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const existing = await prisma.processusSuivi.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!existing) { ApiResponse.notFound(res); return; }
     const dossiersLies = await prisma.dossier.count({ where: { processusId: req.params.id } });
     if (dossiersLies > 0) {
       ApiResponse.badRequest(res, `Ce processus est utilisé par ${dossiersLies} dossier(s). Désactivez-le plutôt.`);

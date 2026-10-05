@@ -162,7 +162,7 @@ router.post('/:id/transformer-proforma', async (req: AuthRequest, res: Response)
           create: offre.lignes.map(l => ({
             ordre: l.ordre, designation: l.designation, quantite: l.quantite, unite: l.unite,
             prixUnitaire: l.prixUnitaire, montantHT: l.montantHT, tauxTVA: l.tauxTVA, montantTVA: l.montantTVA,
-            estTVA: Number(l.tauxTVA) > 0, remise: l.remise,
+            estTVA: false, remise: l.remise,
           })),
         },
       },

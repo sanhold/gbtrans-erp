@@ -122,6 +122,10 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
         ApiResponse.badRequest(res, 'Solde insuffisant pour cette opération'); return;
       }
     }
+    if (isEntree || isVirement) {
+      const destination = await getSolde(destinationType, destinationId);
+      if (!destination) { ApiResponse.notFound(res, 'Compte de destination introuvable'); return; }
+    }
 
     const numero = await genererNumero(societeId, 'OPERATION_FINANCIERE');
     const dateOp = dateOperation ? new Date(dateOperation) : undefined;

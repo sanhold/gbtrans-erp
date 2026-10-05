@@ -48,6 +48,11 @@ router.post('/employes', authorize('RH:CREER'), async (req: AuthRequest, res: Re
     const existing = await prisma.employe.findFirst({ where: { societeId: req.user!.societeId, matricule } });
     if (existing) { ApiResponse.badRequest(res, 'Un employé avec ce matricule existe déjà'); return; }
 
+    if (utilisateurId) {
+      const u = await prisma.utilisateur.findFirst({ where: { id: utilisateurId, societeId: req.user!.societeId } });
+      if (!u) { ApiResponse.badRequest(res, 'Utilisateur introuvable'); return; }
+    }
+
     const employe = await prisma.employe.create({
       data: {
         societeId: req.user!.societeId,
@@ -93,6 +98,11 @@ router.put('/employes/:id', authorize('RH:MODIFIER'), async (req: AuthRequest, r
     const { nom, prenom, dateNaissance, sexe, situationFamiliale, nombreEnfants, telephone, email,
       adresse, poste, departement, typeContrat, dateEmbauche, dateFinContrat, salaireBase,
       numeroCNPS, compteBancaire, utilisateurId, observations } = req.body;
+
+    if (utilisateurId) {
+      const u = await prisma.utilisateur.findFirst({ where: { id: utilisateurId, societeId: req.user!.societeId } });
+      if (!u) { ApiResponse.badRequest(res, 'Utilisateur introuvable'); return; }
+    }
 
     const employe = await prisma.employe.update({
       where: { id: req.params.id },
