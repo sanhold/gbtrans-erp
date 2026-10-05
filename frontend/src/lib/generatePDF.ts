@@ -309,7 +309,7 @@ const PAPER = {
   dim: '#93a1ab',
 };
 
-function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: SocieteBranding): string {
+export function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?: SocieteBranding): string {
   const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
   const totalHT = data.montantHT;
   const totalTVA = data.montantTVA;
