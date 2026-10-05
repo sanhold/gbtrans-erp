@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -15,7 +15,7 @@ const INCLUDE_COURRIER = {
   piecesJointes: true,
 };
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '20', type, statut, search, dossierId } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -47,7 +47,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const c = await prisma.courrier.findFirst({ where: { id: req.params.id }, include: INCLUDE_COURRIER });
     if (!c) { ApiResponse.notFound(res); return; }
@@ -55,7 +55,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('COURRIERS:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
     const {
@@ -90,7 +90,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('COURRIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.courrier.findFirst({ where: { id: req.params.id } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -120,7 +120,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/statut', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/statut', authorize('COURRIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.courrier.findFirst({ where: { id: req.params.id } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -136,7 +136,7 @@ router.patch('/:id/statut', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('COURRIERS:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.courrier.findFirst({ where: { id: req.params.id } });
     if (!existing) { ApiResponse.notFound(res); return; }

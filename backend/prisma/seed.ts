@@ -148,8 +148,10 @@ async function main() {
   // Permissions transitaire
   const permissionsTransitaire = await prisma.permission.findMany({
     where: {
-      module: { in: ['DOSSIERS', 'CLIENTS', 'PROFORMAS', 'COURRIERS'] },
-      action: { in: ['LIRE', 'CREER', 'MODIFIER'] },
+      OR: [
+        { module: { in: ['DOSSIERS', 'CLIENTS', 'PROFORMAS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
+        { module: { in: ['AT', 'CAUTIONS', 'COURRIERS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER'] } },
+      ],
     },
   });
 

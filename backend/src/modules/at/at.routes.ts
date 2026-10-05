@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -22,7 +22,7 @@ function withEtat(at: any) {
   return { ...at, joursRestants, etat };
 }
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authorize('AT:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '20', search, etat, clientId, dossierId } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -61,7 +61,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('AT:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const at = await prisma.admissionTemporaire.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
@@ -72,7 +72,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id/prolongations', async (req: AuthRequest, res: Response) => {
+router.get('/:id/prolongations', authorize('AT:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const at = await prisma.admissionTemporaire.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!at) { ApiResponse.notFound(res); return; }
@@ -84,7 +84,7 @@ router.get('/:id/prolongations', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('AT:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
     const {
@@ -98,6 +98,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     if (!designation) { ApiResponse.badRequest(res, 'Désignation requise'); return; }
     if (!dateExpiration) { ApiResponse.badRequest(res, 'Date d\'échéance requise'); return; }
     if (!dossierId) { ApiResponse.badRequest(res, 'Une AT doit être rattachée à un dossier'); return; }
+
+    const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
+    if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
 
     const numero = await genererNumero(societeId, 'AT');
     const delaiMoisNum = delaiMois != null ? Number(delaiMois) : null;
@@ -138,7 +141,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('AT:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.admissionTemporaire.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -152,6 +155,11 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     const delaiMoisNum = delaiMois != null ? Number(delaiMois) : undefined;
+
+    if (dossierId) {
+      const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
+      if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
 
     const at = await prisma.$transaction(async (tx) => {
       const updated = await tx.admissionTemporaire.update({
@@ -185,7 +193,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/apurer', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/apurer', authorize('AT:VALIDER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.admissionTemporaire.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -206,7 +214,7 @@ router.patch('/:id/apurer', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/prolonger', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/prolonger', authorize('AT:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.admissionTemporaire.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -251,7 +259,7 @@ router.patch('/:id/prolonger', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/annuler', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/annuler', authorize('AT:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.admissionTemporaire.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
