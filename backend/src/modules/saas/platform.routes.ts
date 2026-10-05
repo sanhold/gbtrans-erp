@@ -52,11 +52,21 @@ router.post('/login', async (req: Request, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
+// Champs volontairement exclus (jamais renvoyes a l'espace super-admin) : logo, signature,
+// mentionLegale (lourds, inutiles ici) et surtout smtpHost/smtpUser/smtpPass (identifiants
+// de messagerie du client, sensibles — ne doivent jamais transiter par cette liste).
+const SOCIETE_CHAMPS_ADMIN = {
+  id: true, code: true, raisonSociale: true, formeJuridique: true, rccm: true, ncc: true,
+  ville: true, pays: true, telephone: true, email: true, siteWeb: true, devise: true,
+  sousDomaine: true, actif: true, createdAt: true,
+};
+
 router.get('/societes', authenticatePlatform, async (_req: Request, res: Response) => {
   try {
     const societes = await prisma.societe.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        ...SOCIETE_CHAMPS_ADMIN,
         abonnement: { include: { plan: { select: { nom: true, code: true } } } },
         _count: { select: { utilisateurs: true, dossiers: true } },
       },
