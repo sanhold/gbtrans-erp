@@ -21,6 +21,7 @@ router.get('/', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Respo
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
     const where: Prisma.CourrierWhereInput = {
+      societeId: req.user!.societeId,
       ...(type && { type: type as any }),
       ...(statut && { statut: statut as any }),
       ...(dossierId && { dossiers: { some: { dossierId: dossierId as string } } }),
@@ -49,7 +50,7 @@ router.get('/', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Respo
 
 router.get('/:id', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const c = await prisma.courrier.findFirst({ where: { id: req.params.id }, include: INCLUDE_COURRIER });
+    const c = await prisma.courrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, include: INCLUDE_COURRIER });
     if (!c) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, c);
   } catch (e: any) { ApiResponse.error(res, e.message); }
@@ -65,12 +66,17 @@ router.post('/', authorize('COURRIERS:CREER'), async (req: AuthRequest, res: Res
 
     if (!type || !objet) { ApiResponse.badRequest(res, 'Type et objet requis'); return; }
 
+    if (dossierId) {
+      const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
+      if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+
     const module = type === 'ENTRANT' ? 'COURRIER_ENTRANT' : 'COURRIER_SORTANT';
     const numero = await genererNumero(societeId, module);
 
     const c = await prisma.courrier.create({
       data: {
-        numero, type, objet,
+        societeId, numero, type, objet,
         expediteur: expediteur || null,
         destinataire: destinataire || null,
         contenu: contenu || null,
@@ -92,13 +98,18 @@ router.post('/', authorize('COURRIERS:CREER'), async (req: AuthRequest, res: Res
 
 router.put('/:id', authorize('COURRIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.courrier.findFirst({ where: { id: req.params.id } });
+    const existing = await prisma.courrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
 
     const {
       objet, expediteur, destinataire, contenu, reference, priorite,
       classement, dossierId, observations,
     } = req.body;
+
+    if (dossierId) {
+      const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
+      if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
 
     const c = await prisma.$transaction(async (tx) => {
       const updated = await tx.courrier.update({
@@ -122,7 +133,7 @@ router.put('/:id', authorize('COURRIERS:MODIFIER'), async (req: AuthRequest, res
 
 router.patch('/:id/statut', authorize('COURRIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.courrier.findFirst({ where: { id: req.params.id } });
+    const existing = await prisma.courrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
     const { statut } = req.body;
     if (!statut) { ApiResponse.badRequest(res, 'Statut requis'); return; }
@@ -138,7 +149,7 @@ router.patch('/:id/statut', authorize('COURRIERS:MODIFIER'), async (req: AuthReq
 
 router.delete('/:id', authorize('COURRIERS:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.courrier.findFirst({ where: { id: req.params.id } });
+    const existing = await prisma.courrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
     if (existing.statut !== 'BROUILLON') {
       ApiResponse.badRequest(res, 'Seuls les courriers en brouillon peuvent être supprimés'); return;
