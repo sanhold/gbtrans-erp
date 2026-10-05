@@ -358,7 +358,7 @@ export const rhApi = {
 export const saasApi = {
   plans: () => api.get('/saas/plans'),
   sousDomaineDisponible: (valeur: string) => api.get('/saas/sous-domaine-disponible', { params: { valeur } }),
-  inscription: (data: { raisonSociale: string; email: string; motDePasse: string; nom: string; prenom: string; telephone?: string; sousDomaine: string; planCode: string }) =>
+  inscription: (data: { raisonSociale: string; email: string; motDePasse: string; nom: string; prenom: string; telephone?: string; sousDomaine: string; planCode: string; periodicite?: 'MENSUEL' | 'ANNUEL' }) =>
     api.post('/saas/inscription', data),
   abonnement: () => api.get('/saas/abonnement'),
   correspondants: () => api.get('/saas/correspondants'),

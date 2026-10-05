@@ -256,7 +256,8 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
             ) : ecritures.length === 0 ? (
               <tr><td colSpan={8} className="text-center py-12 text-gray-500">{lectureSeule ? 'Aucune écriture. Lancez la génération depuis l\'onglet Génération.' : 'Aucune écriture. Cliquez sur "+ Nouvelle écriture".'}</td></tr>
             ) : ecritures.map(ec => {
-              const total = ec.mouvements.reduce((s: number, m: any) => s + Number(m.debit), 0);
+              const totalDebit = ec.mouvements.reduce((s: number, m: any) => s + Number(m.debit), 0);
+              const totalCredit = ec.mouvements.reduce((s: number, m: any) => s + Number(m.credit), 0);
               return (
                 <Fragment key={ec.id}>
                   <tr className="table-row cursor-pointer" onClick={() => setOuverte(ouverte === ec.id ? null : ec.id)}>
@@ -264,8 +265,8 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
                     <td className="table-cell text-xs" data-label="Date">{new Date(ec.dateEcriture).toLocaleDateString('fr-FR')}</td>
                     <td className="table-cell" data-label="Journal"><span className="badge badge-gray">{ec.journal.code}</span></td>
                     <td className="table-cell text-xs" data-label="Libellé">{ec.libelle}</td>
-                    <td className="table-cell text-right font-mono" data-label="Débit">{fmt(total)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Crédit">{fmt(total)}</td>
+                    <td className="table-cell text-right font-mono" data-label="Débit">{fmt(totalDebit)}</td>
+                    <td className="table-cell text-right font-mono" data-label="Crédit">{fmt(totalCredit)}</td>
                     <td className="table-cell" data-label="Statut"><span className={`badge ${ec.validee ? 'badge-success' : 'badge-gray'}`}>{ec.validee ? 'Validée' : 'Brouillon'}</span></td>
                     <td className="table-cell" data-label="Actions">
                       {!ec.validee && (

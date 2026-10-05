@@ -34,6 +34,7 @@ function InscriptionForm() {
   const searchParams = useSearchParams();
   const [plans, setPlans] = useState<any[]>([]);
   const [planCode, setPlanCode] = useState('');
+  const [periodicite, setPeriodicite] = useState<'MENSUEL' | 'ANNUEL'>('MENSUEL');
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
@@ -68,7 +69,7 @@ function InscriptionForm() {
       const res = await saasApi.inscription({
         raisonSociale: form.raisonSociale, email: form.email, motDePasse: form.motDePasse,
         nom: form.nom, prenom: form.prenom, telephone: form.telephone || undefined,
-        sousDomaine: genererSousDomaineTechnique(form.raisonSociale), planCode,
+        sousDomaine: genererSousDomaineTechnique(form.raisonSociale), planCode, periodicite,
       });
       toast.success(res.data.message, { duration: 6000 });
       router.push('/auth/login');
@@ -89,7 +90,7 @@ function InscriptionForm() {
         </div>
 
         <div className="mb-8">
-          <PlansGrid selectedCode={planCode} onSelect={setPlanCode} compact />
+          <PlansGrid selectedCode={planCode} onSelect={setPlanCode} onPeriodiciteChange={setPeriodicite} compact />
         </div>
 
         <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-8 max-w-2xl mx-auto">

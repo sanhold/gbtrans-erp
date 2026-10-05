@@ -36,13 +36,19 @@ router.get('/sous-domaine-disponible', async (req: Request, res: Response) => {
 
 // ===== Inscription en libre-service (public) =====
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 router.post('/inscription', async (req: Request, res: Response) => {
   try {
-    const { raisonSociale, email, motDePasse, nom, prenom, telephone, sousDomaine, planCode } = req.body;
+    const { raisonSociale, email, motDePasse, nom, prenom, telephone, sousDomaine, planCode, periodicite } = req.body;
     if (!raisonSociale || !email || !motDePasse || !nom || !prenom || !sousDomaine || !planCode) {
       ApiResponse.badRequest(res, 'Tous les champs sont requis'); return;
     }
-    if (motDePasse.length < 8) { ApiResponse.badRequest(res, 'Le mot de passe doit comporter au moins 8 caractères'); return; }
+    if (!EMAIL_RE.test(email)) { ApiResponse.badRequest(res, 'Adresse email invalide'); return; }
+    if (motDePasse.length < 8 || !/[A-Za-z]/.test(motDePasse) || !/[0-9]/.test(motDePasse)) {
+      ApiResponse.badRequest(res, 'Le mot de passe doit comporter au moins 8 caractères, avec au moins une lettre et un chiffre'); return;
+    }
+    const periodiciteValide = periodicite === 'ANNUEL' ? 'ANNUEL' : 'MENSUEL';
 
     const slug = slugify(sousDomaine);
     if (!SLUG_RE.test(slug) || SLUGS_RESERVES.includes(slug)) { ApiResponse.badRequest(res, 'Sous-domaine invalide ou réservé'); return; }
@@ -78,7 +84,7 @@ router.post('/inscription', async (req: Request, res: Response) => {
       });
       const abonnement = await tx.abonnement.create({
         data: {
-          societeId: societe.id, planId: plan.id, statut: 'ESSAI',
+          societeId: societe.id, planId: plan.id, statut: 'ESSAI', periodicite: periodiciteValide,
           dateDebut: maintenant, dateFinEssai: finEssai, dateProchainPaiement: finEssai,
         },
       });

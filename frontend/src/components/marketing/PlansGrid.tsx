@@ -7,15 +7,21 @@ import { saasApi } from '@/lib/api';
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function PlansGrid({
-  selectedCode, onSelect, compact = false,
+  selectedCode, onSelect, compact = false, onPeriodiciteChange,
 }: {
   selectedCode?: string;
   onSelect?: (code: string) => void;
   compact?: boolean;
+  onPeriodiciteChange?: (periodicite: 'MENSUEL' | 'ANNUEL') => void;
 }) {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodicite, setPeriodicite] = useState<'MENSUEL' | 'ANNUEL'>('MENSUEL');
+
+  const choisirPeriodicite = (p: 'MENSUEL' | 'ANNUEL') => {
+    setPeriodicite(p);
+    onPeriodiciteChange?.(p);
+  };
 
   useEffect(() => {
     saasApi.plans().then(r => setPlans(r.data.data || [])).finally(() => setLoading(false));
@@ -29,8 +35,8 @@ export default function PlansGrid({
     <div>
       <div className="flex justify-center mb-8">
         <div className="inline-flex items-center gap-1 bg-gray-100 dark:bg-surface-800 rounded-full p-1">
-          <button onClick={() => setPeriodicite('MENSUEL')} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${periodicite === 'MENSUEL' ? 'bg-white dark:bg-surface-700 shadow text-primary-600' : 'text-gray-500'}`}>Mensuel</button>
-          <button onClick={() => setPeriodicite('ANNUEL')} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${periodicite === 'ANNUEL' ? 'bg-white dark:bg-surface-700 shadow text-primary-600' : 'text-gray-500'}`}>
+          <button onClick={() => choisirPeriodicite('MENSUEL')} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${periodicite === 'MENSUEL' ? 'bg-white dark:bg-surface-700 shadow text-primary-600' : 'text-gray-500'}`}>Mensuel</button>
+          <button onClick={() => choisirPeriodicite('ANNUEL')} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${periodicite === 'ANNUEL' ? 'bg-white dark:bg-surface-700 shadow text-primary-600' : 'text-gray-500'}`}>
             Annuel <span className="text-[10px] font-bold text-accent-600 bg-accent-50 dark:bg-accent-900/30 px-1.5 py-0.5 rounded-full">-17%</span>
           </button>
         </div>
