@@ -37,6 +37,8 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Trop de tentatives. Réessayez dans 15 minutes.' },
 });
 app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/platform/login', authLimiter);
+app.use('/api/v1/saas/inscription', authLimiter);
 
 // Parsing & Compression
 app.use(express.json({ limit: '10mb' }));

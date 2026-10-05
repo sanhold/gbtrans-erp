@@ -178,16 +178,22 @@ router.post('/paiements/pawapay/webhook', async (req: Request, res: Response) =>
   try {
     const payload = req.body;
     const depositId = payload?.depositId || payload?.[0]?.depositId;
-    const statut = payload?.status || payload?.[0]?.status;
     if (!depositId) { res.status(400).json({ ok: false }); return; }
 
     const paiement = await prisma.paiementAbonnement.findFirst({ where: { referenceExterne: depositId } });
     if (!paiement) { res.status(404).json({ ok: false }); return; }
+    if (paiement.statut !== 'EN_ATTENTE') { res.json({ ok: true }); return; } // deja traite, rien a refaire
 
-    if (statut === 'COMPLETED') {
+    // Le webhook ne fait jamais foi a lui seul (n'importe qui pourrait poster un faux "COMPLETED") :
+    // on reverifie toujours le statut reel aupres de PawaPay avant d'activer quoi que ce soit.
+    if (!PAWAPAY_CONFIGURE) { res.status(503).json({ ok: false, error: 'PawaPay non configure' }); return; }
+    const verifie: any = await statutDepot(depositId);
+    const statutReel = Array.isArray(verifie) ? verifie[0]?.status : verifie?.status;
+
+    if (statutReel === 'COMPLETED') {
       await activerApresPaiement(paiement.id);
-    } else if (statut === 'FAILED' || statut === 'REJECTED') {
-      await prisma.paiementAbonnement.update({ where: { id: paiement.id }, data: { statut: 'ECHEC', payloadBrut: payload } });
+    } else if (statutReel === 'FAILED' || statutReel === 'REJECTED') {
+      await prisma.paiementAbonnement.update({ where: { id: paiement.id }, data: { statut: 'ECHEC', payloadBrut: verifie } });
     }
     res.json({ ok: true });
   } catch (e: any) {
