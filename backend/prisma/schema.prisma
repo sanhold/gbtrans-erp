@@ -1405,6 +1405,7 @@ model EcritureComptable {
   @@index([depenseId])
   @@index([dateEcriture])
   @@index([numero])
+  @@unique([exerciceId, numero])
   @@map("ecritures_comptables")
 }
 
