@@ -13,12 +13,13 @@ const ACTION_LABEL: Record<string, string> = {
   COMPTE_ADMIN_CREE: 'Compte admin créé',
   COMPTE_ADMIN_ACTIVE: 'Compte admin activé',
   COMPTE_ADMIN_DESACTIVE: 'Compte admin désactivé',
+  COMPTE_ADMIN_SUPPRIME: 'Compte admin supprimé',
   VITRINE_MODIFIEE: 'Contenu vitrine modifié',
 };
 const ACTION_BADGE: Record<string, string> = {
   ABONNEMENT_MODIFIE: 'badge-info', ESSAI_PROLONGE: 'badge-success', RELANCE_ENVOYEE: 'badge-warning',
   FORMULE_MODIFIEE: 'badge-info', COMPTE_ADMIN_CREE: 'badge-success', COMPTE_ADMIN_ACTIVE: 'badge-success',
-  COMPTE_ADMIN_DESACTIVE: 'badge-danger', VITRINE_MODIFIEE: 'badge-gray',
+  COMPTE_ADMIN_DESACTIVE: 'badge-danger', COMPTE_ADMIN_SUPPRIME: 'badge-danger', VITRINE_MODIFIEE: 'badge-gray',
 };
 
 const fmtDateHeure = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -46,6 +47,7 @@ export default function AdminJournalPage() {
     if (entry.action === 'RELANCE_ENVOYEE' && d.email) return d.email;
     if (entry.action === 'FORMULE_MODIFIEE' && d.nom) return d.nom;
     if (entry.action === 'COMPTE_ADMIN_CREE' && d.email) return d.email;
+    if (entry.action === 'COMPTE_ADMIN_SUPPRIME' && d.email) return d.email;
     return null;
   };
 

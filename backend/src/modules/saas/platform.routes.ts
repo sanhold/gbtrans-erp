@@ -298,6 +298,19 @@ router.patch('/admins/:id/statut', authenticatePlatform, requireSuperAdmin, asyn
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
+router.delete('/admins/:id', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
+  try {
+    const existing = await prisma.platformAdmin.findUnique({ where: { id: req.params.id } });
+    if (!existing) { ApiResponse.notFound(res); return; }
+    if (existing.id === req.platformAdminId) { ApiResponse.badRequest(res, 'Vous ne pouvez pas supprimer votre propre compte'); return; }
+    const nbSuperAdmins = await prisma.platformAdmin.count({ where: { superAdmin: true, actif: true } });
+    if (existing.superAdmin && nbSuperAdmins <= 1) { ApiResponse.badRequest(res, 'Impossible de supprimer le dernier compte super-admin actif'); return; }
+    await prisma.platformAdmin.delete({ where: { id: req.params.id } });
+    await tracerActivite(req, 'COMPTE_ADMIN_SUPPRIME', 'PlatformAdmin', req.params.id, { email: existing.email });
+    ApiResponse.success(res, null, 'Compte supprimé');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
 // ===== Statut PawaPay (lecture seule - aucun secret transmis) =====
 
 router.get('/pawapay-status', authenticatePlatform, async (_req: Request, res: Response) => {

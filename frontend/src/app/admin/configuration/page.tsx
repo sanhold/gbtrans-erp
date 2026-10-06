@@ -81,6 +81,17 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     finally { setBusyId(null); }
   };
 
+  const supprimerAdmin = async (id: string) => {
+    if (!confirm('Supprimer définitivement ce compte administrateur ? Cette action est irréversible.')) return;
+    setBusyId(id);
+    try {
+      await platformApi.supprimerAdmin(id);
+      toast.success('Compte supprimé');
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setBusyId(null); }
+  };
+
   return (
     <div className="space-y-4">
       {loading ? (
@@ -104,9 +115,14 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                   <td className="table-cell" data-label="Statut"><span className={`badge ${a.actif ? 'badge-success' : 'badge-danger'} !text-[10px]`}>{a.actif ? 'Actif' : 'Désactivé'}</span></td>
                   <td className="table-cell" data-label="Actions">
                     {isSuperAdmin && (
-                      <button onClick={() => toggleStatut(a.id)} disabled={busyId === a.id} className="text-xs text-primary-600 hover:underline disabled:opacity-50">
-                        {a.actif ? 'Désactiver' : 'Activer'}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => toggleStatut(a.id)} disabled={busyId === a.id} className="text-xs text-primary-600 hover:underline disabled:opacity-50">
+                          {a.actif ? 'Désactiver' : 'Activer'}
+                        </button>
+                        <button onClick={() => supprimerAdmin(a.id)} disabled={busyId === a.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">
+                          Supprimer
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
