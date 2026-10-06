@@ -357,6 +357,7 @@ export const rhApi = {
 // SaaS : formules, inscription, abonnement (hors authentification applicative)
 export const saasApi = {
   plans: () => api.get('/saas/plans'),
+  contenuVitrine: () => api.get('/saas/contenu-vitrine'),
   sousDomaineDisponible: (valeur: string) => api.get('/saas/sous-domaine-disponible', { params: { valeur } }),
   inscription: (data: { raisonSociale: string; email: string; motDePasse: string; nom: string; prenom: string; telephone?: string; sousDomaine: string; planCode: string; periodicite?: 'MENSUEL' | 'ANNUEL' }) =>
     api.post('/saas/inscription', data),

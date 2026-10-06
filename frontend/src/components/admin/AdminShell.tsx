@@ -9,6 +9,9 @@ import SplashLoader from '@/components/layout/SplashLoader';
 const NAV = [
   { href: '/admin/societes', label: 'Sociétés' },
   { href: '/admin/plans', label: 'Formules' },
+  { href: '/admin/paiements', label: 'Factures' },
+  { href: '/admin/tresorerie', label: 'Trésorerie' },
+  { href: '/admin/configuration', label: 'Configuration' },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {

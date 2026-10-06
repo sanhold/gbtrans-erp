@@ -25,6 +25,13 @@ router.get('/plans', async (_req: Request, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
+router.get('/contenu-vitrine', async (_req: Request, res: Response) => {
+  try {
+    const contenu = await prisma.contenuVitrine.findFirst();
+    ApiResponse.success(res, contenu);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
 router.get('/sous-domaine-disponible', async (req: Request, res: Response) => {
   try {
     const valeur = slugify(String(req.query.valeur || ''));
