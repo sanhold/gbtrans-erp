@@ -7,6 +7,7 @@ import { platformAuth } from '@/lib/platformApi';
 import SplashLoader from '@/components/layout/SplashLoader';
 
 const NAV = [
+  { href: '/admin', label: 'Tableau de bord' },
   { href: '/admin/societes', label: 'Sociétés' },
   { href: '/admin/plans', label: 'Formules' },
   { href: '/admin/paiements', label: 'Factures' },
@@ -38,7 +39,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <header className="bg-surface-900 text-white">
         <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/admin/societes" className="font-display font-bold flex items-center gap-2">
+            <Link href="/admin" className="font-display font-bold flex items-center gap-2">
               <img src="/brand/logo-icon.png" alt="GBTrans" className="w-7 h-7 rounded-lg" />
               Administration
             </Link>
