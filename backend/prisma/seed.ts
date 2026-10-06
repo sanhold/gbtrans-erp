@@ -48,11 +48,12 @@ async function main() {
     },
   });
 
-  // Profils
+  // Profils (propres a cette societe depuis la migration 037_profil_societe_id)
   const profilAdmin = await prisma.profil.upsert({
-    where: { code: 'ADMIN' },
+    where: { societeId_code: { societeId: societe.id, code: 'ADMIN' } },
     update: {},
     create: {
+      societeId: societe.id,
       code: 'ADMIN',
       nom: 'Administrateur',
       description: 'Accès complet à toutes les fonctionnalités',
@@ -61,9 +62,10 @@ async function main() {
   });
 
   const profilTransitaire = await prisma.profil.upsert({
-    where: { code: 'TRANSITAIRE' },
+    where: { societeId_code: { societeId: societe.id, code: 'TRANSITAIRE' } },
     update: {},
     create: {
+      societeId: societe.id,
       code: 'TRANSITAIRE',
       nom: 'Transitaire',
       description: 'Gestion des dossiers de transit',
@@ -71,9 +73,10 @@ async function main() {
   });
 
   const profilComptable = await prisma.profil.upsert({
-    where: { code: 'COMPTABLE' },
+    where: { societeId_code: { societeId: societe.id, code: 'COMPTABLE' } },
     update: {},
     create: {
+      societeId: societe.id,
       code: 'COMPTABLE',
       nom: 'Comptable',
       description: 'Gestion comptable et financière',
@@ -81,9 +84,10 @@ async function main() {
   });
 
   const profilCommercial = await prisma.profil.upsert({
-    where: { code: 'COMMERCIAL' },
+    where: { societeId_code: { societeId: societe.id, code: 'COMMERCIAL' } },
     update: {},
     create: {
+      societeId: societe.id,
       code: 'COMMERCIAL',
       nom: 'Commercial',
       description: 'Gestion commerciale et clients',
@@ -91,9 +95,10 @@ async function main() {
   });
 
   const profilConsultation = await prisma.profil.upsert({
-    where: { code: 'CONSULTATION' },
+    where: { societeId_code: { societeId: societe.id, code: 'CONSULTATION' } },
     update: {},
     create: {
+      societeId: societe.id,
       code: 'CONSULTATION',
       nom: 'Consultation',
       description: 'Accès en lecture seule',

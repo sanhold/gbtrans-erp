@@ -5,6 +5,7 @@ import { ApiResponse } from '../../utils/apiResponse';
 import { authenticate, requireSociete } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { initierDepot, statutDepot, nouvelIdentifiantDepot, CORRESPONDANTS_CIV, PAWAPAY_CONFIGURE } from './pawapay.service';
+import { creerProfilsDefautPourSociete } from '../../utils/profilsDefaut';
 
 const router = Router();
 
@@ -62,9 +63,6 @@ router.post('/inscription', async (req: Request, res: Response) => {
     if (emailExiste) { ApiResponse.badRequest(res, 'Un compte existe déjà avec cet email'); return; }
     if (!plan) { ApiResponse.badRequest(res, 'Formule introuvable'); return; }
 
-    const profilAdmin = await prisma.profil.findFirst({ where: { estAdmin: true, actif: true } });
-    if (!profilAdmin) { ApiResponse.error(res, "Erreur de configuration : aucun profil administrateur n'existe"); return; }
-
     let code = slug.toUpperCase().slice(0, 20);
     if (await prisma.societe.findUnique({ where: { code } })) code = `${code.slice(0, 16)}-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -76,6 +74,10 @@ router.post('/inscription', async (req: Request, res: Response) => {
       const societe = await tx.societe.create({
         data: { code, raisonSociale, email, telephone, sousDomaine: slug },
       });
+      // Chaque societe recoit son propre jeu de profils (Admin/Transitaire/Comptable/...),
+      // independant des autres societes du SaaS : modifier un profil ici n'affecte plus
+      // personne d'autre (cf. migration 037_profil_societe_id).
+      const { profilAdmin } = await creerProfilsDefautPourSociete(tx, societe.id);
       const utilisateur = await tx.utilisateur.create({
         data: {
           societeId: societe.id, matricule: 'ADM001', nom, prenom, email, telephone,

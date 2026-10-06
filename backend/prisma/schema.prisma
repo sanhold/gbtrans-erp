@@ -75,6 +75,7 @@ model Societe {
   cautions              Caution[]
   modelesCourrier       ModeleCourrier[]
   courriers             Courrier[]
+  profils               Profil[]
   employes              Employe[]
   bulletinsPaie         BulletinPaie[]
   ecrituresEnAttente    EcritureEnAttente[]
@@ -271,7 +272,8 @@ model Utilisateur {
 
 model Profil {
   id          String   @id @default(uuid())
-  code        String   @unique @db.VarChar(50)
+  societeId   String
+  code        String   @db.VarChar(50)
   nom         String   @db.VarChar(100)
   description String?  @db.VarChar(500)
   estAdmin    Boolean  @default(false)
@@ -279,9 +281,12 @@ model Profil {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  societe      Societe            @relation(fields: [societeId], references: [id])
   utilisateurs Utilisateur[]
   permissions  ProfilPermission[]
 
+  @@unique([societeId, code])
+  @@index([societeId])
   @@map("profils")
 }
 

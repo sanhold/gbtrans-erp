@@ -40,6 +40,14 @@ router.post('/', authorize('UTILISATEURS:CREER'), async (req: AuthRequest, res: 
     const existing = await prisma.utilisateur.findFirst({ where: { OR: [{ email }, { matricule }] } });
     if (existing) { ApiResponse.badRequest(res, 'Un utilisateur avec cet email ou matricule existe déjà'); return; }
 
+    if (profilId) {
+      const profilCible = await prisma.profil.findFirst({ where: { id: profilId, societeId: req.user!.societeId }, select: { estAdmin: true } });
+      if (!profilCible) { ApiResponse.badRequest(res, 'Profil introuvable'); return; }
+      if (profilCible.estAdmin && !req.user!.estAdmin) {
+        ApiResponse.forbidden(res, "Seul un administrateur peut attribuer un profil administrateur"); return;
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(motDePasse, 12);
     const utilisateur = await prisma.utilisateur.create({
       data: {
@@ -65,9 +73,10 @@ router.put('/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, 
 
     const { nom, prenom, telephone, profilId, agenceId } = req.body;
 
-    if (profilId !== undefined && profilId && !req.user!.estAdmin) {
-      const profilCible = await prisma.profil.findUnique({ where: { id: profilId }, select: { estAdmin: true } });
-      if (profilCible?.estAdmin) {
+    if (profilId !== undefined && profilId) {
+      const profilCible = await prisma.profil.findFirst({ where: { id: profilId, societeId: req.user!.societeId }, select: { estAdmin: true } });
+      if (!profilCible) { ApiResponse.badRequest(res, 'Profil introuvable'); return; }
+      if (profilCible.estAdmin && !req.user!.estAdmin) {
         ApiResponse.forbidden(res, "Seul un administrateur peut attribuer un profil administrateur"); return;
       }
     }
@@ -141,6 +150,7 @@ router.put('/:id/reset-password', authorize('UTILISATEURS:MODIFIER'), async (req
 router.get('/profils/liste', authorize('UTILISATEURS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const profils = await prisma.profil.findMany({
+      where: { societeId: req.user!.societeId },
       orderBy: { nom: 'asc' },
       include: {
         permissions: { select: { permissionId: true } },
@@ -159,14 +169,14 @@ router.post('/profils', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequ
   try {
     const { code, nom, description } = req.body;
     if (!code || !nom) { ApiResponse.badRequest(res, 'Code et nom requis'); return; }
-    const profil = await prisma.profil.create({ data: { code: code.toUpperCase(), nom, description: description || null } });
+    const profil = await prisma.profil.create({ data: { societeId: req.user!.societeId, code: code.toUpperCase(), nom, description: description || null } });
     ApiResponse.created(res, profil, 'Profil créé');
   } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce code de profil existe déjà' : e.message); }
 });
 
 router.put('/profils/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.profil.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.profil.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res, 'Profil introuvable'); return; }
     if (existing.estAdmin) { ApiResponse.badRequest(res, 'Le profil Administrateur ne peut pas être modifié'); return; }
     const { nom, description } = req.body;
@@ -180,7 +190,7 @@ router.put('/profils/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthR
 
 router.delete('/profils/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.profil.findUnique({ where: { id: req.params.id }, include: { _count: { select: { utilisateurs: true } } } });
+    const existing = await prisma.profil.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, include: { _count: { select: { utilisateurs: true } } } });
     if (!existing) { ApiResponse.notFound(res, 'Profil introuvable'); return; }
     if (existing.estAdmin) { ApiResponse.badRequest(res, 'Le profil Administrateur ne peut pas être supprimé'); return; }
     if (existing._count.utilisateurs > 0) { ApiResponse.badRequest(res, `Ce profil est encore assigné à ${existing._count.utilisateurs} utilisateur(s)`); return; }
@@ -193,7 +203,7 @@ router.put('/profils/:id/permissions', authorize('UTILISATEURS:MODIFIER'), async
   try {
     const { permissionIds } = req.body;
     if (!Array.isArray(permissionIds)) { ApiResponse.badRequest(res, 'permissionIds doit être un tableau'); return; }
-    const existing = await prisma.profil.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.profil.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res, 'Profil introuvable'); return; }
     if (existing.estAdmin) { ApiResponse.badRequest(res, "Le profil Administrateur a accès à tout, inutile de gérer ses permissions"); return; }
 
