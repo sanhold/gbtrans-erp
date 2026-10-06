@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin/plans', label: 'Formules' },
   { href: '/admin/paiements', label: 'Factures' },
   { href: '/admin/tresorerie', label: 'Trésorerie' },
+  { href: '/admin/journal', label: 'Journal' },
   { href: '/admin/configuration', label: 'Configuration' },
 ];
 

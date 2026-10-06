@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
 import { platformApi } from '@/lib/platformApi';
+import { exportCSV } from '@/lib/exportCsv';
 import toast from 'react-hot-toast';
 
 const STATUT_BADGE: Record<string, string> = {
@@ -23,6 +24,29 @@ export default function AdminPaiementsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [statut, setStatut] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const exporter = async () => {
+    setExporting(true);
+    try {
+      const r = await platformApi.paiements({ page: 1, limit: 5000, statut: statut || undefined });
+      const lignes = r.data.data.data || [];
+      exportCSV('paiements_abonnements', [
+        { cle: 'societe', label: 'Société' },
+        { cle: 'formule', label: 'Formule' },
+        { cle: 'montant', label: 'Montant' },
+        { cle: 'devise', label: 'Devise' },
+        { cle: 'moyen', label: 'Moyen de paiement' },
+        { cle: 'statut', label: 'Statut' },
+        { cle: 'date', label: 'Date' },
+        { cle: 'reference', label: 'Référence' },
+      ], lignes.map((p: any) => ({
+        societe: p.societe?.raisonSociale || '', formule: p.abonnement?.plan?.nom || '', montant: p.montant, devise: p.devise,
+        moyen: p.moyenPaiement || '', statut: STATUT_LABEL[p.statut], date: fmtDate(p.datePaiement || p.createdAt), reference: p.referenceExterne || '',
+      })));
+    } catch { toast.error('Erreur lors de l\'export'); }
+    finally { setExporting(false); }
+  };
 
   const load = () => {
     setLoading(true);
@@ -41,10 +65,13 @@ export default function AdminPaiementsPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Factures &amp; paiements d&apos;abonnement</h1>
             <p className="text-sm text-gray-500">{total} paiement(s), toutes sociétés confondues</p>
           </div>
-          <select value={statut} onChange={e => { setPage(1); setStatut(e.target.value); }} className="input-field !w-48 text-sm">
-            <option value="">Tous les statuts</option>
-            {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
-          </select>
+          <div className="flex items-center gap-2">
+            <select value={statut} onChange={e => { setPage(1); setStatut(e.target.value); }} className="input-field !w-48 text-sm">
+              <option value="">Tous les statuts</option>
+              {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
+            </select>
+            <button onClick={exporter} disabled={exporting} className="btn-secondary !text-sm disabled:opacity-50">{exporting ? 'Export...' : 'Exporter CSV'}</button>
+          </div>
         </div>
 
         <div className="table-container">

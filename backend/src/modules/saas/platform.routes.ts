@@ -15,6 +15,7 @@ const router = Router();
 
 interface PlatformRequest extends Request {
   platformAdminId?: string;
+  platformAdminEmail?: string;
   platformSuperAdmin?: boolean;
 }
 
@@ -28,6 +29,7 @@ async function authenticatePlatform(req: PlatformRequest, res: Response, next: (
     const admin = await prisma.platformAdmin.findUnique({ where: { id: payload.id } });
     if (!admin || !admin.actif) { ApiResponse.unauthorized(res, 'Accès refusé'); return; }
     req.platformAdminId = admin.id;
+    req.platformAdminEmail = admin.email;
     req.platformSuperAdmin = admin.superAdmin;
     next();
   } catch {
@@ -39,6 +41,22 @@ async function authenticatePlatform(req: PlatformRequest, res: Response, next: (
 function requireSuperAdmin(req: PlatformRequest, res: Response, next: () => void) {
   if (!req.platformSuperAdmin) { ApiResponse.unauthorized(res, "Ce compte est en lecture seule : action reservee a l'administrateur principal"); return; }
   next();
+}
+
+/** Trace une action sensible dans le journal d'activite de la plateforme (best-effort). */
+async function tracerActivite(req: PlatformRequest, action: string, cibleType?: string, cibleId?: string, details?: any) {
+  try {
+    await prisma.platformAuditLog.create({
+      data: {
+        platformAdminId: req.platformAdminId || null,
+        adminEmail: req.platformAdminEmail || 'inconnu',
+        action, cibleType, cibleId,
+        details: details ?? undefined,
+      },
+    });
+  } catch {
+    // Le journal ne doit jamais faire echouer l'action elle-meme.
+  }
 }
 
 router.post('/login', async (req: Request, res: Response) => {
@@ -76,7 +94,7 @@ router.get('/societes', authenticatePlatform, async (_req: Request, res: Respons
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.patch('/societes/:id/abonnement', authenticatePlatform, requireSuperAdmin, async (req: Request, res: Response) => {
+router.patch('/societes/:id/abonnement', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
   try {
     const { statut, dateFin } = req.body as { statut?: string; dateFin?: string };
     const abonnement = await prisma.abonnement.findUnique({ where: { societeId: req.params.id } });
@@ -85,8 +103,56 @@ router.patch('/societes/:id/abonnement', authenticatePlatform, requireSuperAdmin
       where: { id: abonnement.id },
       data: { ...(statut && { statut: statut as any }), ...(dateFin && { dateFin: new Date(dateFin) }) },
     });
+    await tracerActivite(req, 'ABONNEMENT_MODIFIE', 'Societe', req.params.id, { statut, dateFin, ancienStatut: abonnement.statut });
     ApiResponse.success(res, updated, 'Abonnement mis à jour manuellement');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/societes/:id/prolonger-essai', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
+  try {
+    const jours = parseInt(req.body?.jours) || 7;
+    const abonnement = await prisma.abonnement.findUnique({ where: { societeId: req.params.id } });
+    if (!abonnement) { ApiResponse.notFound(res, 'Abonnement introuvable'); return; }
+    const base = abonnement.dateFinEssai && abonnement.dateFinEssai > new Date() ? abonnement.dateFinEssai : new Date();
+    const nouvelleDate = new Date(base.getTime() + jours * 24 * 60 * 60 * 1000);
+    const updated = await prisma.abonnement.update({
+      where: { id: abonnement.id },
+      data: { dateFinEssai: nouvelleDate, dateProchainPaiement: nouvelleDate, ...(abonnement.statut === 'EXPIRE' && { statut: 'ESSAI' }) },
+    });
+    await tracerActivite(req, 'ESSAI_PROLONGE', 'Societe', req.params.id, { jours, nouvelleDate });
+    ApiResponse.success(res, updated, `Essai prolongé de ${jours} jour(s)`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/societes/:id/relancer', authenticatePlatform, async (req: PlatformRequest, res: Response) => {
+  try {
+    const societe = await prisma.societe.findUnique({ where: { id: req.params.id }, select: { raisonSociale: true, email: true } });
+    if (!societe) { ApiResponse.notFound(res); return; }
+    if (!societe.email) { ApiResponse.badRequest(res, 'Cette société n\'a pas d\'email enregistré'); return; }
+    await tracerActivite(req, 'RELANCE_ENVOYEE', 'Societe', req.params.id, { email: societe.email });
+    ApiResponse.success(res, { email: societe.email, raisonSociale: societe.raisonSociale }, 'Relance enregistrée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.get('/societes/:id', authenticatePlatform, async (req: Request, res: Response) => {
+  try {
+    const societe = await prisma.societe.findUnique({
+      where: { id: req.params.id },
+      select: {
+        ...SOCIETE_CHAMPS_ADMIN,
+        abonnement: { include: { plan: true } },
+        utilisateurs: { select: { id: true, nom: true, prenom: true, email: true, actif: true, derniereConnexion: true, profil: { select: { nom: true } } }, orderBy: { createdAt: 'asc' } },
+        _count: { select: { utilisateurs: true, dossiers: true } },
+      },
+    });
+    if (!societe) { ApiResponse.notFound(res); return; }
+    const paiements = await prisma.paiementAbonnement.findMany({
+      where: { societeId: req.params.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    ApiResponse.success(res, { ...societe, paiements });
+  } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
 router.get('/plans', authenticatePlatform, async (_req: Request, res: Response) => {
@@ -96,7 +162,7 @@ router.get('/plans', authenticatePlatform, async (_req: Request, res: Response) 
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.put('/plans/:id', authenticatePlatform, requireSuperAdmin, async (req: Request, res: Response) => {
+router.put('/plans/:id', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
   try {
     const { nom, description, prixMensuel, prixAnnuel, maxUtilisateurs, maxDossiersParMois, fonctionnalites, essaiJours, misEnAvant, ordre, actif } = req.body;
     const plan = await prisma.plan.update({
@@ -115,6 +181,7 @@ router.put('/plans/:id', authenticatePlatform, requireSuperAdmin, async (req: Re
         ...(actif !== undefined && { actif }),
       },
     });
+    await tracerActivite(req, 'FORMULE_MODIFIEE', 'Plan', req.params.id, { nom });
     ApiResponse.success(res, plan, 'Formule modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -199,7 +266,7 @@ router.get('/admins', authenticatePlatform, async (_req: Request, res: Response)
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/admins', authenticatePlatform, requireSuperAdmin, async (req: Request, res: Response) => {
+router.post('/admins', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
   try {
     const { email, motDePasse, nom, prenom, superAdmin } = req.body;
     if (!email || !motDePasse || !nom || !prenom) { ApiResponse.badRequest(res, 'Tous les champs sont requis'); return; }
@@ -211,6 +278,7 @@ router.post('/admins', authenticatePlatform, requireSuperAdmin, async (req: Requ
       data: { email, motDePasse: motDePasseHash, nom, prenom, superAdmin: superAdmin !== false },
       select: { id: true, email: true, nom: true, prenom: true, superAdmin: true, actif: true, createdAt: true },
     });
+    await tracerActivite(req, 'COMPTE_ADMIN_CREE', 'PlatformAdmin', admin.id, { email, superAdmin: admin.superAdmin });
     ApiResponse.created(res, admin, 'Compte créé');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -225,6 +293,7 @@ router.patch('/admins/:id/statut', authenticatePlatform, requireSuperAdmin, asyn
       data: { actif: !existing.actif },
       select: { id: true, email: true, nom: true, prenom: true, superAdmin: true, actif: true, createdAt: true },
     });
+    await tracerActivite(req, admin.actif ? 'COMPTE_ADMIN_ACTIVE' : 'COMPTE_ADMIN_DESACTIVE', 'PlatformAdmin', admin.id, { email: admin.email });
     ApiResponse.success(res, admin, admin.actif ? 'Compte activé' : 'Compte désactivé');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -251,7 +320,7 @@ router.get('/contenu-vitrine', authenticatePlatform, async (_req: Request, res: 
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.put('/contenu-vitrine', authenticatePlatform, requireSuperAdmin, async (req: Request, res: Response) => {
+router.put('/contenu-vitrine', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
   try {
     const { heroBadge, heroTitre, heroSousTitre, tarifsTitre, tarifsSousTitre, faq } = req.body;
     const existant = await prisma.contenuVitrine.findFirst();
@@ -266,8 +335,23 @@ router.put('/contenu-vitrine', authenticatePlatform, requireSuperAdmin, async (r
     const contenu = existant
       ? await prisma.contenuVitrine.update({ where: { id: existant.id }, data })
       : await prisma.contenuVitrine.create({ data });
+    await tracerActivite(req, 'VITRINE_MODIFIEE', 'ContenuVitrine', contenu.id);
     ApiResponse.success(res, contenu, 'Contenu mis à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+// ===== Journal d'activite =====
+
+router.get('/audit-log', authenticatePlatform, async (req: Request, res: Response) => {
+  try {
+    const { page = '1', limit = '30' } = req.query as Record<string, string>;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [data, total] = await Promise.all([
+      prisma.platformAuditLog.findMany({ orderBy: { createdAt: 'desc' }, skip, take: parseInt(limit) }),
+      prisma.platformAuditLog.count(),
+    ]);
+    ApiResponse.success(res, { data, total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) });
+  } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
 export default router;

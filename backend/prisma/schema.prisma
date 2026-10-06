@@ -214,6 +214,38 @@ model PlatformAdmin {
   @@map("platform_admins")
 }
 
+/// Journal des actions des administrateurs de la plateforme (tracabilite des operations
+/// sensibles : abonnements, formules, comptes admin, contenu vitrine).
+model PlatformAuditLog {
+  id              String   @id @default(uuid())
+  platformAdminId String?
+  adminEmail      String   @db.VarChar(200) // conserve meme si le compte admin est supprime
+  action          String   @db.VarChar(100)
+  cibleType       String?  @db.VarChar(50)
+  cibleId         String?
+  details         Json?
+  createdAt       DateTime @default(now())
+
+  @@index([platformAdminId])
+  @@index([createdAt])
+  @@map("platform_audit_log")
+}
+
+/// Contenu texte de la vitrine publique (page d'accueil, tarifs), editable depuis
+/// l'espace super-admin sans toucher au code. Ligne unique (singleton).
+model ContenuVitrine {
+  id              String   @id @default(uuid())
+  heroBadge       String?  @db.VarChar(200)
+  heroTitre       String?  @db.VarChar(300)
+  heroSousTitre   String?  @db.Text
+  tarifsTitre     String?  @db.VarChar(300)
+  tarifsSousTitre String?  @db.Text
+  faq             Json? // [{ q: string, r: string }]
+  updatedAt       DateTime @updatedAt
+
+  @@map("contenu_vitrine")
+}
+
 // ============================================================================
 // AUTHENTIFICATION & SÉCURITÉ
 // ============================================================================

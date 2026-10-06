@@ -180,8 +180,10 @@ function SectionPawaPay() {
   );
 }
 
+const VITRINE_VIDE = { heroBadge: '', heroTitre: '', heroSousTitre: '', tarifsTitre: '', tarifsSousTitre: '' };
+
 function SectionVitrine({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const [form, setForm] = useState<any>(null);
+  const [form, setForm] = useState<any>(VITRINE_VIDE);
   const [faqText, setFaqText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -191,7 +193,7 @@ function SectionVitrine({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       const c = r.data.data || {};
       setForm({ heroBadge: c.heroBadge || '', heroTitre: c.heroTitre || '', heroSousTitre: c.heroSousTitre || '', tarifsTitre: c.tarifsTitre || '', tarifsSousTitre: c.tarifsSousTitre || '' });
       setFaqText((c.faq || []).map((f: any) => `${f.q}\n${f.r}`).join('\n\n'));
-    }).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
+    }).catch(() => toast.error('Erreur de chargement — formulaire vide affiché')).finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
