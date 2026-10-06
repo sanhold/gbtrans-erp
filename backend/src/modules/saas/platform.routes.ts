@@ -244,6 +244,13 @@ router.get('/pawapay-status', authenticatePlatform, async (_req: Request, res: R
 
 // ===== Contenu de la vitrine publique =====
 
+router.get('/contenu-vitrine', authenticatePlatform, async (_req: Request, res: Response) => {
+  try {
+    const contenu = await prisma.contenuVitrine.findFirst();
+    ApiResponse.success(res, contenu);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
 router.put('/contenu-vitrine', authenticatePlatform, requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { heroBadge, heroTitre, heroSousTitre, tarifsTitre, tarifsSousTitre, faq } = req.body;
