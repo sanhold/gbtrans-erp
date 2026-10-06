@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 const ONGLETS = [
   { id: 'comptes', label: 'Comptes super-admin' },
-  { id: 'pawapay', label: 'PawaPay' },
+  { id: 'fournisseurs', label: 'Fournisseurs de paiement' },
   { id: 'vitrine', label: 'Contenu vitrine' },
 ];
 
@@ -38,7 +38,7 @@ export default function AdminConfigurationPage() {
         </div>
 
         {onglet === 'comptes' && <SectionComptes isSuperAdmin={isSuperAdmin} />}
-        {onglet === 'pawapay' && <SectionPawaPay />}
+        {onglet === 'fournisseurs' && <SectionFournisseurs isSuperAdmin={isSuperAdmin} />}
         {onglet === 'vitrine' && <SectionVitrine isSuperAdmin={isSuperAdmin} />}
       </div>
     </AdminShell>
@@ -156,42 +156,106 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   );
 }
 
-function SectionPawaPay() {
-  const [data, setData] = useState<any>(null);
+function SectionFournisseurs({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const [fournisseurs, setFournisseurs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [valeurs, setValeurs] = useState<Record<string, Record<string, string>>>({});
+  const [busyCode, setBusyCode] = useState<string | null>(null);
 
-  useEffect(() => {
-    platformApi.pawapayStatus().then(r => setData(r.data.data)).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
-  }, []);
+  const load = () => {
+    setLoading(true);
+    platformApi.fournisseursPaiement().then(r => setFournisseurs(r.data.data || [])).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const champVal = (code: string, cle: string) => valeurs[code]?.[cle] ?? '';
+  const setChampVal = (code: string, cle: string, v: string) => setValeurs(prev => ({ ...prev, [code]: { ...prev[code], [cle]: v } }));
+
+  const enregistrer = async (code: string) => {
+    setBusyCode(code);
+    try {
+      await platformApi.majFournisseurPaiement(code, { champs: valeurs[code] || {} });
+      toast.success('Identifiants enregistrés');
+      setValeurs(prev => ({ ...prev, [code]: {} }));
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setBusyCode(null); }
+  };
+
+  const activer = async (code: string) => {
+    setBusyCode(code);
+    try {
+      await platformApi.majFournisseurPaiement(code, { actif: true });
+      toast.success(`${code} activé — c'est désormais lui qui traite les paiements`);
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setBusyCode(null); }
+  };
+
+  const desactiver = async (code: string) => {
+    setBusyCode(code);
+    try {
+      await platformApi.majFournisseurPaiement(code, { actif: false });
+      toast.success(`${code} désactivé`);
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setBusyCode(null); }
+  };
 
   if (loading) return <div className="text-center py-10"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>;
-  if (!data) return null;
 
   return (
-    <div className="card max-w-lg space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-500">Statut</span>
-        <span className={`badge ${data.configure ? 'badge-success' : 'badge-danger'}`}>{data.configure ? 'Configuré' : 'Non configuré'}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-500">Mode</span>
-        <span className={`badge ${data.mode === 'PRODUCTION' ? 'badge-success' : 'badge-warning'}`}>{data.mode}</span>
-      </div>
-      <div>
-        <span className="text-sm text-gray-500 block mb-1">URL de base</span>
-        <span className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">{data.baseUrl}</span>
-      </div>
-      <div>
-        <span className="text-sm text-gray-500 block mb-2">Opérateurs Mobile Money gérés</span>
-        <div className="flex flex-wrap gap-2">
-          {data.correspondants.map((c: any) => (
-            <span key={c.code} className="badge badge-gray !text-[11px]">{c.label}</span>
-          ))}
-        </div>
-      </div>
-      <p className="text-[11px] text-gray-400 pt-2 border-t border-gray-100 dark:border-surface-700">
-        La clé API PawaPay est une variable d&apos;environnement serveur (PAWAPAY_API_TOKEN) — elle n&apos;est jamais affichée ni modifiable depuis cette interface pour des raisons de sécurité. Modifiez-la depuis le tableau de bord Render.
+    <div className="space-y-4 max-w-2xl">
+      <p className="text-xs text-gray-500">
+        Un seul fournisseur peut être actif à la fois : c&apos;est lui qui traite les paiements d&apos;abonnement de toutes les sociétés clientes.
+        Les clés saisies sont chiffrées avant d&apos;être enregistrées et ne sont jamais réaffichées en clair.
       </p>
+      {fournisseurs.map(f => (
+        <div key={f.code} className={`card space-y-3 ${f.actif ? '!border-2 !border-primary-500' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 dark:text-white">{f.nom}</h3>
+              {f.actif && <span className="badge badge-success !text-[10px]">Actif</span>}
+              <span className={`badge ${f.configure ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{f.configure ? 'Configuré' : 'Non configuré'}</span>
+            </div>
+            {isSuperAdmin && (
+              f.actif ? (
+                <button onClick={() => desactiver(f.code)} disabled={busyCode === f.code} className="text-xs text-gray-500 hover:underline disabled:opacity-50">Désactiver</button>
+              ) : (
+                <button onClick={() => activer(f.code)} disabled={busyCode === f.code || !f.configure} title={!f.configure ? 'Renseignez et enregistrez les identifiants requis avant de l\'activer' : undefined} className="text-xs text-primary-600 hover:underline disabled:opacity-50">Activer ce fournisseur</button>
+              )
+            )}
+          </div>
+
+          {f.correspondants?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {f.correspondants.map((c: any) => <span key={c.code} className="badge badge-gray !text-[10px]">{c.label}</span>)}
+            </div>
+          )}
+
+          {isSuperAdmin && f.champs?.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-surface-700">
+              {f.champs.map((c: any) => (
+                <div key={c.cle}>
+                  <label className="label">{c.label}{c.obligatoire && ' *'}</label>
+                  <input
+                    type={c.secret ? 'password' : 'text'}
+                    value={champVal(f.code, c.cle)}
+                    onChange={e => setChampVal(f.code, c.cle, e.target.value)}
+                    placeholder={c.renseigne ? '••••••••• (déjà enregistré)' : c.placeholder || ''}
+                    className="input-field text-sm"
+                  />
+                </div>
+              ))}
+              <div className="sm:col-span-2 flex justify-end">
+                <button onClick={() => enregistrer(f.code)} disabled={busyCode === f.code} className="btn-secondary !text-sm disabled:opacity-50">
+                  {busyCode === f.code ? 'Enregistrement...' : 'Enregistrer les identifiants'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -62,7 +62,8 @@ export const platformApi = {
   creerAdmin: (data: { email: string; motDePasse: string; nom: string; prenom: string; superAdmin?: boolean }) => platformClient.post('/admins', data),
   toggleAdminStatut: (id: string) => platformClient.patch(`/admins/${id}/statut`),
   supprimerAdmin: (id: string) => platformClient.delete(`/admins/${id}`),
-  pawapayStatus: () => platformClient.get('/pawapay-status'),
+  fournisseursPaiement: () => platformClient.get('/fournisseurs-paiement'),
+  majFournisseurPaiement: (code: string, data: { champs?: Record<string, string>; actif?: boolean }) => platformClient.put(`/fournisseurs-paiement/${code}`, data),
   contenuVitrine: () => platformClient.get('/contenu-vitrine'),
   majContenuVitrine: (data: any) => platformClient.put('/contenu-vitrine', data),
 };

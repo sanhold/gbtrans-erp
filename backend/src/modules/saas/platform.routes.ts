@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../../config/database';
 import { config } from '../../config';
 import { ApiResponse } from '../../utils/apiResponse';
-import { PAWAPAY_CONFIGURE, CORRESPONDANTS_CIV } from './pawapay.service';
+import { MODULES, chiffrerChamps, dechiffrerChamps, champsConfigures } from './fournisseurs/registry';
 
 const router = Router();
 
@@ -311,17 +311,62 @@ router.delete('/admins/:id', authenticatePlatform, requireSuperAdmin, async (req
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-// ===== Statut PawaPay (lecture seule - aucun secret transmis) =====
+// ===== Fournisseurs de paiement (plusieurs possibles, un seul actif a la fois) =====
+// Les cles API sont chiffrees en base (AES-256-GCM, cf. utils/secretCrypto.ts) et ne sont
+// JAMAIS renvoyees en clair par l'API : seul un booleen "configure" par champ est expose.
 
-router.get('/pawapay-status', authenticatePlatform, async (_req: Request, res: Response) => {
+router.get('/fournisseurs-paiement', authenticatePlatform, async (_req: Request, res: Response) => {
   try {
-    ApiResponse.success(res, {
-      configure: PAWAPAY_CONFIGURE,
-      baseUrl: process.env.PAWAPAY_BASE_URL || 'https://api.sandbox.pawapay.io (défaut, non configuré)',
-      mode: (process.env.PAWAPAY_BASE_URL || '').includes('sandbox') || !process.env.PAWAPAY_BASE_URL ? 'TEST' : 'PRODUCTION',
-      correspondants: CORRESPONDANTS_CIV,
+    const rows = await prisma.fournisseurPaiement.findMany({ orderBy: { ordre: 'asc' } });
+    const resultat = rows.map(row => {
+      const module = MODULES[row.code];
+      const champsDechiffres = dechiffrerChamps(row.champs);
+      return {
+        code: row.code,
+        nom: row.nom,
+        actif: row.actif,
+        champs: module?.CHAMPS.map(c => ({ cle: c.cle, label: c.label, obligatoire: c.obligatoire, secret: c.secret, renseigne: !!champsDechiffres[c.cle] })) || [],
+        correspondants: module?.CORRESPONDANTS || [],
+        configure: module ? champsConfigures(module.CHAMPS, champsDechiffres) : false,
+      };
     });
+    ApiResponse.success(res, resultat);
   } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+router.put('/fournisseurs-paiement/:code', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
+  try {
+    const code = req.params.code.toUpperCase();
+    const module = MODULES[code];
+    if (!module) { ApiResponse.badRequest(res, 'Fournisseur inconnu'); return; }
+    const row = await prisma.fournisseurPaiement.findUnique({ where: { code } });
+    if (!row) { ApiResponse.notFound(res, 'Fournisseur introuvable'); return; }
+
+    const { champs, actif } = req.body as { champs?: Record<string, string>; actif?: boolean };
+
+    const champsExistants = dechiffrerChamps(row.champs);
+    const champsFusionnes = { ...champsExistants, ...(champs || {}) };
+    // Un champ envoye vide efface la valeur existante (permet de "vider" une cle sans la remplacer).
+    for (const [cle, valeur] of Object.entries(champs || {})) if (valeur === '') delete champsFusionnes[cle];
+
+    await prisma.$transaction(async (tx) => {
+      await tx.fournisseurPaiement.update({
+        where: { code },
+        data: { champs: chiffrerChamps(champsFusionnes) as any },
+      });
+      if (actif === true) {
+        // Un seul fournisseur actif a la fois : on desactive tous les autres.
+        await tx.fournisseurPaiement.updateMany({ where: { code: { not: code } }, data: { actif: false } });
+        await tx.fournisseurPaiement.update({ where: { code }, data: { actif: true } });
+      } else if (actif === false) {
+        await tx.fournisseurPaiement.update({ where: { code }, data: { actif: false } });
+      }
+    });
+
+    await tracerActivite(req, 'FOURNISSEUR_PAIEMENT_MODIFIE', 'FournisseurPaiement', code, { actif, champsModifies: Object.keys(champs || {}) });
+    const updated = await prisma.fournisseurPaiement.findUnique({ where: { code } });
+    ApiResponse.success(res, { code: updated!.code, nom: updated!.nom, actif: updated!.actif }, 'Fournisseur mis à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 // ===== Contenu de la vitrine publique =====

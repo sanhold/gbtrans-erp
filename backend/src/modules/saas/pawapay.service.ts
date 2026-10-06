@@ -1,10 +1,10 @@
 /**
  * Integration PawaPay (collecte Mobile Money en Afrique : Orange, MTN, Moov, Wave...).
  *
- * Variables d'environnement requises (a renseigner sur Render une fois le compte
- * PawaPay actif) :
- *   PAWAPAY_API_TOKEN     jeton d'API (sandbox ou production, cf. tableau de bord PawaPay)
- *   PAWAPAY_BASE_URL      https://api.sandbox.pawapay.io (tests) ou https://api.pawapay.io (production)
+ * Identifiants : configures depuis l'espace super-admin (Configuration > Fournisseurs de
+ * paiement), stockes chiffres en base (cf. utils/secretCrypto.ts). A defaut, on retombe
+ * sur les variables d'environnement PAWAPAY_API_TOKEN / PAWAPAY_BASE_URL pour compatibilite
+ * avec les deploiements existants.
  *
  * IMPORTANT : les noms de champs ci-dessous suivent la forme documentee publiquement par
  * PawaPay (endpoint /deposits) au moment de l'ecriture. A reverifier sur le tableau de
@@ -12,11 +12,12 @@
  * champs (ex. liste des "correspondent" par pays) pouvant evoluer.
  */
 import { randomUUID } from 'crypto';
+import type { ChampDef, DepotParams, ResultatDepot, ResultatStatut } from './fournisseurs/types';
 
-const BASE_URL = process.env.PAWAPAY_BASE_URL || 'https://api.sandbox.pawapay.io';
-const API_TOKEN = process.env.PAWAPAY_API_TOKEN;
-
-export const PAWAPAY_CONFIGURE = !!API_TOKEN;
+export const CHAMPS: ChampDef[] = [
+  { cle: 'apiToken', label: 'Jeton API', obligatoire: true, secret: true },
+  { cle: 'baseUrl', label: 'URL de base (sandbox ou production)', obligatoire: false, secret: false, placeholder: 'https://api.sandbox.pawapay.io' },
+];
 
 /** Operateurs mobile money geres en Cote d'Ivoire cote PawaPay. */
 export const CORRESPONDANTS_CIV = [
@@ -26,46 +27,40 @@ export const CORRESPONDANTS_CIV = [
   { code: 'WAVE_CIV', label: 'Wave' },
 ] as const;
 
-async function pawapayFetch(path: string, options: RequestInit = {}) {
-  if (!API_TOKEN) throw new Error('PawaPay non configure : variable PAWAPAY_API_TOKEN manquante');
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function pawapayFetch(champs: Record<string, string>, path: string, options: RequestInit = {}) {
+  const token = champs.apiToken || process.env.PAWAPAY_API_TOKEN;
+  const baseUrl = champs.baseUrl || process.env.PAWAPAY_BASE_URL || 'https://api.sandbox.pawapay.io';
+  if (!token) throw new Error('PawaPay non configure : jeton API manquant');
+  const res = await fetch(`${baseUrl}${path}`, {
     ...options,
-    headers: { Authorization: `Bearer ${API_TOKEN}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(`PawaPay ${path} a échoué (${res.status}) : ${JSON.stringify(data)}`);
   return data;
 }
 
-export interface InitierDepotParams {
-  depositId: string;
-  montant: number;
-  devise: string;
-  correspondant: string; // ex: ORANGE_CIV
-  telephone: string; // format international sans '+', ex: 2250700000000
-  description: string;
-}
-
-export async function initierDepot(params: InitierDepotParams) {
-  return pawapayFetch('/deposits', {
+export async function initierDepot(champs: Record<string, string>, params: DepotParams): Promise<ResultatDepot> {
+  const depositId = randomUUID();
+  const reponse = await pawapayFetch(champs, '/deposits', {
     method: 'POST',
     body: JSON.stringify({
-      depositId: params.depositId,
+      depositId,
       amount: String(Math.round(params.montant)),
       currency: params.devise,
       correspondent: params.correspondant,
       payer: { type: 'MSISDN', address: { value: params.telephone } },
       customerTimestamp: new Date().toISOString(),
-      statementDescription: params.description.slice(0, 22), // limite imposee par les operateurs mobile money
+      statementDescription: params.description.slice(0, 22),
       country: 'CIV',
     }),
   });
+  return { referenceExterne: depositId, payloadBrut: reponse };
 }
 
-export async function statutDepot(depositId: string) {
-  return pawapayFetch(`/deposits/${depositId}`);
-}
-
-export function nouvelIdentifiantDepot(): string {
-  return randomUUID();
+export async function statutDepot(champs: Record<string, string>, referenceExterne: string): Promise<ResultatStatut> {
+  const reponse: any = await pawapayFetch(champs, `/deposits/${referenceExterne}`);
+  const statutDistant = Array.isArray(reponse) ? reponse[0]?.status : reponse?.status;
+  const statut = statutDistant === 'COMPLETED' ? 'REUSSI' : statutDistant === 'FAILED' || statutDistant === 'REJECTED' ? 'ECHEC' : 'EN_ATTENTE';
+  return { statut, payloadBrut: reponse };
 }

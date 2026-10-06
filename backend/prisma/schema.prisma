@@ -198,6 +198,24 @@ model PaiementAbonnement {
   @@map("paiements_abonnements")
 }
 
+/// Fournisseurs de paiement Mobile Money/carte (PawaPay, CinetPay, FedaPay, Flutterwave...)
+/// configurables depuis l'espace super-admin. Un seul fournisseur actif a la fois : c'est
+/// lui qui traite les paiements d'abonnement des societes clientes. Les identifiants
+/// sensibles (cles API) sont stockes dans "champs" chiffres individuellement (AES-256-GCM,
+/// cf. utils/secretCrypto.ts) : jamais en clair en base, jamais renvoyes par l'API.
+model FournisseurPaiement {
+  id        String   @id @default(uuid())
+  code      String   @unique @db.VarChar(30)
+  nom       String   @db.VarChar(100)
+  actif     Boolean  @default(false)
+  champs    Json? // { nomDuChamp: "valeur chiffree en base64" }
+  ordre     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("fournisseurs_paiement")
+}
+
 /// Administrateurs de la plateforme (vous), distincts des comptes Utilisateur de chaque societe cliente.
 model PlatformAdmin {
   id          String   @id @default(uuid())
