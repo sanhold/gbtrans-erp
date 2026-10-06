@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { getRequiredModule } from '@/lib/permissions';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import SplashLoader from './SplashLoader';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loadProfile, hasPermission } = useAuthStore();
@@ -29,11 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [ready, isAuthenticated, router]);
 
   if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-50">
-        <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <SplashLoader />;
   }
 
   if (!isAuthenticated) return null;

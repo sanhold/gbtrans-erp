@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { platformAuth } from '@/lib/platformApi';
+import SplashLoader from '@/components/layout/SplashLoader';
 
 const NAV = [
   { href: '/admin/societes', label: 'Sociétés' },
@@ -22,7 +23,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     setReady(true);
   }, [router]);
 
-  if (!ready) return <div className="min-h-screen flex items-center justify-center bg-surface-900"><div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" /></div>;
+  if (!ready) return <SplashLoader />;
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
