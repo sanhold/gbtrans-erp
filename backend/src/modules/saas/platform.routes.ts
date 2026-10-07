@@ -10,6 +10,7 @@ import prisma from '../../config/database';
 import { config } from '../../config';
 import { ApiResponse } from '../../utils/apiResponse';
 import { MODULES, chiffrerChamps, dechiffrerChamps, champsConfigures } from './fournisseurs/registry';
+import { estimerTailleParTable } from '../../utils/tablesSocietes';
 
 const router = Router();
 
@@ -164,7 +165,7 @@ router.get('/plans', authenticatePlatform, async (_req: Request, res: Response) 
 
 router.put('/plans/:id', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
   try {
-    const { nom, description, prixMensuel, prixAnnuel, maxUtilisateurs, maxDossiersParMois, fonctionnalites, essaiJours, misEnAvant, ordre, actif } = req.body;
+    const { nom, description, prixMensuel, prixAnnuel, maxUtilisateurs, maxDossiersParMois, fonctionnalites, essaiJours, misEnAvant, ordre, actif, backupFrequenceMinJours } = req.body;
     const plan = await prisma.plan.update({
       where: { id: req.params.id },
       data: {
@@ -179,6 +180,7 @@ router.put('/plans/:id', authenticatePlatform, requireSuperAdmin, async (req: Pl
         ...(misEnAvant !== undefined && { misEnAvant }),
         ...(ordre !== undefined && { ordre }),
         ...(actif !== undefined && { actif }),
+        ...(backupFrequenceMinJours !== undefined && { backupFrequenceMinJours: parseInt(backupFrequenceMinJours) }),
       },
     });
     await tracerActivite(req, 'FORMULE_MODIFIEE', 'Plan', req.params.id, { nom });
@@ -396,6 +398,29 @@ router.put('/contenu-vitrine', authenticatePlatform, requireSuperAdmin, async (r
     await tracerActivite(req, 'VITRINE_MODIFIEE', 'ContenuVitrine', contenu.id);
     ApiResponse.success(res, contenu, 'Contenu mis à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+// ===== Taille de la base de donnees =====
+// Base unique partagee par toutes les societes (isolation par donnees, pas par base physique) :
+// la taille totale est exacte (Postgres), la repartition par societe est une estimation
+// (poids des lignes des principales tables, hors index — cf. utils/tablesSocietes.ts).
+
+router.get('/db-taille', authenticatePlatform, async (_req: Request, res: Response) => {
+  try {
+    const totalRow: any[] = await prisma.$queryRawUnsafe(`SELECT pg_database_size(current_database())::bigint AS octets`);
+    const totalOctets = Number(totalRow?.[0]?.octets || 0);
+
+    const societes = await prisma.societe.findMany({ where: { actif: true }, select: { id: true, raisonSociale: true } });
+    const parSociete = [];
+    for (const s of societes) {
+      const parTable = await estimerTailleParTable(s.id);
+      const octets = parTable.reduce((sum, t) => sum + t.octets, 0);
+      parSociete.push({ societeId: s.id, raisonSociale: s.raisonSociale, octetsEstimes: octets });
+    }
+    parSociete.sort((a, b) => b.octetsEstimes - a.octetsEstimes);
+
+    ApiResponse.success(res, { totalOctets, parSociete });
+  } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
 // ===== Journal d'activite =====

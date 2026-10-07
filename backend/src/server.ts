@@ -117,6 +117,18 @@ app.listen(PORT, () => {
 ╚══════════════════════════════════════════════════════╝
   `);
   prechaufferPoolConnexions();
+
+  // Minuteur interne des sauvegardes dues (verification horaire). Best-effort : un service
+  // Render gratuit peut s'endormir apres inactivite et interrompre ce minuteur — un appel
+  // cron externe sur POST /api/v1/cron/sauvegardes sert de filet de securite (cf.
+  // modules/sauvegarde/cron.routes.ts).
+  setInterval(() => {
+    import('./modules/sauvegarde/sauvegarde.service').then(({ executerSauvegardesDues }) => {
+      executerSauvegardesDues()
+        .then(r => { if (r.total > 0) logger.info(`Sauvegardes automatiques : ${r.reussies}/${r.total} reussies`); })
+        .catch(err => logger.warn('Erreur sauvegardes automatiques:', err));
+    });
+  }, 60 * 60 * 1000);
 });
 
 export default app;

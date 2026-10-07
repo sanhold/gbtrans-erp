@@ -3,6 +3,8 @@ import { authenticate, authorize, requireSociete } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
+import { estimerTailleParTable } from '../../utils/tablesSocietes';
+import { executerSauvegarde } from '../sauvegarde/sauvegarde.service';
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -147,6 +149,71 @@ router.put('/numerotations/:module', authorize('PARAMETRES:MODIFIER'), async (re
     });
     ApiResponse.success(res, numerotation, 'Numérotation mise à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.code === 'P2002' ? 'Ce préfixe est déjà utilisé' : e.message); }
+});
+
+// ---------- Sauvegarde automatique (export JSON par email) ----------
+
+router.get('/sauvegarde', authorize('PARAMETRES:LIRE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const [societe, historique] = await Promise.all([
+      prisma.societe.findUnique({
+        where: { id: req.user!.societeId },
+        select: {
+          backupActif: true, backupFrequenceJours: true, backupEmailDestination: true, derniereSauvegardeAt: true, email: true,
+          abonnement: { select: { plan: { select: { backupFrequenceMinJours: true, nom: true } } } },
+        },
+      }),
+      prisma.sauvegardeSociete.findMany({ where: { societeId: req.user!.societeId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    ]);
+    if (!societe) { ApiResponse.notFound(res); return; }
+
+    const parTable = await estimerTailleParTable(req.user!.societeId);
+    const totalOctets = parTable.reduce((s, t) => s + t.octets, 0);
+
+    ApiResponse.success(res, {
+      backupActif: societe.backupActif,
+      backupFrequenceJours: societe.backupFrequenceJours,
+      backupEmailDestination: societe.backupEmailDestination || societe.email,
+      derniereSauvegardeAt: societe.derniereSauvegardeAt,
+      frequenceMinJours: societe.abonnement?.plan?.backupFrequenceMinJours ?? 7,
+      formuleNom: societe.abonnement?.plan?.nom,
+      estimationTailleOctets: totalOctets,
+      detailParTable: parTable,
+      historique,
+    });
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+router.put('/sauvegarde', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { backupActif, backupFrequenceJours, backupEmailDestination } = req.body;
+
+    if (backupFrequenceJours !== undefined) {
+      const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId }, include: { abonnement: { include: { plan: true } } } });
+      const minJours = societe?.abonnement?.plan?.backupFrequenceMinJours ?? 7;
+      if (parseInt(backupFrequenceJours) < minJours) {
+        ApiResponse.badRequest(res, `Votre formule ne permet pas une sauvegarde plus fréquente que tous les ${minJours} jour(s). Contactez le support pour changer de formule.`); return;
+      }
+    }
+
+    const societe = await prisma.societe.update({
+      where: { id: req.user!.societeId },
+      data: {
+        ...(backupActif !== undefined && { backupActif: !!backupActif }),
+        ...(backupFrequenceJours !== undefined && { backupFrequenceJours: parseInt(backupFrequenceJours) }),
+        ...(backupEmailDestination !== undefined && { backupEmailDestination: backupEmailDestination || null }),
+      },
+    });
+    ApiResponse.success(res, societe, 'Réglages de sauvegarde mis à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/sauvegarde/executer', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const resultat = await executerSauvegarde(req.user!.societeId);
+    if (resultat.statut === 'REUSSI') ApiResponse.success(res, resultat, `Sauvegarde envoyée à ${resultat.destinataire}`);
+    else ApiResponse.badRequest(res, resultat.message || 'Échec de la sauvegarde');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 export default router;

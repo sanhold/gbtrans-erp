@@ -28,6 +28,7 @@ export default function AdminPlansPage() {
       nom: p.nom, description: p.description || '', prixMensuel: p.prixMensuel, prixAnnuel: p.prixAnnuel || '',
       maxUtilisateurs: p.maxUtilisateurs ?? '', maxDossiersParMois: p.maxDossiersParMois ?? '',
       essaiJours: p.essaiJours, misEnAvant: p.misEnAvant, actif: p.actif,
+      backupFrequenceMinJours: p.backupFrequenceMinJours ?? 7,
     });
     setFeaturesText((p.fonctionnalites || []).join('\n'));
   };
@@ -42,6 +43,7 @@ export default function AdminPlansPage() {
         maxUtilisateurs: form.maxUtilisateurs === '' ? null : Number(form.maxUtilisateurs),
         maxDossiersParMois: form.maxDossiersParMois === '' ? null : Number(form.maxDossiersParMois),
         essaiJours: Number(form.essaiJours),
+        backupFrequenceMinJours: Number(form.backupFrequenceMinJours),
         fonctionnalites: featuresText.split('\n').map(s => s.trim()).filter(Boolean),
       });
       toast.success('Formule mise à jour');
@@ -109,6 +111,14 @@ export default function AdminPlansPage() {
                 <div><label className="label">Max dossiers/mois (vide = illimité)</label><input type="number" value={form.maxDossiersParMois} onChange={e => setForm({ ...form, maxDossiersParMois: e.target.value })} className="input-field" /></div>
               </div>
               <div><label className="label">Jours d&apos;essai</label><input type="number" value={form.essaiJours} onChange={e => setForm({ ...form, essaiJours: e.target.value })} className="input-field" /></div>
+              <div>
+                <label className="label">Fréquence de sauvegarde minimale autorisée</label>
+                <select value={form.backupFrequenceMinJours} onChange={e => setForm({ ...form, backupFrequenceMinJours: e.target.value })} className="input-field">
+                  <option value={7}>Hebdomadaire seulement</option>
+                  <option value={3}>Jusqu&apos;à tous les 3 jours</option>
+                  <option value={1}>Quotidienne</option>
+                </select>
+              </div>
               <div><label className="label">Fonctionnalités affichées (une par ligne)</label><textarea value={featuresText} onChange={e => setFeaturesText(e.target.value)} className="input-field" rows={6} /></div>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={form.misEnAvant} onChange={e => setForm({ ...form, misEnAvant: e.target.checked })} /> Mise en avant</label>

@@ -9,6 +9,7 @@ const ONGLETS = [
   { id: 'comptes', label: 'Comptes super-admin' },
   { id: 'fournisseurs', label: 'Fournisseurs de paiement' },
   { id: 'vitrine', label: 'Contenu vitrine' },
+  { id: 'bdd', label: 'Base de données' },
 ];
 
 export default function AdminConfigurationPage() {
@@ -40,6 +41,7 @@ export default function AdminConfigurationPage() {
         {onglet === 'comptes' && <SectionComptes isSuperAdmin={isSuperAdmin} />}
         {onglet === 'fournisseurs' && <SectionFournisseurs isSuperAdmin={isSuperAdmin} />}
         {onglet === 'vitrine' && <SectionVitrine isSuperAdmin={isSuperAdmin} />}
+        {onglet === 'bdd' && <SectionBaseDeDonnees />}
       </div>
     </AdminShell>
   );
@@ -318,6 +320,53 @@ function SectionVitrine({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50">{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
         </div>
       )}
+    </div>
+  );
+}
+
+const fmtOctetsAdmin = (o: number) => {
+  if (!o) return '0 Mo';
+  const mo = o / (1024 * 1024);
+  if (mo < 1) return `${(o / 1024).toFixed(0)} Ko`;
+  if (mo < 1024) return `${mo.toFixed(1)} Mo`;
+  return `${(mo / 1024).toFixed(2)} Go`;
+};
+
+function SectionBaseDeDonnees() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    platformApi.dbTaille().then(r => setData(r.data.data)).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-center py-10"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>;
+  if (!data) return null;
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <div className="card !p-5">
+        <p className="text-xs text-gray-500 mb-1">Taille totale de la base de données (toutes sociétés)</p>
+        <p className="text-3xl font-extrabold text-primary-600">{fmtOctetsAdmin(data.totalOctets)}</p>
+        <p className="text-[11px] text-gray-400 mt-1">Mesure exacte PostgreSQL — base unique partagée par toutes les sociétés clientes.</p>
+      </div>
+
+      <div className="card !p-5">
+        <h3 className="font-bold text-gray-900 dark:text-white mb-1">Répartition par société</h3>
+        <p className="text-xs text-gray-500 mb-3">Estimation basée sur le poids des données des principales tables (hors index, hors fichiers joints).</p>
+        {!data.parSociete?.length ? (
+          <p className="text-sm text-gray-500">Aucune société</p>
+        ) : (
+          <div className="space-y-2">
+            {data.parSociete.map((s: any) => (
+              <div key={s.societeId} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 dark:text-gray-300">{s.raisonSociale}</span>
+                <span className="font-mono text-xs font-semibold text-gray-900 dark:text-white">{fmtOctetsAdmin(s.octetsEstimes)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

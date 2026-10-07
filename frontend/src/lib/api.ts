@@ -364,6 +364,11 @@ export const parametresApi = {
     list: () => api.get('/parametres/numerotations'),
     update: (module: string, data: { prefixe: string; longueur: number }) => api.put(`/parametres/numerotations/${module}`, data),
   },
+  sauvegarde: {
+    get: () => api.get('/parametres/sauvegarde'),
+    update: (data: { backupActif?: boolean; backupFrequenceJours?: number; backupEmailDestination?: string }) => api.put('/parametres/sauvegarde', data),
+    executer: () => api.post('/parametres/sauvegarde/executer'),
+  },
 };
 
 // RH & Paie API

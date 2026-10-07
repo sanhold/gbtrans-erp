@@ -48,6 +48,11 @@ model Societe {
   // rester actif ; l'autre peut etre ajoute a tout moment depuis les parametres de la societe.
   activiteTransit   Boolean @default(true)
   activiteTransport Boolean @default(false)
+  // --- Sauvegarde automatique par email (export JSON des donnees de la societe) ---
+  backupActif             Boolean   @default(true)
+  backupFrequenceJours    Int       @default(7)
+  backupEmailDestination  String?   @db.VarChar(200)
+  derniereSauvegardeAt    DateTime?
   // --- SaaS : identification du tenant et abonnement ---
   sousDomaine    String?  @unique @db.VarChar(63)
   createdAt      DateTime @default(now())
@@ -88,6 +93,7 @@ model Societe {
   chauffeurs            Chauffeur[]
   courses               Course[]
   maintenancesVehicules MaintenanceVehicule[]
+  sauvegardes           SauvegardeSociete[]
 
   @@map("societes")
 }
@@ -130,6 +136,10 @@ model Plan {
   maxDossiersParMois Int? // null = illimité
   fonctionnalites    Json? // liste de points affichés sur la grille tarifaire
   essaiJours         Int      @default(14)
+  // Plus petit = plus permissif : 7 = hebdomadaire seulement, 3 = jusqu'a tous les 3 jours,
+  // 1 = quotidien autorise. Controle la frequence de sauvegarde minimale que les societes
+  // de cette formule peuvent choisir (fonctionnalite payante au-dela de l'hebdomadaire).
+  backupFrequenceMinJours Int @default(7)
   misEnAvant         Boolean  @default(false)
   ordre              Int      @default(0)
   actif              Boolean  @default(true)
@@ -2526,6 +2536,23 @@ enum TypeMaintenance {
   ASSURANCE
   PNEUS
   AUTRE
+}
+
+/// Historique des sauvegardes automatiques/manuelles envoyees par email a chaque societe
+/// (export JSON de ses propres donnees uniquement, jamais celles des autres clients du SaaS).
+model SauvegardeSociete {
+  id           String   @id @default(uuid())
+  societeId    String
+  statut       String   @db.VarChar(20) // REUSSI, ECHEC
+  tailleOctets Int?
+  destinataire String?  @db.VarChar(200)
+  message      String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  societe Societe @relation(fields: [societeId], references: [id])
+
+  @@index([societeId])
+  @@map("sauvegardes_societes")
 }
 
 model MaintenanceVehicule {

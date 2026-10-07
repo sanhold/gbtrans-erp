@@ -561,7 +561,7 @@ export default function ParametresPage() {
               )
             )}
             {activeTab === 'sms' && <div><h3 className="text-lg font-semibold mb-4">Configuration SMS</h3><p className="text-gray-500 text-sm">Configurez l&apos;API Orange pour l&apos;envoi de SMS automatiques.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"><div><label className="label">Clé API Orange</label><input type="text" className="input-field" /></div><div><label className="label">Secret API</label><input type="password" className="input-field" /></div></div></div>}
-            {activeTab === 'sauvegarde' && <div><h3 className="text-lg font-semibold mb-4">Sauvegarde & Restauration</h3><div className="space-y-4"><button className="btn-primary">Sauvegarder maintenant</button><p className="text-sm text-gray-500">Dernière sauvegarde : Aucune</p></div></div>}
+            {activeTab === 'sauvegarde' && <SectionSauvegarde />}
           </div>
         </div>
       </div>
@@ -686,5 +686,153 @@ export default function ParametresPage() {
         </div>
       )}
     </AppLayout>
+  );
+}
+
+const fmtOctets = (o: number) => {
+  if (!o) return '0 Mo';
+  const mo = o / (1024 * 1024);
+  if (mo < 1) return `${(o / 1024).toFixed(0)} Ko`;
+  if (mo < 1024) return `${mo.toFixed(1)} Mo`;
+  return `${(mo / 1024).toFixed(2)} Go`;
+};
+const fmtDateHeure = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Jamais';
+
+const FREQUENCES = [
+  { jours: 1, label: 'Chaque jour' },
+  { jours: 3, label: 'Tous les 3 jours' },
+  { jours: 7, label: 'Chaque semaine' },
+];
+
+function SectionSauvegarde() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [emailDestination, setEmailDestination] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    parametresApi.sauvegarde.get().then(r => {
+      setData(r.data.data);
+      setEmailDestination(r.data.data.backupEmailDestination || '');
+    }).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const changerFrequence = async (jours: number) => {
+    setSaving(true);
+    try { await parametresApi.sauvegarde.update({ backupFrequenceJours: jours }); toast.success('Fréquence mise à jour'); load(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const toggleActif = async () => {
+    setSaving(true);
+    try { await parametresApi.sauvegarde.update({ backupActif: !data.backupActif }); toast.success(data.backupActif ? 'Sauvegardes désactivées' : 'Sauvegardes activées'); load(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const enregistrerEmail = async () => {
+    setSaving(true);
+    try { await parametresApi.sauvegarde.update({ backupEmailDestination: emailDestination }); toast.success('Email de destination enregistré'); load(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const executerMaintenant = async () => {
+    setExecuting(true);
+    try {
+      const r = await parametresApi.sauvegarde.executer();
+      toast.success(r.data.message);
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur lors de la sauvegarde'); }
+    finally { setExecuting(false); }
+  };
+
+  if (loading || !data) return <div className="text-center py-10"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <h3 className="text-lg font-semibold">Sauvegarde automatique</h3>
+      <p className="text-sm text-gray-500 -mt-3">
+        Un export de vos données (dossiers, clients, factures, etc.) est envoyé par email selon la fréquence choisie ci-dessous.
+        Les fichiers joints aux dossiers ne sont pas inclus, uniquement les données structurées.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="card !p-4">
+          <p className="text-xs text-gray-500 mb-1">Volume de données estimé</p>
+          <p className="text-2xl font-extrabold text-gray-900 dark:text-white">{fmtOctets(data.estimationTailleOctets)}</p>
+        </div>
+        <div className="card !p-4">
+          <p className="text-xs text-gray-500 mb-1">Dernière sauvegarde</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">{fmtDateHeure(data.derniereSauvegardeAt)}</p>
+        </div>
+      </div>
+
+      <div className="card !p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-sm text-gray-900 dark:text-white">Sauvegardes automatiques</p>
+            <p className="text-xs text-gray-500">Formule {data.formuleNom} — fréquence minimale autorisée : {data.frequenceMinJours === 1 ? 'quotidienne' : `tous les ${data.frequenceMinJours} jours`}</p>
+          </div>
+          <button onClick={toggleActif} disabled={saving} className={`btn-secondary !text-sm disabled:opacity-50 ${data.backupActif ? '!text-red-600' : '!text-accent-600'}`}>
+            {data.backupActif ? 'Désactiver' : 'Activer'}
+          </button>
+        </div>
+
+        <div>
+          <label className="label">Fréquence</label>
+          <div className="flex flex-wrap gap-2">
+            {FREQUENCES.map(f => (
+              <button
+                key={f.jours}
+                onClick={() => changerFrequence(f.jours)}
+                disabled={saving || f.jours < data.frequenceMinJours}
+                title={f.jours < data.frequenceMinJours ? 'Nécessite une formule supérieure' : undefined}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${data.backupFrequenceJours === f.jours ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-700 dark:text-gray-300'}`}
+              >
+                {f.label}{f.jours < data.frequenceMinJours ? ' 🔒' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Email de destination</label>
+          <div className="flex gap-2">
+            <input type="email" value={emailDestination} onChange={e => setEmailDestination(e.target.value)} className="input-field flex-1" placeholder="votre-email@gmail.com" />
+            <button onClick={enregistrerEmail} disabled={saving} className="btn-secondary !text-sm disabled:opacity-50">Enregistrer</button>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-gray-100 dark:border-surface-700">
+          <button onClick={executerMaintenant} disabled={executing} className="btn-primary !text-sm disabled:opacity-50">
+            {executing ? 'Envoi en cours...' : 'Sauvegarder maintenant'}
+          </button>
+        </div>
+      </div>
+
+      <div className="card !p-4">
+        <h4 className="font-semibold text-sm text-gray-900 dark:text-white mb-2">Historique</h4>
+        {!data.historique?.length ? (
+          <p className="text-sm text-gray-500">Aucune sauvegarde effectuée</p>
+        ) : (
+          <div className="space-y-2">
+            {data.historique.map((h: any) => (
+              <div key={h.id} className="flex items-center justify-between text-sm">
+                <div>
+                  <span className={`badge ${h.statut === 'REUSSI' ? 'badge-success' : 'badge-danger'} !text-[10px] mr-2`}>{h.statut === 'REUSSI' ? 'Réussie' : 'Échec'}</span>
+                  <span className="text-gray-500 text-xs">{fmtDateHeure(h.createdAt)}</span>
+                </div>
+                <span className="text-xs text-gray-400">{h.tailleOctets ? fmtOctets(h.tailleOctets) : h.message || ''}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

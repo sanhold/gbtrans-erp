@@ -58,6 +58,7 @@ export const platformApi = {
   majPlan: (id: string, data: any) => platformClient.put(`/plans/${id}`, data),
   paiements: (params?: { page?: number; limit?: number; statut?: string; societeId?: string }) => platformClient.get('/paiements', { params }),
   tresorerie: () => platformClient.get('/tresorerie'),
+  dbTaille: () => platformClient.get('/db-taille'),
   admins: () => platformClient.get('/admins'),
   creerAdmin: (data: { email: string; motDePasse: string; nom: string; prenom: string; superAdmin?: boolean }) => platformClient.post('/admins', data),
   toggleAdminStatut: (id: string) => platformClient.patch(`/admins/${id}/statut`),

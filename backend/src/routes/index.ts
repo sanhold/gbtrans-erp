@@ -36,6 +36,7 @@ import vehiculesRoutes from '../modules/transport/vehicules.routes';
 import chauffeursRoutes from '../modules/transport/chauffeurs.routes';
 import coursesRoutes from '../modules/transport/courses.routes';
 import maintenanceRoutes from '../modules/transport/maintenance.routes';
+import cronSauvegardeRoutes from '../modules/sauvegarde/cron.routes';
 
 const router = Router();
 
@@ -76,6 +77,7 @@ router.use('/transport/vehicules', vehiculesRoutes);
 router.use('/transport/chauffeurs', chauffeursRoutes);
 router.use('/transport/courses', coursesRoutes);
 router.use('/transport/maintenance', maintenanceRoutes);
+router.use('/cron', cronSauvegardeRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({
