@@ -27,7 +27,15 @@ router.put('/societe', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest
       telephone, mobile, email, siteWeb, devise, tauxTVA, timbreFiscal,
       slogan, mentionLegale,
       smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure,
+      activiteTransit, activiteTransport,
     } = req.body;
+
+    if (activiteTransit !== undefined || activiteTransport !== undefined) {
+      const actuelle = await prisma.societe.findUnique({ where: { id: req.user!.societeId }, select: { activiteTransit: true, activiteTransport: true } });
+      const prochainTransit = activiteTransit !== undefined ? !!activiteTransit : actuelle?.activiteTransit;
+      const prochainTransport = activiteTransport !== undefined ? !!activiteTransport : actuelle?.activiteTransport;
+      if (!prochainTransit && !prochainTransport) { ApiResponse.badRequest(res, 'Au moins une activité (Transit ou Transport) doit rester active'); return; }
+    }
 
     const societe = await prisma.societe.update({
       where: { id: req.user!.societeId },
@@ -55,6 +63,8 @@ router.put('/societe', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest
         ...(smtpUser !== undefined && { smtpUser: smtpUser || null }),
         ...(smtpPass !== undefined && smtpPass !== '' && { smtpPass }),
         ...(smtpSecure !== undefined && { smtpSecure: !!smtpSecure }),
+        ...(activiteTransit !== undefined && { activiteTransit: !!activiteTransit }),
+        ...(activiteTransport !== undefined && { activiteTransport: !!activiteTransport }),
       },
     });
     ApiResponse.success(res, societe, 'Informations société mises à jour');

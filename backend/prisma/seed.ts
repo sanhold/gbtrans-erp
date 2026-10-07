@@ -110,7 +110,7 @@ async function main() {
     'DOSSIERS', 'CLIENTS', 'FOURNISSEURS', 'FACTURATION',
     'COMPTABILITE', 'FINANCE', 'AT', 'CAUTIONS', 'COURRIERS',
     'ARCHIVES', 'NOTIFICATIONS', 'STATISTIQUES', 'PARAMETRES',
-    'UTILISATEURS', 'PROFORMAS', 'OFFRES', 'RH',
+    'UTILISATEURS', 'PROFORMAS', 'OFFRES', 'RH', 'TRANSPORT',
   ];
 
   const actions = ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER', 'EXPORTER', 'IMPRIMER'];
@@ -155,7 +155,7 @@ async function main() {
     where: {
       OR: [
         { module: { in: ['DOSSIERS', 'CLIENTS', 'PROFORMAS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
-        { module: { in: ['AT', 'CAUTIONS', 'COURRIERS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER'] } },
+        { module: { in: ['AT', 'CAUTIONS', 'COURRIERS', 'TRANSPORT'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER'] } },
       ],
     },
   });

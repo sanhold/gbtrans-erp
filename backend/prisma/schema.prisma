@@ -43,6 +43,11 @@ model Societe {
   smtpPass       String?  @db.VarChar(200)
   smtpSecure     Boolean  @default(true)
   actif          Boolean  @default(true)
+  // Active ou non les modules metier Transit (dossiers, offres, proformas, AT, cautions...)
+  // et/ou Transport (vehicules, chauffeurs, courses, maintenance). Au moins un des deux doit
+  // rester actif ; l'autre peut etre ajoute a tout moment depuis les parametres de la societe.
+  activiteTransit   Boolean @default(true)
+  activiteTransport Boolean @default(false)
   // --- SaaS : identification du tenant et abonnement ---
   sousDomaine    String?  @unique @db.VarChar(63)
   createdAt      DateTime @default(now())
@@ -79,6 +84,10 @@ model Societe {
   employes              Employe[]
   bulletinsPaie         BulletinPaie[]
   ecrituresEnAttente    EcritureEnAttente[]
+  vehicules             Vehicule[]
+  chauffeurs            Chauffeur[]
+  courses               Course[]
+  maintenancesVehicules MaintenanceVehicule[]
 
   @@map("societes")
 }
@@ -522,6 +531,7 @@ model Dossier {
   offres              OffreCommerciale[]
   cautions            Caution[]
   etapesDossier       EtapeDossier[]
+  courses             Course[]
 
   @@unique([societeId, numero, annee])
   @@unique([societeId, numeroPhysique])
@@ -2294,6 +2304,7 @@ model Employe {
   societe     Societe        @relation(fields: [societeId], references: [id])
   utilisateur Utilisateur?   @relation(fields: [utilisateurId], references: [id])
   bulletins   BulletinPaie[]
+  chauffeur   Chauffeur[]
 
   @@unique([societeId, matricule])
   @@index([societeId])
@@ -2366,4 +2377,176 @@ enum StatutBulletinPaie {
   BROUILLON
   VALIDE
   PAYE
+}
+
+// ============================================================================
+// TRANSPORT (flotte, chauffeurs, courses, maintenance)
+// ============================================================================
+
+enum TypeVehicule {
+  CAMION
+  REMORQUE
+  CAMIONNETTE
+  VOITURE
+  MOTO
+  AUTRE
+}
+
+enum StatutVehicule {
+  DISPONIBLE
+  EN_COURSE
+  EN_MAINTENANCE
+  HORS_SERVICE
+}
+
+model Vehicule {
+  id                    String         @id @default(uuid())
+  societeId             String
+  immatriculation       String         @db.VarChar(30)
+  marque                String?        @db.VarChar(100)
+  modele                String?        @db.VarChar(100)
+  type                  TypeVehicule   @default(CAMION)
+  capaciteChargeKg      Decimal?       @db.Decimal(10, 2)
+  capaciteVolumeM3      Decimal?       @db.Decimal(10, 2)
+  statut                StatutVehicule @default(DISPONIBLE)
+  numeroAssurance       String?        @db.VarChar(100)
+  compagnieAssurance    String?        @db.VarChar(200)
+  dateExpirationAssurance    DateTime?
+  dateExpirationVisiteTechnique DateTime?
+  kilometrage           Int?
+  observations          String?        @db.Text
+  actif                 Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  societe      Societe              @relation(fields: [societeId], references: [id])
+  courses      Course[]
+  maintenances MaintenanceVehicule[]
+
+  @@unique([societeId, immatriculation])
+  @@index([societeId])
+  @@map("vehicules")
+}
+
+enum StatutChauffeur {
+  DISPONIBLE
+  EN_COURSE
+  EN_CONGE
+  INACTIF
+}
+
+model Chauffeur {
+  id                     String          @id @default(uuid())
+  societeId              String
+  employeId              String?
+  nom                    String          @db.VarChar(100)
+  prenom                 String          @db.VarChar(100)
+  telephone              String?         @db.VarChar(30)
+  email                  String?         @db.VarChar(200)
+  numeroPermis           String?         @db.VarChar(50)
+  categoriePermis        String?         @db.VarChar(20)
+  dateExpirationPermis   DateTime?
+  statut                 StatutChauffeur @default(DISPONIBLE)
+  observations           String?         @db.Text
+  actif                  Boolean         @default(true)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  societe Societe  @relation(fields: [societeId], references: [id])
+  employe Employe? @relation(fields: [employeId], references: [id])
+  courses Course[]
+
+  @@index([societeId])
+  @@map("chauffeurs")
+}
+
+enum StatutCourse {
+  PLANIFIEE
+  EN_COURS
+  TERMINEE
+  ANNULEE
+}
+
+model Course {
+  id                  String       @id @default(uuid())
+  societeId           String
+  numero              String       @db.VarChar(50)
+  vehiculeId          String
+  chauffeurId         String
+  dossierId           String?
+  origine              String      @db.VarChar(200)
+  destination           String      @db.VarChar(200)
+  designationMarchandise String?    @db.VarChar(500)
+  poidsChargeKg       Decimal?     @db.Decimal(10, 2)
+  distanceKm          Decimal?     @db.Decimal(10, 2)
+  dateDepartPrevue    DateTime?
+  dateDepartReelle    DateTime?
+  dateArriveePrevue   DateTime?
+  dateArriveeReelle   DateTime?
+  statut              StatutCourse @default(PLANIFIEE)
+  fraisCarburant      Decimal?     @db.Decimal(12, 2)
+  fraisPeage          Decimal?     @db.Decimal(12, 2)
+  autresFrais         Decimal?     @db.Decimal(12, 2)
+  observations        String?      @db.Text
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  societe   Societe             @relation(fields: [societeId], references: [id])
+  vehicule  Vehicule            @relation(fields: [vehiculeId], references: [id])
+  chauffeur Chauffeur           @relation(fields: [chauffeurId], references: [id])
+  dossier   Dossier?            @relation(fields: [dossierId], references: [id])
+  historique HistoriqueCourse[]
+
+  @@index([societeId])
+  @@index([vehiculeId])
+  @@index([chauffeurId])
+  @@index([dossierId])
+  @@map("courses")
+}
+
+model HistoriqueCourse {
+  id           String   @id @default(uuid())
+  courseId     String
+  statutAvant  String?  @db.VarChar(30)
+  statutApres  String   @db.VarChar(30)
+  commentaire  String?  @db.VarChar(500)
+  utilisateur  String?  @db.VarChar(200)
+  createdAt    DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@map("historique_courses")
+}
+
+enum TypeMaintenance {
+  VIDANGE
+  REPARATION
+  VISITE_TECHNIQUE
+  ASSURANCE
+  PNEUS
+  AUTRE
+}
+
+model MaintenanceVehicule {
+  id                     String          @id @default(uuid())
+  societeId              String
+  vehiculeId             String
+  type                   TypeMaintenance
+  date                   DateTime
+  kilometrage            Int?
+  cout                   Decimal?        @db.Decimal(12, 2)
+  prestataire            String?         @db.VarChar(200)
+  description            String?         @db.Text
+  prochaineDateRappel    DateTime?
+  observations           String?         @db.Text
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  societe  Societe  @relation(fields: [societeId], references: [id])
+  vehicule Vehicule @relation(fields: [vehiculeId], references: [id])
+
+  @@index([societeId])
+  @@index([vehiculeId])
+  @@map("maintenances_vehicules")
 }

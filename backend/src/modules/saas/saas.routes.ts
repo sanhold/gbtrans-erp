@@ -48,7 +48,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 router.post('/inscription', async (req: Request, res: Response) => {
   try {
-    const { raisonSociale, email, motDePasse, nom, prenom, telephone, sousDomaine, planCode, periodicite } = req.body;
+    const { raisonSociale, email, motDePasse, nom, prenom, telephone, sousDomaine, planCode, periodicite, activiteTransit, activiteTransport } = req.body;
     if (!raisonSociale || !email || !motDePasse || !nom || !prenom || !sousDomaine || !planCode) {
       ApiResponse.badRequest(res, 'Tous les champs sont requis'); return;
     }
@@ -57,6 +57,9 @@ router.post('/inscription', async (req: Request, res: Response) => {
       ApiResponse.badRequest(res, 'Le mot de passe doit comporter au moins 8 caractères, avec au moins une lettre et un chiffre'); return;
     }
     const periodiciteValide = periodicite === 'ANNUEL' ? 'ANNUEL' : 'MENSUEL';
+    const transitActif = activiteTransit !== false;
+    const transportActif = activiteTransport === true;
+    if (!transitActif && !transportActif) { ApiResponse.badRequest(res, 'Choisissez au moins une activité : Transit ou Transport'); return; }
 
     const slug = slugify(sousDomaine);
     if (!SLUG_RE.test(slug) || SLUGS_RESERVES.includes(slug)) { ApiResponse.badRequest(res, 'Sous-domaine invalide ou réservé'); return; }
@@ -79,7 +82,7 @@ router.post('/inscription', async (req: Request, res: Response) => {
 
     const resultat = await prisma.$transaction(async (tx) => {
       const societe = await tx.societe.create({
-        data: { code, raisonSociale, email, telephone, sousDomaine: slug },
+        data: { code, raisonSociale, email, telephone, sousDomaine: slug, activiteTransit: transitActif, activiteTransport: transportActif },
       });
       // Chaque societe recoit son propre jeu de profils (Admin/Transitaire/Comptable/...),
       // independant des autres societes du SaaS : modifier un profil ici n'affecte plus

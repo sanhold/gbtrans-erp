@@ -32,6 +32,10 @@ import dotationsRoutes from '../modules/finance/dotations.routes';
 import documentsRoutes from '../modules/documents/documents.routes';
 import saasRoutes from '../modules/saas/saas.routes';
 import platformRoutes from '../modules/saas/platform.routes';
+import vehiculesRoutes from '../modules/transport/vehicules.routes';
+import chauffeursRoutes from '../modules/transport/chauffeurs.routes';
+import coursesRoutes from '../modules/transport/courses.routes';
+import maintenanceRoutes from '../modules/transport/maintenance.routes';
 
 const router = Router();
 
@@ -68,6 +72,10 @@ router.use('/finance/dotations', dotationsRoutes);
 router.use('/documents', documentsRoutes);
 router.use('/saas', saasRoutes);
 router.use('/platform', platformRoutes);
+router.use('/transport/vehicules', vehiculesRoutes);
+router.use('/transport/chauffeurs', chauffeursRoutes);
+router.use('/transport/courses', coursesRoutes);
+router.use('/transport/maintenance', maintenanceRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({

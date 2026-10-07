@@ -85,6 +85,17 @@ export default function ParametresPage() {
 
   useEffect(() => { loadSociete(); loadNumerotations(); }, []);
 
+  const [togglingActivite, setTogglingActivite] = useState(false);
+  const toggleActivite = async (champ: 'activiteTransit' | 'activiteTransport', valeur: boolean) => {
+    setTogglingActivite(true);
+    try {
+      await parametresApi.societe.update({ [champ]: valeur });
+      toast.success(valeur ? 'Activité ajoutée' : 'Activité désactivée');
+      loadSociete();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setTogglingActivite(false); }
+  };
+
   const handleSaveSociete = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSociete(true);
@@ -339,6 +350,39 @@ export default function ParametresPage() {
                           {societe?.signature && <button onClick={handleRemoveSignature} disabled={uploadingSignature} className="block text-xs text-red-500 hover:underline">Supprimer</button>}
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card !p-5">
+                  <h3 className="text-lg font-semibold mb-1">Activités</h3>
+                  <p className="text-xs text-gray-500 mb-3">Détermine les modules visibles dans le menu (Transit : dossiers, douane, AT, cautions — Transport : véhicules, chauffeurs, courses). Au moins une activité doit rester active.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className={`rounded-xl border-2 p-3 flex items-center justify-between ${societe?.activiteTransit ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}>
+                      <div>
+                        <p className="font-semibold text-sm text-gray-900 dark:text-white">Transit</p>
+                        <p className="text-xs text-gray-500">{societe?.activiteTransit ? 'Activée' : 'Désactivée'}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleActivite('activiteTransit', !societe?.activiteTransit)}
+                        disabled={togglingActivite}
+                        className="btn-secondary !text-xs disabled:opacity-50"
+                      >
+                        {societe?.activiteTransit ? 'Désactiver' : 'Activer'}
+                      </button>
+                    </div>
+                    <div className={`rounded-xl border-2 p-3 flex items-center justify-between ${societe?.activiteTransport ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}>
+                      <div>
+                        <p className="font-semibold text-sm text-gray-900 dark:text-white">Transport</p>
+                        <p className="text-xs text-gray-500">{societe?.activiteTransport ? 'Activée' : 'Désactivée'}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleActivite('activiteTransport', !societe?.activiteTransport)}
+                        disabled={togglingActivite}
+                        className="btn-secondary !text-xs disabled:opacity-50"
+                      >
+                        {societe?.activiteTransport ? 'Désactiver' : 'Activer'}
+                      </button>
                     </div>
                   </div>
                 </div>

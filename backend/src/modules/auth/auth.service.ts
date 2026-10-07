@@ -17,7 +17,7 @@ export class AuthService {
             permissions: { include: { permission: true } },
           },
         },
-        societe: { select: { id: true, raisonSociale: true, code: true } },
+        societe: { select: { id: true, raisonSociale: true, code: true, activiteTransit: true, activiteTransport: true } },
       },
     });
 
@@ -92,7 +92,7 @@ export class AuthService {
             permissions: { include: { permission: true } },
           },
         },
-        societe: { select: { id: true, raisonSociale: true, code: true } },
+        societe: { select: { id: true, raisonSociale: true, code: true, activiteTransit: true, activiteTransport: true } },
       },
     });
 
@@ -233,7 +233,7 @@ export class AuthService {
         derniereConnexion: true,
         createdAt: true,
         societe: {
-          select: { id: true, raisonSociale: true, code: true, logo: true },
+          select: { id: true, raisonSociale: true, code: true, logo: true, activiteTransit: true, activiteTransport: true },
         },
         agence: {
           select: { id: true, nom: true, code: true },

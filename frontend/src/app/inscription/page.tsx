@@ -40,6 +40,8 @@ function InscriptionForm() {
   const [form, setForm] = useState({
     raisonSociale: '', nom: '', prenom: '', email: '', telephone: '', motDePasse: '', confirmation: '',
   });
+  const [activiteTransit, setActiviteTransit] = useState(true);
+  const [activiteTransport, setActiviteTransport] = useState(false);
 
   useEffect(() => {
     const demande = searchParams.get('plan');
@@ -61,6 +63,7 @@ function InscriptionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!planCode) { toast.error('Choisissez une formule'); return; }
+    if (!activiteTransit && !activiteTransport) { toast.error('Choisissez au moins une activité : Transit ou Transport'); return; }
     if (form.motDePasse.length < 8) { toast.error('Le mot de passe doit comporter au moins 8 caractères'); return; }
     if (form.motDePasse !== form.confirmation) { toast.error('Les mots de passe ne correspondent pas'); return; }
 
@@ -70,6 +73,7 @@ function InscriptionForm() {
         raisonSociale: form.raisonSociale, email: form.email, motDePasse: form.motDePasse,
         nom: form.nom, prenom: form.prenom, telephone: form.telephone || undefined,
         sousDomaine: genererSousDomaineTechnique(form.raisonSociale), planCode, periodicite,
+        activiteTransit, activiteTransport,
       });
       toast.success(res.data.message, { duration: 6000 });
       router.push('/auth/login');
@@ -98,6 +102,29 @@ function InscriptionForm() {
             <div>
               <label className="label">Nom de votre entreprise *</label>
               <input type="text" value={form.raisonSociale} onChange={e => updateField('raisonSociale', e.target.value)} className="input-field" placeholder="Ex: Transit Express SARL" required />
+            </div>
+
+            <div>
+              <label className="label">Votre activité *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiviteTransit(v => !v)}
+                  className={`rounded-xl border-2 p-3 text-left transition-colors ${activiteTransit ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}
+                >
+                  <p className="font-semibold text-sm text-gray-900 dark:text-white">Transit</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Dossiers, douane, admissions temporaires, cautions</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiviteTransport(v => !v)}
+                  className={`rounded-xl border-2 p-3 text-left transition-colors ${activiteTransport ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}
+                >
+                  <p className="font-semibold text-sm text-gray-900 dark:text-white">Transport</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Flotte de véhicules, chauffeurs, courses</p>
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">Vous pouvez sélectionner les deux, et ajouter l&apos;autre activité plus tard depuis vos paramètres.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

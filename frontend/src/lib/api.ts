@@ -121,6 +121,40 @@ export const cautionsApi = {
   delete: (id: string) => api.delete(`/cautions/${id}`),
 };
 
+// Transport : flotte, chauffeurs, courses, maintenance
+export const vehiculesApi = {
+  list: (params?: Record<string, any>) => api.get('/transport/vehicules', { params }),
+  get: (id: string) => api.get(`/transport/vehicules/${id}`),
+  create: (data: any) => api.post('/transport/vehicules', data),
+  update: (id: string, data: any) => api.put(`/transport/vehicules/${id}`, data),
+  delete: (id: string) => api.delete(`/transport/vehicules/${id}`),
+};
+
+export const chauffeursApi = {
+  list: (params?: Record<string, any>) => api.get('/transport/chauffeurs', { params }),
+  get: (id: string) => api.get(`/transport/chauffeurs/${id}`),
+  create: (data: any) => api.post('/transport/chauffeurs', data),
+  update: (id: string, data: any) => api.put(`/transport/chauffeurs/${id}`, data),
+  delete: (id: string) => api.delete(`/transport/chauffeurs/${id}`),
+};
+
+export const coursesApi = {
+  list: (params?: Record<string, any>) => api.get('/transport/courses', { params }),
+  get: (id: string) => api.get(`/transport/courses/${id}`),
+  create: (data: any) => api.post('/transport/courses', data),
+  update: (id: string, data: any) => api.put(`/transport/courses/${id}`, data),
+  changerStatut: (id: string, statut: string, commentaire?: string) => api.patch(`/transport/courses/${id}/statut`, { statut, commentaire }),
+  delete: (id: string) => api.delete(`/transport/courses/${id}`),
+};
+
+export const maintenanceApi = {
+  list: (params?: Record<string, any>) => api.get('/transport/maintenance', { params }),
+  alertes: () => api.get('/transport/maintenance/alertes'),
+  create: (data: any) => api.post('/transport/maintenance', data),
+  update: (id: string, data: any) => api.put(`/transport/maintenance/${id}`, data),
+  delete: (id: string) => api.delete(`/transport/maintenance/${id}`),
+};
+
 // Courriers (entrants / sortants) API
 export const courriersApi = {
   list: (params?: Record<string, any>) => api.get('/courriers', { params }),
@@ -359,7 +393,7 @@ export const saasApi = {
   plans: () => api.get('/saas/plans'),
   contenuVitrine: () => api.get('/saas/contenu-vitrine'),
   sousDomaineDisponible: (valeur: string) => api.get('/saas/sous-domaine-disponible', { params: { valeur } }),
-  inscription: (data: { raisonSociale: string; email: string; motDePasse: string; nom: string; prenom: string; telephone?: string; sousDomaine: string; planCode: string; periodicite?: 'MENSUEL' | 'ANNUEL' }) =>
+  inscription: (data: { raisonSociale: string; email: string; motDePasse: string; nom: string; prenom: string; telephone?: string; sousDomaine: string; planCode: string; periodicite?: 'MENSUEL' | 'ANNUEL'; activiteTransit?: boolean; activiteTransport?: boolean }) =>
     api.post('/saas/inscription', data),
   abonnement: () => api.get('/saas/abonnement'),
   correspondants: () => api.get('/saas/correspondants'),

@@ -118,6 +118,7 @@ function getPrefixeDefault(module: string): string {
     ECRITURE_BQ: 'EBQ',
     ECRITURE_CA: 'ECA',
     ECRITURE_OD: 'EOD',
+    COURSE: 'CRS',
   };
   if (module.startsWith('ECRITURE_AUTO_')) {
     const base = prefixes['ECRITURE_' + module.slice('ECRITURE_AUTO_'.length)];

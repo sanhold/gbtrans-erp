@@ -13,6 +13,7 @@ interface NavItem {
   href: string;
   icon: string;
   badgeKey?: 'dossiers' | 'courriers';
+  activite?: 'TRANSIT' | 'TRANSPORT';
 }
 
 interface NavGroup {
@@ -30,12 +31,21 @@ const navGroups: NavGroup[] = [
   {
     title: 'Opérations',
     items: [
-      { name: 'Dossiers', href: '/dossiers', icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', badgeKey: 'dossiers' },
-      { name: 'Suivi des dossiers', href: '/dossiers/suivi', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
-      { name: 'Gestion AT', href: '/at', icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
-      { name: 'Gestion Caution', href: '/cautions', icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z' },
+      { name: 'Dossiers', href: '/dossiers', icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', badgeKey: 'dossiers', activite: 'TRANSIT' },
+      { name: 'Suivi des dossiers', href: '/dossiers/suivi', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4', activite: 'TRANSIT' },
+      { name: 'Gestion AT', href: '/at', icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', activite: 'TRANSIT' },
+      { name: 'Gestion Caution', href: '/cautions', icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z', activite: 'TRANSIT' },
       { name: 'Courrier', href: '/courriers', icon: 'M2 7l10 6 10-6M2 4h20v16H2z', badgeKey: 'courriers' },
       { name: 'Archives numériques', href: '/archives', icon: 'M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4' },
+    ],
+  },
+  {
+    title: 'Transport',
+    items: [
+      { name: 'Véhicules', href: '/transport/vehicules', icon: 'M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13M5 13h14v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-5z', activite: 'TRANSPORT' },
+      { name: 'Chauffeurs', href: '/transport/chauffeurs', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6', activite: 'TRANSPORT' },
+      { name: 'Courses', href: '/transport/courses', icon: 'M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7', activite: 'TRANSPORT' },
+      { name: 'Maintenance', href: '/transport/maintenance', icon: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z', activite: 'TRANSPORT' },
     ],
   },
   {
@@ -150,6 +160,8 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       <nav className="flex-1">
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((item) => {
+            if (item.activite === 'TRANSIT' && user?.societe?.activiteTransit === false) return false;
+            if (item.activite === 'TRANSPORT' && user?.societe?.activiteTransport !== true) return false;
             const requiredModule = getRequiredModule(item.href);
             return !requiredModule || hasPermission(`${requiredModule}:LIRE`);
           });

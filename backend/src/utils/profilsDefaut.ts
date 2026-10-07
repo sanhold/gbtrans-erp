@@ -38,7 +38,7 @@ export async function creerProfilsDefautPourSociete(tx: Tx, societeId: string) {
   await lier(profilTransitaire.id, {
     OR: [
       { module: { in: ['DOSSIERS', 'CLIENTS', 'PROFORMAS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
-      { module: { in: ['AT', 'CAUTIONS', 'COURRIERS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER'] } },
+      { module: { in: ['AT', 'CAUTIONS', 'COURRIERS', 'TRANSPORT'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER'] } },
     ],
   });
 
