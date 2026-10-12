@@ -145,6 +145,7 @@ export const coursesApi = {
   update: (id: string, data: any) => api.put(`/transport/courses/${id}`, data),
   changerStatut: (id: string, statut: string, commentaire?: string) => api.patch(`/transport/courses/${id}/statut`, { statut, commentaire }),
   delete: (id: string) => api.delete(`/transport/courses/${id}`),
+  facturer: (courseIds: string[]) => api.post('/transport/courses/facturer', { courseIds }),
 };
 
 export const maintenanceApi = {

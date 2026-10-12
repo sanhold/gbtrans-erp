@@ -766,6 +766,7 @@ model Client {
   documents             Document[]
   admissionsTemporaires AdmissionTemporaire[]
   cautions              Caution[]
+  courses               Course[]
 
   @@unique([societeId, code])
   @@index([societeId])
@@ -1141,6 +1142,7 @@ model Facture {
   paiements      PaiementFacture[]
   ecritures      EcritureComptable[]
   ecrituresEnAttente EcritureEnAttente[]
+  coursesTransport   Course[]
 
   @@unique([societeId, numero])
   @@index([societeId])
@@ -2484,6 +2486,9 @@ model Course {
   vehiculeId          String
   chauffeurId         String
   dossierId           String?
+  clientId            String?
+  montantFacturable   Decimal?     @db.Decimal(12, 2)
+  factureId           String?
   origine              String      @db.VarChar(200)
   destination           String      @db.VarChar(200)
   designationMarchandise String?    @db.VarChar(500)
@@ -2505,12 +2510,16 @@ model Course {
   vehicule  Vehicule            @relation(fields: [vehiculeId], references: [id])
   chauffeur Chauffeur           @relation(fields: [chauffeurId], references: [id])
   dossier   Dossier?            @relation(fields: [dossierId], references: [id])
+  client    Client?             @relation(fields: [clientId], references: [id])
+  facture   Facture?            @relation(fields: [factureId], references: [id])
   historique HistoriqueCourse[]
 
   @@index([societeId])
   @@index([vehiculeId])
   @@index([chauffeurId])
   @@index([dossierId])
+  @@index([clientId])
+  @@index([factureId])
   @@map("courses")
 }
 

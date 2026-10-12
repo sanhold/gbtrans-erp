@@ -13,6 +13,8 @@ const INCLUDE_COURSE = {
   vehicule: { select: { id: true, immatriculation: true, marque: true, modele: true } },
   chauffeur: { select: { id: true, nom: true, prenom: true, telephone: true } },
   dossier: { select: { id: true, numero: true, numeroPhysique: true } },
+  client: { select: { id: true, code: true, raisonSociale: true } },
+  facture: { select: { id: true, numero: true, statut: true } },
 };
 
 router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Response) => {
@@ -56,7 +58,7 @@ router.post('/', authorize('TRANSPORT:CREER'), async (req: AuthRequest, res: Res
   try {
     const societeId = req.user!.societeId;
     const {
-      vehiculeId, chauffeurId, dossierId, origine, destination, designationMarchandise,
+      vehiculeId, chauffeurId, dossierId, clientId, montantFacturable, origine, destination, designationMarchandise,
       poidsChargeKg, distanceKm, dateDepartPrevue, dateArriveePrevue, observations,
     } = req.body;
 
@@ -71,9 +73,17 @@ router.post('/', authorize('TRANSPORT:CREER'), async (req: AuthRequest, res: Res
     if (!vehicule) { ApiResponse.badRequest(res, 'Véhicule introuvable'); return; }
     if (!chauffeur) { ApiResponse.badRequest(res, 'Chauffeur introuvable'); return; }
 
+    let dossier = null as Awaited<ReturnType<typeof prisma.dossier.findFirst>> | null;
     if (dossierId) {
-      const dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
+      dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
       if (!dossier) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+
+    // Le client peut etre choisi directement, ou repris automatiquement du dossier rattache.
+    let clientIdFinal: string | null = clientId || (dossier as any)?.clientId || null;
+    if (clientIdFinal) {
+      const client = await prisma.client.findFirst({ where: { id: clientIdFinal, societeId } });
+      if (!client) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
     }
 
     const numero = await genererNumero(societeId, 'COURSE');
@@ -81,6 +91,7 @@ router.post('/', authorize('TRANSPORT:CREER'), async (req: AuthRequest, res: Res
     const course = await prisma.course.create({
       data: {
         societeId, numero, vehiculeId, chauffeurId, dossierId: dossierId || null,
+        clientId: clientIdFinal, montantFacturable: montantFacturable != null ? Number(montantFacturable) : null,
         origine, destination, designationMarchandise: designationMarchandise || null,
         poidsChargeKg: poidsChargeKg != null ? Number(poidsChargeKg) : null,
         distanceKm: distanceKm != null ? Number(distanceKm) : null,
@@ -97,29 +108,51 @@ router.post('/', authorize('TRANSPORT:CREER'), async (req: AuthRequest, res: Res
 
 router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.course.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    const societeId = req.user!.societeId;
+    const existing = await prisma.course.findFirst({ where: { id: req.params.id, societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    if (existing.statut === 'TERMINEE' || existing.statut === 'ANNULEE') {
-      ApiResponse.badRequest(res, 'Cette course est clôturée et ne peut plus être modifiée'); return;
-    }
+    if (existing.factureId) { ApiResponse.badRequest(res, 'Cette course a déjà été facturée et ne peut plus être modifiée'); return; }
 
+    const cloturee = existing.statut === 'TERMINEE' || existing.statut === 'ANNULEE';
     const {
-      vehiculeId, chauffeurId, dossierId, origine, destination, designationMarchandise,
+      vehiculeId, chauffeurId, dossierId, clientId, montantFacturable, origine, destination, designationMarchandise,
       poidsChargeKg, distanceKm, dateDepartPrevue, dateArriveePrevue,
       fraisCarburant, fraisPeage, autresFrais, observations,
     } = req.body;
 
+    // Une fois la course terminee/annulee, seuls le client et le montant a facturer restent
+    // modifiables (on connait souvent le montant exact qu'apres la livraison).
+    if (cloturee) {
+      if (clientId) {
+        const client = await prisma.client.findFirst({ where: { id: clientId, societeId } });
+        if (!client) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
+      }
+      const course = await prisma.course.update({
+        where: { id: req.params.id },
+        data: {
+          ...(clientId !== undefined && { clientId: clientId || null }),
+          ...(montantFacturable !== undefined && { montantFacturable: montantFacturable != null ? Number(montantFacturable) : null }),
+        },
+        include: INCLUDE_COURSE,
+      });
+      ApiResponse.success(res, course, 'Course modifiée'); return;
+    }
+
     if (vehiculeId) {
-      const vehicule = await prisma.vehicule.findFirst({ where: { id: vehiculeId, societeId: req.user!.societeId } });
+      const vehicule = await prisma.vehicule.findFirst({ where: { id: vehiculeId, societeId } });
       if (!vehicule) { ApiResponse.badRequest(res, 'Véhicule introuvable'); return; }
     }
     if (chauffeurId) {
-      const chauffeur = await prisma.chauffeur.findFirst({ where: { id: chauffeurId, societeId: req.user!.societeId } });
+      const chauffeur = await prisma.chauffeur.findFirst({ where: { id: chauffeurId, societeId } });
       if (!chauffeur) { ApiResponse.badRequest(res, 'Chauffeur introuvable'); return; }
     }
     if (dossierId) {
-      const dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
+      const dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
       if (!dossier) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+    if (clientId) {
+      const client = await prisma.client.findFirst({ where: { id: clientId, societeId } });
+      if (!client) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
     }
 
     const course = await prisma.course.update({
@@ -127,6 +160,8 @@ router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res
       data: {
         vehiculeId, chauffeurId,
         ...(dossierId !== undefined && { dossierId: dossierId || null }),
+        ...(clientId !== undefined && { clientId: clientId || null }),
+        ...(montantFacturable !== undefined && { montantFacturable: montantFacturable != null ? Number(montantFacturable) : null }),
         origine, destination, designationMarchandise,
         poidsChargeKg: poidsChargeKg != null ? Number(poidsChargeKg) : undefined,
         distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
@@ -184,6 +219,65 @@ router.patch('/:id/statut', authorize('TRANSPORT:MODIFIER'), async (req: AuthReq
     });
 
     ApiResponse.success(res, course, 'Statut de la course mis à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+// Regroupe plusieurs courses TERMINEES du meme client (non encore facturees) sur une
+// seule facture, qui rejoint ensuite le circuit de facturation/paiement standard.
+router.post('/facturer', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    const { courseIds } = req.body as { courseIds?: string[] };
+    if (!Array.isArray(courseIds) || courseIds.length === 0) { ApiResponse.badRequest(res, 'Sélectionnez au moins une course'); return; }
+
+    const courses = await prisma.course.findMany({
+      where: { id: { in: courseIds }, societeId },
+      include: { client: true },
+    });
+    if (courses.length !== courseIds.length) { ApiResponse.badRequest(res, 'Une ou plusieurs courses sont introuvables'); return; }
+    if (courses.some(c => c.statut !== 'TERMINEE')) { ApiResponse.badRequest(res, 'Seules les courses terminées peuvent être facturées'); return; }
+    if (courses.some(c => c.factureId)) { ApiResponse.badRequest(res, 'Une ou plusieurs courses sont déjà facturées'); return; }
+    if (courses.some(c => !c.clientId)) { ApiResponse.badRequest(res, 'Toutes les courses doivent avoir un client renseigné'); return; }
+    if (courses.some(c => c.montantFacturable == null || Number(c.montantFacturable) <= 0)) { ApiResponse.badRequest(res, 'Toutes les courses doivent avoir un montant facturable renseigné'); return; }
+    const premierClientId = courses[0].clientId;
+    if (courses.some(c => c.clientId !== premierClientId)) { ApiResponse.badRequest(res, 'Toutes les courses sélectionnées doivent appartenir au même client'); return; }
+
+    const client = courses[0].client!;
+    const societe = await prisma.societe.findUnique({ where: { id: societeId }, select: { tauxTVA: true } });
+    const tauxTVA = Number(societe?.tauxTVA ?? 18);
+
+    const montantHT = courses.reduce((s, c) => s + Number(c.montantFacturable), 0);
+    const montantTVA = client.exonere ? 0 : Math.round(montantHT * tauxTVA) / 100;
+    const montantTTC = montantHT + montantTVA;
+
+    const numero = await genererNumero(societeId, 'FACTURE');
+    const dateEcheance = new Date(Date.now() + (client.conditionPaiement || 30) * 86400000);
+
+    const facture = await prisma.$transaction(async (tx) => {
+      const f = await tx.facture.create({
+        data: {
+          societeId, numero, type: 'FACTURE', clientId: client.id, createurId: req.user!.id,
+          dateEcheance, objet: 'Prestations de transport', titre: 'Facture transport',
+          montantHT, montantTVA, montantTTC, resteAPayer: montantTTC, tauxTVA: client.exonere ? 0 : tauxTVA,
+          lignes: {
+            create: courses.map((c, i) => ({
+              ordre: i + 1,
+              categorie: 'TRANSPORT',
+              designation: `Transport ${c.numero} — ${c.origine} → ${c.destination}`,
+              quantite: 1,
+              prixUnitaire: Number(c.montantFacturable),
+              montantHT: Number(c.montantFacturable),
+              tauxTVA: client.exonere ? 0 : tauxTVA,
+              montantTVA: client.exonere ? 0 : Math.round(Number(c.montantFacturable) * tauxTVA) / 100,
+            })),
+          },
+        },
+      });
+      await tx.course.updateMany({ where: { id: { in: courseIds } }, data: { factureId: f.id } });
+      return f;
+    });
+
+    ApiResponse.created(res, facture, `Facture ${numero} créée à partir de ${courses.length} course(s)`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
