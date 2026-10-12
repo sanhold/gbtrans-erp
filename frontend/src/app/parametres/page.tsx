@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { utilisateursApi, parametresApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 const tabs = [
@@ -92,6 +93,7 @@ export default function ParametresPage() {
       await parametresApi.societe.update({ [champ]: valeur });
       toast.success(valeur ? 'Activité ajoutée' : 'Activité désactivée');
       loadSociete();
+      useAuthStore.getState().loadProfile(); // rafraichit le menu lateral sans recharger la page
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
     finally { setTogglingActivite(false); }
   };
