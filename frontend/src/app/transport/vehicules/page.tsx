@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { vehiculesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -104,7 +105,9 @@ export default function VehiculesPage() {
                 <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun véhicule</td></tr>
               ) : vehicules.map(v => (
                 <tr key={v.id} className="table-row">
-                  <td className="table-cell font-mono font-medium" data-label="Immatriculation">{v.immatriculation}</td>
+                  <td className="table-cell font-mono font-medium" data-label="Immatriculation">
+                    <Link href={`/transport/vehicules/${v.id}`} className="text-primary-600 hover:underline">{v.immatriculation}</Link>
+                  </td>
                   <td className="table-cell" data-label="Marque / Modèle">{[v.marque, v.modele].filter(Boolean).join(' ') || '-'}</td>
                   <td className="table-cell" data-label="Type">{TYPE_LABEL[v.type]}</td>
                   <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[v.statut]} !text-[10px]`}>{STATUT_LABEL[v.statut]}</span></td>
