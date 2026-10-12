@@ -93,6 +93,7 @@ model Societe {
   chauffeurs            Chauffeur[]
   courses               Course[]
   maintenancesVehicules MaintenanceVehicule[]
+  devisTransport        DevisTransport[]
   sauvegardes           SauvegardeSociete[]
 
   @@map("societes")
@@ -330,6 +331,7 @@ model Utilisateur {
   operationsAgent              OperationFinanciere[] @relation("OperationFinanciereAgent")
   dotationsAgent               Dotation[]            @relation("DotationAgent")
   dotationsCreateur            Dotation[]            @relation("DotationCreateur")
+  devisTransportCreateur       DevisTransport[]      @relation("DevisTransportCreateur")
   etapesDossierExecutees       EtapeDossier[]
   employe                      Employe?
 
@@ -767,6 +769,7 @@ model Client {
   admissionsTemporaires AdmissionTemporaire[]
   cautions              Caution[]
   courses               Course[]
+  devisTransport        DevisTransport[]
 
   @@unique([societeId, code])
   @@index([societeId])
@@ -2513,6 +2516,7 @@ model Course {
   client    Client?             @relation(fields: [clientId], references: [id])
   facture   Facture?            @relation(fields: [factureId], references: [id])
   historique HistoriqueCourse[]
+  ligneDevis LigneDevisTransport[]
 
   @@index([societeId])
   @@index([vehiculeId])
@@ -2536,6 +2540,57 @@ model HistoriqueCourse {
 
   @@index([courseId])
   @@map("historique_courses")
+}
+
+enum StatutDevisTransport {
+  BROUILLON
+  ENVOYE
+  ACCEPTE
+  REFUSE
+}
+
+model DevisTransport {
+  id           String               @id @default(uuid())
+  societeId    String
+  numero       String               @db.VarChar(50)
+  clientId     String
+  statut       StatutDevisTransport @default(BROUILLON)
+  objet        String?              @db.VarChar(300)
+  dateValidite DateTime?
+  montantTotal Decimal              @default(0) @db.Decimal(12, 2)
+  observations String?              @db.Text
+  createurId   String
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  societe  Societe               @relation(fields: [societeId], references: [id])
+  client   Client                @relation(fields: [clientId], references: [id])
+  createur Utilisateur           @relation("DevisTransportCreateur", fields: [createurId], references: [id])
+  lignes   LigneDevisTransport[]
+
+  @@index([societeId])
+  @@index([clientId])
+  @@map("devis_transport")
+}
+
+model LigneDevisTransport {
+  id                     String    @id @default(uuid())
+  devisTransportId       String
+  ordre                  Int
+  origine                String    @db.VarChar(200)
+  destination            String    @db.VarChar(200)
+  designationMarchandise String?   @db.VarChar(500)
+  dateDepartPrevue       DateTime?
+  montantEstime          Decimal   @db.Decimal(12, 2)
+  courseId               String?
+  createdAt              DateTime  @default(now())
+
+  devis  DevisTransport @relation(fields: [devisTransportId], references: [id], onDelete: Cascade)
+  course Course?        @relation(fields: [courseId], references: [id])
+
+  @@index([devisTransportId])
+  @@index([courseId])
+  @@map("lignes_devis_transport")
 }
 
 enum TypeMaintenance {

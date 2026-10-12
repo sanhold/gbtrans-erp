@@ -120,8 +120,8 @@ router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res
       fraisCarburant, fraisPeage, autresFrais, observations,
     } = req.body;
 
-    // Une fois la course terminee/annulee, seuls le client et le montant a facturer restent
-    // modifiables (on connait souvent le montant exact qu'apres la livraison).
+    // Une fois la course terminee/annulee, seuls le client, le montant a facturer et les
+    // depenses restent modifiables (on connait souvent ces montants exacts qu'apres la livraison).
     if (cloturee) {
       if (clientId) {
         const client = await prisma.client.findFirst({ where: { id: clientId, societeId } });
@@ -132,6 +132,9 @@ router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res
         data: {
           ...(clientId !== undefined && { clientId: clientId || null }),
           ...(montantFacturable !== undefined && { montantFacturable: montantFacturable != null ? Number(montantFacturable) : null }),
+          ...(fraisCarburant !== undefined && { fraisCarburant: fraisCarburant != null ? Number(fraisCarburant) : null }),
+          ...(fraisPeage !== undefined && { fraisPeage: fraisPeage != null ? Number(fraisPeage) : null }),
+          ...(autresFrais !== undefined && { autresFrais: autresFrais != null ? Number(autresFrais) : null }),
         },
         include: INCLUDE_COURSE,
       });

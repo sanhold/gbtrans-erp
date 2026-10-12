@@ -156,6 +156,21 @@ export const maintenanceApi = {
   delete: (id: string) => api.delete(`/transport/maintenance/${id}`),
 };
 
+export const devisTransportApi = {
+  list: (params?: Record<string, any>) => api.get('/transport/devis', { params }),
+  get: (id: string) => api.get(`/transport/devis/${id}`),
+  create: (data: any) => api.post('/transport/devis', data),
+  update: (id: string, data: any) => api.put(`/transport/devis/${id}`, data),
+  envoyer: (id: string) => api.post(`/transport/devis/${id}/envoyer`),
+  valider: (id: string, data?: { vehiculeId?: string; chauffeurId?: string }) => api.post(`/transport/devis/${id}/valider`, data || {}),
+  refuser: (id: string) => api.post(`/transport/devis/${id}/refuser`),
+  delete: (id: string) => api.delete(`/transport/devis/${id}`),
+};
+
+export const statistiquesTransportApi = {
+  get: (params?: Record<string, any>) => api.get('/transport/statistiques', { params }),
+};
+
 // Courriers (entrants / sortants) API
 export const courriersApi = {
   list: (params?: Record<string, any>) => api.get('/courriers', { params }),

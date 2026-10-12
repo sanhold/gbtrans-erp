@@ -42,10 +42,12 @@ const navGroups: NavGroup[] = [
   {
     title: 'Transport',
     items: [
+      { name: 'Devis', href: '/transport/devis', icon: 'M9 12h6m-6 4h6m-7 5h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2.5L13 3H9.5L8.5 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z', activite: 'TRANSPORT' },
       { name: 'Véhicules', href: '/transport/vehicules', icon: 'M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13M5 13h14v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-5z', activite: 'TRANSPORT' },
       { name: 'Chauffeurs', href: '/transport/chauffeurs', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6', activite: 'TRANSPORT' },
       { name: 'Courses', href: '/transport/courses', icon: 'M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7', activite: 'TRANSPORT' },
       { name: 'Maintenance', href: '/transport/maintenance', icon: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z', activite: 'TRANSPORT' },
+      { name: 'Statistiques', href: '/transport/statistiques', icon: 'M3 3v18h18M7 14l4-4 3 3 5-6', activite: 'TRANSPORT' },
     ],
   },
   {

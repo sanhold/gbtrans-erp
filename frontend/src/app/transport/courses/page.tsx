@@ -33,7 +33,7 @@ export default function CoursesPage() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
-  const [facturation, setFacturation] = useState<{ id: string; clientId: string; montantFacturable: string } | null>(null);
+  const [facturation, setFacturation] = useState<{ id: string; clientId: string; montantFacturable: string; fraisCarburant: string; fraisPeage: string; autresFrais: string } | null>(null);
   const [facturantSelection, setFacturantSelection] = useState(false);
 
   const load = async () => {
@@ -88,12 +88,21 @@ export default function CoursesPage() {
   const enregistrerFacturation = async () => {
     if (!facturation) return;
     try {
-      await coursesApi.update(facturation.id, { clientId: facturation.clientId || null, montantFacturable: facturation.montantFacturable || null });
-      toast.success('Informations de facturation enregistrées');
+      await coursesApi.update(facturation.id, {
+        clientId: facturation.clientId || null,
+        montantFacturable: facturation.montantFacturable || null,
+        fraisCarburant: facturation.fraisCarburant || null,
+        fraisPeage: facturation.fraisPeage || null,
+        autresFrais: facturation.autresFrais || null,
+      });
+      toast.success('Informations enregistrées');
       setFacturation(null);
       load();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
+
+  const depensesCourse = (c: any) => Number(c.fraisCarburant || 0) + Number(c.fraisPeage || 0) + Number(c.autresFrais || 0);
+  const resultatCourse = (c: any) => c.montantFacturable != null ? Number(c.montantFacturable) - depensesCourse(c) : null;
 
   const facturable = (c: any) => c.statut === 'TERMINEE' && !c.factureId && c.clientId && c.montantFacturable != null && Number(c.montantFacturable) > 0;
 
@@ -147,14 +156,15 @@ export default function CoursesPage() {
               <th className="table-header">Client</th>
               <th className="table-header text-right">Montant</th>
               <th className="table-header">Statut</th>
+              <th className="table-header text-right">Résultat</th>
               <th className="table-header">Facturation</th>
               <th className="table-header">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucune course</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune course</td></tr>
               ) : data.map(c => (
                 <tr key={c.id} className="table-row">
                   <td className="table-cell">
@@ -167,11 +177,14 @@ export default function CoursesPage() {
                   <td className="table-cell text-xs" data-label="Client">{c.client?.raisonSociale || '-'}</td>
                   <td className="table-cell text-right text-xs font-mono" data-label="Montant">{fmtMontant(c.montantFacturable)}</td>
                   <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px]`}>{STATUT_LABEL[c.statut]}</span></td>
+                  <td className="table-cell text-right text-xs font-mono" data-label="Résultat">
+                    {resultatCourse(c) != null ? <span className={resultatCourse(c)! >= 0 ? 'text-accent-600' : 'text-red-600'}>{fmtMontant(resultatCourse(c))}</span> : '-'}
+                  </td>
                   <td className="table-cell" data-label="Facturation">
                     {c.facture ? (
                       <Link href={`/facturation/${c.facture.id}`} className="text-xs text-primary-600 hover:underline font-mono">{c.facture.numero}</Link>
                     ) : c.statut === 'TERMINEE' ? (
-                      <button onClick={() => setFacturation({ id: c.id, clientId: c.clientId || '', montantFacturable: c.montantFacturable || '' })} className="text-xs text-amber-600 hover:underline">
+                      <button onClick={() => setFacturation({ id: c.id, clientId: c.clientId || '', montantFacturable: c.montantFacturable || '', fraisCarburant: c.fraisCarburant || '', fraisPeage: c.fraisPeage || '', autresFrais: c.autresFrais || '' })} className="text-xs text-amber-600 hover:underline">
                         {c.clientId && c.montantFacturable ? 'Modifier' : 'À renseigner'}
                       </button>
                     ) : <span className="text-xs text-gray-400">-</span>}
@@ -260,7 +273,7 @@ export default function CoursesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
             <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">Facturation de la course</h2>
+              <h2 className="text-lg font-bold">Facturation & dépenses</h2>
               <button onClick={() => setFacturation(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <div className="p-5 space-y-4">
@@ -272,6 +285,17 @@ export default function CoursesPage() {
                 </select>
               </div>
               <div><label className="label">Montant facturable (FCFA)</label><input type="number" value={facturation.montantFacturable} onChange={e => setFacturation({ ...facturation, montantFacturable: e.target.value })} className="input-field" /></div>
+              <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Dépenses du voyage</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div><label className="label !text-xs">Carburant</label><input type="number" value={facturation.fraisCarburant} onChange={e => setFacturation({ ...facturation, fraisCarburant: e.target.value })} className="input-field !text-sm" /></div>
+                <div><label className="label !text-xs">Péage</label><input type="number" value={facturation.fraisPeage} onChange={e => setFacturation({ ...facturation, fraisPeage: e.target.value })} className="input-field !text-sm" /></div>
+                <div><label className="label !text-xs">Autres</label><input type="number" value={facturation.autresFrais} onChange={e => setFacturation({ ...facturation, autresFrais: e.target.value })} className="input-field !text-sm" /></div>
+              </div>
+              <p className="text-right text-sm font-semibold">
+                Résultat du voyage : <span className={(Number(facturation.montantFacturable || 0) - Number(facturation.fraisCarburant || 0) - Number(facturation.fraisPeage || 0) - Number(facturation.autresFrais || 0)) >= 0 ? 'text-accent-600' : 'text-red-600'}>
+                  {fmtMontant(Number(facturation.montantFacturable || 0) - Number(facturation.fraisCarburant || 0) - Number(facturation.fraisPeage || 0) - Number(facturation.autresFrais || 0))}
+                </span>
+              </p>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setFacturation(null)} className="btn-secondary">Annuler</button>
                 <button type="button" onClick={enregistrerFacturation} className="btn-primary">Enregistrer</button>
