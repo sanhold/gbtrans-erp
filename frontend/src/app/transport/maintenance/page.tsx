@@ -12,6 +12,34 @@ const FORM_VIDE = { vehiculeId: '', type: 'VIDANGE', date: '', kilometrage: '', 
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 const fmtMontant = (n: any) => n != null ? `${new Intl.NumberFormat('fr-FR').format(Number(n))} FCFA` : '-';
 
+const joursRestants = (d: any) => d ? Math.ceil((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000) : null;
+const urgenceClasse = (j: number | null) => {
+  if (j == null) return 'bg-gray-100 text-gray-600 dark:bg-surface-700 dark:text-gray-300';
+  if (j < 0) return 'bg-red-600 text-white';
+  if (j <= 7) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+  if (j <= 15) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+  return 'bg-gray-100 text-gray-600 dark:bg-surface-700 dark:text-gray-300';
+};
+const urgenceLabel = (j: number | null) => {
+  if (j == null) return '';
+  if (j < 0) return `en retard de ${Math.abs(j)} j`;
+  if (j === 0) return "aujourd'hui";
+  return `dans ${j} j`;
+};
+
+function AlerteRow({ immatriculation, date }: { immatriculation: string; date: any }) {
+  const j = joursRestants(date);
+  return (
+    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-surface-800 border border-gray-100 dark:border-surface-700">
+      <span className="font-mono text-xs font-semibold text-gray-700 dark:text-gray-200">{immatriculation}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-gray-400">{fmtDate(date)}</span>
+        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${urgenceClasse(j)}`}>{urgenceLabel(j)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function MaintenancePage() {
   const [maintenances, setMaintenances] = useState<any[]>([]);
   const [alertes, setAlertes] = useState<any>(null);
@@ -67,12 +95,39 @@ export default function MaintenancePage() {
         </div>
 
         {!loading && nbAlertes > 0 && (
-          <div className="card !border-l-4 !border-amber-500 bg-amber-50 dark:bg-amber-900/10">
-            <h3 className="font-bold text-amber-800 dark:text-amber-400 mb-2 text-sm">⚠ Échéances à surveiller (30 prochains jours)</h3>
-            <div className="space-y-1 text-sm">
-              {alertes.vehiculesAssurance.map((v: any) => <p key={`a-${v.id}`} className="text-gray-700 dark:text-gray-300">Assurance <strong>{v.immatriculation}</strong> expire le {fmtDate(v.dateExpirationAssurance)}</p>)}
-              {alertes.vehiculesVisite.map((v: any) => <p key={`vt-${v.id}`} className="text-gray-700 dark:text-gray-300">Visite technique <strong>{v.immatriculation}</strong> expire le {fmtDate(v.dateExpirationVisiteTechnique)}</p>)}
-              {alertes.maintenancesRappel.map((m: any) => <p key={m.id} className="text-gray-700 dark:text-gray-300">{TYPE_LABEL[m.type]} <strong>{m.vehicule?.immatriculation}</strong> prévue le {fmtDate(m.prochaineDateRappel)}</p>)}
+          <div className="card !border-l-4 !border-amber-500 bg-amber-50/60 dark:bg-amber-900/10">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+              <h3 className="font-bold text-amber-800 dark:text-amber-400 text-sm flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
+                Échéances à surveiller
+              </h3>
+              <span className="badge badge-warning">{nbAlertes} alerte{nbAlertes > 1 ? 's' : ''} · 30 prochains jours</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {alertes.vehiculesAssurance.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Assurance ({alertes.vehiculesAssurance.length})</p>
+                  <div className="space-y-1.5">
+                    {alertes.vehiculesAssurance.map((v: any) => <AlerteRow key={`a-${v.id}`} immatriculation={v.immatriculation} date={v.dateExpirationAssurance} />)}
+                  </div>
+                </div>
+              )}
+              {alertes.vehiculesVisite.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Visite technique ({alertes.vehiculesVisite.length})</p>
+                  <div className="space-y-1.5">
+                    {alertes.vehiculesVisite.map((v: any) => <AlerteRow key={`vt-${v.id}`} immatriculation={v.immatriculation} date={v.dateExpirationVisiteTechnique} />)}
+                  </div>
+                </div>
+              )}
+              {alertes.maintenancesRappel.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Rappels maintenance ({alertes.maintenancesRappel.length})</p>
+                  <div className="space-y-1.5">
+                    {alertes.maintenancesRappel.map((m: any) => <AlerteRow key={m.id} immatriculation={`${m.vehicule?.immatriculation} · ${TYPE_LABEL[m.type]}`} date={m.prochaineDateRappel} />)}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
