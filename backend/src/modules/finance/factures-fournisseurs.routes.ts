@@ -67,6 +67,9 @@ router.post('/', authorize('FOURNISSEURS:CREER'), audit('FOURNISSEURS', 'CREER')
   try {
     const societeId = req.user!.societeId;
     const { fournisseurId, dossierId, dateFacture, dateEcheance, reference, objet, observations } = req.body;
+    if (!fournisseurId) { ApiResponse.badRequest(res, 'Fournisseur requis'); return; }
+    const fournisseur = await prisma.fournisseur.findFirst({ where: { id: fournisseurId, societeId } });
+    if (!fournisseur) { ApiResponse.badRequest(res, 'Fournisseur introuvable'); return; }
     if (dossierId) await assertDossierOuvert(dossierId, societeId);
     const numero = await genererNumero(societeId, 'FACTURE_FOURNISSEUR');
     const f = await prisma.factureFournisseur.create({

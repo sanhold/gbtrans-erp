@@ -3,7 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, authorize, requireSociete } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -16,7 +16,7 @@ const UPLOAD_ROOT = path.join(__dirname, '../../../uploads');
 
 router.use(authenticate, requireSociete);
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authorize('ARCHIVES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '20', categorie, dossierId, clientId, admissionTemporaireId, search } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -50,7 +50,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 });
 
 // Comptage par catégorie (pour les cartes de filtre) — évite de charger tous les documents côté client
-router.get('/comptage-categories', async (req: AuthRequest, res: Response) => {
+router.get('/comptage-categories', authorize('ARCHIVES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const groupes = await prisma.document.groupBy({
       by: ['categorie'],
@@ -63,12 +63,33 @@ router.get('/comptage-categories', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', upload.single('file'), async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('ARCHIVES:CREER'), upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     if (!req.file) { ApiResponse.badRequest(res, 'Fichier requis'); return; }
     const societeId = req.user!.societeId;
     const { categorie, description, dossierId, clientId, fournisseurId, admissionTemporaireId, cautionId } = req.body;
     if (!categorie) { ApiResponse.badRequest(res, 'Catégorie requise'); return; }
+
+    if (dossierId) {
+      const dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
+      if (!dossier) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+    if (clientId) {
+      const client = await prisma.client.findFirst({ where: { id: clientId, societeId } });
+      if (!client) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
+    }
+    if (fournisseurId) {
+      const fournisseur = await prisma.fournisseur.findFirst({ where: { id: fournisseurId, societeId } });
+      if (!fournisseur) { ApiResponse.badRequest(res, 'Fournisseur introuvable'); return; }
+    }
+    if (admissionTemporaireId) {
+      const at = await prisma.admissionTemporaire.findFirst({ where: { id: admissionTemporaireId, societeId } });
+      if (!at) { ApiResponse.badRequest(res, 'Admission temporaire introuvable'); return; }
+    }
+    if (cautionId) {
+      const caution = await prisma.caution.findFirst({ where: { id: cautionId, societeId } });
+      if (!caution) { ApiResponse.badRequest(res, 'Caution introuvable'); return; }
+    }
 
     const extension = (path.extname(req.file.originalname) || '.bin').replace('.', '');
     const nom = `${crypto.randomUUID()}.${extension}`;

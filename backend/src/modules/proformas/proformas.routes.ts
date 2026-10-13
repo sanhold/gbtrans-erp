@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, authorize, requireSociete } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -11,7 +11,7 @@ router.use(authenticate, requireSociete);
 
 // ===== CATALOGUE PRESTATIONS =====
 
-router.get('/catalogue', async (req: AuthRequest, res: Response) => {
+router.get('/catalogue', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const data = await prisma.prestationCatalogue.findMany({
       where: { societeId: req.user!.societeId, actif: true },
@@ -21,7 +21,7 @@ router.get('/catalogue', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/catalogue', async (req: AuthRequest, res: Response) => {
+router.post('/catalogue', authorize('PROFORMAS:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.prestationCatalogue.create({
       data: { ...req.body, societeId: req.user!.societeId },
@@ -30,7 +30,7 @@ router.post('/catalogue', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/catalogue/:id', async (req: AuthRequest, res: Response) => {
+router.put('/catalogue/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.prestationCatalogue.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -39,7 +39,7 @@ router.put('/catalogue/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.delete('/catalogue/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/catalogue/:id', authorize('PROFORMAS:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.prestationCatalogue.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -50,7 +50,7 @@ router.delete('/catalogue/:id', async (req: AuthRequest, res: Response) => {
 
 // ===== PROFORMAS =====
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '20', search, statut, clientId, dossierId } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -84,7 +84,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 });
 
 // Liste proformas en attente de facturation (AVANT /:id)
-router.get('/en-attente', async (req: AuthRequest, res: Response) => {
+router.get('/en-attente', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const data = await prisma.proforma.findMany({
       where: {
@@ -103,7 +103,7 @@ router.get('/en-attente', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.proforma.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
@@ -126,7 +126,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('PROFORMAS:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { clientId, dossierId, titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes, afficherSignature } = req.body;
 
@@ -206,7 +206,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!existing) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
@@ -254,7 +254,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/valider', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/valider', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const proforma = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!proforma) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
@@ -274,7 +274,7 @@ router.patch('/:id/valider', async (req: AuthRequest, res: Response) => {
 
 // ===== TRANSFORMER PROFORMA EN FACTURE =====
 
-router.post('/:id/transformer-facture', async (req: AuthRequest, res: Response) => {
+router.post('/:id/transformer-facture', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const proforma = await prisma.proforma.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
@@ -348,7 +348,7 @@ router.post('/:id/transformer-facture', async (req: AuthRequest, res: Response) 
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('PROFORMAS:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!p) { ApiResponse.notFound(res); return; }

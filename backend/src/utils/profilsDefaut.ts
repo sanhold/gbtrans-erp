@@ -39,6 +39,7 @@ export async function creerProfilsDefautPourSociete(tx: Tx, societeId: string) {
     OR: [
       { module: { in: ['DOSSIERS', 'CLIENTS', 'PROFORMAS'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER'] } },
       { module: { in: ['AT', 'CAUTIONS', 'COURRIERS', 'TRANSPORT'] }, action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER'] } },
+      { module: 'ARCHIVES', action: { in: ['LIRE', 'CREER'] } },
     ],
   });
 
@@ -50,6 +51,7 @@ export async function creerProfilsDefautPourSociete(tx: Tx, societeId: string) {
       { module: 'COMPTABILITE', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER', 'EXPORTER', 'IMPRIMER'] } },
       { module: 'FINANCE', action: 'VOIR_MONTANTS' },
       { module: 'RH', action: { in: ['LIRE', 'VOIR_MONTANTS'] } },
+      { module: 'ARCHIVES', action: { in: ['LIRE', 'CREER'] } },
     ],
   });
 
