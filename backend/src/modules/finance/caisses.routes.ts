@@ -32,8 +32,11 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
   try {
     const existing = await prisma.caisse.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    const { solde: _solde, ...rest } = req.body;
-    const c = await prisma.caisse.update({ where: { id: req.params.id }, data: rest });
+    const { code, libelle, devise, plafond, compteComptable } = req.body;
+    const c = await prisma.caisse.update({
+      where: { id: req.params.id },
+      data: { code, libelle, devise, plafond, compteComptable },
+    });
     ApiResponse.success(res, c, 'Caisse modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });

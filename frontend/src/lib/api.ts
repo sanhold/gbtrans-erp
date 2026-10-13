@@ -3,8 +3,6 @@ import { getTenantSlug } from './tenant';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
-export const getFileUrl = (chemin: string) => `${API_BASE_URL.replace(/\/api\/v1\/?$/, '')}/uploads/${chemin}`;
-
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -195,6 +193,8 @@ export const documentsApi = {
   list: (params?: Record<string, any>) => api.get('/documents', { params }),
   comptageCategories: () => api.get('/documents/comptage-categories'),
   upload: (formData: FormData) => api.post('/documents', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Fichier servi via une route authentifiée (filtrée par société), plus via /uploads en statique.
+  fichier: (id: string) => api.get(`/documents/${id}/fichier`, { responseType: 'blob' }),
 };
 
 // Clients API

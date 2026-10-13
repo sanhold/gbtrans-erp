@@ -324,6 +324,7 @@ export class FacturationService {
         where: {
           statut: 'VALIDE',
           datePaiement: { gte: dateDebut, lt: dateFin },
+          client: { societeId },
         },
         _sum: { montant: true },
         _count: true,

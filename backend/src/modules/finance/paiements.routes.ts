@@ -28,7 +28,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
     };
     const [data, total] = await Promise.all([
       prisma.paiement.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { datePaiement: 'desc' },
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },

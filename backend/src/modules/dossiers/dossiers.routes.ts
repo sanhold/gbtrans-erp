@@ -149,6 +149,11 @@ router.put('/:id/etapes/:etapeDossierId', authorize('DOSSIERS:MODIFIER'), audit(
 
     if (statut === 'VALIDEE' && !executantId) { ApiResponse.badRequest(res, 'Le personnel ayant exécuté cette étape est requis'); return; }
 
+    if (statut === 'VALIDEE') {
+      const executant = await prisma.utilisateur.findFirst({ where: { id: executantId, societeId: req.user!.societeId } });
+      if (!executant) { ApiResponse.badRequest(res, 'Personnel exécutant introuvable'); return; }
+    }
+
     const misAJour = await prisma.etapeDossier.update({
       where: { id: etape.id },
       data: {

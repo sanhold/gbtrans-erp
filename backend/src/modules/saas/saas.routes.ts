@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../../config/database';
 import { ApiResponse } from '../../utils/apiResponse';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { creerProfilsDefautPourSociete } from '../../utils/profilsDefaut';
 import { fournisseurActif, MODULES, dechiffrerChamps } from './fournisseurs/registry';
@@ -130,7 +130,7 @@ router.get('/correspondants', async (_req: Request, res: Response) => {
   ApiResponse.success(res, { configure: true, fournisseur: fournisseur.code, correspondants: fournisseur.module.CORRESPONDANTS });
 });
 
-router.post('/abonnement/paiement', authenticate, requireSociete, async (req: AuthRequest, res: Response) => {
+router.post('/abonnement/paiement', authenticate, requireSociete, authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const { correspondant, telephone } = req.body as { correspondant?: string; telephone?: string };
     if (!correspondant || !telephone) { ApiResponse.badRequest(res, 'Opérateur et numéro de téléphone requis'); return; }

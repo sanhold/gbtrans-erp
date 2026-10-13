@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
-import { documentsApi, getFileUrl, clientsApi, dossiersApi } from '@/lib/api';
+import { documentsApi, clientsApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
@@ -86,6 +86,22 @@ export default function ArchivesPage() {
       documentsApi.comptageCategories().then(r => setCountsByCategorie(r.data.data || {})).catch(() => {});
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur lors de l\'import'); }
     finally { setUploading(false); }
+  };
+
+  const telechargerDocument = async (doc: any) => {
+    try {
+      const res = await documentsApi.fichier(doc.id);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noreferrer';
+      a.download = doc.nomOriginal;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur lors du téléchargement'); }
   };
 
   const load = () => {
@@ -220,12 +236,12 @@ export default function ArchivesPage() {
                       ) : documents.map(d => (
                         <tr key={d.id} className="table-row">
                           <td className="table-cell !px-1" data-label="Actions">
-                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 inline-block" title="Télécharger">
+                            <button type="button" onClick={() => telechargerDocument(d)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 inline-block" title="Télécharger">
                               <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            </a>
+                            </button>
                           </td>
                           <td className="table-cell !px-1.5 !text-[11px]" data-label="Nom">
-                            <a href={getFileUrl(d.chemin)} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline font-medium block truncate" title={d.nomOriginal}>{d.nomOriginal}</a>
+                            <button type="button" onClick={() => telechargerDocument(d)} className="text-primary-600 hover:underline font-medium block truncate text-left" title={d.nomOriginal}>{d.nomOriginal}</button>
                             {d.description && <p className="text-[10px] text-gray-400 truncate" title={d.description}>{d.description}</p>}
                           </td>
                           <td className="table-cell !px-1.5" data-label="Catégorie"><span className="badge badge-gray !text-[10px] !px-1.5 !py-0 truncate">{CATEGORIE_LABELS[d.categorie] || d.categorie}</span></td>

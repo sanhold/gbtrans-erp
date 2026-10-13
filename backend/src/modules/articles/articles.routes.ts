@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -13,7 +13,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 router.use(authenticate, requireSociete);
 
 // Liste articles d'un dossier
-router.get('/dossier/:dossierId', async (req: AuthRequest, res: Response) => {
+router.get('/dossier/:dossierId', authorize('DOSSIERS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const dossier = await prisma.dossier.findFirst({ where: { id: req.params.dossierId, societeId: req.user!.societeId } });
     if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
@@ -26,7 +26,7 @@ router.get('/dossier/:dossierId', async (req: AuthRequest, res: Response) => {
 });
 
 // Créer un article
-router.post('/dossier/:dossierId', async (req: AuthRequest, res: Response) => {
+router.post('/dossier/:dossierId', authorize('DOSSIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const dossierId = req.params.dossierId;
     await assertDossierOuvert(dossierId, req.user!.societeId);
@@ -62,7 +62,7 @@ router.post('/dossier/:dossierId', async (req: AuthRequest, res: Response) => {
 });
 
 // Modifier un article
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('DOSSIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.article.findFirst({ where: { id: req.params.id } });
     if (!existing) { ApiResponse.notFound(res, 'Article non trouvé'); return; }
@@ -91,7 +91,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Supprimer un article
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('DOSSIERS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.article.findFirst({ where: { id: req.params.id } });
     if (!existing) { ApiResponse.notFound(res, 'Article non trouvé'); return; }
@@ -103,7 +103,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Import Excel
-router.post('/dossier/:dossierId/import-excel', upload.single('file'), async (req: AuthRequest, res: Response) => {
+router.post('/dossier/:dossierId/import-excel', authorize('DOSSIERS:MODIFIER'), upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     const dossierId = req.params.dossierId;
     await assertDossierOuvert(dossierId, req.user!.societeId);

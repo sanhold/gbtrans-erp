@@ -25,7 +25,7 @@ router.get('/', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res: Re
       }),
     };
     const [data, total] = await Promise.all([
-      prisma.fournisseur.findMany({ where, skip, take: parseInt(limit as string), orderBy: { raisonSociale: 'asc' } }),
+      prisma.fournisseur.findMany({ where, skip, take: Math.min(parseInt(limit as string) || 20, 100), orderBy: { raisonSociale: 'asc' } }),
       prisma.fournisseur.count({ where }),
     ]);
     ApiResponse.paginated(res, data, total, parseInt(page as string), parseInt(limit as string));
@@ -58,7 +58,17 @@ router.put('/:id', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISSEURS', 'MO
   try {
     const existing = await prisma.fournisseur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    const f = await prisma.fournisseur.update({ where: { id: req.params.id }, data: req.body });
+    const {
+      type, raisonSociale, sigle, ncc, rccm, adresse, ville, pays, telephone, mobile,
+      email, siteWeb, conditionPaiement, devise, rib, banque, actif,
+    } = req.body;
+    const f = await prisma.fournisseur.update({
+      where: { id: req.params.id },
+      data: {
+        type, raisonSociale, sigle, ncc, rccm, adresse, ville, pays, telephone, mobile,
+        email, siteWeb, conditionPaiement, devise, rib, banque, actif,
+      },
+    });
     ApiResponse.success(res, f, 'Fournisseur modifié');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });

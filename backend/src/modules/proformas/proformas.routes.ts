@@ -34,7 +34,11 @@ router.put('/catalogue/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRe
   try {
     const existing = await prisma.prestationCatalogue.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    const p = await prisma.prestationCatalogue.update({ where: { id: req.params.id }, data: req.body });
+    const { categorie, code, designation, montantDefaut, tauxTVA, estTVA, ordre, actif } = req.body;
+    const p = await prisma.prestationCatalogue.update({
+      where: { id: req.params.id },
+      data: { categorie, code, designation, montantDefaut, tauxTVA, estTVA, ordre, actif },
+    });
     ApiResponse.success(res, p, 'Prestation modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -69,7 +73,7 @@ router.get('/', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Respo
     };
     const [data, total] = await Promise.all([
       prisma.proforma.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateProforma: 'desc' },
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },

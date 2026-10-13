@@ -46,7 +46,7 @@ router.get('/', authorize('AT:LIRE'), async (req: AuthRequest, res: Response) =>
 
     const [data, total] = await Promise.all([
       prisma.admissionTemporaire.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateCreation: 'desc' },
         include: INCLUDE_AT,
       }),
@@ -101,6 +101,11 @@ router.post('/', authorize('AT:CREER'), async (req: AuthRequest, res: Response) 
 
     const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
     if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+
+    if (clientId) {
+      const clientCible = await prisma.client.findFirst({ where: { id: clientId, societeId } });
+      if (!clientCible) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
+    }
 
     const numero = await genererNumero(societeId, 'AT');
     const delaiMoisNum = delaiMois != null ? Number(delaiMois) : null;
@@ -159,6 +164,10 @@ router.put('/:id', authorize('AT:MODIFIER'), async (req: AuthRequest, res: Respo
     if (dossierId) {
       const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
       if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+    if (clientId) {
+      const clientCible = await prisma.client.findFirst({ where: { id: clientId, societeId: req.user!.societeId } });
+      if (!clientCible) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
     }
 
     const at = await prisma.$transaction(async (tx) => {

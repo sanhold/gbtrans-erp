@@ -33,7 +33,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
     };
     const [data, total, sommeEntrees, sommeSorties] = await Promise.all([
       prisma.operationFinanciere.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateOperation: 'desc' },
         include: {
           caisse: { select: { id: true, code: true, libelle: true } },
@@ -125,6 +125,11 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
     if (isEntree || isVirement) {
       const destination = await getSolde(destinationType, destinationId);
       if (!destination) { ApiResponse.notFound(res, 'Compte de destination introuvable'); return; }
+    }
+
+    if (type === 'DOTATION' && agentId) {
+      const agent = await prisma.utilisateur.findFirst({ where: { id: agentId, societeId } });
+      if (!agent) { ApiResponse.badRequest(res, 'Agent introuvable'); return; }
     }
 
     const numero = await genererNumero(societeId, 'OPERATION_FINANCIERE');

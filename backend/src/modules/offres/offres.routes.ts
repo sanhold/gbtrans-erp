@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -8,7 +8,7 @@ import { genererNumero } from '../../utils/numerotation';
 const router = Router();
 router.use(authenticate, requireSociete);
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authorize('OFFRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '20', search, statut, clientId, dossierId } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -27,7 +27,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     };
     const [data, total] = await Promise.all([
       prisma.offreCommerciale.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateOffre: 'desc' },
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
@@ -41,7 +41,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('OFFRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const o = await prisma.offreCommerciale.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
@@ -56,7 +56,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('OFFRES:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { clientId, dossierId, objet, description, conditions, observations, dateValidite, lignes } = req.body;
     if (!clientId) { ApiResponse.badRequest(res, 'Le client est obligatoire'); return; }
@@ -64,6 +64,11 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
     const client = await prisma.client.findFirst({ where: { id: clientId, societeId: req.user!.societeId } });
     if (!client) { ApiResponse.notFound(res, 'Client introuvable'); return; }
+
+    if (dossierId) {
+      const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
+      if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
 
     const numero = await genererNumero(req.user!.societeId, 'OFFRE');
 
@@ -94,7 +99,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('OFFRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.offreCommerciale.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -129,7 +134,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/statut', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/statut', authorize('OFFRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const { statut } = req.body;
     const valides = ['BROUILLON', 'ENVOYEE', 'ACCEPTEE', 'REFUSEE', 'EXPIREE', 'ANNULEE'];
@@ -141,7 +146,7 @@ router.patch('/:id/statut', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.post('/:id/transformer-proforma', async (req: AuthRequest, res: Response) => {
+router.post('/:id/transformer-proforma', authorize('OFFRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const offre = await prisma.offreCommerciale.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
@@ -173,7 +178,7 @@ router.post('/:id/transformer-proforma', async (req: AuthRequest, res: Response)
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('OFFRES:MODIFIER', 'OFFRES:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const o = await prisma.offreCommerciale.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!o) { ApiResponse.notFound(res); return; }

@@ -37,7 +37,7 @@ router.get('/', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Respo
 
     const [data, total] = await Promise.all([
       prisma.courrier.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateCreation: 'desc' },
         include: INCLUDE_COURRIER,
       }),

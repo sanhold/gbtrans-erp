@@ -125,7 +125,7 @@ router.post('/societes/:id/prolonger-essai', authenticatePlatform, requireSuperA
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.post('/societes/:id/relancer', authenticatePlatform, async (req: PlatformRequest, res: Response) => {
+router.post('/societes/:id/relancer', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
   try {
     const societe = await prisma.societe.findUnique({ where: { id: req.params.id }, select: { raisonSociale: true, email: true } });
     if (!societe) { ApiResponse.notFound(res); return; }
@@ -200,7 +200,7 @@ router.get('/paiements', authenticatePlatform, async (req: Request, res: Respons
     };
     const [data, total] = await Promise.all([
       prisma.paiementAbonnement.findMany({
-        where, skip, take: parseInt(limit),
+        where, skip, take: Math.min(parseInt(limit) || 20, 100),
         orderBy: { createdAt: 'desc' },
         include: {
           societe: { select: { id: true, raisonSociale: true } },
@@ -430,7 +430,7 @@ router.get('/audit-log', authenticatePlatform, async (req: Request, res: Respons
     const { page = '1', limit = '30' } = req.query as Record<string, string>;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [data, total] = await Promise.all([
-      prisma.platformAuditLog.findMany({ orderBy: { createdAt: 'desc' }, skip, take: parseInt(limit) }),
+      prisma.platformAuditLog.findMany({ orderBy: { createdAt: 'desc' }, skip, take: Math.min(parseInt(limit) || 20, 100) }),
       prisma.platformAuditLog.count(),
     ]);
     ApiResponse.success(res, { data, total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) });

@@ -3,8 +3,16 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+if (nodeEnv === 'production' && !process.env.JWT_SECRET) {
+  // eslint-disable-next-line no-console
+  console.error('ERREUR FATALE : la variable d\'environnement JWT_SECRET est requise en production.');
+  process.exit(1);
+}
+
 export const config = {
-  env: process.env.NODE_ENV || 'development',
+  env: nodeEnv,
   port: parseInt(process.env.PORT || '3001', 10),
   apiPrefix: process.env.API_PREFIX || '/api/v1',
 

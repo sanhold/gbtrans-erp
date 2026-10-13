@@ -4,13 +4,17 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
 import { config } from './config';
 import { logger } from './utils/logger';
 import routes from './routes';
 import prisma from './config/database';
 
 const app = express();
+
+// L'application est déployée derrière le proxy Render : sans ce réglage, req.ip
+// renvoie l'IP du proxy et le rate limit (ex: /auth/login) devient global à toute
+// la plateforme au lieu d'être appliqué par IP cliente.
+app.set('trust proxy', 1);
 
 // Sécurité
 app.use(helmet());
@@ -53,8 +57,9 @@ app.use(morgan('combined', {
   },
 }));
 
-// Fichiers statiques (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Les fichiers uploades (documents/archives) ne sont plus servis en statique et sans
+// authentification : ils transitent desormais par la route authentifiee et filtree par
+// societe GET /api/v1/documents/:id/fichier (cf. modules/documents/documents.routes.ts).
 
 // Routes API
 app.use(config.apiPrefix, routes);

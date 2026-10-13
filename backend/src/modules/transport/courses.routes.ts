@@ -36,7 +36,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
       }),
     };
     const [data, total] = await Promise.all([
-      prisma.course.findMany({ where, skip, take: parseInt(limit), orderBy: { createdAt: 'desc' }, include: INCLUDE_COURSE }),
+      prisma.course.findMany({ where, skip, take: Math.min(parseInt(limit) || 20, 100), orderBy: { createdAt: 'desc' }, include: INCLUDE_COURSE }),
       prisma.course.count({ where }),
     ]);
     ApiResponse.paginated(res, data, total, parseInt(page), parseInt(limit));
@@ -227,7 +227,11 @@ router.patch('/:id/statut', authorize('TRANSPORT:MODIFIER'), async (req: AuthReq
 
 // Regroupe plusieurs courses TERMINEES du meme client (non encore facturees) sur une
 // seule facture, qui rejoint ensuite le circuit de facturation/paiement standard.
-router.post('/facturer', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res: Response) => {
+// Cette route cree une vraie Facture (ressource du module FACTURATION) : on exige donc aussi
+// FACTURATION:CREER, en plus de TRANSPORT:MODIFIER deja detenu par le profil Transitaire (qui
+// gere le Transport mais n'a pas FACTURATION:CREER) — authorize() fait un OU, pas un ET, donc
+// aucun profil existant ne perd l'acces (cf. le meme choix fait sur transformer-facture).
+router.post('/facturer', authorize('TRANSPORT:MODIFIER', 'FACTURATION:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
     const { courseIds } = req.body as { courseIds?: string[] };

@@ -34,7 +34,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
     };
     const [data, total] = await Promise.all([
       prisma.dotation.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateDotation: 'desc' },
         include: { agent: { select: { id: true, nom: true, prenom: true } } },
       }),
@@ -67,6 +67,9 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
     if (!montantNum || montantNum <= 0) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
     if (!agentId) { ApiResponse.badRequest(res, 'Agent requis'); return; }
 
+    const agent = await prisma.utilisateur.findFirst({ where: { id: agentId, societeId } });
+    if (!agent) { ApiResponse.badRequest(res, 'Agent introuvable'); return; }
+
     const numero = await genererNumero(societeId, 'DOTATION');
     const dotation = await prisma.dotation.create({
       data: {
@@ -88,6 +91,11 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
     const { montant, motif, agentId } = req.body;
     const montantNum = Number(montant);
     if (!montantNum || montantNum <= 0) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
+
+    if (agentId) {
+      const agent = await prisma.utilisateur.findFirst({ where: { id: agentId, societeId } });
+      if (!agent) { ApiResponse.badRequest(res, 'Agent introuvable'); return; }
+    }
 
     const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId: req.params.id } });
     const montantUtilise = Number(sum._sum?.montant || 0);

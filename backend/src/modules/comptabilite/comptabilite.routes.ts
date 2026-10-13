@@ -274,7 +274,7 @@ router.get('/ecritures', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest
     };
     const [data, total] = await Promise.all([
       prisma.ecritureComptable.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateEcriture: 'desc' },
         include: {
           journal: { select: { code: true, libelle: true } },

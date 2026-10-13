@@ -10,7 +10,30 @@ import prisma from '../../config/database';
 import { Prisma } from '@prisma/client';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Liste blanche des formats de documents de transit/transport acceptés à l'archivage.
+const EXTENSIONS_AUTORISEES = new Set(['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx']);
+const MIMES_AUTORISES = new Set([
+  'application/pdf',
+  'image/jpeg', 'image/png',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const extension = path.extname(file.originalname).replace('.', '').toLowerCase();
+    if (!EXTENSIONS_AUTORISEES.has(extension) || !MIMES_AUTORISES.has(file.mimetype)) {
+      cb(new Error('Type de fichier non autorisé. Formats acceptés : PDF, JPG, PNG, DOC(X), XLS(X).'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 const UPLOAD_ROOT = path.join(__dirname, '../../../uploads');
 
@@ -35,7 +58,7 @@ router.get('/', authorize('ARCHIVES:LIRE'), async (req: AuthRequest, res: Respon
     };
     const [data, total] = await Promise.all([
       prisma.document.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { createdAt: 'desc' },
         include: {
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
@@ -60,6 +83,23 @@ router.get('/comptage-categories', authorize('ARCHIVES:LIRE'), async (req: AuthR
     const counts: Record<string, number> = {};
     for (const g of groupes) counts[g.categorie] = g._count;
     ApiResponse.success(res, counts);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+// Sert le fichier physique d'un document archivé, après vérification qu'il appartient bien
+// à la société de l'utilisateur authentifié. Content-Disposition: attachment force le
+// téléchargement (neutralise un éventuel HTML/JS malveillant qui serait exécuté en ligne).
+router.get('/:id/fichier', authorize('ARCHIVES:LIRE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const doc = await prisma.document.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    if (!doc) { ApiResponse.notFound(res, 'Document introuvable'); return; }
+
+    const cheminAbsolu = path.join(UPLOAD_ROOT, doc.chemin);
+    if (!cheminAbsolu.startsWith(UPLOAD_ROOT) || !fs.existsSync(cheminAbsolu)) {
+      ApiResponse.notFound(res, 'Fichier introuvable'); return;
+    }
+
+    res.download(cheminAbsolu, doc.nomOriginal);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 

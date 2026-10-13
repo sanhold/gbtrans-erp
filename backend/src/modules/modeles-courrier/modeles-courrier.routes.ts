@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -7,7 +7,9 @@ import prisma from '../../config/database';
 const router = Router();
 router.use(authenticate, requireSociete);
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+// Lecture ouverte à COURRIERS:LIRE (choix d'un modèle lors de la composition d'un courrier,
+// cf. page /courriers) en plus de PARAMETRES:LIRE (gestion des modèles sous /parametres).
+router.get('/', authorize('COURRIERS:LIRE', 'PARAMETRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const { type, actif } = req.query;
     const data = await prisma.modeleCourrier.findMany({
@@ -22,7 +24,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('COURRIERS:LIRE', 'PARAMETRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const m = await prisma.modeleCourrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!m) { ApiResponse.notFound(res); return; }
@@ -30,7 +32,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('PARAMETRES:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { nom, type, objet, contenu } = req.body;
     if (!nom || !objet || !contenu) { ApiResponse.badRequest(res, 'Nom, objet et contenu du modèle requis'); return; }
@@ -46,7 +48,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.modeleCourrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -60,7 +62,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('PARAMETRES:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.modeleCourrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }

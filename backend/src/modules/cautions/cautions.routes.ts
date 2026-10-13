@@ -46,7 +46,7 @@ router.get('/', authorize('CAUTIONS:LIRE'), async (req: AuthRequest, res: Respon
 
     const [data, total] = await Promise.all([
       prisma.caution.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { numero: 'desc' },
         include: INCLUDE_CAUTION,
       }),
@@ -77,6 +77,15 @@ router.post('/', authorize('CAUTIONS:CREER'), async (req: AuthRequest, res: Resp
 
     if (montant == null || montant === '') { ApiResponse.badRequest(res, 'Montant de la caution requis'); return; }
 
+    if (dossierId) {
+      const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId } });
+      if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+    if (clientId) {
+      const clientCible = await prisma.client.findFirst({ where: { id: clientId, societeId } });
+      if (!clientCible) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
+    }
+
     const c = await prisma.caution.create({
       data: {
         societeId,
@@ -102,6 +111,15 @@ router.put('/:id', authorize('CAUTIONS:MODIFIER'), async (req: AuthRequest, res:
     if (!existing) { ApiResponse.notFound(res); return; }
 
     const { dateCaution, dossierId, numeroBL, clientId, quantite, montant, compagnie, observations } = req.body;
+
+    if (dossierId) {
+      const dossierCible = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
+      if (!dossierCible) { ApiResponse.badRequest(res, 'Dossier introuvable'); return; }
+    }
+    if (clientId) {
+      const clientCible = await prisma.client.findFirst({ where: { id: clientId, societeId: req.user!.societeId } });
+      if (!clientCible) { ApiResponse.badRequest(res, 'Client introuvable'); return; }
+    }
 
     const c = await prisma.caution.update({
       where: { id: req.params.id },

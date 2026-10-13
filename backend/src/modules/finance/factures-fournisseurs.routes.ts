@@ -23,7 +23,7 @@ router.get('/', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res: Re
     };
     const [data, total] = await Promise.all([
       prisma.factureFournisseur.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateFacture: 'desc' },
         include: {
           fournisseur: { select: { id: true, code: true, raisonSociale: true } },

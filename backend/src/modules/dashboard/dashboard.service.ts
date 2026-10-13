@@ -72,7 +72,7 @@ export class DashboardService {
       prisma.admissionTemporaire.count({ where: { societeId, statut: 'ACTIVE' } }),
       prisma.admissionTemporaire.count({ where: { societeId, statut: 'EXPIREE' } }),
       prisma.caution.count({ where: { societeId, statut: { not: 'PAYEE' } } }),
-      prisma.courrier.count(),
+      prisma.courrier.count({ where: { societeId } }),
       prisma.document.count({ where: { societeId, archive: true } }),
       prisma.depense.aggregate({
         where: {

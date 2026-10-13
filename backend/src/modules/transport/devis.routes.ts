@@ -26,7 +26,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
       ...(search && { numero: { contains: search, mode: 'insensitive' as const } }),
     };
     const [data, total] = await Promise.all([
-      prisma.devisTransport.findMany({ where, skip, take: parseInt(limit), orderBy: { createdAt: 'desc' }, include: INCLUDE_DEVIS }),
+      prisma.devisTransport.findMany({ where, skip, take: Math.min(parseInt(limit) || 20, 100), orderBy: { createdAt: 'desc' }, include: INCLUDE_DEVIS }),
       prisma.devisTransport.count({ where }),
     ]);
     ApiResponse.paginated(res, data, total, parseInt(page), parseInt(limit));

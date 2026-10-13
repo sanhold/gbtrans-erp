@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { authenticate, requireSociete } from '../../middleware/auth';
+import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
@@ -8,7 +8,9 @@ const router = Router();
 router.use(authenticate, requireSociete);
 
 // Liste des processus
-router.get('/', async (req: AuthRequest, res: Response) => {
+// Lecture ouverte à DOSSIERS:LIRE (sélecteur de processus lors de la création d'un dossier,
+// cf. page /dossiers/nouveau) en plus de PARAMETRES:LIRE (gestion sous /parametres/processus).
+router.get('/', authorize('DOSSIERS:LIRE', 'PARAMETRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const data = await prisma.processusSuivi.findMany({
       where: { societeId: req.user!.societeId },
@@ -20,7 +22,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 });
 
 // Détail processus
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authorize('DOSSIERS:LIRE', 'PARAMETRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.processusSuivi.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
@@ -32,7 +34,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Créer processus avec étapes
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('PARAMETRES:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { code, nom, description, nature, etapes } = req.body;
 
@@ -62,7 +64,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 });
 
 // Modifier processus
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.processusSuivi.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
@@ -98,7 +100,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Supprimer processus
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('PARAMETRES:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.processusSuivi.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }

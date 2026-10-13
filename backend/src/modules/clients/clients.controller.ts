@@ -20,7 +20,7 @@ export class ClientController {
       const { page, limit, sortBy, sortOrder, search } = req.query;
       const result = await service.findAll(req.user!.societeId, {
         page: parseInt(page as string) || 1,
-        limit: parseInt(limit as string) || 20,
+        limit: Math.min(parseInt(limit as string) || 20, 100),
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'asc' | 'desc',
         search: search as string,

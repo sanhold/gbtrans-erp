@@ -31,7 +31,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
     };
     const [data, total] = await Promise.all([
       prisma.depense.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateDepense: 'desc' },
         include: {
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
@@ -62,6 +62,11 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
     if (!montantNum || montantNum <= 0) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
 
     if (dossierId) await assertDossierOuvert(dossierId, societeId);
+
+    if (fournisseurId) {
+      const fournisseur = await prisma.fournisseur.findFirst({ where: { id: fournisseurId, societeId } });
+      if (!fournisseur) { ApiResponse.notFound(res, 'Fournisseur introuvable'); return; }
+    }
 
     const account = caisseId
       ? await prisma.caisse.findFirst({ where: { id: caisseId, societeId } })
