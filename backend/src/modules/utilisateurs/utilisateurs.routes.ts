@@ -68,8 +68,14 @@ router.post('/', authorize('UTILISATEURS:CREER'), async (req: AuthRequest, res: 
 
 router.put('/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.utilisateur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    const existing = await prisma.utilisateur.findFirst({
+      where: { id: req.params.id, societeId: req.user!.societeId },
+      include: { profil: { select: { estAdmin: true } } },
+    });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
+    if (existing.profil?.estAdmin && !req.user!.estAdmin) {
+      ApiResponse.forbidden(res, 'Seul un administrateur peut modifier un compte administrateur'); return;
+    }
 
     const { nom, prenom, telephone, profilId, agenceId } = req.body;
 
@@ -98,9 +104,15 @@ router.put('/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, 
 
 router.patch('/:id/statut', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.utilisateur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    const existing = await prisma.utilisateur.findFirst({
+      where: { id: req.params.id, societeId: req.user!.societeId },
+      include: { profil: { select: { estAdmin: true } } },
+    });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
     if (existing.id === req.user!.id) { ApiResponse.badRequest(res, 'Vous ne pouvez pas désactiver votre propre compte'); return; }
+    if (existing.profil?.estAdmin && !req.user!.estAdmin) {
+      ApiResponse.forbidden(res, 'Seul un administrateur peut activer/désactiver un compte administrateur'); return;
+    }
 
     const actif = !existing.actif;
     const utilisateur = await prisma.utilisateur.update({
@@ -117,8 +129,14 @@ router.patch('/:id/statut', authorize('UTILISATEURS:MODIFIER'), async (req: Auth
 
 router.patch('/:id/deverrouiller', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.utilisateur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    const existing = await prisma.utilisateur.findFirst({
+      where: { id: req.params.id, societeId: req.user!.societeId },
+      include: { profil: { select: { estAdmin: true } } },
+    });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
+    if (existing.profil?.estAdmin && !req.user!.estAdmin) {
+      ApiResponse.forbidden(res, 'Seul un administrateur peut déverrouiller un compte administrateur'); return;
+    }
     const utilisateur = await prisma.utilisateur.update({
       where: { id: req.params.id },
       data: { verrouille: false, tentativesEchouees: 0 },
@@ -132,8 +150,14 @@ router.put('/:id/reset-password', authorize('UTILISATEURS:MODIFIER'), async (req
   try {
     const { motDePasse } = req.body;
     if (!motDePasse || motDePasse.length < 8) { ApiResponse.badRequest(res, 'Le mot de passe doit contenir au moins 8 caractères'); return; }
-    const existing = await prisma.utilisateur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
+    const existing = await prisma.utilisateur.findFirst({
+      where: { id: req.params.id, societeId: req.user!.societeId },
+      include: { profil: { select: { estAdmin: true } } },
+    });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
+    if (existing.profil?.estAdmin && !req.user!.estAdmin) {
+      ApiResponse.forbidden(res, 'Seul un administrateur peut réinitialiser le mot de passe d\'un compte administrateur'); return;
+    }
 
     const hashedPassword = await bcrypt.hash(motDePasse, 12);
     await prisma.utilisateur.update({
@@ -206,6 +230,14 @@ router.put('/profils/:id/permissions', authorize('UTILISATEURS:MODIFIER'), async
     const existing = await prisma.profil.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res, 'Profil introuvable'); return; }
     if (existing.estAdmin) { ApiResponse.badRequest(res, "Le profil Administrateur a accès à tout, inutile de gérer ses permissions"); return; }
+    if (existing.id === req.user!.profilId && !req.user!.estAdmin) {
+      ApiResponse.forbidden(res, 'Seul un administrateur peut modifier les permissions de son propre profil'); return;
+    }
+
+    const permissionsValides = await prisma.permission.findMany({ where: { id: { in: permissionIds } }, select: { id: true } });
+    if (permissionsValides.length !== new Set(permissionIds).size) {
+      ApiResponse.badRequest(res, 'Une ou plusieurs permissions sont invalides'); return;
+    }
 
     await prisma.$transaction([
       prisma.profilPermission.deleteMany({ where: { profilId: req.params.id } }),

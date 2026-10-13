@@ -5,6 +5,13 @@ import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { estimerTailleParTable } from '../../utils/tablesSocietes';
 import { executerSauvegarde } from '../sauvegarde/sauvegarde.service';
+import { chiffrer } from '../../utils/secretCrypto';
+
+// smtpPass ne doit jamais transiter en clair (ni chiffre) dans une reponse API.
+function sansSmtpPass<T extends { smtpPass?: string | null }>(societe: T): Omit<T, 'smtpPass'> {
+  const { smtpPass, ...safe } = societe;
+  return safe;
+}
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -17,8 +24,7 @@ router.get('/societe', authorize('PARAMETRES:LIRE'), async (req: AuthRequest, re
     if (!societe) { ApiResponse.notFound(res, 'Société introuvable'); return; }
     // smtpPass ne doit jamais transiter en clair par l'API, meme vers la propre societe
     // (le formulaire ne le pre-remplit jamais — cf. frontend parametres/page.tsx).
-    const { smtpPass, ...safe } = societe;
-    ApiResponse.success(res, { ...safe, smtpConfigure: !!smtpPass });
+    ApiResponse.success(res, { ...sansSmtpPass(societe), smtpConfigure: !!societe.smtpPass });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
@@ -63,13 +69,13 @@ router.put('/societe', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest
         ...(smtpHost !== undefined && { smtpHost: smtpHost || null }),
         ...(smtpPort !== undefined && { smtpPort: smtpPort === '' || smtpPort == null ? null : parseInt(smtpPort) }),
         ...(smtpUser !== undefined && { smtpUser: smtpUser || null }),
-        ...(smtpPass !== undefined && smtpPass !== '' && { smtpPass }),
+        ...(smtpPass !== undefined && smtpPass !== '' && { smtpPass: chiffrer(smtpPass) }),
         ...(smtpSecure !== undefined && { smtpSecure: !!smtpSecure }),
         ...(activiteTransit !== undefined && { activiteTransit: !!activiteTransit }),
         ...(activiteTransport !== undefined && { activiteTransport: !!activiteTransport }),
       },
     });
-    ApiResponse.success(res, societe, 'Informations société mises à jour');
+    ApiResponse.success(res, sansSmtpPass(societe), 'Informations société mises à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
@@ -78,7 +84,7 @@ router.put('/societe/logo', authorize('PARAMETRES:MODIFIER'), async (req: AuthRe
     const { logo } = req.body;
     if (logo && typeof logo === 'string' && logo.length > 3_000_000) { ApiResponse.badRequest(res, 'Image trop volumineuse (2 Mo max)'); return; }
     const societe = await prisma.societe.update({ where: { id: req.user!.societeId }, data: { logo: logo || null } });
-    ApiResponse.success(res, societe, logo ? 'Logo mis à jour' : 'Logo supprimé');
+    ApiResponse.success(res, sansSmtpPass(societe), logo ? 'Logo mis à jour' : 'Logo supprimé');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
@@ -87,7 +93,7 @@ router.put('/societe/signature', authorize('PARAMETRES:MODIFIER'), async (req: A
     const { signature } = req.body;
     if (signature && typeof signature === 'string' && signature.length > 3_000_000) { ApiResponse.badRequest(res, 'Image trop volumineuse (2 Mo max)'); return; }
     const societe = await prisma.societe.update({ where: { id: req.user!.societeId }, data: { signature: signature || null } });
-    ApiResponse.success(res, societe, signature ? 'Signature mise à jour' : 'Signature supprimée');
+    ApiResponse.success(res, sansSmtpPass(societe), signature ? 'Signature mise à jour' : 'Signature supprimée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
@@ -204,7 +210,7 @@ router.put('/sauvegarde', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequ
         ...(backupEmailDestination !== undefined && { backupEmailDestination: backupEmailDestination || null }),
       },
     });
-    ApiResponse.success(res, societe, 'Réglages de sauvegarde mis à jour');
+    ApiResponse.success(res, sansSmtpPass(societe), 'Réglages de sauvegarde mis à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

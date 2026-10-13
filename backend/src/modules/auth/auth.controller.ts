@@ -43,15 +43,6 @@ export class AuthController {
     }
   }
 
-  async register(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const utilisateur = await authService.register({ ...req.body, societeId: req.user!.societeId });
-      ApiResponse.created(res, utilisateur, 'Utilisateur créé avec succès');
-    } catch (error: any) {
-      ApiResponse.badRequest(res, error.message);
-    }
-  }
-
   async changePassword(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { ancienMotDePasse, nouveauMotDePasse } = req.body;

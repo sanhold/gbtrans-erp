@@ -2,6 +2,22 @@ import prisma from '../../config/database';
 import { PaginationParams } from '../../types';
 import { Prisma } from '@prisma/client';
 
+// Liste blanche des champs modifiables d'un client via create/update. Exclut volontairement
+// societeId, code, bloque, motifBlocage, actif, archive, solde et toute relation imbriquée Prisma.
+const CHAMPS_MODIFIABLES_CLIENT = [
+  'type', 'raisonSociale', 'sigle', 'ncc', 'rccm', 'regimeFiscal', 'adresse', 'ville', 'pays',
+  'telephone', 'mobile', 'email', 'siteWeb', 'conditionPaiement', 'plafondCredit', 'tauxRemise',
+  'devise', 'exonere',
+] as const;
+
+function extraireChampsAutorises(data: any): any {
+  const champs: Record<string, any> = {};
+  for (const champ of CHAMPS_MODIFIABLES_CLIENT) {
+    if (data[champ] !== undefined) champs[champ] = data[champ];
+  }
+  return champs;
+}
+
 export class ClientService {
   async create(societeId: string, data: any) {
     const lastClient = await prisma.client.findFirst({
@@ -16,7 +32,7 @@ export class ClientService {
 
     return prisma.client.create({
       data: {
-        ...data,
+        ...extraireChampsAutorises(data),
         societeId,
         code: nextCode,
       },
@@ -98,7 +114,7 @@ export class ClientService {
 
     return prisma.client.update({
       where: { id },
-      data,
+      data: extraireChampsAutorises(data),
     });
   }
 

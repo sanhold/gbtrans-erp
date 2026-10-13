@@ -58,13 +58,26 @@ export async function estimerTailleParTable(societeId: string): Promise<{ cle: s
   return resultats;
 }
 
+// Selects explicites pour les tables contenant des colonnes sensibles (hash de mot de passe,
+// secret 2FA, tokens de reinitialisation...) qui ne doivent jamais figurer dans un export de
+// sauvegarde envoye par email.
+const SELECTS_SAUVEGARDE: Record<string, Record<string, true>> = {
+  utilisateur: {
+    id: true, societeId: true, agenceId: true, matricule: true, nom: true, prenom: true,
+    email: true, telephone: true, avatar: true, doubleAuth: true, actif: true, verrouille: true,
+    tentativesEchouees: true, derniereConnexion: true, expirationMdp: true, doitChangerMdp: true,
+    profilId: true, createdAt: true, updatedAt: true,
+  },
+};
+
 /** Export JSON complet des donnees d'une societe sur les tables du registre. */
 export async function exporterDonneesSociete(societeId: string): Promise<Record<string, any[]>> {
   const export_: Record<string, any[]> = {};
   for (const { cle } of TABLES_SOCIETE) {
     try {
       const delegate = (prisma as any)[cle];
-      export_[cle] = await delegate.findMany({ where: { societeId } });
+      const select = SELECTS_SAUVEGARDE[cle];
+      export_[cle] = await delegate.findMany({ where: { societeId }, ...(select && { select }) });
     } catch {
       export_[cle] = [];
     }

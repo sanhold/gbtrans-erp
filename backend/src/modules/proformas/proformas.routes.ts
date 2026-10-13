@@ -138,6 +138,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const client = await prisma.client.findFirst({ where: { id: clientId, societeId: req.user!.societeId } });
+    if (!client) { ApiResponse.notFound(res, 'Client introuvable'); return; }
+
     const numero = await genererNumero(req.user!.societeId, 'PROFORMA');
 
     let montantHT = 0;

@@ -42,7 +42,7 @@ router.patch('/:id/numero-normalise', authorize('FACTURATION:MODIFIER'), audit('
 });
 
 // Ajouter une ligne à une facture BROUILLON
-router.post('/:id/lignes', async (req: AuthRequest, res: Response) => {
+router.post('/:id/lignes', authorize('FACTURATION:MODIFIER'), audit('FACTURATION', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const facture = await prisma.facture.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!facture) { ApiResponse.notFound(res); return; }
@@ -75,11 +75,14 @@ router.post('/:id/lignes', async (req: AuthRequest, res: Response) => {
 });
 
 // Supprimer une ligne
-router.delete('/:id/lignes/:ligneId', async (req: AuthRequest, res: Response) => {
+router.delete('/:id/lignes/:ligneId', authorize('FACTURATION:MODIFIER'), audit('FACTURATION', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const facture = await prisma.facture.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!facture) { ApiResponse.notFound(res); return; }
     if (facture.statut !== 'BROUILLON') { ApiResponse.badRequest(res, 'Modification impossible: facture non brouillon'); return; }
+
+    const ligne = await prisma.ligneFacture.findFirst({ where: { id: req.params.ligneId, factureId: facture.id } });
+    if (!ligne) { ApiResponse.notFound(res); return; }
 
     await prisma.ligneFacture.delete({ where: { id: req.params.ligneId } });
     await recalculerTotauxFacture(req.params.id);
@@ -90,11 +93,14 @@ router.delete('/:id/lignes/:ligneId', async (req: AuthRequest, res: Response) =>
 });
 
 // Modifier une ligne
-router.put('/:id/lignes/:ligneId', async (req: AuthRequest, res: Response) => {
+router.put('/:id/lignes/:ligneId', authorize('FACTURATION:MODIFIER'), audit('FACTURATION', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const facture = await prisma.facture.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!facture) { ApiResponse.notFound(res); return; }
     if (facture.statut !== 'BROUILLON') { ApiResponse.badRequest(res, 'Modification impossible: facture non brouillon'); return; }
+
+    const ligne = await prisma.ligneFacture.findFirst({ where: { id: req.params.ligneId, factureId: facture.id } });
+    if (!ligne) { ApiResponse.notFound(res); return; }
 
     const montant = parseFloat(req.body.montant) || 0;
     await prisma.ligneFacture.update({

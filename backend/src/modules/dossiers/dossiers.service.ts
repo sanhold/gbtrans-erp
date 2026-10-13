@@ -4,7 +4,45 @@ import { FilterDossier, PaginationParams } from '../../types';
 import { Prisma, StatutDossier } from '@prisma/client';
 import { dossierEstFerme } from '../../utils/dossierGuard';
 
+// Liste blanche des champs modifiables d'un dossier via create/update. Exclut volontairement
+// societeId, agenceId, numero, annee, statut, createurId et toute relation imbriquée Prisma.
+const CHAMPS_MODIFIABLES_DOSSIER = [
+  'numeroPhysique', 'nature', 'type', 'clientId', 'agentId', 'processusId', 'admissionTemporaireId',
+  'referenceClient', 'compagnieMaritime', 'navire', 'voyage', 'numeroBL', 'portOrigine', 'portDestination',
+  'dateArrivee', 'dateDepart', 'designation', 'poidsBrut', 'poidsNet', 'volume', 'nombreColis', 'emballage',
+  'valeurFOB', 'fret', 'assurance', 'valeurCAF', 'incoterm', 'devise', 'tauxChange', 'numeroDeclaration',
+  'dateDeclaration', 'regimeDouanier', 'bureauDouane', 'positionTarifaire', 'droitDouane', 'tva', 'autresTaxes',
+  'totalDroits', 'dateLivraison', 'lieuLivraison', 'bonLivraison', 'observations',
+] as const;
+
+function extraireChampsAutorises(data: any): any {
+  const champs: Record<string, any> = {};
+  for (const champ of CHAMPS_MODIFIABLES_DOSSIER) {
+    if (data[champ] !== undefined) champs[champ] = data[champ];
+  }
+  return champs;
+}
+
 export class DossierService {
+  private async verifierReferencesSociete(data: any, societeId: string) {
+    if (data.clientId) {
+      const client = await prisma.client.findFirst({ where: { id: data.clientId, societeId } });
+      if (!client) throw new Error('Client invalide pour cette société');
+    }
+    if (data.agentId) {
+      const agent = await prisma.utilisateur.findFirst({ where: { id: data.agentId, societeId } });
+      if (!agent) throw new Error('Agent invalide pour cette société');
+    }
+    if (data.processusId) {
+      const processus = await prisma.processusSuivi.findFirst({ where: { id: data.processusId, societeId } });
+      if (!processus) throw new Error('Processus invalide pour cette société');
+    }
+    if (data.admissionTemporaireId) {
+      const at = await prisma.admissionTemporaire.findFirst({ where: { id: data.admissionTemporaireId, societeId } });
+      if (!at) throw new Error('Admission temporaire invalide pour cette société');
+    }
+  }
+
   async suggestionNumeroPhysique(societeId: string, nature: string, annee?: number) {
     const year = annee || new Date().getFullYear();
     return suggererNumeroPhysiqueDossier(societeId, nature, year);
@@ -14,15 +52,24 @@ export class DossierService {
     if (!data.numeroPhysique || !String(data.numeroPhysique).trim()) {
       throw new Error('Le numéro physique du dossier est obligatoire');
     }
+    if (!data.clientId) throw new Error('Le client est obligatoire');
+    if (!data.nature) throw new Error('La nature du dossier est obligatoire');
+    if (!data.type) throw new Error('Le type du dossier est obligatoire');
 
-    const numero = await genererNumero(data.societeId, 'DOSSIER');
+    const societeId = data.societeId;
+    await this.verifierReferencesSociete(data, societeId);
+
+    const numero = await genererNumero(societeId, 'DOSSIER');
     const annee = new Date().getFullYear();
+    const champs = extraireChampsAutorises(data);
 
     let dossier;
     try {
       dossier = await prisma.dossier.create({
         data: {
-          ...data,
+          ...champs,
+          societeId,
+          agenceId: data.agenceId || null,
           numeroPhysique: String(data.numeroPhysique).trim(),
           numero,
           annee,
@@ -158,11 +205,14 @@ export class DossierService {
       throw new Error('Le numéro physique du dossier est obligatoire');
     }
 
+    await this.verifierReferencesSociete(data, societeId);
+    const champs = extraireChampsAutorises(data);
+
     let dossier;
     try {
       dossier = await prisma.dossier.update({
         where: { id },
-        data,
+        data: champs,
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
         },

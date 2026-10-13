@@ -115,6 +115,9 @@ router.put('/:id/lignes/:ligneId', authorize('FOURNISSEURS:MODIFIER'), audit('FO
     if (!facture) { ApiResponse.notFound(res); return; }
     if (facture.statut !== 'BROUILLON') { ApiResponse.badRequest(res, 'Modification impossible: facture non brouillon'); return; }
 
+    const ligne = await prisma.ligneFactureFournisseur.findFirst({ where: { id: req.params.ligneId, factureFournisseurId: facture.id } });
+    if (!ligne) { ApiResponse.notFound(res); return; }
+
     const quantite = Number(req.body.quantite) || 1;
     const prixUnitaire = Number(req.body.prixUnitaire) || 0;
     const tauxTVA = req.body.tauxTVA != null ? Number(req.body.tauxTVA) : 18;
@@ -137,6 +140,9 @@ router.delete('/:id/lignes/:ligneId', authorize('FOURNISSEURS:MODIFIER'), audit(
     const facture = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!facture) { ApiResponse.notFound(res); return; }
     if (facture.statut !== 'BROUILLON') { ApiResponse.badRequest(res, 'Modification impossible: facture non brouillon'); return; }
+
+    const ligne = await prisma.ligneFactureFournisseur.findFirst({ where: { id: req.params.ligneId, factureFournisseurId: facture.id } });
+    if (!ligne) { ApiResponse.notFound(res); return; }
 
     await prisma.ligneFactureFournisseur.delete({ where: { id: req.params.ligneId } });
     await recalculerTotauxFactureFournisseur(req.params.id);

@@ -14,6 +14,9 @@ export class FacturationService {
       }
     }
 
+    const client = await prisma.client.findFirst({ where: { id: data.clientId, societeId } });
+    if (!client) throw new Error('Client introuvable');
+
     const numero = await genererNumero(societeId, 'FACTURE');
 
     const montantHT = data.lignes.reduce(

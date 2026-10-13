@@ -136,52 +136,6 @@ export class AuthService {
     return { secret, qrCodeUrl };
   }
 
-  async register(data: {
-    societeId: string;
-    agenceId?: string;
-    matricule: string;
-    nom: string;
-    prenom: string;
-    email: string;
-    telephone?: string;
-    motDePasse: string;
-    profilId?: string;
-  }) {
-    const existing = await prisma.utilisateur.findFirst({
-      where: {
-        OR: [{ email: data.email }, { matricule: data.matricule }],
-      },
-    });
-
-    if (existing) {
-      throw new Error('Un utilisateur avec cet email ou matricule existe déjà');
-    }
-
-    const hashedPassword = await bcrypt.hash(data.motDePasse, 12);
-
-    const utilisateur = await prisma.utilisateur.create({
-      data: {
-        ...data,
-        motDePasse: hashedPassword,
-        expirationMdp: new Date(
-          Date.now() + config.security.passwordExpiryDays * 24 * 60 * 60 * 1000
-        ),
-      },
-      select: {
-        id: true,
-        matricule: true,
-        nom: true,
-        prenom: true,
-        email: true,
-        telephone: true,
-        actif: true,
-        createdAt: true,
-      },
-    });
-
-    return utilisateur;
-  }
-
   async changePassword(utilisateurId: string, ancien: string, nouveau: string) {
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { id: utilisateurId },
