@@ -7,6 +7,7 @@ interface User {
   nom: string;
   prenom: string;
   email: string;
+  doubleAuth?: boolean;
   societe: { id: string; raisonSociale: string; code: string; activiteTransit?: boolean; activiteTransport?: boolean };
   profil: {
     id: string;

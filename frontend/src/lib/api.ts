@@ -52,6 +52,7 @@ export const authApi = {
   changePassword: (ancienMotDePasse: string, nouveauMotDePasse: string) =>
     api.post('/auth/change-password', { ancienMotDePasse, nouveauMotDePasse }),
   setup2FA: () => api.post('/auth/setup-2fa'),
+  confirm2FA: (code: string) => api.post('/auth/confirm-2fa', { code }),
 };
 
 // Dashboard API
