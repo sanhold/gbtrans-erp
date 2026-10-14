@@ -131,7 +131,7 @@ router.get('/:id', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Re
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-router.post('/', authorize('PROFORMAS:CREER'), async (req: AuthRequest, res: Response) => {
+router.post('/', authorize('PROFORMAS:CREER'), audit('PROFORMAS', 'CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const { clientId, dossierId, titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes, afficherSignature } = req.body;
 
@@ -211,7 +211,7 @@ router.post('/', authorize('PROFORMAS:CREER'), async (req: AuthRequest, res: Res
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.put('/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
+router.put('/:id', authorize('PROFORMAS:MODIFIER'), audit('PROFORMAS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!existing) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
@@ -266,7 +266,7 @@ router.put('/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.patch('/:id/valider', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
+router.patch('/:id/valider', authorize('PROFORMAS:MODIFIER'), audit('PROFORMAS', 'VALIDER'), async (req: AuthRequest, res: Response) => {
   try {
     const proforma = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!proforma) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
@@ -309,7 +309,7 @@ router.patch('/:id/devalider', authorize('PROFORMAS:MODIFIER'), audit('PROFORMAS
 
 // ===== TRANSFORMER PROFORMA EN FACTURE =====
 
-router.post('/:id/transformer-facture', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
+router.post('/:id/transformer-facture', authorize('PROFORMAS:MODIFIER'), audit('PROFORMAS', 'TRANSFORMER'), async (req: AuthRequest, res: Response) => {
   try {
     const proforma = await prisma.proforma.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
@@ -383,7 +383,7 @@ router.post('/:id/transformer-facture', authorize('PROFORMAS:MODIFIER'), async (
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
-router.delete('/:id', authorize('PROFORMAS:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authorize('PROFORMAS:SUPPRIMER'), audit('PROFORMAS', 'SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!p) { ApiResponse.notFound(res); return; }
