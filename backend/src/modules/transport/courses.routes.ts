@@ -65,6 +65,9 @@ router.post('/', authorize('TRANSPORT:CREER'), async (req: AuthRequest, res: Res
     if (!vehiculeId || !chauffeurId || !origine || !destination) {
       ApiResponse.badRequest(res, 'Véhicule, chauffeur, origine et destination sont requis'); return;
     }
+    if (montantFacturable != null && Number(montantFacturable) < 0) {
+      ApiResponse.badRequest(res, 'montantFacturable ne peut pas être négatif'); return;
+    }
 
     const [vehicule, chauffeur] = await Promise.all([
       prisma.vehicule.findFirst({ where: { id: vehiculeId, societeId } }),
@@ -119,6 +122,10 @@ router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res
       poidsChargeKg, distanceKm, dateDepartPrevue, dateArriveePrevue,
       fraisCarburant, fraisPeage, autresFrais, observations,
     } = req.body;
+
+    for (const [label, valeur] of [['montantFacturable', montantFacturable], ['fraisCarburant', fraisCarburant], ['fraisPeage', fraisPeage], ['autresFrais', autresFrais]] as const) {
+      if (valeur != null && Number(valeur) < 0) { ApiResponse.badRequest(res, `${label} ne peut pas être négatif`); return; }
+    }
 
     // Une fois la course terminee/annulee, seuls le client, le montant a facturer et les
     // depenses restent modifiables (on connait souvent ces montants exacts qu'apres la livraison).
@@ -280,7 +287,10 @@ router.post('/facturer', authorize('TRANSPORT:MODIFIER', 'FACTURATION:CREER'), a
           },
         },
       });
-      await tx.course.updateMany({ where: { id: { in: courseIds } }, data: { factureId: f.id } });
+      const miseAJour = await tx.course.updateMany({ where: { id: { in: courseIds }, factureId: null }, data: { factureId: f.id } });
+      if (miseAJour.count !== courseIds.length) {
+        throw new Error('Une ou plusieurs courses ont déjà été facturées entre-temps');
+      }
       return f;
     });
 
