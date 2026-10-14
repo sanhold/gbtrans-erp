@@ -58,7 +58,10 @@ export async function statutDepot(champs: Record<string, string>, referenceExter
     headers: { Authorization: `Bearer ${champs.apiKey}` },
   });
   const data: any = await res.json().catch(() => null);
-  const statutDistant = data?.['v1/transaction']?.status || data?.status;
+  const transaction = data?.['v1/transaction'] || data;
+  const statutDistant = transaction?.status;
   const statut = statutDistant === 'approved' ? 'REUSSI' : statutDistant === 'declined' || statutDistant === 'canceled' ? 'ECHEC' : 'EN_ATTENTE';
-  return { statut, payloadBrut: data };
+  const montant = transaction?.amount !== undefined ? Number(transaction.amount) : undefined;
+  const devise = transaction?.currency?.iso || transaction?.currency;
+  return { statut, payloadBrut: data, montant, devise };
 }

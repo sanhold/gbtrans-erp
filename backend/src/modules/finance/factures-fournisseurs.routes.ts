@@ -7,6 +7,7 @@ import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
 import { Prisma } from '@prisma/client';
 import { assertDossierOuvert } from '../../utils/dossierGuard';
+import { debiterCompte } from '../../utils/debiterCompte';
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -179,37 +180,41 @@ router.post('/:id/paiement', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISS
 
     const montantNum = Number(montant);
     if (!(montantNum > 0)) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
-    const resteAPayer = Number(facture.resteAPayer);
-    if (montantNum > resteAPayer) { ApiResponse.badRequest(res, 'Le montant dépasse le reste à payer'); return; }
+    if (montantNum > Number(facture.resteAPayer)) { ApiResponse.badRequest(res, 'Le montant dépasse le reste à payer'); return; }
 
     let account: any = null;
     if (caisseId) account = await prisma.caisse.findFirst({ where: { id: caisseId, societeId } });
     else if (compteBancaireId) account = await prisma.compteBancaire.findFirst({ where: { id: compteBancaireId, societeId } });
     else if (compteTiersId) account = await prisma.compteTiers.findFirst({ where: { id: compteTiersId, societeId } });
     if ((caisseId || compteBancaireId || compteTiersId) && !account) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
-    if (account && Number(account.solde) - montantNum < 0) { ApiResponse.badRequest(res, 'Solde insuffisant pour ce paiement'); return; }
+    // Le contrôle de suffisance du solde (avec découvert autorisé pour un
+    // compte bancaire) est fait de façon atomique dans la transaction ci-dessous.
 
     const numeroPaiement = await genererNumero(societeId, 'PAIEMENT_FOURNISSEUR');
     const beneficiaire = facture.fournisseur?.raisonSociale;
     const factureNumero = facture.numero;
 
     const paiement = await prisma.$transaction(async (tx) => {
+      // Verrou atomique : empêche deux paiements concurrents de dépasser le reste à payer
+      // réel (meme pattern que le paiement de facture client).
+      const verrou = await tx.factureFournisseur.updateMany({
+        where: { id: factureId, societeId, statut: { in: ['VALIDEE', 'PARTIELLEMENT_PAYEE'] }, resteAPayer: { gte: montantNum } },
+        data: { resteAPayer: { decrement: montantNum }, montantPaye: { increment: montantNum } },
+      });
+      if (verrou.count !== 1) throw new Error('Le montant dépasse le reste à payer ou la facture a changé de statut entre-temps');
+
+      const miseAJour = await tx.factureFournisseur.findUniqueOrThrow({ where: { id: factureId }, select: { resteAPayer: true } });
+      await tx.factureFournisseur.update({
+        where: { id: factureId },
+        data: { statut: Number(miseAJour.resteAPayer) <= 0 ? 'PAYEE' : 'PARTIELLEMENT_PAYEE' },
+      });
+
       const p = await tx.paiementFournisseur.create({
         data: {
           societeId, numero: numeroPaiement, fournisseurId: facture.fournisseurId,
           montant: montantNum, modePaiement, reference, banque, statut: 'VALIDE',
           caisseId, compteBancaireId, compteTiersId, createurId: req.user!.id,
           affectations: { create: { factureFournisseurId: factureId, montant: montantNum } },
-        },
-      });
-
-      const nouveauReste = resteAPayer - montantNum;
-      await tx.factureFournisseur.update({
-        where: { id: factureId },
-        data: {
-          montantPaye: { increment: montantNum },
-          resteAPayer: nouveauReste,
-          statut: nouveauReste <= 0 ? 'PAYEE' : 'PARTIELLEMENT_PAYEE',
         },
       });
 
@@ -223,9 +228,7 @@ router.post('/:id/paiement', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISS
             reference: numeroPaiement, beneficiaire,
           },
         });
-        if (caisseId) await tx.caisse.update({ where: { id: caisseId }, data: { solde: { decrement: montantNum } } });
-        else if (compteBancaireId) await tx.compteBancaire.update({ where: { id: compteBancaireId }, data: { solde: { decrement: montantNum } } });
-        else if (compteTiersId) await tx.compteTiers.update({ where: { id: compteTiersId }, data: { solde: { decrement: montantNum } } });
+        await debiterCompte(tx, { caisseId, compteBancaireId, compteTiersId }, montantNum);
       }
 
       return p;

@@ -1,8 +1,29 @@
 import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
 import { PaginationParams } from '../../types';
-import { Prisma } from '@prisma/client';
+import { Prisma, StatutFacture, TypeFacture } from '@prisma/client';
 import { STATUTS_DOSSIER_FERME } from '../../utils/dossierGuard';
+
+const STATUTS_FACTURE_PAYABLES: StatutFacture[] = ['VALIDEE', 'ENVOYEE', 'PARTIELLEMENT_PAYEE', 'EN_RETARD', 'CONTENTIEUX'];
+const TYPES_FACTURE_PAYABLES: TypeFacture[] = ['FACTURE', 'DIVERSE'];
+
+function validerLignesFacture(lignes: any[]) {
+  for (const l of lignes) {
+    const quantite = Number(l.quantite);
+    const prixUnitaire = Number(l.prixUnitaire);
+    if (!(quantite > 0)) {
+      throw new Error(`Quantité invalide pour la ligne "${l.designation || ''}" : elle doit être strictement positive`);
+    }
+    if (!(prixUnitaire >= 0)) {
+      throw new Error(`Prix unitaire invalide pour la ligne "${l.designation || ''}" : il ne peut pas être négatif`);
+    }
+    const montantBrut = quantite * prixUnitaire;
+    const remise = Number(l.remise ?? 0);
+    if (remise < 0 || remise > montantBrut) {
+      throw new Error(`Remise invalide pour la ligne "${l.designation || ''}" : elle doit être comprise entre 0 et le montant brut de la ligne`);
+    }
+  }
+}
 
 export class FacturationService {
   async createFacture(societeId: string, createurId: string, data: any) {
@@ -17,6 +38,8 @@ export class FacturationService {
     const client = await prisma.client.findFirst({ where: { id: data.clientId, societeId } });
     if (!client) throw new Error('Client introuvable');
 
+    validerLignesFacture(data.lignes);
+
     const numero = await genererNumero(societeId, 'FACTURE');
 
     const montantHT = data.lignes.reduce(
@@ -26,7 +49,7 @@ export class FacturationService {
     const montantTVA = data.lignes.reduce(
       (sum: number, l: any) => {
         const ht = l.quantite * l.prixUnitaire - (l.remise || 0);
-        return sum + (ht * (l.tauxTVA || 18)) / 100;
+        return sum + (ht * (l.tauxTVA ?? 18)) / 100;
       },
       0
     );
@@ -56,7 +79,7 @@ export class FacturationService {
         montantTTC,
         resteAPayer: montantTTC,
         remise: data.remise || 0,
-        tauxTVA: data.tauxTVA || 18,
+        tauxTVA: data.tauxTVA ?? 18,
         devise: data.devise || 'XOF',
         conditions: data.conditions,
         observations: data.observations,
@@ -71,9 +94,9 @@ export class FacturationService {
             unite: l.unite,
             prixUnitaire: l.prixUnitaire,
             montantHT: l.quantite * l.prixUnitaire - (l.remise || 0),
-            tauxTVA: l.tauxTVA || 18,
+            tauxTVA: l.tauxTVA ?? 18,
             montantTVA:
-              ((l.quantite * l.prixUnitaire - (l.remise || 0)) * (l.tauxTVA || 18)) / 100,
+              ((l.quantite * l.prixUnitaire - (l.remise || 0)) * (l.tauxTVA ?? 18)) / 100,
             remise: l.remise || 0,
             compteComptable: l.compteComptable,
           })),
@@ -172,52 +195,117 @@ export class FacturationService {
   async annuler(id: string, societeId: string) {
     const facture = await prisma.facture.findFirst({ where: { id, societeId } });
     if (!facture) throw new Error('Facture non trouvée');
+    if (facture.statut !== 'BROUILLON') {
+      throw new Error('Seule une facture en brouillon peut être annulée directement ; pour une facture déjà validée, émettez un avoir');
+    }
     return prisma.facture.update({
       where: { id },
       data: { statut: 'ANNULEE' },
     });
   }
 
-  async creerAvoir(id: string, societeId: string, createurId: string, motif: string) {
-    const factureOrigine = await prisma.facture.findFirst({
-      where: { id, societeId },
-      include: { lignes: true },
-    });
-    if (!factureOrigine) throw new Error('Facture non trouvée');
+  async creerAvoir(
+    id: string,
+    societeId: string,
+    createurId: string,
+    motif: string,
+    lignesSelectionnees?: { ligneFactureId: string; montant: number }[]
+  ) {
+    if (!motif || !motif.trim()) throw new Error('Un motif est obligatoire pour créer un avoir');
 
-    const numero = await genererNumero(societeId, 'AVOIR');
+    return prisma.$transaction(async (tx) => {
+      // Verrou de ligne : serialise toute creation concurrente d'avoir sur cette meme facture,
+      // pour que le controle du plafond et la mise a jour du resteAPayer restent coherents.
+      const verrou = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "factures" WHERE id = ${id} AND "societeId" = ${societeId} FOR UPDATE`;
+      if (verrou.length === 0) throw new Error('Facture non trouvée');
 
-    return prisma.facture.create({
-      data: {
-        societeId,
-        numero,
-        type: 'AVOIR',
-        clientId: factureOrigine.clientId,
-        dossierId: factureOrigine.dossierId,
-        createurId,
-        dateEcheance: new Date(),
-        factureOrigineId: id,
-        motifAvoir: motif,
-        montantHT: factureOrigine.montantHT,
-        montantTVA: factureOrigine.montantTVA,
-        montantTTC: factureOrigine.montantTTC,
-        resteAPayer: factureOrigine.montantTTC,
-        tauxTVA: factureOrigine.tauxTVA,
-        lignes: {
-          create: factureOrigine.lignes.map((l) => ({
-            ordre: l.ordre,
-            categorie: l.categorie,
-            designation: l.designation,
-            quantite: l.quantite,
-            prixUnitaire: l.prixUnitaire,
-            montantHT: l.montantHT,
-            tauxTVA: l.tauxTVA,
-            montantTVA: l.montantTVA,
-            remise: l.remise,
-          })),
+      const factureOrigine = await tx.facture.findFirst({
+        where: { id, societeId },
+        include: { lignes: true },
+      });
+      if (!factureOrigine) throw new Error('Facture non trouvée');
+      if (factureOrigine.type === 'AVOIR') throw new Error('Impossible de créer un avoir sur un avoir');
+      if (['BROUILLON', 'ANNULEE'].includes(factureOrigine.statut)) {
+        throw new Error(`Impossible de créer un avoir sur une facture ${factureOrigine.statut.toLowerCase()}`);
+      }
+
+      let lignesAvoir: { ligne: (typeof factureOrigine.lignes)[number]; montant: number }[];
+      if (lignesSelectionnees && lignesSelectionnees.length > 0) {
+        lignesAvoir = lignesSelectionnees.map((sel) => {
+          const ligneOrigine = factureOrigine.lignes.find((l) => l.id === sel.ligneFactureId);
+          if (!ligneOrigine) throw new Error("Une des lignes sélectionnées n'appartient pas à cette facture");
+          const montantDemande = Number(sel.montant);
+          if (!(montantDemande > 0)) throw new Error("Le montant de chaque ligne d'avoir doit être positif");
+          if (montantDemande > Number(ligneOrigine.montantHT)) {
+            throw new Error(`Le montant de l'avoir pour la ligne "${ligneOrigine.designation}" dépasse son montant HT d'origine`);
+          }
+          return { ligne: ligneOrigine, montant: montantDemande };
+        });
+      } else {
+        lignesAvoir = factureOrigine.lignes.map((l) => ({ ligne: l, montant: Number(l.montantHT) }));
+      }
+
+      const montantHT = lignesAvoir.reduce((s, x) => s + x.montant, 0);
+      const montantTVA = lignesAvoir.reduce((s, x) => s + (x.montant * Number(x.ligne.tauxTVA)) / 100, 0);
+      const montantTTC = montantHT + montantTVA;
+
+      const avoirsExistants = await tx.facture.aggregate({
+        where: { factureOrigineId: id, societeId, statut: { not: 'ANNULEE' } },
+        _sum: { montantTTC: true },
+      });
+      const totalAvoirsExistants = Number(avoirsExistants._sum.montantTTC || 0);
+      if (totalAvoirsExistants + montantTTC > Number(factureOrigine.montantTTC)) {
+        throw new Error(
+          `Le montant total des avoirs (${(totalAvoirsExistants + montantTTC).toFixed(2)}) dépasserait le montant TTC de la facture d'origine (${factureOrigine.montantTTC})`
+        );
+      }
+
+      const numero = await genererNumero(societeId, 'AVOIR');
+
+      const avoir = await tx.facture.create({
+        data: {
+          societeId,
+          numero,
+          type: 'AVOIR',
+          clientId: factureOrigine.clientId,
+          dossierId: factureOrigine.dossierId,
+          createurId,
+          dateEcheance: new Date(),
+          factureOrigineId: id,
+          motifAvoir: motif,
+          montantHT,
+          montantTVA,
+          montantTTC,
+          resteAPayer: 0,
+          tauxTVA: factureOrigine.tauxTVA,
+          lignes: {
+            create: lignesAvoir.map((x, index) => ({
+              ordre: index + 1,
+              categorie: x.ligne.categorie,
+              codePrestation: x.ligne.codePrestation,
+              designation: x.ligne.designation,
+              quantite: x.ligne.quantite,
+              prixUnitaire: x.montant,
+              montantHT: x.montant,
+              tauxTVA: x.ligne.tauxTVA,
+              montantTVA: (x.montant * Number(x.ligne.tauxTVA)) / 100,
+              remise: 0,
+            })),
+          },
         },
-      },
-      include: { lignes: true },
+        include: { lignes: true },
+      });
+
+      // NB: si la facture d'origine est déjà intégralement payée, le reste à payer est
+      // simplement plafonné à 0 (pas de génération de crédit/avance client pour l'instant,
+      // chantier séparé à prévoir pour rembourser ou imputer le trop-perçu).
+      const nouveauResteOrigine = Math.max(0, Number(factureOrigine.resteAPayer) - montantTTC);
+      await tx.facture.update({
+        where: { id },
+        data: { resteAPayer: nouveauResteOrigine },
+      });
+
+      return avoir;
     });
   }
 
@@ -236,6 +324,12 @@ export class FacturationService {
     if (!facture) throw new Error('Facture non trouvée');
 
     if (!(montant > 0)) throw new Error('Montant invalide');
+    if (!TYPES_FACTURE_PAYABLES.includes(facture.type)) {
+      throw new Error("Un avoir ne peut pas faire l'objet d'un paiement client");
+    }
+    if (!STATUTS_FACTURE_PAYABLES.includes(facture.statut)) {
+      throw new Error(`Paiement impossible : la facture est ${facture.statut.toLowerCase()}`);
+    }
     const resteAPayer = Number(facture.resteAPayer);
     if (montant > resteAPayer) throw new Error('Le montant dépasse le reste à payer');
 
@@ -249,6 +343,21 @@ export class FacturationService {
     const numeroPaiement = await genererNumero(societeId, 'PAIEMENT');
 
     const paiement = await prisma.$transaction(async (tx) => {
+      const miseAJour = await tx.facture.updateMany({
+        where: { id: factureId, statut: { in: STATUTS_FACTURE_PAYABLES }, resteAPayer: { gte: montant } },
+        data: { resteAPayer: { decrement: montant }, montantPaye: { increment: montant } },
+      });
+      if (miseAJour.count !== 1) {
+        throw new Error("Le paiement n'a pas pu être enregistré : la facture a changé d'état ou le montant dépasse le reste à payer");
+      }
+
+      const factureMaj = await tx.facture.findUniqueOrThrow({ where: { id: factureId } });
+      const nouveauReste = Number(factureMaj.resteAPayer);
+      await tx.facture.update({
+        where: { id: factureId },
+        data: { statut: nouveauReste <= 0 ? 'PAYEE' : 'PARTIELLEMENT_PAYEE' },
+      });
+
       const p = await tx.paiement.create({
         data: {
           numero: numeroPaiement,
@@ -267,16 +376,6 @@ export class FacturationService {
               montant,
             },
           },
-        },
-      });
-
-      const nouveauReste = resteAPayer - montant;
-      await tx.facture.update({
-        where: { id: factureId },
-        data: {
-          montantPaye: { increment: montant },
-          resteAPayer: nouveauReste,
-          statut: nouveauReste <= 0 ? 'PAYEE' : 'PARTIELLEMENT_PAYEE',
         },
       });
 

@@ -7,6 +7,7 @@ import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
 import { Prisma } from '@prisma/client';
 import { assertDossierOuvert } from '../../utils/dossierGuard';
+import { debiterCompte } from '../../utils/debiterCompte';
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -72,13 +73,14 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
       ? await prisma.caisse.findFirst({ where: { id: caisseId, societeId } })
       : await prisma.compteBancaire.findFirst({ where: { id: compteBancaireId, societeId } });
     if (!account) { ApiResponse.notFound(res, 'Compte introuvable'); return; }
-    if (Number(account.solde) - montantNum < 0) { ApiResponse.badRequest(res, 'Solde insuffisant pour cette dépense'); return; }
+    // Le contrôle de suffisance du solde (avec découvert autorisé pour un
+    // compte bancaire) est fait de façon atomique dans la transaction ci-dessous.
 
     if (dotationId) {
       const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId } });
       if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
       if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }
-      const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId } });
+      const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId, statut: { not: 'ANNULEE' } } });
       const montantRestant = Number(dotation.montant) - Number(sum._sum.montant || 0);
       if (montantNum > montantRestant) { ApiResponse.badRequest(res, `Montant supérieur au reste disponible sur cette dotation (${montantRestant})`); return; }
     }
@@ -104,8 +106,7 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
         },
       });
 
-      if (caisseId) await tx.caisse.update({ where: { id: caisseId }, data: { solde: { decrement: montantNum } } });
-      else await tx.compteBancaire.update({ where: { id: compteBancaireId }, data: { solde: { decrement: montantNum } } });
+      await debiterCompte(tx, { caisseId, compteBancaireId }, montantNum);
 
       return d;
     });
@@ -119,9 +120,64 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
     const existing = await prisma.depense.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
     if (existing.dossierId) await assertDossierOuvert(existing.dossierId, req.user!.societeId);
-    const { categorie, designation, observations, statut } = req.body;
-    const d = await prisma.depense.update({ where: { id: req.params.id }, data: { categorie, designation, observations, statut } });
+    const { categorie, designation, observations } = req.body;
+    const d = await prisma.depense.update({ where: { id: req.params.id }, data: { categorie, designation, observations } });
     ApiResponse.success(res, d, 'Dépense modifiée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.post('/:id/annuler', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'ANNULER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    const motif = req.body.motif ? String(req.body.motif).trim() : '';
+    if (!motif) { ApiResponse.badRequest(res, 'Un motif est obligatoire pour annuler une dépense'); return; }
+
+    const depense = await prisma.depense.findFirst({ where: { id: req.params.id, societeId } });
+    if (!depense) { ApiResponse.notFound(res, 'Dépense introuvable'); return; }
+    if (depense.dossierId) await assertDossierOuvert(depense.dossierId, societeId);
+
+    const montantNum = Number(depense.montant);
+    const observationsMaj = depense.observations ? `${depense.observations}\n[Annulée] ${motif}` : `[Annulée] ${motif}`;
+
+    const resultat = await prisma.$transaction(async (tx) => {
+      const miseAJour = await tx.depense.updateMany({
+        where: { id: depense.id, statut: 'VALIDE' },
+        data: { statut: 'ANNULEE', observations: observationsMaj },
+      });
+      if (miseAJour.count !== 1) {
+        throw new Error("Cette dépense a déjà été annulée ou n'est plus dans un état annulable");
+      }
+
+      const numeroOp = await genererNumero(societeId, 'OPERATION_FINANCIERE');
+      await tx.operationFinanciere.create({
+        data: {
+          societeId,
+          numero: numeroOp,
+          type: 'ENCAISSEMENT',
+          sens: 'ENTREE',
+          caisseId: depense.caisseId,
+          compteBancaireId: depense.compteBancaireId,
+          montant: montantNum,
+          libelle: `Annulation de la dépense ${depense.numero}`,
+          reference: depense.numero,
+          observations: motif,
+        },
+      });
+
+      if (depense.caisseId) await tx.caisse.update({ where: { id: depense.caisseId }, data: { solde: { increment: montantNum } } });
+      else if (depense.compteBancaireId) await tx.compteBancaire.update({ where: { id: depense.compteBancaireId }, data: { solde: { increment: montantNum } } });
+
+      // La dotation éventuellement associée n'a pas de compteur de consommation
+      // dédié : son montant utilisé est calculé à la volée en sommant les
+      // dépenses non annulées qui la référencent (voir dotations.routes.ts et
+      // la vérification ci-dessus à la création d'une dépense). En passant
+      // cette dépense à ANNULEE, elle est exclue de cette somme et le montant
+      // redevient donc automatiquement disponible sur la dotation.
+
+      return tx.depense.findUnique({ where: { id: depense.id } });
+    });
+
+    ApiResponse.success(res, resultat, 'Dépense annulée et montant recrédité');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

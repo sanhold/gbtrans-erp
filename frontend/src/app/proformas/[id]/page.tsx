@@ -15,6 +15,7 @@ export default function ProformaDetailPage() {
   const [loading, setLoading] = useState(true);
   const [transforming, setTransforming] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [devalidating, setDevalidating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [branding, setBranding] = useState<SocieteBranding | undefined>(undefined);
   const { hasPermission } = useAuthStore();
@@ -79,6 +80,17 @@ export default function ProformaDetailPage() {
     finally { setValidating(false); }
   };
 
+  const handleDevalider = async () => {
+    if (!confirm('Repasser cette proforma en brouillon pour la modifier ?')) return;
+    setDevalidating(true);
+    try {
+      const res = await api.patch(`/proformas/${params.id}/devalider`);
+      toast.success(res.data.message);
+      setProforma(res.data.data);
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setDevalidating(false); }
+  };
+
   const handleTransformerFacture = async () => {
     if (!confirm('Transformer cette proforma en facture ?')) return;
     setTransforming(true);
@@ -92,8 +104,8 @@ export default function ProformaDetailPage() {
 
   const handleDelete = async () => {
     if (!proforma) return;
-    if (proforma.factureId || proforma.statut === 'TRANSFORMEE') {
-      toast.error('Impossible de supprimer : cette proforma a déjà été transformée en facture');
+    if (proforma.statut !== 'BROUILLON') {
+      toast.error('Seule une proforma en brouillon peut être supprimée');
       return;
     }
     if (!confirm(`Supprimer définitivement la proforma ${proforma.numero} ? Cette action est irréversible.`)) return;
@@ -145,10 +157,16 @@ export default function ProformaDetailPage() {
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {proforma.statut !== 'TRANSFORMEE' && (
+            {proforma.statut === 'BROUILLON' && (
               <button onClick={() => router.push(`/proformas/${params.id}/edit`)} className="btn-secondary">
                 <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 Modifier
+              </button>
+            )}
+            {proforma.statut === 'EN_ATTENTE_FACTURATION' && (
+              <button onClick={handleDevalider} disabled={devalidating} className="btn-secondary disabled:opacity-50">
+                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                {devalidating ? 'Dévalidation...' : 'Dévalider pour modifier'}
               </button>
             )}
             <button onClick={handleDownloadPDF} disabled={!canImprimer} title={!canImprimer ? 'Permission requise : PROFORMAS:IMPRIMER' : undefined} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
@@ -173,7 +191,7 @@ export default function ProformaDetailPage() {
             )}
             {proforma.statut === 'TRANSFORMEE' && <span className="badge badge-success px-3 py-1.5 text-sm">Facturée</span>}
             {proforma.statut === 'EN_ATTENTE_FACTURATION' && <span className="badge badge-warning px-3 py-1.5 text-sm">En attente de facturation</span>}
-            {proforma.statut !== 'TRANSFORMEE' && (
+            {proforma.statut === 'BROUILLON' && (
               <button
                 onClick={handleDelete}
                 disabled={deleting}

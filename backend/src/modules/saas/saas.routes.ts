@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../../config/database';
 import { ApiResponse } from '../../utils/apiResponse';
+import { logger } from '../../utils/logger';
 import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { creerProfilsDefautPourSociete } from '../../utils/profilsDefaut';
@@ -187,28 +188,33 @@ router.get('/paiements/:depositId/statut', authenticate, requireSociete, async (
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
-async function activerApresPaiement(paiementId: string) {
-  const paiement = await prisma.paiementAbonnement.findUnique({ where: { id: paiementId }, include: { abonnement: { include: { plan: true } } } });
-  if (!paiement || paiement.statut === 'REUSSI') return;
+async function activerApresPaiement(paiementId: string): Promise<boolean> {
+  // updateMany avec garde sur le statut EN_ATTENTE : rend l'activation idempotente en cas
+  // de rejeu du webhook ou d'appel concurrent (statut/verification manuelle + webhook).
+  const { count } = await prisma.paiementAbonnement.updateMany({
+    where: { id: paiementId, statut: 'EN_ATTENTE' },
+    data: { statut: 'REUSSI', datePaiement: new Date() },
+  });
+  if (count === 0) return false; // deja traite : on ne reactive/renotifie pas
+
+  const paiement = await prisma.paiementAbonnement.findUnique({ where: { id: paiementId }, include: { abonnement: true } });
+  if (!paiement) return false;
   const dureeJours = paiement.abonnement.periodicite === 'ANNUEL' ? 365 : 30;
   const base = paiement.abonnement.dateProchainPaiement && paiement.abonnement.dateProchainPaiement > new Date() ? paiement.abonnement.dateProchainPaiement : new Date();
   const prochain = new Date(base.getTime() + dureeJours * 24 * 60 * 60 * 1000);
-  await prisma.$transaction([
-    prisma.paiementAbonnement.update({ where: { id: paiementId }, data: { statut: 'REUSSI', datePaiement: new Date() } }),
-    prisma.abonnement.update({ where: { id: paiement.abonnementId }, data: { statut: 'ACTIF', dateProchainPaiement: prochain } }),
-  ]);
+  await prisma.abonnement.update({ where: { id: paiement.abonnementId }, data: { statut: 'ACTIF', dateProchainPaiement: prochain } });
+  return true;
 }
 
 // ===== Webhook fournisseurs de paiement (appele par leurs serveurs, non authentifie par JWT) =====
 // A configurer dans le tableau de bord de chaque fournisseur comme URL de callback :
 // /api/v1/saas/paiements/:code/webhook (ex: .../paiements/PAWAPAY/webhook).
+// Important : ":code" vient de l'URL et n'est donc pas fiable (n'importe qui peut appeler
+// n'importe quelle URL de webhook) ; on ne l'utilise jamais pour choisir la logique de
+// verification, seulement paiement.fournisseur tel qu'enregistre en base.
 
 router.post('/paiements/:code/webhook', async (req: Request, res: Response) => {
   try {
-    const code = req.params.code.toUpperCase();
-    const module = MODULES[code];
-    if (!module) { res.status(404).json({ ok: false, error: 'Fournisseur inconnu' }); return; }
-
     const payload = req.body;
     const depositId = payload?.depositId || payload?.[0]?.depositId || payload?.data?.id || payload?.transaction_id || payload?.id;
     if (!depositId) { res.status(400).json({ ok: false }); return; }
@@ -217,21 +223,34 @@ router.post('/paiements/:code/webhook', async (req: Request, res: Response) => {
     if (!paiement) { res.status(404).json({ ok: false }); return; }
     if (paiement.statut !== 'EN_ATTENTE') { res.json({ ok: true }); return; } // deja traite, rien a refaire
 
+    const module = MODULES[paiement.fournisseur];
+    if (!module) { res.status(404).json({ ok: false }); return; }
+
     // Le webhook ne fait jamais foi a lui seul (n'importe qui pourrait poster un faux succes) :
-    // on reverifie toujours le statut reel aupres du fournisseur avant d'activer quoi que ce soit.
-    const fournisseurRow = await prisma.fournisseurPaiement.findUnique({ where: { code } });
+    // on reverifie toujours le statut reel aupres du fournisseur reellement enregistre pour ce
+    // paiement avant d'activer quoi que ce soit.
+    const fournisseurRow = await prisma.fournisseurPaiement.findUnique({ where: { code: paiement.fournisseur } });
     if (!fournisseurRow) { res.status(503).json({ ok: false, error: 'Fournisseur non configuré' }); return; }
     const champs = dechiffrerChamps(fournisseurRow.champs);
     const verifie = await module.statutDepot(champs, String(depositId));
 
     if (verifie.statut === 'REUSSI') {
+      const montantAttendu = Number(paiement.montant);
+      const montantOk = verifie.montant === undefined || Math.round(verifie.montant) === Math.round(montantAttendu);
+      const deviseOk = !verifie.devise || verifie.devise === paiement.devise;
+      if (!montantOk || !deviseOk) {
+        logger.error(`Webhook paiement ${paiement.id} (${paiement.fournisseur}) : montant/devise verifies (${verifie.montant} ${verifie.devise}) ne correspondent pas au paiement attendu (${montantAttendu} ${paiement.devise}), activation refusee`);
+        res.json({ ok: true });
+        return;
+      }
       await activerApresPaiement(paiement.id);
     } else if (verifie.statut === 'ECHEC') {
-      await prisma.paiementAbonnement.update({ where: { id: paiement.id }, data: { statut: 'ECHEC', payloadBrut: verifie.payloadBrut } });
+      await prisma.paiementAbonnement.updateMany({ where: { id: paiement.id, statut: 'EN_ATTENTE' }, data: { statut: 'ECHEC', payloadBrut: verifie.payloadBrut } });
     }
     res.json({ ok: true });
   } catch (e: any) {
-    res.status(500).json({ ok: false, error: e.message });
+    logger.error(`Webhook paiement abonnement en erreur : ${e.message}`);
+    res.status(500).json({ ok: false, error: 'Erreur lors du traitement du webhook' });
   }
 });
 

@@ -27,3 +27,9 @@ export const verify2FASchema = z.object({
     token: z.string(),
   }),
 });
+
+export const confirm2FASchema = z.object({
+  body: z.object({
+    code: z.string().length(6, 'Code à 6 chiffres requis'),
+  }),
+});

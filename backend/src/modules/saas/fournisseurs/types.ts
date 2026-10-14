@@ -22,6 +22,9 @@ export interface ResultatDepot {
 export interface ResultatStatut {
   statut: 'EN_ATTENTE' | 'REUSSI' | 'ECHEC';
   payloadBrut: any;
+  /** Montant et devise renvoyes par le fournisseur, pour re-comparaison avant activation. */
+  montant?: number;
+  devise?: string;
 }
 
 export interface CorrespondantDef {

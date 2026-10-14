@@ -6,6 +6,7 @@ import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { debiterCaisse, debiterCompteBancaire, debiterCompteTiers } from '../../utils/debiterCompte';
 
 type AccountType = 'CAISSE' | 'BANQUE' | 'TIERS';
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -86,6 +87,12 @@ async function updateSolde(tx: TxClient, accountType: AccountType, accountId: st
   return tx.compteTiers.update({ where: { id: accountId }, data: { solde: delta } });
 }
 
+async function debiterCompteParType(tx: TxClient, accountType: AccountType, accountId: string, montant: number) {
+  if (accountType === 'CAISSE') return debiterCaisse(tx as any, accountId, montant);
+  if (accountType === 'BANQUE') return debiterCompteBancaire(tx as any, accountId, montant);
+  return debiterCompteTiers(tx as any, accountId, montant);
+}
+
 router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
@@ -118,9 +125,9 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
     if (isSortie || isVirement) {
       const source = await getSolde(sourceType, sourceId);
       if (!source) { ApiResponse.notFound(res, 'Compte source introuvable'); return; }
-      if (Number(source.solde) - montantNum < 0) {
-        ApiResponse.badRequest(res, 'Solde insuffisant pour cette opération'); return;
-      }
+      // Le contrôle de suffisance du solde (avec prise en compte du découvert
+      // autorisé pour un compte bancaire) est fait de façon atomique dans la
+      // transaction ci-dessous, pas ici.
     }
     if (isEntree || isVirement) {
       const destination = await getSolde(destinationType, destinationId);
@@ -161,7 +168,7 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
           },
         });
 
-        await updateSolde(tx, sourceType, sourceId, { decrement: montantNum });
+        await debiterCompteParType(tx, sourceType, sourceId, montantNum);
         await updateSolde(tx, destinationType, destinationId, { increment: montantNum });
 
         return [sortieRow, entreeRow];
@@ -181,7 +188,8 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
         },
       });
 
-      await updateSolde(tx, accType, accId, isEntree ? { increment: montantNum } : { decrement: montantNum });
+      if (isEntree) await updateSolde(tx, accType, accId, { increment: montantNum });
+      else await debiterCompteParType(tx, accType, accId, montantNum);
 
       return [row];
     });

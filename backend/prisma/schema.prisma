@@ -303,6 +303,7 @@ model Utilisateur {
   secretDoubleAuth   String?   @db.VarChar(255)
   actif              Boolean   @default(true)
   verrouille         Boolean   @default(false)
+  verrouilleJusqua   DateTime?
   tentativesEchouees Int       @default(0)
   derniereConnexion  DateTime?
   expirationMdp      DateTime?
@@ -1599,6 +1600,7 @@ model CompteBancaire {
   swift           String?  @db.VarChar(20)
   devise          String   @default("XOF") @db.VarChar(10)
   solde           Decimal  @default(0) @db.Decimal(18, 2)
+  decouvertAutorise Decimal @default(0) @db.Decimal(18, 2)
   actif           Boolean  @default(true)
   compteComptable String?  @db.VarChar(20)
   createdAt       DateTime @default(now())

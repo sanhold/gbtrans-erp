@@ -37,9 +37,19 @@ export class AuthController {
   async setup2FA(req: AuthRequest, res: Response): Promise<void> {
     try {
       const result = await authService.setup2FA(req.user!.id);
-      ApiResponse.success(res, result, 'Double authentification configurée');
+      ApiResponse.success(res, result, 'Scannez le QR code puis confirmez avec un code de vérification');
     } catch (error: any) {
       ApiResponse.error(res, error.message);
+    }
+  }
+
+  async confirm2FA(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { code } = req.body;
+      const result = await authService.confirm2FA(req.user!.id, code);
+      ApiResponse.success(res, result);
+    } catch (error: any) {
+      ApiResponse.badRequest(res, error.message);
     }
   }
 

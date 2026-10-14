@@ -60,7 +60,8 @@ export async function initierDepot(champs: Record<string, string>, params: Depot
 
 export async function statutDepot(champs: Record<string, string>, referenceExterne: string): Promise<ResultatStatut> {
   const reponse: any = await pawapayFetch(champs, `/deposits/${referenceExterne}`);
-  const statutDistant = Array.isArray(reponse) ? reponse[0]?.status : reponse?.status;
-  const statut = statutDistant === 'COMPLETED' ? 'REUSSI' : statutDistant === 'FAILED' || statutDistant === 'REJECTED' ? 'ECHEC' : 'EN_ATTENTE';
-  return { statut, payloadBrut: reponse };
+  const depot = Array.isArray(reponse) ? reponse[0] : reponse;
+  const statut = depot?.status === 'COMPLETED' ? 'REUSSI' : depot?.status === 'FAILED' || depot?.status === 'REJECTED' ? 'ECHEC' : 'EN_ATTENTE';
+  const montant = depot?.amount !== undefined ? Number(depot.amount) : undefined;
+  return { statut, payloadBrut: reponse, montant, devise: depot?.currency };
 }

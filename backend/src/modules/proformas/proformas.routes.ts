@@ -1,10 +1,11 @@
 import { Router, Response } from 'express';
 import { authenticate, authorize, requireSociete } from '../../middleware/auth';
+import { audit } from '../../middleware/audit';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
-import { STATUTS_DOSSIER_FERME } from '../../utils/dossierGuard';
+import { STATUTS_DOSSIER_FERME, assertDossierOuvert } from '../../utils/dossierGuard';
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -214,6 +215,13 @@ router.put('/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res
   try {
     const existing = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!existing) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
+    if (existing.factureId || existing.statut === 'TRANSFORMEE') {
+      ApiResponse.badRequest(res, 'Impossible de modifier : cette proforma a déjà été transformée en facture'); return;
+    }
+    if (existing.statut !== 'BROUILLON') {
+      ApiResponse.badRequest(res, `Impossible de modifier une proforma ${existing.statut.toLowerCase().replace(/_/g, ' ')} ; repassez-la d'abord en brouillon`); return;
+    }
+    if (existing.dossierId) await assertDossierOuvert(existing.dossierId, req.user!.societeId);
 
     const { titre, objet, fobUnitaire, fretUnitaire, assurance, fraisDivers, nombreUnites, observations, lignes, afficherSignature } = req.body;
 
@@ -272,6 +280,29 @@ router.patch('/:id/valider', authorize('PROFORMAS:MODIFIER'), async (req: AuthRe
     });
 
     ApiResponse.success(res, updated, 'Proforma validée — en attente de facturation');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+// Dévalidation explicite : repasse une proforma validée (en attente de facturation) en
+// brouillon pour permettre sa modification. Jamais possible si déjà transformée en facture.
+router.patch('/:id/devalider', authorize('PROFORMAS:MODIFIER'), audit('PROFORMAS', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const proforma = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
+    if (!proforma) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }
+    if (proforma.factureId || proforma.statut === 'TRANSFORMEE') {
+      ApiResponse.badRequest(res, 'Impossible de dévalider : cette proforma a déjà été transformée en facture'); return;
+    }
+    if (proforma.statut !== 'EN_ATTENTE_FACTURATION') {
+      ApiResponse.badRequest(res, 'Seule une proforma validée (en attente de facturation) peut être repassée en brouillon'); return;
+    }
+
+    const updated = await prisma.proforma.update({
+      where: { id: req.params.id },
+      data: { statut: 'BROUILLON' },
+      include: { lignes: { orderBy: { ordre: 'asc' } }, client: true },
+    });
+
+    ApiResponse.success(res, updated, 'Proforma repassée en brouillon');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
@@ -356,7 +387,13 @@ router.delete('/:id', authorize('PROFORMAS:SUPPRIMER'), async (req: AuthRequest,
   try {
     const p = await prisma.proforma.findFirst({ where: { id: req.params.id, client: { societeId: req.user!.societeId } } });
     if (!p) { ApiResponse.notFound(res); return; }
-    if (p?.factureId) { ApiResponse.badRequest(res, 'Impossible de supprimer: déjà transformée en facture'); return; }
+    if (p.factureId || p.statut === 'TRANSFORMEE') {
+      ApiResponse.badRequest(res, 'Impossible de supprimer: déjà transformée en facture'); return;
+    }
+    if (p.statut !== 'BROUILLON') {
+      ApiResponse.badRequest(res, `Impossible de supprimer une proforma ${p.statut.toLowerCase().replace(/_/g, ' ')} ; repassez-la d'abord en brouillon`); return;
+    }
+    if (p.dossierId) await assertDossierOuvert(p.dossierId, req.user!.societeId);
     await prisma.proforma.delete({ where: { id: req.params.id } });
     ApiResponse.success(res, null, 'Proforma supprimée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

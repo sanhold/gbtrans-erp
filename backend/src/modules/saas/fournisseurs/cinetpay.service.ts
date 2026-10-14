@@ -61,5 +61,6 @@ export async function statutDepot(champs: Record<string, string>, referenceExter
   const data: any = await res.json().catch(() => null);
   const code = data?.data?.status;
   const statut = code === 'ACCEPTED' ? 'REUSSI' : code === 'REFUSED' ? 'ECHEC' : 'EN_ATTENTE';
-  return { statut, payloadBrut: data };
+  const montant = data?.data?.amount !== undefined ? Number(data.data.amount) : undefined;
+  return { statut, payloadBrut: data, montant, devise: data?.data?.currency };
 }

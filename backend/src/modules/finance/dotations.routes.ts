@@ -13,7 +13,7 @@ router.use(authenticate, requireSociete);
 async function withMontants(dotations: any[]) {
   const ids = dotations.map((d) => d.id);
   const sums = ids.length
-    ? await prisma.depense.groupBy({ by: ['dotationId'], _sum: { montant: true }, where: { dotationId: { in: ids } } })
+    ? await prisma.depense.groupBy({ by: ['dotationId'], _sum: { montant: true }, where: { dotationId: { in: ids }, statut: { not: 'ANNULEE' } } })
     : [];
   const utiliseParId = new Map(sums.map((s) => [s.dotationId as string, Number(s._sum.montant || 0)]));
   return dotations.map((d) => {
@@ -97,7 +97,7 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
       if (!agent) { ApiResponse.badRequest(res, 'Agent introuvable'); return; }
     }
 
-    const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId: req.params.id } });
+    const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId: req.params.id, statut: { not: 'ANNULEE' } } });
     const montantUtilise = Number(sum._sum?.montant || 0);
     if (montantNum < montantUtilise) {
       ApiResponse.badRequest(res, `Le montant ne peut pas être inférieur au montant déjà utilisé (${montantUtilise})`); return;

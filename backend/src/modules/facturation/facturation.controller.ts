@@ -65,7 +65,7 @@ export class FacturationController {
 
   async creerAvoir(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const avoir = await service.creerAvoir(req.params.id, req.user!.societeId, req.user!.id, req.body.motif);
+      const avoir = await service.creerAvoir(req.params.id, req.user!.societeId, req.user!.id, req.body.motif, req.body.lignes);
       ApiResponse.created(res, avoir, 'Avoir créé');
     } catch (error: any) {
       ApiResponse.badRequest(res, error.message);

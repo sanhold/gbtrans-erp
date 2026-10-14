@@ -23,43 +23,54 @@ export class AuthService {
 
     if (!utilisateur) {
       await this.logConnexion(null, ip, userAgent, 'FAILED', 'Utilisateur non trouvé');
-      throw new Error('Identifiants incorrects');
+      throw new Error('Identifiants invalides');
     }
 
-    if (utilisateur.verrouille) {
-      throw new Error('Compte verrouillé. Contactez l\'administrateur.');
+    const maintenant = new Date();
+    if (utilisateur.verrouilleJusqua && utilisateur.verrouilleJusqua > maintenant) {
+      await this.logConnexion(utilisateur.id, ip, userAgent, 'FAILED', 'Compte verrouillé temporairement');
+      const minutesRestantes = Math.ceil((utilisateur.verrouilleJusqua.getTime() - maintenant.getTime()) / 60000);
+      throw new Error(`Compte temporairement verrouillé suite à plusieurs échecs. Réessayez dans ${minutesRestantes} minute(s).`);
     }
 
     if (!utilisateur.actif) {
-      throw new Error('Compte désactivé');
+      await this.logConnexion(utilisateur.id, ip, userAgent, 'FAILED', 'Compte désactivé');
+      throw new Error('Identifiants invalides');
     }
 
     const validPassword = await bcrypt.compare(motDePasse, utilisateur.motDePasse);
     if (!validPassword) {
       const tentatives = utilisateur.tentativesEchouees + 1;
-      const doitVerrouiller = tentatives >= config.security.maxLoginAttempts;
+      const doitVerrouiller = tentatives % config.security.maxLoginAttempts === 0;
+      const cyclesVerrouillage = tentatives / config.security.maxLoginAttempts;
+      const dureeMinutes = doitVerrouiller ? config.security.lockoutDuration * cyclesVerrouillage : null;
 
       await prisma.utilisateur.update({
         where: { id: utilisateur.id },
         data: {
           tentativesEchouees: tentatives,
-          verrouille: doitVerrouiller,
+          verrouille: doitVerrouiller ? true : utilisateur.verrouille,
+          verrouilleJusqua: doitVerrouiller
+            ? new Date(maintenant.getTime() + dureeMinutes! * 60 * 1000)
+            : utilisateur.verrouilleJusqua,
         },
       });
 
       await this.logConnexion(utilisateur.id, ip, userAgent, 'FAILED', 'Mot de passe incorrect');
 
       if (doitVerrouiller) {
-        throw new Error('Compte verrouillé après trop de tentatives');
+        throw new Error(`Compte temporairement verrouillé suite à plusieurs échecs. Réessayez dans ${dureeMinutes} minute(s).`);
       }
 
-      throw new Error(`Identifiants incorrects. ${config.security.maxLoginAttempts - tentatives} tentative(s) restante(s)`);
+      throw new Error('Identifiants invalides');
     }
 
     await prisma.utilisateur.update({
       where: { id: utilisateur.id },
       data: {
         tentativesEchouees: 0,
+        verrouille: false,
+        verrouilleJusqua: null,
         derniereConnexion: new Date(),
       },
     });
@@ -130,10 +141,36 @@ export class AuthService {
 
     await prisma.utilisateur.update({
       where: { id: utilisateurId },
-      data: { secretDoubleAuth: secret, doubleAuth: true },
+      data: { secretDoubleAuth: secret, doubleAuth: false },
     });
 
     return { secret, qrCodeUrl };
+  }
+
+  async confirm2FA(utilisateurId: string, code: string) {
+    const utilisateur = await prisma.utilisateur.findUnique({
+      where: { id: utilisateurId },
+    });
+
+    if (!utilisateur || !utilisateur.secretDoubleAuth) {
+      throw new Error('Configuration 2FA invalide. Relancez la configuration.');
+    }
+
+    const isValid = authenticator.verify({
+      token: code,
+      secret: utilisateur.secretDoubleAuth,
+    });
+
+    if (!isValid) {
+      throw new Error('Code de vérification invalide');
+    }
+
+    await prisma.utilisateur.update({
+      where: { id: utilisateurId },
+      data: { doubleAuth: true },
+    });
+
+    return { message: 'Double authentification activée' };
   }
 
   async changePassword(utilisateurId: string, ancien: string, nouveau: string) {
@@ -159,7 +196,19 @@ export class AuthService {
       },
     });
 
-    return { message: 'Mot de passe modifié avec succès' };
+    const sessions = await prisma.session.findMany({
+      where: { utilisateurId, actif: true },
+      select: { token: true },
+    });
+
+    await prisma.session.updateMany({
+      where: { utilisateurId },
+      data: { actif: false },
+    });
+
+    for (const s of sessions) invalidateSessionCache(s.token);
+
+    return { message: 'Mot de passe modifié avec succès. Veuillez vous reconnecter.' };
   }
 
   async logout(token: string) {

@@ -50,6 +50,7 @@ router.post('/:id/lignes', authorize('FACTURATION:MODIFIER'), audit('FACTURATION
 
     const lastLigne = await prisma.ligneFacture.findFirst({ where: { factureId: req.params.id }, orderBy: { ordre: 'desc' } });
     const montant = parseFloat(req.body.montant) || 0;
+    if (montant < 0) { ApiResponse.badRequest(res, 'Montant invalide : il ne peut pas être négatif'); return; }
 
     await prisma.ligneFacture.create({
       data: {
@@ -103,6 +104,7 @@ router.put('/:id/lignes/:ligneId', authorize('FACTURATION:MODIFIER'), audit('FAC
     if (!ligne) { ApiResponse.notFound(res); return; }
 
     const montant = parseFloat(req.body.montant) || 0;
+    if (montant < 0) { ApiResponse.badRequest(res, 'Montant invalide : il ne peut pas être négatif'); return; }
     await prisma.ligneFacture.update({
       where: { id: req.params.ligneId },
       data: {

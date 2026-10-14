@@ -139,7 +139,7 @@ router.patch('/:id/deverrouiller', authorize('UTILISATEURS:MODIFIER'), async (re
     }
     const utilisateur = await prisma.utilisateur.update({
       where: { id: req.params.id },
-      data: { verrouille: false, tentativesEchouees: 0 },
+      data: { verrouille: false, verrouilleJusqua: null, tentativesEchouees: 0 },
       select: USER_SELECT,
     });
     ApiResponse.success(res, utilisateur, 'Compte déverrouillé');

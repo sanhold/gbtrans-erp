@@ -53,7 +53,8 @@ export const authenticate = async (
 
     const utilisateur = session.utilisateur;
 
-    if (!utilisateur || !utilisateur.actif || utilisateur.verrouille) {
+    const estVerrouille = !!utilisateur?.verrouilleJusqua && utilisateur.verrouilleJusqua > new Date();
+    if (!utilisateur || !utilisateur.actif || estVerrouille) {
       ApiResponse.unauthorized(res, 'Compte désactivé ou verrouillé');
       return;
     }
