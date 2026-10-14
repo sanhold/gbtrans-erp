@@ -453,13 +453,15 @@ export default function ParametresPage() {
                         <tr><td colSpan={6} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
                       ) : utilisateurs.length === 0 ? (
                         <tr><td colSpan={6} className="text-center py-8 text-gray-500">Aucun utilisateur</td></tr>
-                      ) : utilisateurs.map(u => (
+                      ) : utilisateurs.map(u => {
+                        const verrouilleActuellement = !!u.verrouilleJusqua && new Date(u.verrouilleJusqua) > new Date();
+                        return (
                         <tr key={u.id} className="table-row">
                           <td className="table-cell" data-label="Actions">
                             <div className="flex items-center gap-2 text-xs">
                               <button onClick={() => openEditUser(u)} className="text-primary-500 hover:underline">Modifier</button>
                               <button onClick={() => handleToggleStatut(u)} className={u.actif ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline'}>{u.actif ? 'Désactiver' : 'Activer'}</button>
-                              {u.verrouille && <button onClick={() => handleDeverrouiller(u)} className="text-amber-600 hover:underline">Déverrouiller</button>}
+                              {verrouilleActuellement && <button onClick={() => handleDeverrouiller(u)} className="text-amber-600 hover:underline">Déverrouiller</button>}
                               <button onClick={() => { setResetUser(u); setResetPassword(''); }} className="text-gray-500 hover:underline">Mot de passe</button>
                             </div>
                           </td>
@@ -472,11 +474,12 @@ export default function ParametresPage() {
                           <td className="table-cell" data-label="Statut">
                             <div className="flex items-center gap-1.5">
                               <span className={`badge ${u.actif ? 'badge-success' : 'badge-danger'}`}>{u.actif ? 'Actif' : 'Désactivé'}</span>
-                              {u.verrouille && <span className="badge badge-warning">Verrouillé</span>}
+                              {verrouilleActuellement && <span className="badge badge-warning" title={`Jusqu'au ${new Date(u.verrouilleJusqua).toLocaleString('fr-FR')}`}>Verrouillé</span>}
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

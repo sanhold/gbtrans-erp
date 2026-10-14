@@ -11,7 +11,7 @@ router.use(authenticate, requireSociete);
 
 const USER_SELECT = {
   id: true, matricule: true, nom: true, prenom: true, email: true, telephone: true,
-  actif: true, verrouille: true, tentativesEchouees: true, derniereConnexion: true,
+  actif: true, verrouille: true, verrouilleJusqua: true, tentativesEchouees: true, derniereConnexion: true,
   doitChangerMdp: true, doubleAuth: true, profilId: true, agenceId: true, createdAt: true,
   profil: { select: { id: true, code: true, nom: true, estAdmin: true } },
   agence: { select: { id: true, nom: true } },
