@@ -174,10 +174,60 @@ router.post('/:id/annuler', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'ANN
       // cette dépense à ANNULEE, elle est exclue de cette somme et le montant
       // redevient donc automatiquement disponible sur la dotation.
 
-      return tx.depense.findUnique({ where: { id: depense.id } });
+      // Si cette dépense avait déjà été comptabilisée (Compta Auto ou manuellement), son
+      // écriture n'est jamais corrigée automatiquement par l'annulation : on génère ici
+      // l'extourne (mêmes comptes, débit/crédit inversés), datée du jour de l'annulation.
+      // Pas de lien factureId/paiementId/... sur l'extourne : la contrainte d'unicité par
+      // document source (une seule écriture par dépense) ne doit viser que l'écriture
+      // d'origine, pas sa contre-passation.
+      const ecritureExistante = await tx.ecritureComptable.findFirst({
+        where: { depenseId: depense.id },
+        include: { mouvements: true, journal: { select: { id: true, code: true } } },
+      });
+      let extourneGeneree = false;
+      let extourneImpossibleCar: string | null = null;
+      if (ecritureExistante) {
+        const exerciceOuvert = await tx.exercice.findFirst({
+          where: { societeId, cloture: false, dateDebut: { lte: new Date() }, dateFin: { gte: new Date() } },
+        });
+        if (!exerciceOuvert) {
+          extourneImpossibleCar = "aucun exercice ouvert ne couvre la date d'annulation : extournez cette dépense manuellement depuis la Comptabilité";
+        } else {
+          const numeroExtourne = await genererNumero(societeId, `ECRITURE_AUTO_${ecritureExistante.journal.code}`);
+          await tx.ecritureComptable.create({
+            data: {
+              exerciceId: exerciceOuvert.id,
+              journalId: ecritureExistante.journalId,
+              numero: numeroExtourne,
+              dateEcriture: new Date(),
+              libelle: `Extourne — annulation dépense ${depense.numero}`,
+              reference: depense.numero,
+              createurId: req.user!.id,
+              validee: true,
+              dateValidation: new Date(),
+              mouvements: {
+                create: ecritureExistante.mouvements.map((m) => ({
+                  compteId: m.compteId,
+                  libelle: m.libelle,
+                  debit: m.credit,
+                  credit: m.debit,
+                })),
+              },
+            },
+          });
+          extourneGeneree = true;
+        }
+      }
+
+      return { depense: await tx.depense.findUnique({ where: { id: depense.id } }), extourneGeneree, extourneImpossibleCar };
     });
 
-    ApiResponse.success(res, resultat, 'Dépense annulée et montant recrédité');
+    const messageExtourne = resultat.extourneGeneree
+      ? ' ; écriture comptable extournée'
+      : resultat.extourneImpossibleCar
+        ? ` ; écriture comptable NON extournée automatiquement (${resultat.extourneImpossibleCar})`
+        : '';
+    ApiResponse.success(res, resultat.depense, `Dépense annulée et montant recrédité${messageExtourne}`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

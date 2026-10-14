@@ -1487,6 +1487,16 @@ model EcritureComptable {
   @@index([dateEcriture])
   @@index([numero])
   @@unique([exerciceId, numero])
+  // Anti-doublon atomique de Compta Auto : un document source (facture, paiement,
+  // facture fournisseur, paiement fournisseur, dépense) ne peut être à l'origine
+  // que d'une seule écriture. NULL n'entre pas en conflit avec NULL (comportement
+  // standard Postgres des contraintes uniques), donc les écritures manuelles sans
+  // document source ne sont pas impactées.
+  @@unique([factureId])
+  @@unique([paiementId])
+  @@unique([factureFournisseurId])
+  @@unique([paiementFournisseurId])
+  @@unique([depenseId])
   @@map("ecritures_comptables")
 }
 

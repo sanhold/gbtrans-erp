@@ -13,7 +13,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
   try {
     const rows: any[] = await prisma.$queryRaw`
       SELECT c.id, c.code, c."raisonSociale",
-        COALESCE(SUM(f."montantTTC"), 0) AS "totalFacture",
+        COALESCE(SUM(CASE WHEN f.type = 'AVOIR' THEN -f."montantTTC" ELSE f."montantTTC" END), 0) AS "totalFacture",
         COALESCE(SUM(f."montantPaye"), 0) AS "totalPaye",
         COALESCE(SUM(f."resteAPayer"), 0) AS "resteAPayer",
         COUNT(f.id)::int AS "nombreFactures"
@@ -34,9 +34,9 @@ router.get('/:clientId', authorize('FINANCE:LIRE'), async (req: AuthRequest, res
     if (!client) { ApiResponse.notFound(res); return; }
 
     const factures = await prisma.facture.findMany({
-      where: { clientId: req.params.clientId, statut: { not: 'ANNULEE' } },
+      where: { clientId: req.params.clientId, statut: { notIn: ['ANNULEE', 'BROUILLON'] } },
       orderBy: { dateFacture: 'asc' },
-      select: { id: true, numero: true, dateFacture: true, montantTTC: true, montantPaye: true, resteAPayer: true, statut: true },
+      select: { id: true, numero: true, dateFacture: true, type: true, montantTTC: true, montantPaye: true, resteAPayer: true, statut: true },
     });
     const paiements = await prisma.paiement.findMany({
       where: { clientId: req.params.clientId },

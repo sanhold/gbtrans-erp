@@ -30,6 +30,62 @@ function filtreOrigine(origine?: string) {
   return {};
 }
 
+/**
+ * Distinction prestation / débours sur les lignes de facture (catalogue de prestations,
+ * cf. prisma/seed-catalogue.ts). Un débours est un frais réglé à un tiers (douane, port,
+ * banque, administration) pour le compte du client, sans marge pour GBTRANS : il doit être
+ * comptabilisé en 4731 (intermédiaire) et non en 706 (produit), sous peine de gonfler
+ * artificiellement le chiffre d'affaires. Cette classification est une estimation par
+ * défaut à partir des codes du catalogue actuel ; elle doit rester vérifiable et corrigible
+ * ligne à ligne via la surcharge LigneFacture.compteComptable (prioritaire).
+ */
+const CATEGORIES_DEBOURS = new Set(['FRAIS PORTUAIRES']);
+const CODES_DEBOURS = new Set([
+  'DC02', 'DC03', 'DC04', 'DC06', 'DC08', 'DC09', 'DC10', // droits, taxes et redevances douanières réglés à l'État/un tiers pour le compte du client
+  'AF05', 'AF06', 'AF07', // assurance locale, frais et commission bancaires reversés à un tiers sans marge
+  'TR04', // péage réglé pour le compte du client
+]);
+function estLigneDebours(ligne: { categorie?: string | null; codePrestation?: string | null }): boolean {
+  if (ligne.categorie && CATEGORIES_DEBOURS.has(ligne.categorie)) return true;
+  if (ligne.codePrestation && CODES_DEBOURS.has(ligne.codePrestation)) return true;
+  return false;
+}
+/** Compte produit/débours d'une ligne de facture : la surcharge explicite de la ligne
+ *  (LigneFacture.compteComptable) est toujours prioritaire sur la classification par défaut. */
+function compteLigneFacture(
+  ligne: { compteComptable?: string | null; categorie?: string | null; codePrestation?: string | null },
+  comptes: { id: string; numero: string }[],
+  compteVentes: string | null,
+  compteDebours: string | null
+): string | null {
+  if (ligne.compteComptable) {
+    const surcharge = comptes.find(c => c.numero === ligne.compteComptable);
+    if (surcharge) return surcharge.id;
+  }
+  return estLigneDebours(ligne) ? compteDebours : compteVentes;
+}
+
+/** Compte de charge par défaut d'une dépense, par catégorie (cf. CATEGORIES_DEPENSE du
+ *  frontend). Une dépense liée à un dossier client et de nature débours (droits de douane,
+ *  frais portuaires payés pour le compte du client) n'est pas une charge de GBTRANS : elle
+ *  va en 4731, au même titre que les lignes de facture correspondantes, en attendant
+ *  d'être refacturée. */
+const CATEGORIES_DEBOURS_DEPENSE = new Set(['DOUANE & COMPAGNIE', 'FRAIS PORTUAIRES']);
+function compteDepense(
+  depense: { categorie?: string | null; dossierId?: string | null },
+  C: Record<string, string | null>
+): string | null {
+  if (depense.dossierId && depense.categorie && CATEGORIES_DEBOURS_DEPENSE.has(depense.categorie) && C.debours) {
+    return C.debours;
+  }
+  switch (depense.categorie) {
+    case 'DOUANE & COMPAGNIE': return C.taxesIndirectes || C.achats;
+    case 'FRAIS PORTUAIRES': return C.transportAchats || C.achats;
+    case 'TRANSPORT': return C.fraisTransport || C.achats;
+    default: return C.chargesExternes || C.achats;
+  }
+}
+
 // ===== COMPTES (plan comptable, partage) =====
 
 router.get('/comptes', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Response) => {
@@ -440,11 +496,16 @@ router.get('/ecritures-attente/:id/proposition', authorize('COMPTABILITE:LIRE'),
     const entree = await prisma.ecritureEnAttente.findFirst({
       where: { id: req.params.id, societeId },
       include: {
-        facture: { select: { montantTTC: true, montantTVA: true, type: true } },
+        facture: {
+          select: {
+            montantTTC: true, montantTVA: true, timbreFiscal: true, retenue: true, montantHT: true, type: true,
+            lignes: { select: { montantHT: true, estTVA: true, categorie: true, codePrestation: true, compteComptable: true } },
+          },
+        },
         factureFournisseur: { select: { montantTTC: true, montantTVA: true } },
         paiement: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true } },
         paiementFournisseur: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true } },
-        depense: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true, categorie: true } },
+        depense: { select: { montant: true, modePaiement: true, caisseId: true, compteBancaireId: true, categorie: true, dossierId: true } },
       },
     });
     if (!entree) { ApiResponse.notFound(res, 'Entrée introuvable'); return; }
@@ -458,7 +519,9 @@ router.get('/ecritures-attente/:id/proposition', authorize('COMPTABILITE:LIRE'),
     const C = {
       clients: cid('411'), ventes: cid('706'), tvaFact: cid('443', '4431'),
       fournisseurs: cid('401'), tvaRecup: cid('445', '4451'),
-      banque: cid('512'), caisse: cid('571'), services: cid('63', '628', '605'), achats: cid('605', '604', '601'),
+      banque: cid('521', '5211'), caisse: cid('571'), achats: cid('605', '604', '601'),
+      debours: cid('4731'), timbre: cid('447'), retenueFiscale: cid('442'),
+      taxesIndirectes: cid('645'), transportAchats: cid('611'), fraisTransport: cid('618'), chargesExternes: cid('638'),
     };
     const J = { vente: jrn('VENTE'), achat: jrn('ACHAT'), banque: jrn('BANQUE'), caisse: jrn('CAISSE'), od: jrn('OD') };
     const n = (v: any) => Math.abs(Number(v) || 0);
@@ -473,13 +536,39 @@ router.get('/ecritures-attente/:id/proposition', authorize('COMPTABILITE:LIRE'),
     const montant = n(entree.montant);
 
     if (entree.source === 'FACTURE' && entree.facture) {
-      const ttc = n(entree.facture.montantTTC), tva = n(entree.facture.montantTVA), ht = ttc - tva;
+      const ttc = n(entree.facture.montantTTC), tva = n(entree.facture.montantTVA);
+      const timbre = n(entree.facture.timbreFiscal), retenue = n(entree.facture.retenue);
       const avoir = entree.facture.type === 'AVOIR';
-      if (J.vente && C.clients && C.ventes) {
+      const lignesProduit = entree.facture.lignes.filter(l => !l.estTVA);
+      const parCompteProduit = new Map<string, number>();
+      if (lignesProduit.length > 0) {
+        for (const l of lignesProduit) {
+          const m = n(l.montantHT);
+          if (m === 0) continue;
+          const compteId = compteLigneFacture(l, comptes, C.ventes, C.debours);
+          if (compteId) parCompteProduit.set(compteId, (parCompteProduit.get(compteId) || 0) + m);
+        }
+      } else if (n(entree.facture.montantHT) > 0 && C.ventes) {
+        parCompteProduit.set(C.ventes, n(entree.facture.montantHT));
+      }
+      if (J.vente && C.clients && parCompteProduit.size > 0 && (timbre === 0 || C.timbre) && (retenue === 0 || C.retenueFiscale)) {
         journalId = J.vente.id;
+        const lignesProduitEcriture = [...parCompteProduit.entries()].map(([compteId, m]) => ({ compteId, debit: avoir ? m : 0, credit: avoir ? 0 : m }));
         lignes = avoir
-          ? [{ compteId: C.ventes, debit: ht, credit: 0 }, ...(tva > 0 && C.tvaFact ? [{ compteId: C.tvaFact, debit: tva, credit: 0 }] : []), { compteId: C.clients, debit: 0, credit: ttc }]
-          : [{ compteId: C.clients, debit: ttc, credit: 0 }, { compteId: C.ventes, debit: 0, credit: ht }, ...(tva > 0 && C.tvaFact ? [{ compteId: C.tvaFact, debit: 0, credit: tva }] : [])];
+          ? [
+              ...lignesProduitEcriture,
+              ...(tva > 0 && C.tvaFact ? [{ compteId: C.tvaFact, debit: tva, credit: 0 }] : []),
+              ...(timbre > 0 && C.timbre ? [{ compteId: C.timbre, debit: timbre, credit: 0 }] : []),
+              { compteId: C.clients, debit: 0, credit: ttc },
+              ...(retenue > 0 && C.retenueFiscale ? [{ compteId: C.retenueFiscale, debit: 0, credit: retenue }] : []),
+            ]
+          : [
+              { compteId: C.clients, debit: ttc, credit: 0 },
+              ...(retenue > 0 && C.retenueFiscale ? [{ compteId: C.retenueFiscale, debit: retenue, credit: 0 }] : []),
+              ...lignesProduitEcriture,
+              ...(tva > 0 && C.tvaFact ? [{ compteId: C.tvaFact, debit: 0, credit: tva }] : []),
+              ...(timbre > 0 && C.timbre ? [{ compteId: C.timbre, debit: 0, credit: timbre }] : []),
+            ];
       }
     } else if (entree.source === 'FACTURE_FOURNISSEUR' && entree.factureFournisseur) {
       const ttc = n(entree.factureFournisseur.montantTTC), tva = n(entree.factureFournisseur.montantTVA), ht = ttc - tva;
@@ -495,7 +584,7 @@ router.get('/ecritures-attente/:id/proposition', authorize('COMPTABILITE:LIRE'),
       if (t) { journalId = t.journal; lignes = [{ compteId: C.fournisseurs, debit: montant, credit: 0 }, { compteId: t.compte, debit: 0, credit: montant }]; }
     } else if (entree.source === 'DEPENSE' && entree.depense) {
       const t = tresorerie(entree.depense.caisseId, entree.depense.compteBancaireId, entree.depense.modePaiement);
-      const charge = C.services || C.achats;
+      const charge = compteDepense(entree.depense, C) || C.achats;
       if (charge) {
         journalId = t ? t.journal : (J.od ? J.od.id : null);
         const contrepartie = t ? t.compte : C.fournisseurs;
@@ -623,10 +712,12 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
     const C = {
       clients: cid('411'), ventes: cid('706'), tvaFact: cid('443', '4431'),
       fournisseurs: cid('401'), tvaRecup: cid('445', '4451'),
-      banque: cid('512'), caisse: cid('571'),
-      achats: cid('605', '604', '601'), services: cid('63', '628', '605'),
+      banque: cid('521', '5211'), caisse: cid('571'),
+      achats: cid('605', '604', '601'), debours: cid('4731'),
+      timbre: cid('447'), retenueFiscale: cid('442'),
+      taxesIndirectes: cid('645'), transportAchats: cid('611'), fraisTransport: cid('618'), chargesExternes: cid('638'),
     };
-    const manquantsComptes = Object.entries({ '411 Clients': C.clients, '706 Prestations': C.ventes, '443 TVA facturée': C.tvaFact, '401 Fournisseurs': C.fournisseurs, '445 TVA récupérable': C.tvaRecup, '512 Banques': C.banque, '571 Caisse': C.caisse, '605 Achats': C.achats }).filter(([, v]) => !v).map(([k]) => k);
+    const manquantsComptes = Object.entries({ '411 Clients': C.clients, '706 Prestations': C.ventes, '443 TVA facturée': C.tvaFact, '401 Fournisseurs': C.fournisseurs, '445 TVA récupérable': C.tvaRecup, '521 Banques': C.banque, '571 Caisse': C.caisse, '605 Achats': C.achats, '4731 Opérations pour compte de tiers': C.debours }).filter(([, v]) => !v).map(([k]) => k);
     const J = { vente: jrn('VENTE'), achat: jrn('ACHAT'), banque: jrn('BANQUE'), caisse: jrn('CAISSE'), od: jrn('OD') };
     const manquantsJournaux = Object.entries({ Ventes: J.vente, Achats: J.achat, Banque: J.banque, Caisse: J.caisse, OD: J.od }).filter(([, v]) => !v).map(([k]) => k);
     if (manquantsComptes.length || manquantsJournaux.length) {
@@ -657,15 +748,43 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
     if (typesVoulus.has('FACTURE')) {
       const factures = await prisma.facture.findMany({
         where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dFact] } },
-        include: { client: { select: { raisonSociale: true } } },
+        include: {
+          client: { select: { raisonSociale: true } },
+          lignes: { select: { montantHT: true, estTVA: true, categorie: true, codePrestation: true, compteComptable: true } },
+        },
       });
       for (const f of factures) {
-        const ttc = n(f.montantTTC), tva = n(f.montantTVA), ht = ttc - tva;
+        const ttc = n(f.montantTTC), tva = n(f.montantTVA), timbre = n(f.timbreFiscal), retenue = n(f.retenue);
         if (ttc === 0) { ignorees++; continue; }
+        if ((timbre > 0 && !C.timbre) || (retenue > 0 && !C.retenueFiscale)) { ignorees++; continue; }
         const avoir = f.type === 'AVOIR';
+
+        const lignesProduit = f.lignes.filter(l => !l.estTVA);
+        const parCompteProduit = new Map<string, number>();
+        for (const l of lignesProduit) {
+          const m = n(l.montantHT);
+          if (m === 0) continue;
+          const compteId = compteLigneFacture(l, comptes, C.ventes, C.debours);
+          if (compteId) parCompteProduit.set(compteId, (parCompteProduit.get(compteId) || 0) + m);
+        }
+        if (parCompteProduit.size === 0 && n(f.montantHT) > 0) parCompteProduit.set(C.ventes!, n(f.montantHT));
+        const lignesProduitEcriture: Ligne[] = [...parCompteProduit.entries()].map(([compteId, m]) => ({ compteId, debit: avoir ? m : 0, credit: avoir ? 0 : m }));
+
         const lignes: Ligne[] = avoir
-          ? [{ compteId: C.ventes!, debit: ht, credit: 0 }, ...(tva > 0 ? [{ compteId: C.tvaFact!, debit: tva, credit: 0 }] : []), { compteId: C.clients!, debit: 0, credit: ttc }]
-          : [{ compteId: C.clients!, debit: ttc, credit: 0 }, { compteId: C.ventes!, debit: 0, credit: ht }, ...(tva > 0 ? [{ compteId: C.tvaFact!, debit: 0, credit: tva }] : [])];
+          ? [
+              ...lignesProduitEcriture,
+              ...(tva > 0 ? [{ compteId: C.tvaFact!, debit: tva, credit: 0 }] : []),
+              ...(timbre > 0 ? [{ compteId: C.timbre!, debit: timbre, credit: 0 }] : []),
+              { compteId: C.clients!, debit: 0, credit: ttc },
+              ...(retenue > 0 ? [{ compteId: C.retenueFiscale!, debit: 0, credit: retenue }] : []),
+            ]
+          : [
+              { compteId: C.clients!, debit: ttc, credit: 0 },
+              ...(retenue > 0 ? [{ compteId: C.retenueFiscale!, debit: retenue, credit: 0 }] : []),
+              ...lignesProduitEcriture,
+              ...(tva > 0 ? [{ compteId: C.tvaFact!, debit: 0, credit: tva }] : []),
+              ...(timbre > 0 ? [{ compteId: C.timbre!, debit: 0, credit: timbre }] : []),
+            ];
         plans.push({ journalId: J.vente!.id, date: f.dateFacture, libelle: `${avoir ? 'Avoir' : 'Facture'} ${f.numero} — ${f.client?.raisonSociale || ''}`, reference: f.numero, lignes, origine: { factureId: f.id } });
       }
     }
@@ -717,7 +836,8 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
         if (m === 0) { ignorees++; continue; }
         const t = d.caisseId || d.compteBancaireId ? tresorerie(d.caisseId, d.compteBancaireId, d.modePaiement) : null;
         const contrepartie = t ? t.compte : C.fournisseurs!;
-        plans.push({ journalId: t ? t.journal : J.od!.id, date: d.dateDepense, libelle: `Dépense ${d.numero} — ${d.categorie}`, reference: d.numero, lignes: [{ compteId: C.services || C.achats!, debit: m, credit: 0 }, { compteId: contrepartie, debit: 0, credit: m }], origine: { depenseId: d.id } });
+        const charge = compteDepense(d, C) || C.achats!;
+        plans.push({ journalId: t ? t.journal : J.od!.id, date: d.dateDepense, libelle: `Dépense ${d.numero} — ${d.categorie}`, reference: d.numero, lignes: [{ compteId: charge, debit: m, credit: 0 }, { compteId: contrepartie, debit: 0, credit: m }], origine: { depenseId: d.id } });
       }
     }
 
@@ -725,20 +845,33 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
     const LOT = 300;
     const lot = plans.slice(0, LOT);
     let generees = 0;
+    let doublons = 0;
     for (const pl of lot) {
-      const numero = await genererNumero(societeId, `ECRITURE_AUTO_${codeJournal.get(pl.journalId)}`);
-      await prisma.ecritureComptable.create({
-        data: {
-          exerciceId: exo.id, journalId: pl.journalId, numero, dateEcriture: pl.date, libelle: pl.libelle, reference: pl.reference,
-          createurId: req.user!.id, validee: true, dateValidation: new Date(), ...pl.origine,
-          mouvements: { create: pl.lignes.map(l => ({ compteId: l.compteId, libelle: l.libelle || null, debit: l.debit, credit: l.credit })) },
-        },
-      });
-      generees++;
+      try {
+        const numero = await genererNumero(societeId, `ECRITURE_AUTO_${codeJournal.get(pl.journalId)}`);
+        await prisma.ecritureComptable.create({
+          data: {
+            exerciceId: exo.id, journalId: pl.journalId, numero, dateEcriture: pl.date, libelle: pl.libelle, reference: pl.reference,
+            createurId: req.user!.id, validee: true, dateValidation: new Date(), ...pl.origine,
+            mouvements: { create: pl.lignes.map(l => ({ compteId: l.compteId, libelle: l.libelle || null, debit: l.debit, credit: l.credit })) },
+          },
+        });
+        generees++;
+      } catch (e: any) {
+        // Contrainte unique sur le document source (factureId/paiementId/...) : une autre
+        // génération concurrente l'a comptabilisé entre le pré-filtrage en mémoire (dFact,
+        // dPai, ...) et cet essai d'écriture. On l'ignore plutôt que d'abandonner tout le lot.
+        // On ne doit capturer QUE cette contrainte-là : un P2002 sur la numérotation
+        // (genererNumero n'est pas atomique) est une vraie erreur a remonter, pas un doublon.
+        const CHAMPS_SOURCE_UNIQUE = ['factureId', 'paiementId', 'factureFournisseurId', 'paiementFournisseurId', 'depenseId'];
+        const cible: string[] = e.meta?.target || [];
+        if (e.code === 'P2002' && CHAMPS_SOURCE_UNIQUE.some((champ) => cible.includes(champ))) { doublons++; continue; }
+        throw e;
+      }
     }
     const restantes = plans.length - lot.length;
-    ApiResponse.success(res, { generees, ignorees, restantes },
-      `${generees} écriture(s) générée(s) dans ${exo.code}${restantes > 0 ? ` — ${restantes} restante(s), relancez la génération` : ''}${ignorees > 0 ? ` (${ignorees} document(s) ignoré(s) : montant nul ou compte de trésorerie inconnu)` : ''}`);
+    ApiResponse.success(res, { generees, ignorees, restantes, doublons },
+      `${generees} écriture(s) générée(s) dans ${exo.code}${restantes > 0 ? ` — ${restantes} restante(s), relancez la génération` : ''}${ignorees > 0 ? ` (${ignorees} document(s) ignoré(s) : montant nul, compte de trésorerie inconnu, ou compte timbre/retenue manquant)` : ''}${doublons > 0 ? ` (${doublons} document(s) déjà comptabilisé(s) entre-temps, ignoré(s))` : ''}`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

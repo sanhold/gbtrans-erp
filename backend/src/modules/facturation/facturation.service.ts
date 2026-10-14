@@ -229,11 +229,26 @@ export class FacturationService {
         throw new Error(`Impossible de créer un avoir sur une facture ${factureOrigine.statut.toLowerCase()}`);
       }
 
+      // La TVA peut être portée soit par chaque ligne (tauxTVA > 0, factures saisies
+      // directement), soit par une ligne dédiée estTVA:true à côté de lignes de prestation à
+      // tauxTVA 0 (factures issues d'une proforma, cf. proformas.routes.ts). Dans ce second
+      // cas, la TVA à extourner ne peut pas être lue sur les lignes de prestation elles-mêmes :
+      // elle doit être calculée au prorata du HT crédité, à partir de la ligne de TVA d'origine.
+      const lignesTVAOrigine = factureOrigine.lignes.filter((l) => l.estTVA);
+      const lignesPrestationOrigine = factureOrigine.lignes.filter((l) => !l.estTVA);
+      const totalTVASeparee = lignesTVAOrigine.reduce((s, l) => s + Number(l.montantTVA), 0);
+      const totalHTZeroTauxOrigine = lignesPrestationOrigine
+        .filter((l) => Number(l.tauxTVA) === 0)
+        .reduce((s, l) => s + Number(l.montantHT), 0);
+
       let lignesAvoir: { ligne: (typeof factureOrigine.lignes)[number]; montant: number }[];
       if (lignesSelectionnees && lignesSelectionnees.length > 0) {
         lignesAvoir = lignesSelectionnees.map((sel) => {
           const ligneOrigine = factureOrigine.lignes.find((l) => l.id === sel.ligneFactureId);
           if (!ligneOrigine) throw new Error("Une des lignes sélectionnées n'appartient pas à cette facture");
+          if (ligneOrigine.estTVA) {
+            throw new Error('La ligne de TVA ne peut pas être sélectionnée directement : elle est recréditée automatiquement au prorata des lignes de prestation sélectionnées');
+          }
           const montantDemande = Number(sel.montant);
           if (!(montantDemande > 0)) throw new Error("Le montant de chaque ligne d'avoir doit être positif");
           if (montantDemande > Number(ligneOrigine.montantHT)) {
@@ -242,11 +257,21 @@ export class FacturationService {
           return { ligne: ligneOrigine, montant: montantDemande };
         });
       } else {
-        lignesAvoir = factureOrigine.lignes.map((l) => ({ ligne: l, montant: Number(l.montantHT) }));
+        lignesAvoir = lignesPrestationOrigine.map((l) => ({ ligne: l, montant: Number(l.montantHT) }));
       }
 
       const montantHT = lignesAvoir.reduce((s, x) => s + x.montant, 0);
-      const montantTVA = lignesAvoir.reduce((s, x) => s + (x.montant * Number(x.ligne.tauxTVA)) / 100, 0);
+      // Les deux composantes de la TVA sont distinguées car seule la seconde (proratée) doit
+      // être restituée via une ligne de TVA séparée : la première est déjà portée par chaque
+      // ligne de prestation à tauxTVA > 0.
+      let montantTVALignes = 0;
+      let montantTVAProratee = 0;
+      for (const x of lignesAvoir) {
+        const taux = Number(x.ligne.tauxTVA);
+        if (taux > 0) montantTVALignes += (x.montant * taux) / 100;
+        else if (totalHTZeroTauxOrigine > 0 && totalTVASeparee > 0) montantTVAProratee += (x.montant / totalHTZeroTauxOrigine) * totalTVASeparee;
+      }
+      const montantTVA = montantTVALignes + montantTVAProratee;
       const montantTTC = montantHT + montantTVA;
 
       const avoirsExistants = await tx.facture.aggregate({
@@ -279,18 +304,44 @@ export class FacturationService {
           resteAPayer: 0,
           tauxTVA: factureOrigine.tauxTVA,
           lignes: {
-            create: lignesAvoir.map((x, index) => ({
-              ordre: index + 1,
-              categorie: x.ligne.categorie,
-              codePrestation: x.ligne.codePrestation,
-              designation: x.ligne.designation,
-              quantite: x.ligne.quantite,
-              prixUnitaire: x.montant,
-              montantHT: x.montant,
-              tauxTVA: x.ligne.tauxTVA,
-              montantTVA: (x.montant * Number(x.ligne.tauxTVA)) / 100,
-              remise: 0,
-            })),
+            create: [
+              ...lignesAvoir.map((x, index) => {
+                const taux = Number(x.ligne.tauxTVA);
+                const tvaLigne = taux > 0 ? (x.montant * taux) / 100 : 0;
+                return {
+                  ordre: index + 1,
+                  categorie: x.ligne.categorie,
+                  codePrestation: x.ligne.codePrestation,
+                  compteComptable: x.ligne.compteComptable,
+                  designation: x.ligne.designation,
+                  quantite: x.ligne.quantite,
+                  prixUnitaire: x.montant,
+                  montantHT: x.montant,
+                  tauxTVA: x.ligne.tauxTVA,
+                  montantTVA: tvaLigne,
+                  remise: 0,
+                };
+              }),
+              // Lignes issues d'une proforma : la TVA extournée ci-dessus (prorata) n'est
+              // portée par aucune ligne de prestation (tauxTVA 0) ; on la restitue comme ligne
+              // distincte, à l'image de la ligne estTVA de la facture d'origine.
+              ...(lignesTVAOrigine.length > 0 && montantTVAProratee > 0.001
+                ? [{
+                    ordre: lignesAvoir.length + 1,
+                    categorie: lignesTVAOrigine[0].categorie,
+                    codePrestation: lignesTVAOrigine[0].codePrestation,
+                    compteComptable: null,
+                    designation: lignesTVAOrigine[0].designation,
+                    quantite: 1,
+                    prixUnitaire: montantTVAProratee,
+                    montantHT: 0,
+                    tauxTVA: lignesTVAOrigine[0].tauxTVA,
+                    montantTVA: montantTVAProratee,
+                    estTVA: true,
+                    remise: 0,
+                  }]
+                : []),
+            ],
           },
         },
         include: { lignes: true },
