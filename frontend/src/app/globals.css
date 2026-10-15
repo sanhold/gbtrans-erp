@@ -338,3 +338,10 @@
   color: #f5f5f5;
   border-color: #525252;
 }
+
+/* Barres d'outils de pages : retour à la ligne au lieu d'un défilement horizontal caché */
+.card.overflow-x-auto > .flex-nowrap.min-w-max {
+  flex-wrap: wrap;
+  min-width: 0;
+  row-gap: 0.5rem;
+}
