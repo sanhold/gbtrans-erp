@@ -46,6 +46,15 @@ module.exports = {
           900: '#171717',
         },
       },
+      borderRadius: {
+        sm: '2px',
+        DEFAULT: '2px',
+        md: '3px',
+        lg: '3px',
+        xl: '4px',
+        '2xl': '4px',
+        '3xl': '6px',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],

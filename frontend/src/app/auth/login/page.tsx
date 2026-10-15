@@ -63,7 +63,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Panneau gauche - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-500 via-primary-600 to-primary-800 flex-col justify-center items-center p-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-primary-600 flex-col justify-center items-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs>
@@ -75,7 +75,7 @@ export default function LoginPage() {
           </svg>
         </div>
         <div className="relative z-10 text-center">
-          <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mx-auto mb-8 p-2">
+          <div className="w-24 h-24 bg-white/20 rounded-sm flex items-center justify-center mx-auto mb-8 p-2">
             <img src="/brand/logo-icon.png" alt="GBTrans" className="w-full h-full rounded-2xl" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">GBTRANS ERP</h1>
@@ -110,7 +110,7 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">GBTRANS ERP</h1>
           </div>
 
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-8">
+          <div className="bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-8">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {show2FA ? 'Vérification 2FA' : 'Connexion'}
@@ -220,7 +220,7 @@ export default function LoginPage() {
           </div>
 
           {!show2FA && (
-            <div className="mt-6 bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-5">
+            <div className="mt-6 bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-5">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
                 Comptes de test
               </p>

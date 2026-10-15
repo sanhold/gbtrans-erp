@@ -99,7 +99,14 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
-  const [showProfile, setShowProfile] = useState(false);
+  const [now, setNow] = useState('');
+
+  useEffect(() => {
+    const fmt = () => setNow(new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''));
+    fmt();
+    const t = setInterval(fmt, 30000);
+    return () => clearInterval(t);
+  }, []);
 
   const isItemActive = (href: string) => {
     if (pathname === href) return true;
@@ -119,7 +126,6 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
   }, []);
 
   const handleLogout = async () => {
-    setShowProfile(false);
     await logout();
     router.push('/auth/login');
   };
@@ -136,26 +142,22 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       )}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-[232px] xl:w-[256px] flex-shrink-0 bg-primary-600 text-white flex flex-col h-screen p-3 xl:p-4 overflow-y-auto',
+          'fixed inset-y-0 left-0 z-50 w-[232px] xl:w-[240px] flex-shrink-0 bg-[#ececec] dark:bg-surface-800 border-r border-gray-300 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
-          'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-0',
+          'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-[46px] lg:h-[calc(100vh-46px)]',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Brand */}
-        <div className="flex items-center gap-3 px-2 pt-1 pb-3">
-          <img src="/brand/logo-icon.png" alt="GBTrans" className="w-9 h-9 rounded-lg flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="font-display font-extrabold text-[19px] tracking-tight leading-none">GBTrans</div>
-            <div className="text-[11px] text-white/60 mt-0.5 font-medium">Gestion Bureau de Transit</div>
-          </div>
-          <button
-            onClick={onClose}
-            className="lg:hidden w-9 h-9 rounded-lg bg-white/10 hover:bg-white/15 flex items-center justify-center flex-shrink-0"
-            title="Fermer le menu"
-          >
+        {/* Fermeture (mobile) */}
+        <div className="lg:hidden flex items-center justify-between px-4 h-[46px] bg-primary-600 text-white flex-shrink-0">
+          <span className="font-display font-extrabold text-[17px]">GBTrans</span>
+          <button onClick={onClose} className="w-9 h-9 rounded-sm hover:bg-white/10 flex items-center justify-center" title="Fermer le menu">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
+        </div>
+
+        <div className="px-4 pt-3 pb-3 text-center text-[12px] text-gray-600 dark:text-gray-300">
+          Date : {now}
         </div>
 
       {/* Navigation */}
@@ -170,8 +172,8 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
           if (visibleItems.length === 0) return null;
 
           return (
-          <div key={group.title} className="mt-2">
-            <div className="text-[10px] uppercase tracking-wider text-white/40 font-semibold px-3 pb-1">
+          <div key={group.title} className="mt-1.5">
+            <div className="bg-primary-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-[7px]">
               {group.title}
             </div>
             {visibleItems.map((item) => {
@@ -179,29 +181,25 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
               return (
-                <div key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onClose}
-                    className={clsx(
-                      'flex items-center gap-2.5 px-3 py-[7px] rounded-[10px] text-[13px] font-medium relative transition-colors duration-150',
-                      isActive ? 'bg-white/[.14] text-white' : 'text-white/80 hover:bg-white/[.08] hover:text-white'
-                    )}
-                  >
-                    {isActive && (
-                      <span className="absolute -left-4 top-2 bottom-2 w-[3px] rounded-r-[4px] bg-amber-500" />
-                    )}
-                    <svg className="w-[18px] h-[18px] flex-shrink-0 opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d={item.icon} />
-                    </svg>
-                    <span>{item.name}</span>
-                    {!!badge && (
-                      <span className="ml-auto bg-accent-500 text-[#04372a] text-[11px] font-bold px-2 py-0.5 rounded-full">
-                        {badge}
-                      </span>
-                    )}
-                  </Link>
-                </div>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={clsx(
+                    'flex items-center gap-2.5 px-5 py-[9px] text-[12.5px] border-b border-gray-200 dark:border-surface-700 transition-colors',
+                    isActive
+                      ? 'bg-white dark:bg-surface-900 text-primary-600 dark:text-white font-bold border-l-[3px] border-l-amber-500 pl-[17px]'
+                      : 'bg-[#f7f7f7] dark:bg-surface-800 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-surface-700 hover:text-primary-600'
+                  )}
+                >
+                  <span className={clsx('w-[7px] h-[7px] rounded-full border-2 flex-shrink-0', isActive ? 'border-amber-500 bg-amber-500' : 'border-gray-500')} />
+                  <span className="truncate">{item.name}</span>
+                  {!!badge && (
+                    <span className="ml-auto bg-primary-600 text-white text-[10.5px] font-bold px-1.5 py-0.5 rounded-sm">
+                      {badge}
+                    </span>
+                  )}
+                </Link>
               );
             })}
           </div>
@@ -210,48 +208,31 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto pt-3.5 border-t border-white/10">
+      <div className="mt-auto pt-2 border-t border-gray-300 dark:border-surface-700">
         {hasPermission('PARAMETRES:LIRE') && (
-          <Link
-            href="/parametres"
-            onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2 mb-2 rounded-[10px] text-[13.5px] font-medium text-white/80 hover:bg-white/[.08] hover:text-white transition-colors duration-150"
-          >
-            <svg className="w-[18px] h-[18px] flex-shrink-0 opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.3 1a7 7 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z" />
-            </svg>
-            Paramètres
-          </Link>
+          <>
+            <div className="bg-primary-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-[7px]">Configuration</div>
+            <Link
+              href="/parametres"
+              onClick={onClose}
+              className={clsx(
+                'flex items-center gap-2.5 px-5 py-[9px] text-[12.5px] border-b border-gray-200 dark:border-surface-700 transition-colors',
+                isItemActive('/parametres')
+                  ? 'bg-white dark:bg-surface-900 text-primary-600 dark:text-white font-bold border-l-[3px] border-l-amber-500 pl-[17px]'
+                  : 'bg-[#f7f7f7] dark:bg-surface-800 hover:bg-white dark:hover:bg-surface-700 hover:text-primary-600'
+              )}
+            >
+              <span className="w-[7px] h-[7px] rounded-full border-2 border-gray-500 flex-shrink-0" />
+              Paramètres
+            </Link>
+          </>
         )}
-        <div className="relative">
-          <button
-            onClick={() => setShowProfile((v) => !v)}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-white/[.06] hover:bg-white/[.1] transition-colors"
-          >
-            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-accent-500 to-[#0a9a72] flex items-center justify-center font-bold text-sm flex-shrink-0">
-              {initials}
-            </div>
-            <div className="text-left min-w-0">
-              <div className="text-[13px] font-semibold truncate">{user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}</div>
-              <div className="text-[11px] text-white/55 truncate">{user?.profil?.nom || 'Administrateur'}</div>
-            </div>
-          </button>
-          {showProfile && (
-            <div className="absolute left-0 bottom-full mb-2 w-full bg-white dark:bg-surface-800 text-gray-900 dark:text-white rounded-xl shadow-lg border border-surface-100 dark:border-surface-700 py-1.5 z-50">
-              <div className="px-3.5 py-2 border-b border-gray-100 dark:border-surface-700">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{user ? `${user.prenom} ${user.nom}` : ''}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              >
-                Déconnexion
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full text-left px-5 py-[9px] text-[12.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+        >
+          Déconnexion
+        </button>
       </div>
       </aside>
     </>

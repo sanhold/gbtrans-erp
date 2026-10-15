@@ -6,6 +6,18 @@ import { useAuthStore } from '@/stores/authStore';
 
 const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/dashboard', name: 'Accueil' },
+  { prefix: '/dossiers/suivi', name: 'Suivi des dossiers' },
+  { prefix: '/transport/devis', name: 'Devis transport' },
+  { prefix: '/transport/vehicules', name: 'Véhicules' },
+  { prefix: '/transport/chauffeurs', name: 'Chauffeurs' },
+  { prefix: '/transport/courses', name: 'Courses' },
+  { prefix: '/transport/maintenance', name: 'Maintenance' },
+  { prefix: '/transport/statistiques', name: 'Statistiques transport' },
+  { prefix: '/transport', name: 'Transport' },
+  { prefix: '/rh/employes', name: 'Employés' },
+  { prefix: '/rh/paie', name: 'Paie' },
+  { prefix: '/rh', name: 'Ressources humaines' },
+  { prefix: '/mon-compte', name: 'Mon compte' },
   { prefix: '/dossiers/nouveau', name: 'Nouveau Dossier' },
   { prefix: '/dossiers', name: 'Dossiers' },
   { prefix: '/at/historique', name: 'Historique AT' },
@@ -44,7 +56,7 @@ const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/parametres', name: 'Paramètres' },
 ];
 
-function getModuleName(pathname: string | null): string {
+export function getModuleName(pathname: string | null): string {
   if (!pathname) return 'GBTRANS ERP';
   const match = MODULE_NAMES
     .filter((m) => pathname === m.prefix || pathname.startsWith(m.prefix + '/'))
@@ -62,7 +74,6 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const [darkMode, setDarkMode] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const moduleName = getModuleName(pathname);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -78,85 +89,59 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
   const initials = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`.toUpperCase() || 'U';
 
   return (
-    <header className="flex items-center gap-3 sm:gap-5 px-4 sm:px-6 lg:px-8 py-3 bg-white/85 dark:bg-surface-800/85 backdrop-blur-sm border-b border-surface-100 dark:border-surface-700 sticky top-0 z-10">
+    <header className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 h-[46px] bg-primary-600 text-white sticky top-0 z-30 flex-shrink-0">
       <button
         onClick={onToggleSidebar}
         title="Menu"
-        className="lg:hidden w-11 h-11 flex-shrink-0 rounded-[11px] border border-surface-100 dark:border-surface-600 bg-white dark:bg-surface-700 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-surface-600 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+        className="lg:hidden w-9 h-9 flex-shrink-0 rounded-sm flex items-center justify-center hover:bg-white/10 transition-colors"
       >
         <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
 
-      {/* Module courant */}
-      <div className="flex-1 flex items-center min-w-0 gap-4">
-        <h1 className="text-[15.5px] font-bold text-gray-900 dark:text-white truncate">{moduleName}</h1>
-        {pathname === '/dashboard' && (
-          <div className="hidden md:block border-l border-surface-200 dark:border-surface-600 pl-4 min-w-0">
-            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">Bonjour, {user?.prenom || 'admin'} 👋</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Voici l&apos;activité de votre bureau de transit aujourd&apos;hui.</p>
-          </div>
-        )}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <img src="/brand/logo-icon.png" alt="GBTrans" className="w-7 h-7 rounded flex-shrink-0" />
+        <span className="font-display font-extrabold text-[18px] leading-none">GBTrans</span>
+        <span className="hidden md:inline text-[12px] text-white/70 truncate">Gestion Bureau de Transit</span>
       </div>
 
-      {/* Actions */}
-      <div className="ml-auto flex items-center gap-2">
-        <button
-          onClick={toggleDarkMode}
-          title="Mode sombre"
-          className="w-10 h-10 rounded-[11px] border border-surface-100 dark:border-surface-600 bg-white dark:bg-surface-700 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-surface-600 hover:text-primary-700 dark:hover:text-primary-300 hover:border-primary-100 transition-colors"
-        >
-          <svg className="w-[19px] h-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            {darkMode ? (
-              <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
-            ) : (
-              <path d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 0 0 12 21a9.003 9.003 0 0 0 8.354-5.646z" />
-            )}
-          </svg>
+      <div className="ml-auto flex items-center gap-4 text-[12px]">
+        <button onClick={toggleDarkMode} title="Mode sombre" className="hidden sm:inline hover:underline">
+          {darkMode ? 'Mode clair' : 'Mode sombre'}
         </button>
-
-        <button title="Aide" className="w-10 h-10 rounded-[11px] border border-surface-100 dark:border-surface-600 bg-white dark:bg-surface-700 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-surface-600 hover:text-primary-700 dark:hover:text-primary-300 hover:border-primary-100 transition-colors">
-          <svg className="w-[19px] h-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3" />
-            <path d="M12 17h.01" />
-          </svg>
-        </button>
-
-        <button title="Notifications" className="relative w-10 h-10 rounded-[11px] border border-surface-100 dark:border-surface-600 bg-white dark:bg-surface-700 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-surface-600 hover:text-primary-700 dark:hover:text-primary-300 hover:border-primary-100 transition-colors">
-          <span className="absolute top-[9px] right-[10px] w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-surface-700" />
-          <svg className="w-[19px] h-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-          </svg>
+        <span className="hidden sm:inline text-white/40">|</span>
+        <button title="Aide" className="hover:underline">Aide</button>
+        <span className="text-white/40">|</span>
+        <button title="Notifications" className="relative hover:underline">
+          Notifications
+          <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-amber-500" />
         </button>
 
         <div className="relative">
           <button
             onClick={() => setShowProfile((v) => !v)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-surface-100 dark:border-surface-600 bg-white dark:bg-surface-700 hover:bg-primary-50 dark:hover:bg-surface-600 transition-colors"
+            className="flex items-center gap-2 pl-3 border-l border-white/25 hover:text-white/90"
           >
-            <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-              {initials}
-            </div>
-            <div className="text-left hidden md:block">
-              <div className="text-[13px] font-semibold text-gray-900 dark:text-white leading-none">
-                {user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}
-              </div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{user?.profil?.nom || 'Administrateur'}</div>
-            </div>
-            <svg className="w-3.5 h-3.5 text-gray-400 hidden md:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+            <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center font-bold text-[11px]">{initials}</span>
+            <span className="hidden md:block text-left leading-tight">
+              <span className="block text-[12px] font-semibold">{user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}</span>
+              <span className="block text-[10.5px] text-white/65">{user?.profil?.nom || 'Administrateur'}</span>
+            </span>
           </button>
 
           {showProfile && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-surface-800 text-gray-900 dark:text-white rounded-xl shadow-lg border border-surface-100 dark:border-surface-700 py-1.5 z-50">
+            <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-surface-800 text-gray-900 dark:text-white rounded-sm shadow-lg border border-gray-300 dark:border-surface-700 py-1 z-50">
               <div className="px-3.5 py-2 border-b border-gray-100 dark:border-surface-700">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{user ? `${user.prenom} ${user.nom}` : ''}</p>
+                <p className="text-sm font-medium">{user ? `${user.prenom} ${user.nom}` : ''}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
               </div>
+              <button
+                onClick={() => { setShowProfile(false); router.push('/mon-compte'); }}
+                className="w-full text-left px-3.5 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-surface-700"
+              >
+                Mon compte
+              </button>
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"

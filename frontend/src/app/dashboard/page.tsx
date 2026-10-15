@@ -69,7 +69,7 @@ function KpiCard({ label, value, icon, color, trend }: {
     slate: 'bg-[#eef0f4] text-[#525a6b]',
   };
   return (
-    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl p-3.5 shadow-card hover:shadow-lg transition-all">
+    <div className="bg-white dark:bg-surface-800 border border-gray-300 dark:border-surface-700 rounded-sm p-3.5">
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="min-w-0">
           <div className="text-[11px] text-gray-400 truncate dark:text-gray-500 font-medium">{label}</div>
@@ -97,7 +97,7 @@ function KpiCard({ label, value, icon, color, trend }: {
 
 function SectionCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl p-4 shadow-card">
+    <div className="bg-white dark:bg-surface-800 border border-gray-300 dark:border-surface-700 rounded-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[13px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
         {action}

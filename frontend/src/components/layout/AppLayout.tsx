@@ -5,8 +5,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { getRequiredModule } from '@/lib/permissions';
 import Sidebar from './Sidebar';
-import Header from './Header';
+import Header, { getModuleName } from './Header';
 import SplashLoader from './SplashLoader';
+import TableEnhancer from '@/components/tables/TableEnhancer';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loadProfile, hasPermission } = useAuthStore();
@@ -39,10 +40,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const authorized = !requiredModule || hasPermission(`${requiredModule}:LIRE`);
 
   return (
-    <div className="min-h-screen flex bg-surface-50 dark:bg-surface-900">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-surface-900">
+      <TableEnhancer />
+      <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
+      <div className="flex-1 flex min-h-0">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
+        <nav aria-label="Fil d'Ariane" className="flex items-center gap-2 px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-surface-700 text-[11.5px] text-primary-600 dark:text-primary-300">
+          <button onClick={() => router.push('/dashboard')} className="hover:underline" title="Accueil">⌂</button>
+          <span className="text-gray-400">›</span>
+          <span>{getModuleName(pathname)}</span>
+        </nav>
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
           {authorized ? children : (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center gap-3">
@@ -55,6 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </main>
+      </div>
       </div>
     </div>
   );

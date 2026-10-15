@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { platformAuth } from '@/lib/platformApi';
 import SplashLoader from '@/components/layout/SplashLoader';
+import TableEnhancer from '@/components/tables/TableEnhancer';
 
 const NAV = [
   { href: '/admin', label: 'Tableau de bord' },
@@ -31,22 +32,23 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (!ready) return <SplashLoader />;
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
+    <div className="min-h-screen bg-white dark:bg-surface-900">
+      <TableEnhancer />
       {admin && !admin.superAdmin && (
         <div className="bg-amber-500 text-amber-950 text-center text-xs font-semibold py-1.5">
           Compte de démonstration — lecture seule, aucune modification possible
         </div>
       )}
-      <header className="bg-surface-900 text-white">
-        <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
+      <header className="bg-primary-600 text-white">
+        <div className="max-w-6xl mx-auto px-5 h-[46px] flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/admin" className="font-display font-bold flex items-center gap-2">
-              <img src="/brand/logo-icon.png" alt="GBTrans" className="w-7 h-7 rounded-lg" />
+              <img src="/brand/logo-icon.png" alt="GBTrans" className="w-7 h-7 rounded" />
               Administration
             </Link>
-            <nav className="hidden sm:flex items-center gap-1">
+            <nav className="hidden sm:flex items-stretch gap-0.5">
               {NAV.map(n => (
-                <Link key={n.href} href={n.href} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${pathname === n.href ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+                <Link key={n.href} href={n.href} className={`px-3 h-[46px] flex items-center text-[12.5px] font-medium transition-colors border-b-[3px] ${pathname === n.href ? 'border-amber-500 bg-white/10 text-white font-bold' : 'border-transparent text-white/75 hover:text-white hover:bg-white/10'}`}>
                   {n.label}
                 </Link>
               ))}
@@ -58,7 +60,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       </header>
-      <main className="max-w-6xl mx-auto px-5 py-8">{children}</main>
+      <main className="max-w-6xl mx-auto px-5 py-6">{children}</main>
     </div>
   );
 }
