@@ -325,3 +325,16 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-400 dark:bg-surface-300;
 }
+
+/* Ligne de filtres et barre d'export (TableEnhancer) en mode sombre */
+.dark .te-filter input {
+  background-color: #262626;
+  color: #f5f5f5;
+  border-color: #525252;
+}
+
+.dark .te-bar button {
+  background-color: #404040;
+  color: #f5f5f5;
+  border-color: #525252;
+}
