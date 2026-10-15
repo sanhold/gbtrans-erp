@@ -84,15 +84,15 @@ export default function DossiersHistoriquePage() {
               <Link href="/dossiers" className="text-[10px] text-primary-600 hover:underline block">← Dossiers</Link>
               <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Historique</h1>
             </div>
-            <div className="flex gap-1 flex-shrink-0">
+            <div className="flex flex-wrap gap-1">
               {presets.map(p => (
                 <button key={p.label} type="button" onClick={() => { const [d, f] = p.get(); applyPreset(d, f); }} className="btn-secondary !py-1.5 !px-2 !text-[10.5px]">
                   {p.label}
                 </button>
               ))}
             </div>
-            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Du" />
-            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Au" />
+            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Du" />
+            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Au" />
             <select value={filterNature} onChange={e => setFilterNature(e.target.value)} className="input-field !py-1.5 text-xs w-28 flex-shrink-0">
               <option value="">Nature</option>
               {Object.entries(natureLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
