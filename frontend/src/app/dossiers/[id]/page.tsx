@@ -42,6 +42,7 @@ export default function DossierDetailPage() {
   const [editingArticle, setEditingArticle] = useState<any>(null);
   const [articleForm, setArticleForm] = useState({ designation: '', type: '', marque: '', modele: '', quantite: '1', unite: '', positionTarifaire: '', poids: '', valeur: '', origine: '', bonLivraison: '', observations: '' });
   const [importingExcel, setImportingExcel] = useState(false);
+  const [showAideImport, setShowAideImport] = useState(false);
 
   const buildEditForm = (d: any): Record<string, string> => {
     const form: Record<string, string> = {};
@@ -175,6 +176,17 @@ export default function DossierDetailPage() {
       bonLivraison: article.bonLivraison || '', observations: article.observations || '',
     });
     setShowArticleModal(true);
+  };
+
+  const telechargerModeleImport = () => {
+    const entetes = ['N°', 'Désignation', 'Type', 'Marque', 'Modèle', 'Quantité', 'Unité', 'Position tarifaire', 'Poids (kg)', 'Valeur', 'Origine', 'Bon livraison', 'Observations'];
+    const exemple = ['1', 'Groupe électrogène 20 kVA', 'Matériel électrique', 'Perkins', 'P20-3', '2', 'U', '8502.12.00', '850', '4500000', 'Royaume-Uni', 'BL-2026-014', 'Neuf'];
+    const csv = '\ufeff' + [entetes, exemple].map(l => l.join(';')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'modele-import-articles.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -381,6 +393,8 @@ export default function DossierDetailPage() {
               <h3 className="font-semibold">Articles / Marchandises</h3>
               {!isFerme && (
                 <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowAideImport(v => !v)} className="btn-secondary" title="Comment importer des articles ?">Aide import</button>
+                  <button type="button" onClick={telechargerModeleImport} className="btn-secondary">Télécharger le modèle</button>
                   <label className={`btn-secondary cursor-pointer ${importingExcel ? 'opacity-50' : ''}`}>
                     <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     {importingExcel ? 'Import...' : 'Import Excel'}
@@ -393,6 +407,18 @@ export default function DossierDetailPage() {
                 </div>
               )}
             </div>
+            {showAideImport && !isFerme && (
+              <div className="mb-4 p-3 text-xs border border-primary-200 bg-primary-50 text-primary-700 dark:bg-surface-700 dark:text-gray-200 dark:border-surface-600 rounded-sm space-y-1.5">
+                <p className="font-semibold">Importer des articles depuis Excel ou CSV</p>
+                <ol className="list-decimal ml-4 space-y-0.5">
+                  <li>Cliquez sur « Télécharger le modèle » : le fichier contient les colonnes attendues et une ligne d&apos;exemple.</li>
+                  <li>Remplacez l&apos;exemple par vos articles, une ligne par article, sans changer les titres de colonnes.</li>
+                  <li>Enregistrez en .xlsx, .xls ou .csv, puis cliquez sur « Import Excel » et choisissez le fichier.</li>
+                </ol>
+                <p><b>Colonne obligatoire :</b> Désignation (ou Type). Les autres sont facultatives : Marque, Modèle, Quantité (1 par défaut), Unité, Position tarifaire, Poids (kg), Valeur, Origine, Bon livraison, Observations.</p>
+                <p>La première feuille du classeur est lue. Les articles importés s&apos;ajoutent à la suite de ceux qui existent déjà, ils ne les remplacent pas. Les montants et poids s&apos;écrivent sans espace (ex. 4500000).</p>
+              </div>
+            )}
 
             {dossier.articles?.length > 0 ? (
               <div className="table-container !shadow-none !border-0">

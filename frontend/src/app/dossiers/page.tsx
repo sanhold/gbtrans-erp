@@ -25,6 +25,8 @@ export default function DossiersPage() {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filterNature, setFilterNature] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [dateDebut, setDateDebut] = useState('');
+  const [dateFin, setDateFin] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
@@ -35,6 +37,10 @@ export default function DossiersPage() {
     if (appliedSearch) params.search = appliedSearch;
     if (filterNature) params.nature = filterNature;
     if (filterStatut) params.statut = filterStatut;
+    if (dateDebut && dateFin) {
+      params.dateDebut = `${dateDebut}T00:00:00.000Z`;
+      params.dateFin = `${dateFin}T23:59:59.999Z`;
+    }
 
     dossiersApi.list(params)
       .then((response) => {
@@ -43,7 +49,7 @@ export default function DossiersPage() {
       })
       .catch(() => setDossiers([]))
       .finally(() => setLoading(false));
-  }, [page, limit, filterNature, filterStatut, appliedSearch, sortOrder]);
+  }, [page, limit, filterNature, filterStatut, appliedSearch, sortOrder, dateDebut, dateFin]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +97,8 @@ export default function DossiersPage() {
                 <option key={k} value={k}>{statutLabels[k]}</option>
               ))}
             </select>
+            <input type="date" value={dateDebut} onChange={(e) => { setDateDebut(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Période : du" />
+            <input type="date" value={dateFin} onChange={(e) => { setDateFin(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Période : au" />
             <select
               value={sortOrder}
               onChange={(e) => { setSortOrder(e.target.value as 'desc' | 'asc'); setPage(1); }}

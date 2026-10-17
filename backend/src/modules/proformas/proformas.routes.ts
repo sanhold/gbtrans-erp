@@ -190,23 +190,6 @@ router.post('/', authorize('PROFORMAS:CREER'), audit('PROFORMAS', 'CREER'), asyn
       include: { lignes: { orderBy: { ordre: 'asc' } }, client: { select: { raisonSociale: true } } },
     });
 
-    if (dossierId) {
-      const dossierActuel = await prisma.dossier.findFirst({ where: { id: dossierId }, select: { statut: true, numero: true } });
-      if (dossierActuel?.statut === 'NOUVEAU') {
-        await prisma.dossier.update({ where: { id: dossierId }, data: { statut: 'EN_COURS' } });
-        await prisma.historiqueDossier.create({
-          data: {
-            dossierId,
-            action: 'CHANGEMENT_STATUT',
-            statutAvant: 'NOUVEAU',
-            statutApres: 'EN_COURS',
-            commentaire: `Passage automatique en cours suite à la création de la proforma ${numero}`,
-            utilisateur: 'Système',
-          },
-        });
-      }
-    }
-
     ApiResponse.created(res, proforma, `Proforma ${numero} créée`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -278,6 +261,24 @@ router.patch('/:id/valider', authorize('PROFORMAS:MODIFIER'), audit('PROFORMAS',
       data: { statut: 'EN_ATTENTE_FACTURATION' },
       include: { lignes: { orderBy: { ordre: 'asc' } }, client: true },
     });
+
+    // Un dossier « Nouveau » passe « En cours » dès que sa proforma est validée.
+    if (updated.dossierId) {
+      const dossierActuel = await prisma.dossier.findFirst({ where: { id: updated.dossierId, societeId: req.user!.societeId }, select: { statut: true } });
+      if (dossierActuel?.statut === 'NOUVEAU') {
+        await prisma.dossier.update({ where: { id: updated.dossierId }, data: { statut: 'EN_COURS' } });
+        await prisma.historiqueDossier.create({
+          data: {
+            dossierId: updated.dossierId,
+            action: 'CHANGEMENT_STATUT',
+            statutAvant: 'NOUVEAU',
+            statutApres: 'EN_COURS',
+            commentaire: `Passage automatique en cours suite à la validation de la proforma ${updated.numero}`,
+            utilisateur: 'Système',
+          },
+        });
+      }
+    }
 
     ApiResponse.success(res, updated, 'Proforma validée — en attente de facturation');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

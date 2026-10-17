@@ -373,6 +373,7 @@ export const utilisateursApi = {
 export const parametresApi = {
   societe: {
     get: () => api.get('/parametres/societe'),
+    identite: () => api.get('/parametres/societe/identite'),
     update: (data: any) => api.put('/parametres/societe', data),
     setLogo: (logo: string | null) => api.put('/parametres/societe/logo', { logo }),
     setSignature: (signature: string | null) => api.put('/parametres/societe/signature', { signature }),

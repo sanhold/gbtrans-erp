@@ -7,6 +7,7 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { cautionsApi, clientsApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import PickerField from '@/components/ui/PickerField';
+import RowActionsMenu, { ActionsButton, openRowMenu, RowMenuState, RowAction } from '@/components/ui/RowActionsMenu';
 import toast from 'react-hot-toast';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
@@ -41,6 +42,7 @@ export default function CautionsPage() {
   const [stats, setStats] = useState({ nonActive: 0, enAttente: 0, courrierNonDepose: 0, courrierDepose: 0, payees: 0 });
 
   const [showModal, setShowModal] = useState(false);
+  const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -83,7 +85,14 @@ export default function CautionsPage() {
   const sommeMontant = items.reduce((s, c) => s + Number(c.montant || 0), 0);
 
   const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
+  // Le dossier / client de la caution en cours de modification doit toujours être affiché, même hors des 500 premiers chargés.
+  if (editing?.dossier && !dossierOptions.some(o => o.id === editing.dossier.id)) {
+    dossierOptions.unshift({ id: editing.dossier.id, label: editing.dossier.numeroPhysique || editing.dossier.numero, sublabel: editing.client?.raisonSociale });
+  }
   const clientOptions = clients.map(c => ({ id: c.id, label: c.raisonSociale, sublabel: c.code }));
+  if (editing?.client && !clientOptions.some(o => o.id === editing.client.id)) {
+    clientOptions.unshift({ id: editing.client.id, label: editing.client.raisonSociale, sublabel: editing.client.code });
+  }
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (c: any) => {
@@ -123,7 +132,6 @@ export default function CautionsPage() {
   };
 
   const handleDelete = async (c: any) => {
-    if (!confirm(`Supprimer la caution ${c.numero} ?`)) return;
     try { await cautionsApi.delete(c.id); toast.success('Caution supprimée'); load(); loadStats(); }
     catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
@@ -155,6 +163,23 @@ export default function CautionsPage() {
       setPayerCaution(null);
       load(); loadStats();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
+  };
+
+  const openCautionMenu = (e: React.MouseEvent, c: any) => {
+    const nonPayee = c.statut !== 'PAYEE';
+    const actions: RowAction[] = [
+      { label: 'Modifier', onClick: () => openEdit(c) },
+      { label: 'Supprimer', onClick: () => handleDelete(c), tone: 'text-red-600', confirm: `Supprimer la caution ${c.numero} ? Cette action est définitive.`, hidden: !(c.statut === 'NON_ACTIVE' || c.statut === 'EN_ATTENTE') },
+      { label: c.statut === 'NON_ACTIVE' ? 'Activer' : 'Désactiver', onClick: () => handleToggleActif(c), confirm: `${c.statut === 'NON_ACTIVE' ? 'Activer' : 'Désactiver'} la caution ${c.numero} ?`, hidden: !nonPayee },
+      { label: 'Annuler le dépôt du courrier', onClick: () => handleAnnulerCourrier(c), confirm: `Annuler le dépôt de courrier de la caution ${c.numero} ?`, hidden: !nonPayee || c.statut === 'NON_ACTIVE' || c.statut !== 'COURRIER_DEPOSE' },
+      { label: 'Marquer le courrier déposé', onClick: () => handleMarquerCourrier(c), confirm: `Marquer le courrier de la caution ${c.numero} comme déposé ?`, hidden: !nonPayee || c.statut === 'NON_ACTIVE' || c.statut === 'COURRIER_DEPOSE' },
+      { label: 'Marquer payée', onClick: () => { setPayerCaution(c); setDatePaiement(todayISO()); }, tone: 'text-green-700', hidden: !nonPayee },
+    ];
+    openRowMenu(setRowMenu, e, [
+      { label: 'Caution', value: c.numero },
+      { label: 'Client', value: c.client?.raisonSociale || '-' },
+      { label: 'Dossier', value: c.dossier ? (c.dossier.numeroPhysique || c.dossier.numero) : '-' },
+    ], actions);
   };
 
   return (
@@ -252,38 +277,9 @@ export default function CautionsPage() {
               ) : items.length === 0 ? (
                 <tr><td colSpan={13} className="text-center py-12 text-gray-500">Aucune caution enregistrée</td></tr>
               ) : items.map(c => (
-                <tr key={c.id} className="table-row">
+                <tr key={c.id} className="table-row cursor-pointer" onClick={(e) => { if ((e.target as HTMLElement).closest('a,button,input,select')) return; openCautionMenu(e, c); }}>
                   <td className="table-cell !px-1" data-label="Actions">
-                    <div className="flex gap-0.5 items-center">
-                      <button onClick={() => openEdit(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                        <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      </button>
-                      {(c.statut === 'NON_ACTIVE' || c.statut === 'EN_ATTENTE') && (
-                        <button onClick={() => handleDelete(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      )}
-                      {c.statut !== 'PAYEE' && (
-                        <>
-                          <span className="w-px h-4 bg-gray-200 dark:bg-surface-600 mx-0.5" />
-                          <button onClick={() => handleToggleActif(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title={c.statut === 'NON_ACTIVE' ? 'Activer' : 'Désactiver'}>
-                            <svg className={`w-3.5 h-3.5 ${c.statut === 'NON_ACTIVE' ? 'text-gray-400' : 'text-cyan-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                          </button>
-                          {c.statut !== 'NON_ACTIVE' && (c.statut === 'COURRIER_DEPOSE' ? (
-                            <button onClick={() => handleAnnulerCourrier(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Annuler dépôt courrier">
-                              <svg className="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                            </button>
-                          ) : (
-                            <button onClick={() => handleMarquerCourrier(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer courrier déposé">
-                              <svg className="w-3.5 h-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                            </button>
-                          ))}
-                          <button onClick={() => { setPayerCaution(c); setDatePaiement(todayISO()); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer payée">
-                            <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <ActionsButton onOpen={(e) => openCautionMenu(e, c)} />
                   </td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
@@ -374,6 +370,7 @@ export default function CautionsPage() {
           </div>
         )}
       </div>
+    <RowActionsMenu state={rowMenu} onClose={() => setRowMenu(null)} />
     </AppLayout>
   );
 }

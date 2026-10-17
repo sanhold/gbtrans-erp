@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
+import RowActionsMenu, { ActionsButton, openRowMenu, RowMenuState, RowAction } from '@/components/ui/RowActionsMenu';
 import { atApi, clientsApi, dossiersApi, documentsApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { generateATCertBlob, downloadBlob } from '@/lib/generateATPdf';
@@ -38,6 +39,7 @@ export default function ATPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -99,6 +101,21 @@ export default function ATPage() {
   const totalPages = Math.ceil(total / limit);
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
+  const openAtMenu = (e: React.MouseEvent, at: any) => {
+    const dossier = at.dossiers?.[0];
+    const actions: RowAction[] = [
+      { label: 'Modifier', onClick: () => openEdit(at) },
+      { label: 'Historique des prolongations', onClick: () => openHistorique(at) },
+      { label: 'Prolonger', onClick: () => setProlongerAt(at), hidden: at.etat === 'APURE' },
+      { label: 'Apurer', onClick: () => setApurerAt(at), hidden: at.etat === 'APURE', tone: 'text-green-700' },
+    ];
+    openRowMenu(setRowMenu, e, [
+      { label: 'AT', value: at.numero },
+      { label: 'Client', value: at.client?.raisonSociale || '-' },
+      { label: 'Dossier', value: dossier ? (dossier.numeroPhysique || dossier.numero) : '-' },
+    ], actions);
+  };
+
   const openEdit = (at: any) => {
     setEditing(at);
     setForm({
@@ -300,26 +317,9 @@ export default function ATPage() {
                 const enAlerte = at.etat !== 'APURE' && at.joursRestants <= (at.alerteJours ?? 90);
                 const rowClass = at.etat === 'EXPIRE' ? 'text-red-600' : enAlerte ? 'text-amber-600' : '';
                 return (
-                  <tr key={at.id} className={`table-row ${rowClass}`}>
+                  <tr key={at.id} className={`table-row cursor-pointer ${rowClass}`} onClick={(e) => { if ((e.target as HTMLElement).closest('a,button,input,select')) return; openAtMenu(e, at); }}>
                     <td className="table-cell !px-1" data-label="Actions">
-                      <div className="flex gap-0.5">
-                        <button onClick={() => openEdit(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                          <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        </button>
-                        <button onClick={() => openHistorique(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Historique des prolongations">
-                          <svg className="w-3.5 h-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                        </button>
-                        {at.etat !== 'APURE' && (
-                          <>
-                            <button onClick={() => setProlongerAt(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Prolonger">
-                              <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                            <button onClick={() => setApurerAt(at)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Apurer">
-                              <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      <ActionsButton onOpen={(e) => openAtMenu(e, at)} />
                     </td>
                     <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
                     <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
@@ -508,6 +508,7 @@ export default function ATPage() {
           </div>
         )}
       </div>
+    <RowActionsMenu state={rowMenu} onClose={() => setRowMenu(null)} />
     </AppLayout>
   );
 }

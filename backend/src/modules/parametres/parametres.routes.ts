@@ -18,6 +18,14 @@ router.use(authenticate, requireSociete);
 
 // ---------- Société (infos, TVA, devise, SMTP, logo, signature) ----------
 
+// Identité visuelle (nom + logo) : lisible par tout utilisateur connecté, pour l'en-tête de l'application.
+router.get('/societe/identite', async (req: AuthRequest, res: Response) => {
+  try {
+    const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId }, select: { raisonSociale: true, logo: true } });
+    ApiResponse.success(res, societe);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
 router.get('/societe', authorize('PARAMETRES:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId } });

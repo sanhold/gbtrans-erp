@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { parametresApi } from '@/lib/api';
 
 const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/dashboard', name: 'Accueil' },
@@ -74,6 +75,11 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const [darkMode, setDarkMode] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [identite, setIdentite] = useState<{ raisonSociale?: string; logo?: string | null } | null>(null);
+
+  useEffect(() => {
+    parametresApi.societe.identite().then((r) => setIdentite(r.data.data)).catch(() => {});
+  }, []);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -101,9 +107,9 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
       </button>
 
       <div className="flex items-center gap-2.5 min-w-0">
-        <img src="/brand/logo-icon.png" alt="GBTrans" className="w-7 h-7 rounded flex-shrink-0" />
-        <span className="font-display font-extrabold text-[18px] leading-none">GBTrans</span>
-        <span className="hidden md:inline text-[12px] text-white/70 truncate">Gestion Bureau de Transit</span>
+        <img src={identite?.logo || '/brand/logo-icon.png'} alt="Logo" className="h-7 max-w-[84px] object-contain rounded bg-white/10 flex-shrink-0" />
+        <span className="font-display font-extrabold text-[16px] leading-none truncate">{identite?.raisonSociale || user?.societe?.raisonSociale || 'GBTrans'}</span>
+        <span className="hidden lg:inline text-[12px] text-white/60 truncate">· GBTrans ERP</span>
       </div>
 
       <div className="ml-auto flex items-center gap-4 text-[12px]">

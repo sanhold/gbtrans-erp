@@ -37,6 +37,18 @@ const CAT_COLORS: Record<string, string> = {
   'DIVERS': '#6b7280',
 };
 
+// Saisie des montants : espaces comme séparateurs de milliers à l'écran, valeur « brute » (ex. 1234.5) dans l'état.
+const nettoyerNombre = (v: string) => {
+  const t = v.replace(/[^\d.,]/g, '').replace(',', '.');
+  const i = t.indexOf('.');
+  return i === -1 ? t : t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '');
+};
+const fmtSaisie = (v: string | number | null | undefined) => {
+  if (v === '' || v == null) return '';
+  const [ent, dec] = String(v).split('.');
+  const milliers = (ent || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return dec !== undefined ? `${milliers}.${dec}` : milliers;
+};
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(n || 0));
 
 function suggestCode(catalogue: any[], categorie: string): string {
@@ -294,21 +306,28 @@ function NouvelleProformaForm() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             <div><label className="label">Dossier</label><PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="— Aucun —" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." /></div>
             <div><label className="label">Client *</label><PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="— Sélectionner —" title="Sélectionner un client" searchPlaceholder="Raison sociale..." required /></div>
-            <div><label className="label">FOB (Unitaire)</label><input type="number" value={form.fobUnitaire} onChange={e => setForm({ ...form, fobUnitaire: e.target.value })} className="input-field" /></div>
-            <div><label className="label">FRET (Unitaire)</label><input type="number" value={form.fretUnitaire} onChange={e => setForm({ ...form, fretUnitaire: e.target.value })} className="input-field" /></div>
-            <div><label className="label">Assurance</label><input type="number" value={form.assurance} onChange={e => setForm({ ...form, assurance: e.target.value })} className="input-field" /></div>
-            <div><label className="label">Frais divers</label><input type="number" value={form.fraisDivers} onChange={e => setForm({ ...form, fraisDivers: e.target.value })} className="input-field" /></div>
-            <div><label className="label">Nbre unités</label><input type="number" value={form.nombreUnites} onChange={e => setForm({ ...form, nombreUnites: e.target.value })} className="input-field" /></div>
+            <div><label className="label">FOB (Unitaire)</label><input type="text" inputMode="decimal" value={fmtSaisie(form.fobUnitaire)} onChange={e => setForm({ ...form, fobUnitaire: nettoyerNombre(e.target.value) })} className="input-field" /></div>
+            <div><label className="label">FRET (Unitaire)</label><input type="text" inputMode="decimal" value={fmtSaisie(form.fretUnitaire)} onChange={e => setForm({ ...form, fretUnitaire: nettoyerNombre(e.target.value) })} className="input-field" /></div>
+            <div><label className="label">Assurance</label><input type="text" inputMode="decimal" value={fmtSaisie(form.assurance)} onChange={e => setForm({ ...form, assurance: nettoyerNombre(e.target.value) })} className="input-field" /></div>
+            <div><label className="label">Frais divers</label><input type="text" inputMode="decimal" value={fmtSaisie(form.fraisDivers)} onChange={e => setForm({ ...form, fraisDivers: nettoyerNombre(e.target.value) })} className="input-field" /></div>
+            <div><label className="label">Nbre unités</label><input type="text" inputMode="numeric" value={fmtSaisie(form.nombreUnites)} onChange={e => setForm({ ...form, nombreUnites: nettoyerNombre(e.target.value).replace(/\..*/, '') })} className="input-field" /></div>
             <div><label className="label">Valeur CAF</label><div className="input-field bg-gray-50 dark:bg-surface-700 font-mono font-bold text-primary-600 flex items-center">{fmt(valeurCAF)}</div></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <div><label className="label">Titre</label><textarea value={form.titre} onChange={e => setForm({ ...form, titre: e.target.value })} rows={2} className="input-field" placeholder="DEDOUANEMENT..." /></div>
             <div><label className="label">NB / Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} rows={2} className="input-field" /></div>
           </div>
-          <label className={`flex items-center gap-2 mt-4 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+          <div className="flex items-center justify-between flex-wrap gap-3 mt-4">
+          <label className={`flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
             <input type="checkbox" checked={form.afficherSignature} disabled={!canSignature} onChange={e => setForm({ ...form, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
             Afficher la signature sur la proforma
           </label>
+          <button type="button" onClick={() => setShowCatalogue(true)} className="btn-secondary">
+            <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+            Catalogue des prestations
+            {lignes.length > 0 && <span className="ml-2 bg-primary-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-sm">{lignes.length}</span>}
+          </button>
+          </div>
         </div>
 
         {/* Fiche Proforma — rendu papier */}
@@ -382,11 +401,6 @@ function NouvelleProformaForm() {
             )}
 
             <div className="pf-inline-toolbar pf-no-export">
-              <button type="button" onClick={() => setShowCatalogue(true)} className="pf-inline-btn-outline">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-                Catalogue des prestations
-                {lignes.length > 0 && <span className="pf-inline-badge">{lignes.length}</span>}
-              </button>
               <div className="pf-inline-group-add">
                 <select value={quickCat} onChange={e => setQuickCat(e.target.value)} className="pf-inline-select">
                   <option value="">-- Choisir une catégorie --</option>
@@ -419,7 +433,7 @@ function NouvelleProformaForm() {
                         <tr key={idx}>
                           <td className="pf-numcol">{globalIndex}</td>
                           <td><input value={ligne.designation} onChange={e => updateLigne(idx, 'designation', e.target.value)} /></td>
-                          <td className="pf-num"><input className="pf-num-input" type="number" value={ligne.montant || ''} onChange={e => updateLigne(idx, 'montant', parseFloat(e.target.value) || 0)} /></td>
+                          <td className="pf-num"><input className="pf-num-input" type="text" inputMode="decimal" value={fmtSaisie(ligne.montant || '')} onChange={e => updateLigne(idx, 'montant', parseFloat(nettoyerNombre(e.target.value)) || 0)} /></td>
                           <td className="pf-tvacol"><input type="checkbox" checked={ligne.estTVA} disabled className="pf-tva-checkbox" title="Défini depuis le catalogue" /></td>
                           <td className="pf-rmcol pf-no-export"><button type="button" onClick={() => removeLigne(idx)}>✕</button></td>
                         </tr>
@@ -433,6 +447,20 @@ function NouvelleProformaForm() {
                     </tr>
                   </tbody>
                 ))}
+                <tfoot>
+                  <tr className="pf-foot-row">
+                    <td colSpan={2}>Montant prestation</td>
+                    <td className="pf-num">{fmt(totalHT)}</td>
+                    <td className="pf-no-export"></td>
+                    <td className="pf-no-export"></td>
+                  </tr>
+                  <tr className="pf-foot-row">
+                    <td colSpan={2}>TVA / prestation</td>
+                    <td className="pf-num">{fmt(totalTVA)}</td>
+                    <td className="pf-no-export"></td>
+                    <td className="pf-no-export"></td>
+                  </tr>
+                </tfoot>
               </table>
             )}
 
@@ -478,9 +506,9 @@ function NouvelleProformaForm() {
       {showCatalogue && (
         <div className="fixed inset-0 z-[58] flex items-center justify-center bg-black/50 animate-fade-in p-4" onClick={() => setShowCatalogue(false)}>
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <h3 className="font-bold text-lg">Catalogue des prestations</h3>
-              <button type="button" onClick={() => setShowCatalogue(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
+            <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
+              <h3 className="font-bold text-base">Catalogue des prestations</h3>
+              <button type="button" onClick={() => setShowCatalogue(false)} className="p-1 rounded-sm hover:bg-white/15">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -534,9 +562,9 @@ function NouvelleProformaForm() {
       {showAddPrestation && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 animate-fade-in">
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-md mx-4">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-bold">Nouvelle Prestation</h3>
-              <button onClick={() => setShowAddPrestation(false)} className="p-1 rounded hover:bg-gray-100">
+            <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
+              <h3 className="font-bold text-base">Nouvelle prestation</h3>
+              <button onClick={() => setShowAddPrestation(false)} className="p-1 rounded-sm hover:bg-white/15">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -585,8 +613,8 @@ function NouvelleProformaForm() {
       <style jsx global>{`
         :root { --pf-ink:#16232e; --pf-ink-soft:#56626f; --pf-gold:#e8821e; --pf-gold-soft:#fdf1e3; --pf-paper:#FFFFFF; --pf-line:#dbe2e8; --pf-danger:#B3492F; }
 
-        .pf-sheet-wrap { background:#0a1622; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
-        .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 16px 40px rgba(0,0,0,.4); }
+        .pf-sheet-wrap { background:#e9edf1; padding:28px 20px; border-radius:2px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
+        .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 2px 10px rgba(0,0,0,.18); }
 
         .pf-doc-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pf-ink); padding-bottom:12px; margin-bottom:18px; }
         .pf-company-name { font-size:20px; font-weight:700; letter-spacing:.01em; }
@@ -643,6 +671,8 @@ function NouvelleProformaForm() {
         table.pf-items input:focus { outline:1px dashed var(--pf-gold); }
         .pf-num-input { text-align:right; font-family:'Courier New',monospace; font-weight:700; }
         table.pf-items .pf-rmcol button { background:none; border:none; color:var(--pf-danger); cursor:pointer; font-size:12px; }
+        .pf-foot-row td { font-weight:700; color:var(--pf-ink); background:#f6f8fa; border-top:1px solid var(--pf-line); border-bottom:1px solid var(--pf-line); }
+        .pf-foot-row td:first-child { text-align:right; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; }
         .pf-subtotal-row td { font-weight:700; color:var(--pf-ink); border-top:1px solid var(--pf-line); border-bottom:1px solid var(--pf-line); }
         .pf-subtotal-row td:first-child { text-align:right; font-size:10.5px; }
 

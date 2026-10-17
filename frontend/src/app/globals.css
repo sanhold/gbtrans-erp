@@ -345,3 +345,14 @@
   min-width: 0;
   row-gap: 0.5rem;
 }
+
+/* Champs numériques : pas de flèches d'incrémentation (la tabulation reste utilisable) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
