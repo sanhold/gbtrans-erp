@@ -2,11 +2,13 @@
 
 import { montantEnLettres } from './montantEnLettres';
 import api from './api';
+import { useAuthStore } from '@/stores/authStore';
 import QRCode from 'qrcode';
 
 export interface SocieteBranding {
   logo?: string | null;
   signature?: string | null;
+  cachet?: string | null;
   raisonSociale?: string | null;
   slogan?: string | null;
   adresse?: string | null;
@@ -20,22 +22,28 @@ export interface SocieteBranding {
   mentionLegale?: string | null;
 }
 let societeBrandingCache: SocieteBranding | null = null;
+let societeBrandingUserId: string | null = null;
 
+/** À appeler après modification de la signature / du cachet de l'utilisateur ou de la société. */
+export function resetSocieteBranding() {
+  societeBrandingCache = null;
+}
+
+/** Identité de la société + signature et cachet de l'utilisateur connecté (repli : signature de la société). */
 export async function getSocieteBranding(): Promise<SocieteBranding> {
-  if (societeBrandingCache) return societeBrandingCache;
-  try {
-    const res = await api.get('/parametres/societe');
-    const s = res.data.data;
-    societeBrandingCache = {
-      logo: s.logo, signature: s.signature,
-      raisonSociale: s.raisonSociale, slogan: s.slogan,
-      adresse: s.adresse, ville: s.ville, pays: s.pays,
-      telephone: s.telephone, mobile: s.mobile, email: s.email,
-      rccm: s.rccm, ncc: s.ncc, mentionLegale: s.mentionLegale,
-    };
-  } catch {
-    societeBrandingCache = {};
-  }
+  const userId = useAuthStore.getState().user?.id || null;
+  if (societeBrandingCache && societeBrandingUserId === userId) return societeBrandingCache;
+  const [soc, moi] = await Promise.allSettled([api.get('/parametres/societe'), api.get('/utilisateurs/moi/signature')]);
+  const s = soc.status === 'fulfilled' ? soc.value.data.data : null;
+  const m = moi.status === 'fulfilled' ? moi.value.data.data : null;
+  societeBrandingCache = s ? {
+    logo: s.logo, signature: m?.signature || s.signature, cachet: m?.cachet || null,
+    raisonSociale: s.raisonSociale, slogan: s.slogan,
+    adresse: s.adresse, ville: s.ville, pays: s.pays,
+    telephone: s.telephone, mobile: s.mobile, email: s.email,
+    rccm: s.rccm, ncc: s.ncc, mentionLegale: s.mentionLegale,
+  } : { signature: m?.signature || null, cachet: m?.cachet || null };
+  societeBrandingUserId = userId;
   return societeBrandingCache;
 }
 
@@ -288,6 +296,7 @@ ${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;ma
   <div style="text-align:center;width:220px;">
     <div style="color:${BRAND.slate};font-size:9.5px;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
     ${branding?.signature ? `<img src="${branding.signature}" style="height:34px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
+    ${branding?.cachet ? `<img src="${branding.cachet}" style="height:34px;object-fit:contain;margin:2px auto 0;display:block;" />` : ''}
     <div style="border-top:1px solid ${BRAND.ink};padding-top:4px;font-weight:700;color:${BRAND.ink};">${brand.nom}</div>
   </div>
 </div>` : ''}
@@ -418,7 +427,7 @@ ${sectionsHtml}
 
 ${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
   <div style="text-align:center;width:160px;">
-    ${branding?.signature ? `<img src="${branding.signature}" style="max-width:140px;max-height:70px;object-fit:contain;" />` : '<div style="height:70px;"></div>'}
+    ${branding?.signature || branding?.cachet ? `${branding?.signature ? `<img src="${branding.signature}" style="max-width:140px;max-height:70px;object-fit:contain;" />` : ''}${branding?.cachet ? `<img src="${branding.cachet}" style="max-width:100px;max-height:70px;object-fit:contain;margin-left:6px;" />` : ''}` : '<div style="height:70px;"></div>'}
     <div style="border-top:1px solid ${PAPER.line};padding-top:4px;font-size:9px;color:${PAPER.inkSoft};font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Le Responsable</div>
   </div>
 </div>` : ''}

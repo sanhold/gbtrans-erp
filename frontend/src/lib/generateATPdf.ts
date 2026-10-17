@@ -57,6 +57,7 @@ ${afficherSignature ? `<div style="display:flex;justify-content:flex-end;margin-
   <div style="text-align:center;width:220px;">
     <div style="color:${BRAND.slate};font-size:9.5px;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
     ${branding?.signature ? `<img src="${branding.signature}" style="height:34px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
+    ${branding?.cachet ? `<img src="${branding.cachet}" style="height:34px;object-fit:contain;margin:2px auto 0;display:block;" />` : ''}
     <div style="border-top:1px solid ${BRAND.ink};padding-top:4px;font-weight:700;color:${BRAND.ink};">${brand.nom}</div>
   </div>
 </div>` : ''}

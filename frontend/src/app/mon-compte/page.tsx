@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import AppLayout from '@/components/layout/AppLayout';
-import { authApi } from '@/lib/api';
+import { authApi, utilisateursApi } from '@/lib/api';
+import { resetSocieteBranding } from '@/lib/generatePDF';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function MonComptePage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, hasPermission } = useAuthStore();
 
   // --- Changement de mot de passe ---
   const [ancien, setAncien] = useState('');
@@ -34,6 +35,38 @@ export default function MonComptePage() {
       toast.error(err.response?.data?.message || 'Erreur lors du changement de mot de passe');
     } finally {
       setSavingPassword(false);
+    }
+  };
+
+  // --- Signature et cachet personnels ---
+  const canSignature = hasPermission('DOCUMENTS:SIGNATURE');
+  const [signature, setSignature] = useState<string | null>(null);
+  const [cachet, setCachet] = useState<string | null>(null);
+  const [savingImages, setSavingImages] = useState(false);
+
+  useEffect(() => {
+    utilisateursApi.maSignature().then(r => { setSignature(r.data.data?.signature || null); setCachet(r.data.data?.cachet || null); }).catch(() => {});
+  }, []);
+
+  const lireImage = (file: File | undefined, apply: (dataUrl: string) => void) => {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) { toast.error('Image PNG, JPG ou WebP attendue'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error('Image trop volumineuse (2 Mo maximum)'); return; }
+    const reader = new FileReader();
+    reader.onload = () => apply(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveImages = async () => {
+    setSavingImages(true);
+    try {
+      await utilisateursApi.setMaSignature({ signature, cachet });
+      resetSocieteBranding();
+      toast.success('Signature et cachet enregistrés');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement");
+    } finally {
+      setSavingImages(false);
     }
   };
 
@@ -86,6 +119,44 @@ export default function MonComptePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mon compte</h1>
           <p className="text-sm text-gray-500">Gérez votre mot de passe et la sécurité de votre compte</p>
+        </div>
+
+        {/* Signature et cachet personnels */}
+        <div className="card">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Ma signature et mon cachet</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Ils s&apos;affichent sur les documents (proforma, facture, AT, dotation) que vous générez, quand l&apos;option « Afficher la signature » est cochée.
+          </p>
+          {!canSignature ? (
+            <p className="text-sm text-amber-600">Votre profil n&apos;a pas le droit « Signature sur les documents » (DOCUMENTS:SIGNATURE). Demandez-le à un administrateur.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {[
+                  { titre: 'Signature', valeur: signature, set: setSignature },
+                  { titre: 'Cachet', valeur: cachet, set: setCachet },
+                ].map(({ titre, valeur, set }) => (
+                  <div key={titre}>
+                    <div className="label">{titre}</div>
+                    <div className="h-24 w-full border border-dashed border-gray-300 dark:border-surface-600 rounded-sm flex items-center justify-center bg-gray-50 dark:bg-surface-700 mb-2">
+                      {valeur ? <img src={valeur} alt={titre} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-gray-400">Aucun</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <label className="btn-secondary cursor-pointer">
+                        Choisir une image
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e => { lireImage(e.target.files?.[0], set); e.target.value = ''; }} />
+                      </label>
+                      {valeur && <button type="button" onClick={() => set(null)} className="text-xs text-red-500 hover:underline">Supprimer</button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-3">PNG, JPG ou WebP, 2 Mo maximum. Un fond transparent (PNG) donne le meilleur rendu.</p>
+              <div className="flex justify-end mt-4">
+                <button type="button" onClick={handleSaveImages} disabled={savingImages} className="btn-primary">{savingImages ? 'Enregistrement...' : 'Enregistrer'}</button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Changer le mot de passe */}

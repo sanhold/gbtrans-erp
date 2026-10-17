@@ -22,6 +22,76 @@ router.get('/catalogue', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, r
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
+// ===== MODÈLES DE CATALOGUE (remplissage automatique d'une proforma) =====
+
+type LigneModele = { categorie: string; codePrestation: string | null; designation: string; montant: number; estTVA: boolean };
+
+// Modèles types créés au premier accès, à partir du catalogue de prestations de la société.
+const MODELES_PAR_DEFAUT: { nom: string; description: string; codes?: string[]; categories?: string[] }[] = [
+  { nom: 'Transit import — dédouanement standard', description: 'Ouverture de dossier, droits et taxes, visite, commission, frais de dossier.',
+    codes: ['DC-013', 'DOU-LIQ', 'DOU-VIS', 'DC-006', 'DC-001', 'DC-004', 'DIV-DOS', 'DIV-TIM', 'DIV-COU'] },
+  { nom: 'Import avec compagnie maritime', description: 'Frais de compagnie (magasinage, surestarie, BSC, retrait documentaire) et échange BL.',
+    categories: ['COMPAGNIE MARITIME'], codes: ['DC-004', 'DOU-LIQ', 'DOU-VIS', 'DIV-DOS'] },
+  { nom: 'Export et fret', description: 'Toutes les prestations export et fret du catalogue.', categories: ['EXPORT ET FRET'] },
+  { nom: 'Transport', description: 'Toutes les prestations de transport du catalogue.', categories: ['TRANSPORT'] },
+];
+
+async function creerModelesParDefaut(societeId: string) {
+  const catalogue = await prisma.prestationCatalogue.findMany({ where: { societeId, actif: true }, orderBy: [{ categorie: 'asc' }, { ordre: 'asc' }] });
+  const enLigne = (p: (typeof catalogue)[number]): LigneModele => ({
+    categorie: p.categorie, codePrestation: p.code, designation: p.designation, montant: Number(p.montantDefaut) || 0, estTVA: p.estTVA,
+  });
+  let ordre = 1;
+  for (const def of MODELES_PAR_DEFAUT) {
+    const lignes: LigneModele[] = [];
+    for (const cat of def.categories || []) catalogue.filter(p => p.categorie === cat).forEach(p => lignes.push(enLigne(p)));
+    for (const code of def.codes || []) {
+      const p = catalogue.find(x => x.code === code);
+      if (p && !lignes.some(l => l.codePrestation === code)) lignes.push(enLigne(p));
+    }
+    if (lignes.length === 0) continue;
+    await prisma.modeleCatalogue.create({ data: { societeId, nom: def.nom, description: def.description, lignes: lignes as any, ordre: ordre++ } });
+  }
+}
+
+function lignesModeleValides(v: unknown): LigneModele[] | null {
+  if (!Array.isArray(v) || v.length > 200) return null;
+  const out: LigneModele[] = [];
+  for (const l of v) {
+    if (!l || typeof l.designation !== 'string' || !l.designation.trim() || typeof l.categorie !== 'string') return null;
+    out.push({ categorie: l.categorie.slice(0, 100), codePrestation: l.codePrestation ? String(l.codePrestation).slice(0, 50) : null, designation: l.designation.slice(0, 500), montant: Number(l.montant) || 0, estTVA: !!l.estTVA });
+  }
+  return out;
+}
+
+router.get('/modeles-catalogue', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    if ((await prisma.modeleCatalogue.count({ where: { societeId } })) === 0) await creerModelesParDefaut(societeId);
+    const data = await prisma.modeleCatalogue.findMany({ where: { societeId, actif: true }, orderBy: [{ ordre: 'asc' }, { nom: 'asc' }] });
+    ApiResponse.success(res, data);
+  } catch (e: any) { ApiResponse.error(res, e.message); }
+});
+
+router.post('/modeles-catalogue', authorize('PROFORMAS:CREER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { nom, description } = req.body;
+    const lignes = lignesModeleValides(req.body.lignes);
+    if (!nom || !String(nom).trim() || !lignes || lignes.length === 0) { ApiResponse.badRequest(res, 'Nom et au moins une ligne valide requis'); return; }
+    const count = await prisma.modeleCatalogue.count({ where: { societeId: req.user!.societeId } });
+    const m = await prisma.modeleCatalogue.create({ data: { societeId: req.user!.societeId, nom: String(nom).slice(0, 150), description: description ? String(description).slice(0, 500) : null, lignes: lignes as any, ordre: count + 1 } });
+    ApiResponse.created(res, m, 'Modèle enregistré');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.delete('/modeles-catalogue/:id', authorize('PROFORMAS:MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const r = await prisma.modeleCatalogue.updateMany({ where: { id: req.params.id, societeId: req.user!.societeId }, data: { actif: false } });
+    if (r.count === 0) { ApiResponse.notFound(res, 'Modèle non trouvé'); return; }
+    ApiResponse.success(res, null, 'Modèle supprimé');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
 router.post('/catalogue', authorize('PROFORMAS:CREER'), async (req: AuthRequest, res: Response) => {
   try {
     const p = await prisma.prestationCatalogue.create({

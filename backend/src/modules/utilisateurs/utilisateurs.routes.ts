@@ -66,6 +66,34 @@ router.post('/', authorize('UTILISATEURS:CREER'), async (req: AuthRequest, res: 
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
+// ---------- Signature / cachet personnels (utilisateur connecté) ----------
+// Lecture : tout utilisateur connecté (pour afficher ses documents). Écriture : droit DOCUMENTS:SIGNATURE.
+const IMAGE_MAX = 3_000_000; // ~2 Mo en base64
+
+router.get('/moi/signature', async (req: AuthRequest, res: Response) => {
+  try {
+    const u = await prisma.utilisateur.findUnique({ where: { id: req.user!.id }, select: { signature: true, cachet: true } });
+    ApiResponse.success(res, { signature: u?.signature || null, cachet: u?.cachet || null });
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+router.put('/moi/signature', authorize('DOCUMENTS:SIGNATURE'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { signature, cachet } = req.body as { signature?: string | null; cachet?: string | null };
+    const data: { signature?: string | null; cachet?: string | null } = {};
+    for (const [cle, valeur] of [['signature', signature], ['cachet', cachet]] as const) {
+      if (valeur === undefined) continue;
+      if (valeur !== null && (typeof valeur !== 'string' || !/^data:image\/(png|jpe?g|webp);base64,/.test(valeur))) {
+        ApiResponse.badRequest(res, `${cle} : image PNG, JPG ou WebP attendue`); return;
+      }
+      if (valeur && valeur.length > IMAGE_MAX) { ApiResponse.badRequest(res, `${cle} : image trop volumineuse (2 Mo max)`); return; }
+      data[cle] = valeur;
+    }
+    const u = await prisma.utilisateur.update({ where: { id: req.user!.id }, data, select: { signature: true, cachet: true } });
+    ApiResponse.success(res, u, 'Signature et cachet mis à jour');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
 router.put('/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.utilisateur.findFirst({

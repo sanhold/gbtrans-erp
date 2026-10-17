@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { downloadPDF, type DocData } from '@/lib/generatePDF';
 import { montantEnLettres } from '@/lib/montantEnLettres';
 import { useAuthStore } from '@/stores/authStore';
+import { getSocieteBranding } from '@/lib/generatePDF';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -90,9 +91,12 @@ export default function ModifierProformaPage() {
   const [customCategorie, setCustomCategorie] = useState('');
   const [codeTouched, setCodeTouched] = useState(false);
   const [branding, setBranding] = useState<any>(null);
+  const [modeles, setModeles] = useState<any[]>([]);
+  const [modeleId, setModeleId] = useState('');
 
   useEffect(() => {
-    api.get('/parametres/societe').then(r => setBranding(r.data.data)).catch(() => {});
+    getSocieteBranding().then(setBranding);
+    api.get('/proformas/modeles-catalogue').then(r => setModeles(r.data.data || [])).catch(() => {});
   }, []);
 
   const [form, setForm] = useState({
@@ -189,6 +193,39 @@ export default function ModifierProformaPage() {
     setLignes(lignes.map((l, i) => i === index ? { ...l, [field]: value } : l));
   };
 
+  const appliquerModele = () => {
+    const modele = modeles.find(m => m.id === modeleId);
+    if (!modele) { toast.error('Choisissez un modèle'); return; }
+    const nouvelles = (modele.lignes as any[]).filter(l => !lignes.some(x => l.codePrestation ? x.codePrestation === l.codePrestation : x.designation === l.designation && x.categorie === l.categorie));
+    if (nouvelles.length === 0) { toast.error('Toutes les lignes de ce modèle sont déjà présentes'); return; }
+    setLignes([...lignes, ...nouvelles.map(l => ({
+      categorie: l.categorie, codePrestation: l.codePrestation || undefined, designation: l.designation,
+      tauxTVA: Number(catalogue.find(p => p.code === l.codePrestation)?.tauxTVA) || 0, montant: Number(l.montant) || 0, estTVA: !!l.estTVA,
+    }))]);
+    toast.success(`${nouvelles.length} ligne(s) ajoutée(s) depuis « ${modele.nom} »`);
+    setModeleId('');
+  };
+
+  // Réorganisation : on déplace les lignes dans le tableau, l'ordre d'affichage et d'enregistrement en découle.
+  const moveLigne = (index: number, dir: -1 | 1) => {
+    const cat = lignes[index].categorie;
+    let cible = index + dir;
+    while (cible >= 0 && cible < lignes.length && lignes[cible].categorie !== cat) cible += dir;
+    if (cible < 0 || cible >= lignes.length) return;
+    const copie = [...lignes];
+    [copie[index], copie[cible]] = [copie[cible], copie[index]];
+    setLignes(copie);
+  };
+
+  const moveGroupe = (cat: string, dir: -1 | 1) => {
+    const ordre = [...new Set(lignes.map(l => l.categorie))];
+    const i = ordre.indexOf(cat);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= ordre.length) return;
+    [ordre[i], ordre[j]] = [ordre[j], ordre[i]];
+    setLignes(ordre.flatMap(c => lignes.filter(l => l.categorie === c)));
+  };
+
   const removeLigne = (index: number) => setLignes(lignes.filter((_, i) => i !== index));
 
   const handleAjouterGroupe = () => {
@@ -209,12 +246,12 @@ export default function ModifierProformaPage() {
 
   const allCategories = [...new Set([...Object.keys(CAT_COLORS), ...catalogue.map(p => p.categorie)])];
   const categoriesWithItems = allCategories.filter(cat => catalogue.some(p => p.categorie === cat));
-  const groupedLignes = allCategories.map(cat => ({
+  const groupedLignes = [...new Set(lignes.map(l => l.categorie))].map(cat => ({
     categorie: cat,
     couleur: CAT_COLORS[cat] || '#6b7280',
     lignes: lignes.filter(l => l.categorie === cat),
     sousTotal: lignes.filter(l => l.categorie === cat).reduce((s, l) => s + (l.montant || 0), 0),
-  })).filter(g => g.lignes.length > 0);
+  }));
 
   const totalHT = lignes.filter(l => !l.estTVA).reduce((s, l) => s + (l.montant || 0), 0);
   const totalTVA = lignes.filter(l => l.estTVA).reduce((s, l) => s + (l.montant || 0), 0);
@@ -404,6 +441,13 @@ export default function ModifierProformaPage() {
 
             <div className="pf-inline-toolbar pf-no-export">
               <div className="pf-inline-group-add">
+                <select value={modeleId} onChange={e => setModeleId(e.target.value)} className="pf-inline-select" title="Remplir automatiquement avec un modèle de catalogue">
+                  <option value="">-- Modèle de catalogue --</option>
+                  {modeles.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                </select>
+                <button type="button" onClick={appliquerModele} className="pf-inline-btn-outline">Appliquer</button>
+              </div>
+              <div className="pf-inline-group-add">
                 <select value={quickCat} onChange={e => setQuickCat(e.target.value)} className="pf-inline-select">
                   <option value="">-- Choisir une catégorie --</option>
                   {categoriesWithItems.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -426,7 +470,13 @@ export default function ModifierProformaPage() {
                 {groupedLignes.map(group => (
                   <tbody key={group.categorie}>
                     <tr>
-                      <td colSpan={5} className="pf-section-title-row">{group.categorie}</td>
+                      <td colSpan={5} className="pf-section-title-row">
+                        <span>{group.categorie}</span>
+                        <span className="pf-no-export pf-move">
+                          <button type="button" title="Monter le groupe" onClick={() => moveGroupe(group.categorie, -1)}>▲</button>
+                          <button type="button" title="Descendre le groupe" onClick={() => moveGroupe(group.categorie, 1)}>▼</button>
+                        </span>
+                      </td>
                     </tr>
                     {group.lignes.map(ligne => {
                       globalIndex++;
@@ -437,7 +487,13 @@ export default function ModifierProformaPage() {
                           <td><input value={ligne.designation} onChange={e => updateLigne(idx, 'designation', e.target.value)} /></td>
                           <td className="pf-num"><input className="pf-num-input" type="text" inputMode="decimal" value={fmtSaisie(ligne.montant || '')} onChange={e => updateLigne(idx, 'montant', parseFloat(nettoyerNombre(e.target.value)) || 0)} /></td>
                           <td className="pf-tvacol"><input type="checkbox" checked={ligne.estTVA} disabled className="pf-tva-checkbox" title="Défini depuis le catalogue" /></td>
-                          <td className="pf-rmcol pf-no-export"><button type="button" onClick={() => removeLigne(idx)}>✕</button></td>
+                          <td className="pf-rmcol pf-no-export">
+                            <span className="pf-move">
+                              <button type="button" title="Monter" onClick={() => moveLigne(idx, -1)}>▲</button>
+                              <button type="button" title="Descendre" onClick={() => moveLigne(idx, 1)}>▼</button>
+                              <button type="button" title="Supprimer" onClick={() => removeLigne(idx)}>✕</button>
+                            </span>
+                          </td>
                         </tr>
                       );
                     })}
@@ -485,7 +541,7 @@ export default function ModifierProformaPage() {
             {form.afficherSignature && (
               <div className="pf-signature-row">
                 <div className="pf-signature-box">
-                  {branding?.signature ? <img src={branding.signature} alt="Signature" className="pf-signature-img" /> : <div className="pf-signature-placeholder" />}
+                  {branding?.signature || branding?.cachet ? <div className="pf-signature-imgs">{branding?.signature && <img src={branding.signature} alt="Signature" className="pf-signature-img" />}{branding?.cachet && <img src={branding.cachet} alt="Cachet" className="pf-signature-img pf-cachet-img" />}</div> : <div className="pf-signature-placeholder" />}
                   <div className="pf-signature-label">Le Responsable</div>
                 </div>
               </div>
@@ -666,7 +722,11 @@ export default function ModifierProformaPage() {
         .pf-tvacol { width:36px; text-align:center; }
         .pf-tva-checkbox { accent-color:#9AA0B5; opacity:.65; cursor:not-allowed; }
         .pf-montantcol { width:110px; }
-        .pf-rmcol { width:22px; }
+        .pf-rmcol { width:70px; }
+        .pf-move { display:inline-flex; gap:2px; float:right; }
+        .pf-move button { border:1px solid var(--pf-line); background:#fff; color:var(--pf-ink-soft); font-size:9px; line-height:1; padding:3px 5px; cursor:pointer; border-radius:2px; }
+        .pf-move button:hover { background:var(--pf-gold-soft); color:var(--pf-ink); }
+        .pf-section-title-row { display:table-cell; }
         table.pf-items .pf-num { text-align:right; white-space:nowrap; }
         table.pf-items input { border:none; background:transparent; font-family:inherit; width:100%; font-size:11.5px; color:var(--pf-ink); padding:1px 2px; }
         table.pf-items input:focus { outline:1px dashed var(--pf-gold); }
@@ -687,7 +747,9 @@ export default function ModifierProformaPage() {
         .pf-totals-table tr.pf-grand td { border-bottom:none; font-weight:800; font-size:13px; color:var(--pf-ink); padding-top:6px; padding-bottom:6px; }
 
         .pf-signature-row { display:flex; justify-content:flex-end; margin-top:8px; margin-bottom:14px; }
-        .pf-signature-box { text-align:center; width:160px; }
+        .pf-signature-box { text-align:center; width:200px; }
+        .pf-signature-imgs { display:flex; align-items:center; justify-content:center; gap:6px; }
+        .pf-cachet-img { max-width:90px; }
         .pf-signature-img { max-width:140px; max-height:70px; object-fit:contain; }
         .pf-signature-placeholder { height:70px; }
         .pf-signature-label { border-top:1px solid var(--pf-line); padding-top:4px; font-size:9px; color:var(--pf-ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }

@@ -351,6 +351,8 @@ export const comptabiliteApi = {
 
 // Utilisateurs / Profils / Permissions API
 export const utilisateursApi = {
+  maSignature: () => api.get('/utilisateurs/moi/signature'),
+  setMaSignature: (data: { signature?: string | null; cachet?: string | null }) => api.put('/utilisateurs/moi/signature', data),
   list: () => api.get('/utilisateurs'),
   create: (data: any) => api.post('/utilisateurs', data),
   update: (id: string, data: any) => api.put(`/utilisateurs/${id}`, data),

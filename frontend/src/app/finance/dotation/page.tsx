@@ -139,6 +139,7 @@ export default function DotationPage() {
           <div style="text-align:center;width:220px;">
             <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '40px'};">Le Directeur / Cachet &amp; Signature</div>
             ${branding?.signature ? `<img src="${branding.signature}" style="height:32px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
+    ${branding?.cachet ? `<img src="${branding.cachet}" style="height:32px;object-fit:contain;margin:2px auto 0;display:block;" />` : ''}
             <div style="border-top:1px solid #333;padding-top:4px;">${brand.nom}</div>
           </div>
         </div>` : ''}
@@ -202,6 +203,7 @@ export default function DotationPage() {
           <div style="text-align:center;width:220px;">
             <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
             ${branding?.signature ? `<img src="${branding.signature}" style="height:32px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
+    ${branding?.cachet ? `<img src="${branding.cachet}" style="height:32px;object-fit:contain;margin:2px auto 0;display:block;" />` : ''}
             <div style="border-top:1px solid #333;padding-top:4px;">${brand.nom}</div>
           </div>
         </div>` : ''}

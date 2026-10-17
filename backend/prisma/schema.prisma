@@ -96,6 +96,7 @@ model Societe {
   devisTransport        DevisTransport[]
   sauvegardes           SauvegardeSociete[]
 
+  modelesCatalogue      ModeleCatalogue[]
   @@map("societes")
 }
 
@@ -299,6 +300,9 @@ model Utilisateur {
   telephone          String?   @db.VarChar(50)
   motDePasse         String    @db.VarChar(255)
   avatar             String?
+  /// Signature et cachet personnels (data URL), utilisés sur les documents selon le droit DOCUMENTS:SIGNATURE.
+  signature          String?
+  cachet             String?
   doubleAuth         Boolean   @default(false)
   secretDoubleAuth   String?   @db.VarChar(255)
   actif              Boolean   @default(true)
@@ -978,6 +982,24 @@ model Prospect {
 // ============================================================================
 // CATALOGUE DE PRESTATIONS
 // ============================================================================
+
+/// Modèle de catalogue : liste de lignes prédéfinie qui remplit automatiquement une proforma.
+model ModeleCatalogue {
+  id          String   @id @default(uuid())
+  societeId   String
+  nom         String   @db.VarChar(150)
+  description String?  @db.VarChar(500)
+  lignes      Json     @default("[]")
+  ordre       Int      @default(0)
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  societe Societe @relation(fields: [societeId], references: [id])
+
+  @@index([societeId])
+  @@map("modeles_catalogue")
+}
 
 model PrestationCatalogue {
   id            String   @id @default(uuid())

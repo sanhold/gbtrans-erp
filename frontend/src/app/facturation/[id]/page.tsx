@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
+import { getSocieteBranding } from '@/lib/generatePDF';
 import api, { facturesApi, financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
@@ -48,7 +49,7 @@ export default function FactureDetailPage() {
   const [branding, setBranding] = useState<any>(null);
 
   useEffect(() => {
-    api.get('/parametres/societe').then(r => setBranding(r.data.data)).catch(() => {});
+    getSocieteBranding().then(setBranding);
   }, []);
 
   const [catalogue, setCatalogue] = useState<any[]>([]);
@@ -497,6 +498,7 @@ export default function FactureDetailPage() {
                 <div className="text-center w-56">
                   <p className={`text-[10px] text-gray-500 dark:text-gray-400 ${branding?.signature ? 'mb-1' : 'mb-9'}`}>Le Directeur / Cachet &amp; Signature</p>
                   {branding?.signature && <img src={branding.signature} alt="Signature" className="h-9 object-contain mx-auto" />}
+                  {branding?.cachet && <img src={branding.cachet} alt="Cachet" className="h-9 object-contain mx-auto mt-0.5" />}
                   <div className="border-t border-gray-900 dark:border-white pt-1 font-bold text-gray-900 dark:text-white">{branding?.raisonSociale || 'GBTRANS SARL'}</div>
                 </div>
               </div>
