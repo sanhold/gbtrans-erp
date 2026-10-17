@@ -66,6 +66,7 @@ export class FacturationService {
         societeId,
         numero,
         type: data.type || 'FACTURE',
+        modele: data.modele === 'PROFORMA' ? 'PROFORMA' : 'ACTUEL',
         dossierId: data.dossierId,
         clientId: data.clientId,
         createurId,

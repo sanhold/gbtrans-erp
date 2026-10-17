@@ -258,6 +258,8 @@ function NouvelleProformaForm() {
   const totalHT = lignes.filter(l => !l.estTVA).reduce((s, l) => s + (l.montant || 0), 0);
   const totalTVA = lignes.filter(l => l.estTVA).reduce((s, l) => s + (l.montant || 0), 0);
   const totalGeneral = totalHT + totalTVA;
+  // Même règle que la facture : « prestation » = frais propres du bureau (catégorie AUTRES FRAIS / codes AF), hors TVA.
+  const montantPrestation = lignes.filter(l => !l.estTVA && (l.categorie === 'AUTRES FRAIS' || (l.codePrestation || '').startsWith('AF'))).reduce((s, l) => s + (l.montant || 0), 0);
 
   const selectedClient = clients.find(c => c.id === form.clientId);
   const selectedDossier = dossiers.find(d => d.id === form.dossierId);
@@ -506,7 +508,7 @@ function NouvelleProformaForm() {
                 <tfoot>
                   <tr className="pf-foot-row">
                     <td colSpan={2}>Montant prestation</td>
-                    <td className="pf-num">{fmt(totalHT)}</td>
+                    <td className="pf-num">{fmt(montantPrestation)}</td>
                     <td className="pf-no-export"></td>
                     <td className="pf-no-export"></td>
                   </tr>

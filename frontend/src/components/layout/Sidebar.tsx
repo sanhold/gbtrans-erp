@@ -68,6 +68,8 @@ const navGroups: NavGroup[] = [
       { name: 'Comptes', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
       { name: 'Transactions', href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5' },
       { name: 'Dotation', href: '/finance/dotation', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22' },
+      { name: 'Justificatifs dotation', href: '/finance/justificatifs', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+      { name: 'Mes dotations', href: '/mes-dotations', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
       { name: 'État Facturation Dossier', href: '/finance/etat-facturation-dossier', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
       { name: 'Statistique', href: '/statistiques', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z' },
     ],

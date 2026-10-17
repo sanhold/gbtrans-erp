@@ -8,7 +8,7 @@ import { getSocieteBranding } from '@/lib/generatePDF';
 import api, { facturesApi, financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
-import { downloadPDF, printDocument, generateDocQrDataUrl, type DocData } from '@/lib/generatePDF';
+import { downloadPDF, printDocument, generateDocQrDataUrl, buildProformaHtml, type DocData } from '@/lib/generatePDF';
 import { useAuthStore } from '@/stores/authStore';
 
 const CAT_COLORS: Record<string, string> = {
@@ -97,6 +97,7 @@ export default function FactureDetailPage() {
     const d = facture.dossier;
     return {
       type: 'FACTURE',
+      modele: facture.modele,
       numero: facture.numero,
       date: new Date(facture.dateFacture).toLocaleDateString('fr-FR'),
       client: facture.client?.raisonSociale || '',
@@ -343,6 +344,14 @@ export default function FactureDetailPage() {
         </div>
 
         {/* Aperçu état */}
+        {facture.modele === 'PROFORMA' ? (
+          <div className="bg-white rounded-sm border border-gray-300 overflow-x-auto p-4">
+            {(() => {
+              const d = buildDocData();
+              return d ? <div style={{ position: 'relative', width: '210mm', maxWidth: '100%', minHeight: '293mm', boxSizing: 'border-box', padding: '10mm 12mm', margin: '0 auto', background: '#fff', color: '#16232e', fontFamily: "'Segoe UI',Arial,sans-serif", fontSize: 11 }} dangerouslySetInnerHTML={{ __html: buildProformaHtml(d, qrDataUrl, branding || undefined) }} /> : null;
+            })()}
+          </div>
+        ) : (
         <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-100 dark:border-surface-700 shadow-card overflow-hidden">
           <div className="p-6 space-y-4">
             {/* Header */}
@@ -511,6 +520,7 @@ export default function FactureDetailPage() {
             <p className="mt-1">GBTRANS SARL — Cocody Angré 7ème Tranche, Abidjan, Côte d&apos;Ivoire — RCCM CI-ABJ-2018-B-12345 — CC 1812345 Z — contact@gbtrans.ci</p>
           </div>
         </div>
+        )}
 
         {/* Historique des paiements */}
         <div className="card">

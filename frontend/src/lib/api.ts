@@ -294,6 +294,15 @@ export const financeApi = {
     update: (id: string, data: any) => api.put(`/finance/dotations/${id}`, data),
     annuler: (id: string) => api.patch(`/finance/dotations/${id}/annuler`),
   },
+  justificatifs: {
+    mesDotations: () => api.get('/finance/justificatifs/mes-dotations'),
+    create: (data: any) => api.post('/finance/justificatifs', data),
+    delete: (id: string) => api.delete(`/finance/justificatifs/${id}`),
+    list: (params?: Record<string, any>) => api.get('/finance/justificatifs', { params }),
+    piece: (id: string) => api.get(`/finance/justificatifs/${id}/piece`),
+    valider: (id: string, data: any) => api.post(`/finance/justificatifs/${id}/valider`, data),
+    rejeter: (id: string, motif: string) => api.post(`/finance/justificatifs/${id}/rejeter`, { motif }),
+  },
 };
 
 // Catalogue des Prestations API

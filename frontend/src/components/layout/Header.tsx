@@ -40,6 +40,8 @@ const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/finance/comptes-tiers', name: 'Comptes Tiers' },
   { prefix: '/finance/caisses', name: 'Caisses' },
   { prefix: '/finance/dotation', name: 'Dotation' },
+  { prefix: '/finance/justificatifs', name: 'Justificatifs de dotation' },
+  { prefix: '/mes-dotations', name: 'Mes dotations' },
   { prefix: '/finance/depenses', name: 'Dépenses' },
   { prefix: '/finance/paiements', name: 'Paiements' },
   { prefix: '/finance/rapprochement', name: 'Rapprochement Bancaire' },

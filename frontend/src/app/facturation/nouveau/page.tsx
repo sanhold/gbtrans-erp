@@ -40,6 +40,7 @@ function NouvelleFactureForm() {
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [catalogue, setCatalogue] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [modele, setModele] = useState<'ACTUEL' | 'PROFORMA'>('ACTUEL');
   const [showCatalogue, setShowCatalogue] = useState(false);
   const [catalogueSearch, setCatalogueSearch] = useState('');
 
@@ -103,6 +104,7 @@ function NouvelleFactureForm() {
     setSaving(true);
     try {
       const res = await facturesApi.create({
+        modele,
         clientId: form.clientId,
         dossierId: form.dossierId || undefined,
         objet: form.objet || undefined,
@@ -138,6 +140,24 @@ function NouvelleFactureForm() {
             <p className="text-sm text-gray-500">Créer une facture directement, sans passer par une proforma.</p>
           </div>
           <button onClick={() => router.push('/facturation')} className="btn-secondary">Annuler</button>
+        </div>
+
+        <div className="card !p-4">
+          <div className="label">Modèle de facture</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              { id: 'PROFORMA', titre: 'Format proforma', texte: 'Prestations regroupées par catégorie avec sous-totaux, montant prestation et TVA : la même présentation que la proforma.' },
+              { id: 'ACTUEL', titre: 'Version actuelle', texte: 'Tableau détaillé avec quantités, prix unitaires et TVA par ligne : la présentation habituelle des factures.' },
+            ] as const).map(m => (
+              <button key={m.id} type="button" onClick={() => setModele(m.id)} className={`text-left p-3 border rounded-sm transition-colors ${modele === m.id ? 'border-primary-600 bg-primary-50 dark:bg-surface-700' : 'border-gray-300 dark:border-surface-600 hover:bg-gray-50 dark:hover:bg-surface-700'}`}>
+                <div className="flex items-center gap-2">
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 ${modele === m.id ? 'border-primary-600 bg-primary-600' : 'border-gray-400'}`} />
+                  <span className="font-semibold text-sm text-gray-900 dark:text-white">{m.titre}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5 ml-5">{m.texte}</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="card !p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">

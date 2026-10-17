@@ -113,6 +113,8 @@ interface LigneDoc {
 
 interface DocData {
   type: 'PROFORMA' | 'FACTURE';
+  /** Mise en page d'une facture : 'PROFORMA' = format proforma, sinon version actuelle. */
+  modele?: string;
   numero: string;
   date: string;
   client: string;
@@ -378,7 +380,7 @@ export function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?:
     </div>
   </div>
   <div style="text-align:right;">
-    <div style="font-size:17px;font-weight:700;letter-spacing:.05em;color:${PAPER.ink};">FACTURE PROFORMA</div>
+    <div style="font-size:17px;font-weight:700;letter-spacing:.05em;color:${PAPER.ink};">${data.type === 'FACTURE' ? 'FACTURE' : 'FACTURE PROFORMA'}</div>
     <div style="font-size:11px;color:${PAPER.gold};font-weight:700;margin-top:2px;">N° ${data.numero}</div>
     ${data.dossierNumero ? `<div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">Dossier : <strong>${data.dossierNumero}</strong></div>` : ''}
     <div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">Date : ${data.date}</div>
@@ -405,7 +407,7 @@ export function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?:
   <div style="flex:1;border:1px solid ${PAPER.line};padding:6px 9px;">
     <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:${PAPER.gold};font-weight:700;margin-bottom:3px;">Adressée à</div>
     ${clientRows.map(([label, value]) => `<div style="font-size:11px;padding:0.5px 0;${label === 'Nom' ? 'font-weight:700;' : ''}">${value}</div>`).join('')}
-    <div style="font-size:9px;color:#8b93ad;margin-top:4px;">Offre valable 30 jours à compter de la date d'émission.</div>
+    ${data.type === 'FACTURE' ? '' : `<div style="font-size:9px;color:#8b93ad;margin-top:4px;">Offre valable 30 jours à compter de la date d'émission.</div>`}
   </div>
 </div>
 
@@ -433,14 +435,14 @@ ${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;ma
 </div>` : ''}
 
 <div style="position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:7.5px;color:${PAPER.dim};border-top:1px solid ${PAPER.line};padding-top:6px;line-height:1.5;">
-  ${branding?.mentionLegale || `Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation. Règlement par virement bancaire à l'ordre de ${brand.nom}.`}<br/>
+  ${branding?.mentionLegale || (data.type === 'FACTURE' ? `Facture définitive. Toute réclamation doit être formulée sous 8 jours. Règlement à l'ordre de ${brand.nom}.` : `Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation. Règlement par virement bancaire à l'ordre de ${brand.nom}.`)}<br/>
   ${brand.nom} — ${brand.adresseComplete} — RCCM ${brand.rccm} — CC ${brand.ncc} — ${brand.email}
 </div>`;
 }
 
 function buildElement(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): HTMLDivElement {
   const div = document.createElement('div');
-  if (data.type === 'PROFORMA') {
+  if (data.type === 'PROFORMA' || data.modele === 'PROFORMA') {
     div.style.cssText = `width:210mm;min-height:293mm;box-sizing:border-box;position:relative;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${PAPER.ink};background:${PAPER.paper};`;
     div.innerHTML = buildProformaHtml(data, qrDataUrl, branding);
     return div;
@@ -481,9 +483,9 @@ export async function printDocument(data: DocData) {
     generateDocQrDataUrl(data).catch(() => undefined),
     getSocieteBranding(),
   ]);
-  const isProforma = data.type === 'PROFORMA';
+  const isProforma = data.type === 'PROFORMA' || data.modele === 'PROFORMA';
   const contentHtml = isProforma ? buildProformaHtml(data, qrDataUrl, branding) : buildContentHtml(data, qrDataUrl, branding);
-  const label = isProforma ? 'Proforma' : 'Facture';
+  const label = data.type === 'PROFORMA' ? 'Proforma' : 'Facture';
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>${label} ${data.numero}</title>
