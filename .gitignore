@@ -51,3 +51,6 @@ docker/postgres_data/
 
 .vercel
 .env*
+
+# Notes locales (enonce de tache, hors application)
+install_graphify
