@@ -356,3 +356,19 @@ input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Tableau à largeurs de colonnes imposées (colgroup) : les colonnes se partagent la largeur, le texte passe à la ligne. */
+@media (min-width: 768px) {
+  .table-container table.table-fixed.table-strict {
+    table-layout: fixed;
+  }
+
+  .table-container table.table-strict .table-cell.truncate {
+    min-width: 0;
+  }
+
+  .table-container table.table-strict .table-header.truncate {
+    white-space: normal;
+    line-height: 1.2;
+  }
+}
