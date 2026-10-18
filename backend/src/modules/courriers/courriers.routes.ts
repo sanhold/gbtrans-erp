@@ -39,7 +39,7 @@ router.get('/', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Respo
       prisma.courrier.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateCreation: 'desc' },
-        include: INCLUDE_COURRIER,
+        relationLoadStrategy: 'join', include: INCLUDE_COURRIER,
       }),
       prisma.courrier.count({ where }),
     ]);
@@ -50,7 +50,7 @@ router.get('/', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Respo
 
 router.get('/:id', authorize('COURRIERS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
-    const c = await prisma.courrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, include: INCLUDE_COURRIER });
+    const c = await prisma.courrier.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, relationLoadStrategy: 'join', include: INCLUDE_COURRIER });
     if (!c) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, c);
   } catch (e: any) { ApiResponse.error(res, e.message); }
@@ -126,7 +126,7 @@ router.put('/:id', authorize('COURRIERS:MODIFIER'), async (req: AuthRequest, res
       return updated;
     });
 
-    const full = await prisma.courrier.findFirst({ where: { id: c.id }, include: INCLUDE_COURRIER });
+    const full = await prisma.courrier.findFirst({ where: { id: c.id }, relationLoadStrategy: 'join', include: INCLUDE_COURRIER });
     ApiResponse.success(res, full, 'Courrier modifié');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });

@@ -36,7 +36,7 @@ router.get('/:id', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res:
   try {
     const f = await prisma.fournisseur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { contactsFournisseur: true },
+      relationLoadStrategy: 'join', include: { contactsFournisseur: true },
     });
     if (!f) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, f);

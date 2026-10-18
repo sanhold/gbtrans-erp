@@ -98,7 +98,7 @@ router.put('/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, 
   try {
     const existing = await prisma.utilisateur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { profil: { select: { estAdmin: true } } },
+      relationLoadStrategy: 'join', include: { profil: { select: { estAdmin: true } } },
     });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
     if (existing.profil?.estAdmin && !req.user!.estAdmin) {
@@ -134,7 +134,7 @@ router.patch('/:id/statut', authorize('UTILISATEURS:MODIFIER'), async (req: Auth
   try {
     const existing = await prisma.utilisateur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { profil: { select: { estAdmin: true } } },
+      relationLoadStrategy: 'join', include: { profil: { select: { estAdmin: true } } },
     });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
     if (existing.id === req.user!.id) { ApiResponse.badRequest(res, 'Vous ne pouvez pas désactiver votre propre compte'); return; }
@@ -159,7 +159,7 @@ router.patch('/:id/deverrouiller', authorize('UTILISATEURS:MODIFIER'), async (re
   try {
     const existing = await prisma.utilisateur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { profil: { select: { estAdmin: true } } },
+      relationLoadStrategy: 'join', include: { profil: { select: { estAdmin: true } } },
     });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
     if (existing.profil?.estAdmin && !req.user!.estAdmin) {
@@ -180,7 +180,7 @@ router.put('/:id/reset-password', authorize('UTILISATEURS:MODIFIER'), async (req
     if (!motDePasse || motDePasse.length < 8) { ApiResponse.badRequest(res, 'Le mot de passe doit contenir au moins 8 caractères'); return; }
     const existing = await prisma.utilisateur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { profil: { select: { estAdmin: true } } },
+      relationLoadStrategy: 'join', include: { profil: { select: { estAdmin: true } } },
     });
     if (!existing) { ApiResponse.notFound(res, 'Utilisateur introuvable'); return; }
     if (existing.profil?.estAdmin && !req.user!.estAdmin) {
@@ -204,7 +204,7 @@ router.get('/profils/liste', authorize('UTILISATEURS:LIRE'), async (req: AuthReq
     const profils = await prisma.profil.findMany({
       where: { societeId: req.user!.societeId },
       orderBy: { nom: 'asc' },
-      include: {
+      relationLoadStrategy: 'join', include: {
         permissions: { select: { permissionId: true } },
         _count: { select: { utilisateurs: true } },
       },
@@ -242,7 +242,7 @@ router.put('/profils/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthR
 
 router.delete('/profils/:id', authorize('UTILISATEURS:MODIFIER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.profil.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, include: { _count: { select: { utilisateurs: true } } } });
+    const existing = await prisma.profil.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, relationLoadStrategy: 'join', include: { _count: { select: { utilisateurs: true } } } });
     if (!existing) { ApiResponse.notFound(res, 'Profil introuvable'); return; }
     if (existing.estAdmin) { ApiResponse.badRequest(res, 'Le profil Administrateur ne peut pas être supprimé'); return; }
     if (existing._count.utilisateurs > 0) { ApiResponse.badRequest(res, `Ce profil est encore assigné à ${existing._count.utilisateurs} utilisateur(s)`); return; }

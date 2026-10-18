@@ -6,6 +6,7 @@ import prisma from '../../config/database';
 import { estimerTailleParTable } from '../../utils/tablesSocietes';
 import { executerSauvegarde } from '../sauvegarde/sauvegarde.service';
 import { chiffrer } from '../../utils/secretCrypto';
+import { cacheSociete, invaliderSociete } from '../../utils/cacheMemoire';
 
 // smtpPass ne doit jamais transiter en clair (ni chiffre) dans une reponse API.
 function sansSmtpPass<T extends { smtpPass?: string | null }>(societe: T): Omit<T, 'smtpPass'> {
@@ -21,7 +22,8 @@ router.use(authenticate, requireSociete);
 // Identité visuelle (nom + logo) : lisible par tout utilisateur connecté, pour l'en-tête de l'application.
 router.get('/societe/identite', async (req: AuthRequest, res: Response) => {
   try {
-    const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId }, select: { raisonSociale: true, logo: true } });
+    const societeId = req.user!.societeId;
+    const societe = await cacheSociete('parametres:identite', societeId, 60_000, () => prisma.societe.findUnique({ where: { id: societeId }, select: { raisonSociale: true, logo: true } }));
     ApiResponse.success(res, societe);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -83,6 +85,7 @@ router.put('/societe', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequest
         ...(activiteTransport !== undefined && { activiteTransport: !!activiteTransport }),
       },
     });
+    invaliderSociete(req.user!.societeId, 'parametres:');
     ApiResponse.success(res, sansSmtpPass(societe), 'Informations société mises à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -92,6 +95,7 @@ router.put('/societe/logo', authorize('PARAMETRES:MODIFIER'), async (req: AuthRe
     const { logo } = req.body;
     if (logo && typeof logo === 'string' && logo.length > 3_000_000) { ApiResponse.badRequest(res, 'Image trop volumineuse (2 Mo max)'); return; }
     const societe = await prisma.societe.update({ where: { id: req.user!.societeId }, data: { logo: logo || null } });
+    invaliderSociete(req.user!.societeId, 'parametres:');
     ApiResponse.success(res, sansSmtpPass(societe), logo ? 'Logo mis à jour' : 'Logo supprimé');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -203,7 +207,7 @@ router.put('/sauvegarde', authorize('PARAMETRES:MODIFIER'), async (req: AuthRequ
     const { backupActif, backupFrequenceJours, backupEmailDestination } = req.body;
 
     if (backupFrequenceJours !== undefined) {
-      const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId }, include: { abonnement: { include: { plan: true } } } });
+      const societe = await prisma.societe.findUnique({ where: { id: req.user!.societeId }, relationLoadStrategy: 'join', include: { abonnement: { include: { plan: true } } } });
       const minJours = societe?.abonnement?.plan?.backupFrequenceMinJours ?? 7;
       if (parseInt(backupFrequenceJours) < minJours) {
         ApiResponse.badRequest(res, `Votre formule ne permet pas une sauvegarde plus fréquente que tous les ${minJours} jour(s). Contactez le support pour changer de formule.`); return;

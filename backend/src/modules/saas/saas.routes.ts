@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../config/database';
 import { ApiResponse } from '../../utils/apiResponse';
 import { logger } from '../../utils/logger';
+import { cacheSociete, invaliderSociete } from '../../utils/cacheMemoire';
 import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { creerProfilsDefautPourSociete } from '../../utils/profilsDefaut';
@@ -21,14 +22,14 @@ function slugify(v: string): string {
 
 router.get('/plans', async (_req: Request, res: Response) => {
   try {
-    const plans = await prisma.plan.findMany({ where: { actif: true }, orderBy: { ordre: 'asc' } });
+    const plans = await cacheSociete('vitrine:plans', '_global', 60_000, () => prisma.plan.findMany({ where: { actif: true }, orderBy: { ordre: 'asc' } }));
     ApiResponse.success(res, plans);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
 router.get('/contenu-vitrine', async (_req: Request, res: Response) => {
   try {
-    const contenu = await prisma.contenuVitrine.findFirst();
+    const contenu = await cacheSociete('vitrine', '_global', 60_000, () => prisma.contenuVitrine.findFirst());
     ApiResponse.success(res, contenu);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
@@ -202,7 +203,8 @@ async function activerApresPaiement(paiementId: string): Promise<boolean> {
   const dureeJours = paiement.abonnement.periodicite === 'ANNUEL' ? 365 : 30;
   const base = paiement.abonnement.dateProchainPaiement && paiement.abonnement.dateProchainPaiement > new Date() ? paiement.abonnement.dateProchainPaiement : new Date();
   const prochain = new Date(base.getTime() + dureeJours * 24 * 60 * 60 * 1000);
-  await prisma.abonnement.update({ where: { id: paiement.abonnementId }, data: { statut: 'ACTIF', dateProchainPaiement: prochain } });
+  const abo = await prisma.abonnement.update({ where: { id: paiement.abonnementId }, data: { statut: 'ACTIF', dateProchainPaiement: prochain } });
+  invaliderSociete(abo.societeId, 'abonnement:');
   return true;
 }
 

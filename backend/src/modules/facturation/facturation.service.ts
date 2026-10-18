@@ -3,6 +3,7 @@ import { genererNumero } from '../../utils/numerotation';
 import { PaginationParams } from '../../types';
 import { Prisma, StatutFacture, TypeFacture } from '@prisma/client';
 import { STATUTS_DOSSIER_FERME } from '../../utils/dossierGuard';
+import { cacheSociete } from '../../utils/cacheMemoire';
 
 const STATUTS_FACTURE_PAYABLES: StatutFacture[] = ['VALIDEE', 'ENVOYEE', 'PARTIELLEMENT_PAYEE', 'EN_RETARD', 'CONTENTIEUX'];
 const TYPES_FACTURE_PAYABLES: TypeFacture[] = ['FACTURE', 'DIVERSE'];
@@ -137,6 +138,7 @@ export class FacturationService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
+        relationLoadStrategy: 'join',
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
@@ -152,6 +154,7 @@ export class FacturationService {
   async findById(id: string, societeId: string) {
     return prisma.facture.findFirst({
       where: { id, societeId },
+      relationLoadStrategy: 'join',
       include: {
         lignes: { orderBy: { ordre: 'asc' } },
         client: true,
@@ -222,7 +225,7 @@ export class FacturationService {
 
       const factureOrigine = await tx.facture.findFirst({
         where: { id, societeId },
-        include: { lignes: true },
+        relationLoadStrategy: 'join', include: { lignes: true },
       });
       if (!factureOrigine) throw new Error('Facture non trouvée');
       if (factureOrigine.type === 'AVOIR') throw new Error('Impossible de créer un avoir sur un avoir');
@@ -372,7 +375,7 @@ export class FacturationService {
     compteBancaireId?: string,
     createurId?: string
   ) {
-    const facture = await prisma.facture.findFirst({ where: { id: factureId, societeId }, include: { client: true } });
+    const facture = await prisma.facture.findFirst({ where: { id: factureId, societeId }, relationLoadStrategy: 'join', include: { client: true } });
     if (!facture) throw new Error('Facture non trouvée');
 
     if (!(montant > 0)) throw new Error('Montant invalide');
@@ -457,7 +460,12 @@ export class FacturationService {
     return paiement;
   }
 
-  async getStatistiques(societeId: string, annee?: number) {
+  getStatistiques(societeId: string, annee?: number) {
+    const an = annee || new Date().getFullYear();
+    return cacheSociete('stats:facturation', societeId, 30_000, () => this.calculerStatistiques(societeId, an), String(an));
+  }
+
+  private async calculerStatistiques(societeId: string, annee?: number) {
     const dateDebut = new Date(annee || new Date().getFullYear(), 0, 1);
     const dateFin = new Date((annee || new Date().getFullYear()) + 1, 0, 1);
 

@@ -26,7 +26,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
       ...(search && { numero: { contains: search, mode: 'insensitive' as const } }),
     };
     const [data, total] = await Promise.all([
-      prisma.devisTransport.findMany({ where, skip, take: Math.min(parseInt(limit) || 20, 100), orderBy: { createdAt: 'desc' }, include: INCLUDE_DEVIS }),
+      prisma.devisTransport.findMany({ where, skip, take: Math.min(parseInt(limit) || 20, 100), orderBy: { createdAt: 'desc' }, relationLoadStrategy: 'join', include: INCLUDE_DEVIS }),
       prisma.devisTransport.count({ where }),
     ]);
     ApiResponse.paginated(res, data, total, parseInt(page), parseInt(limit));
@@ -37,7 +37,7 @@ router.get('/:id', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Re
   try {
     const devis = await prisma.devisTransport.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: INCLUDE_DEVIS,
+      relationLoadStrategy: 'join', include: INCLUDE_DEVIS,
     });
     if (!devis) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, devis);
@@ -139,7 +139,7 @@ router.post('/:id/valider', authorize('TRANSPORT:VALIDER'), async (req: AuthRequ
     const societeId = req.user!.societeId;
     const devis = await prisma.devisTransport.findFirst({
       where: { id: req.params.id, societeId },
-      include: { lignes: true },
+      relationLoadStrategy: 'join', include: { lignes: true },
     });
     if (!devis) { ApiResponse.notFound(res); return; }
     if (devis.statut !== 'BROUILLON' && devis.statut !== 'ENVOYE') { ApiResponse.badRequest(res, 'Ce devis a déjà été traité'); return; }

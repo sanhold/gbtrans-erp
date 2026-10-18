@@ -3,84 +3,97 @@ import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
+import { Prisma } from '@prisma/client';
+import { cacheSociete } from '../../utils/cacheMemoire';
 
 const router = Router();
 router.use(authenticate, requireSociete);
 
-const depensesCourse = (c: { fraisCarburant: any; fraisPeage: any; autresFrais: any }) =>
-  Number(c.fraisCarburant || 0) + Number(c.fraisPeage || 0) + Number(c.autresFrais || 0);
+const num = (v: any) => Number(v || 0);
 
 router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
     const { dateDebut, dateFin } = req.query as Record<string, string>;
 
-    const where: any = { societeId };
-    if (dateDebut || dateFin) {
-      where.createdAt = {
-        ...(dateDebut && { gte: new Date(dateDebut) }),
-        ...(dateFin && { lte: new Date(dateFin) }),
+    const resultat = await cacheSociete('stats:transport', societeId, 30_000, async () => {
+      const where: any = { societeId };
+      if (dateDebut || dateFin) {
+        where.createdAt = {
+          ...(dateDebut && { gte: new Date(dateDebut) }),
+          ...(dateFin && { lte: new Date(dateFin) }),
+        };
+      }
+      const sommes = { montantFacturable: true, fraisCarburant: true, fraisPeage: true, autresFrais: true } as const;
+
+      const conditionsSql = [Prisma.sql`"societeId" = ${societeId}`];
+      if (dateDebut) conditionsSql.push(Prisma.sql`"createdAt" >= ${new Date(dateDebut)}`);
+      if (dateFin) conditionsSql.push(Prisma.sql`"createdAt" <= ${new Date(dateFin)}`);
+
+      // Agrégations faites par PostgreSQL (au lieu de charger toutes les courses + jointures en mémoire),
+      // toutes en parallèle : 4 requêtes simultanées puis 1 pour les libellés = ~2 allers-retours.
+      const [parStatut, parVehiculeRaw, parChauffeurRaw, parMoisRaw] = await Promise.all([
+        prisma.course.groupBy({ by: ['statut'], where, _count: { _all: true }, _sum: sommes }),
+        prisma.course.groupBy({ by: ['vehiculeId'], where, _count: { _all: true }, _sum: sommes }),
+        prisma.course.groupBy({ by: ['chauffeurId'], where, _count: { _all: true }, _sum: sommes }),
+        prisma.$queryRaw<{ mois: string; ca: any; depenses: any; nb: number }[]>`
+          SELECT to_char(COALESCE("dateDepartReelle", "createdAt"), 'YYYY-MM') AS mois,
+                 COALESCE(SUM("montantFacturable"), 0) AS ca,
+                 COALESCE(SUM(COALESCE("fraisCarburant",0) + COALESCE("fraisPeage",0) + COALESCE("autresFrais",0)), 0) AS depenses,
+                 COUNT(*)::int AS nb
+          FROM courses
+          WHERE ${Prisma.join(conditionsSql, ' AND ')}
+          GROUP BY 1
+          ORDER BY 1
+        `,
+      ]);
+
+      const [vehiculesInfo, chauffeursInfo] = await Promise.all([
+        prisma.vehicule.findMany({ where: { id: { in: parVehiculeRaw.map((g) => g.vehiculeId) }, societeId }, select: { id: true, immatriculation: true } }),
+        prisma.chauffeur.findMany({ where: { id: { in: parChauffeurRaw.map((g) => g.chauffeurId) }, societeId }, select: { id: true, nom: true, prenom: true } }),
+      ]);
+      const vehMap = new Map(vehiculesInfo.map((v) => [v.id, v]));
+      const chMap = new Map(chauffeursInfo.map((c) => [c.id, c]));
+
+      const depensesDe = (g: { _sum: { fraisCarburant: any; fraisPeage: any; autresFrais: any } }) =>
+        num(g._sum.fraisCarburant) + num(g._sum.fraisPeage) + num(g._sum.autresFrais);
+
+      const nbCoursesParStatut: Record<string, number> = { PLANIFIEE: 0, EN_COURS: 0, TERMINEE: 0, ANNULEE: 0 };
+      let chiffreAffaires = 0;
+      let depensesTotales = 0;
+      let nbCourses = 0;
+      for (const g of parStatut) {
+        nbCoursesParStatut[g.statut] = g._count._all;
+        nbCourses += g._count._all;
+        chiffreAffaires += num(g._sum.montantFacturable);
+        depensesTotales += depensesDe(g);
+      }
+
+      const vehicules = parVehiculeRaw
+        .filter((g) => vehMap.has(g.vehiculeId))
+        .map((g) => {
+          const ca = num(g._sum.montantFacturable); const dep = depensesDe(g);
+          return { id: g.vehiculeId, immatriculation: vehMap.get(g.vehiculeId)!.immatriculation, nbCourses: g._count._all, chiffreAffaires: ca, depenses: dep, resultat: ca - dep };
+        })
+        .sort((a, b) => b.chiffreAffaires - a.chiffreAffaires);
+      const chauffeurs = parChauffeurRaw
+        .filter((g) => chMap.has(g.chauffeurId))
+        .map((g) => {
+          const c = chMap.get(g.chauffeurId)!; const ca = num(g._sum.montantFacturable); const dep = depensesDe(g);
+          return { id: g.chauffeurId, nom: c.nom, prenom: c.prenom, nbCourses: g._count._all, chiffreAffaires: ca, depenses: dep, resultat: ca - dep };
+        })
+        .sort((a, b) => b.chiffreAffaires - a.chiffreAffaires);
+      const evolutionMensuelle = parMoisRaw.map((m) => ({
+        mois: m.mois, chiffreAffaires: num(m.ca), depenses: num(m.depenses), nbCourses: num(m.nb), resultat: num(m.ca) - num(m.depenses),
+      }));
+
+      return {
+        global: { chiffreAffaires, depensesTotales, resultatNet: chiffreAffaires - depensesTotales, nbCourses, nbCoursesParStatut },
+        vehicules, chauffeurs, evolutionMensuelle,
       };
-    }
+    }, `${dateDebut || ''}|${dateFin || ''}`);
 
-    const courses = await prisma.course.findMany({
-      where,
-      include: {
-        vehicule: { select: { id: true, immatriculation: true } },
-        chauffeur: { select: { id: true, nom: true, prenom: true } },
-      },
-    });
-
-    const nbCoursesParStatut: Record<string, number> = { PLANIFIEE: 0, EN_COURS: 0, TERMINEE: 0, ANNULEE: 0 };
-    let chiffreAffaires = 0;
-    let depensesTotales = 0;
-    const parVehicule = new Map<string, { id: string; immatriculation: string; nbCourses: number; chiffreAffaires: number; depenses: number }>();
-    const parChauffeur = new Map<string, { id: string; nom: string; prenom: string; nbCourses: number; chiffreAffaires: number; depenses: number }>();
-    const parMois = new Map<string, { mois: string; chiffreAffaires: number; depenses: number; nbCourses: number }>();
-
-    for (const c of courses) {
-      nbCoursesParStatut[c.statut] = (nbCoursesParStatut[c.statut] || 0) + 1;
-      const ca = Number(c.montantFacturable || 0);
-      const dep = depensesCourse(c);
-      chiffreAffaires += ca;
-      depensesTotales += dep;
-
-      if (!parVehicule.has(c.vehiculeId)) {
-        parVehicule.set(c.vehiculeId, { id: c.vehicule.id, immatriculation: c.vehicule.immatriculation, nbCourses: 0, chiffreAffaires: 0, depenses: 0 });
-      }
-      const v = parVehicule.get(c.vehiculeId)!;
-      v.nbCourses += 1; v.chiffreAffaires += ca; v.depenses += dep;
-
-      if (!parChauffeur.has(c.chauffeurId)) {
-        parChauffeur.set(c.chauffeurId, { id: c.chauffeur.id, nom: c.chauffeur.nom, prenom: c.chauffeur.prenom, nbCourses: 0, chiffreAffaires: 0, depenses: 0 });
-      }
-      const ch = parChauffeur.get(c.chauffeurId)!;
-      ch.nbCourses += 1; ch.chiffreAffaires += ca; ch.depenses += dep;
-
-      const d = c.dateDepartReelle || c.createdAt;
-      const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (!parMois.has(cle)) parMois.set(cle, { mois: cle, chiffreAffaires: 0, depenses: 0, nbCourses: 0 });
-      const m = parMois.get(cle)!;
-      m.chiffreAffaires += ca; m.depenses += dep; m.nbCourses += 1;
-    }
-
-    const vehicules = Array.from(parVehicule.values())
-      .map(v => ({ ...v, resultat: v.chiffreAffaires - v.depenses }))
-      .sort((a, b) => b.chiffreAffaires - a.chiffreAffaires);
-    const chauffeurs = Array.from(parChauffeur.values())
-      .map(c => ({ ...c, resultat: c.chiffreAffaires - c.depenses }))
-      .sort((a, b) => b.chiffreAffaires - a.chiffreAffaires);
-    const evolutionMensuelle = Array.from(parMois.values())
-      .map(m => ({ ...m, resultat: m.chiffreAffaires - m.depenses }))
-      .sort((a, b) => a.mois.localeCompare(b.mois));
-
-    ApiResponse.success(res, {
-      global: {
-        chiffreAffaires, depensesTotales, resultatNet: chiffreAffaires - depensesTotales,
-        nbCourses: courses.length, nbCoursesParStatut,
-      },
-      vehicules, chauffeurs, evolutionMensuelle,
-    });
+    ApiResponse.success(res, resultat);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 

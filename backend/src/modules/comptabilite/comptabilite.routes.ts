@@ -208,7 +208,7 @@ router.get('/exercices', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest
     const data = await prisma.exercice.findMany({
       where: { societeId: req.user!.societeId },
       orderBy: [{ dateDebut: 'desc' }, { code: 'desc' }],
-      include: { _count: { select: { ecritures: true } } },
+      relationLoadStrategy: 'join', include: { _count: { select: { ecritures: true } } },
     });
     const nonValidees = await prisma.ecritureComptable.groupBy({
       by: ['exerciceId'],
@@ -332,6 +332,7 @@ router.get('/ecritures', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest
       prisma.ecritureComptable.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateEcriture: 'desc' },
+        relationLoadStrategy: 'join',
         include: {
           journal: { select: { code: true, libelle: true } },
           mouvements: { include: { compte: { select: { numero: true, libelle: true } } } },
@@ -481,7 +482,7 @@ router.get('/ecritures-attente', authorize('COMPTABILITE:LIRE'), async (req: Aut
     const { statut } = req.query;
     const data = await prisma.ecritureEnAttente.findMany({
       where: { societeId: req.user!.societeId, statut: (statut as any) || 'EN_ATTENTE' },
-      include: ecritureAttenteInclude,
+      relationLoadStrategy: 'join', include: ecritureAttenteInclude,
       orderBy: { dateOperation: 'desc' },
     });
     ApiResponse.success(res, data);
@@ -495,7 +496,7 @@ router.get('/ecritures-attente/:id/proposition', authorize('COMPTABILITE:LIRE'),
     const societeId = req.user!.societeId;
     const entree = await prisma.ecritureEnAttente.findFirst({
       where: { id: req.params.id, societeId },
-      include: {
+      relationLoadStrategy: 'join', include: {
         facture: {
           select: {
             montantTTC: true, montantTVA: true, timbreFiscal: true, retenue: true, montantHT: true, type: true,
@@ -748,7 +749,7 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
     if (typesVoulus.has('FACTURE')) {
       const factures = await prisma.facture.findMany({
         where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dFact] } },
-        include: {
+        relationLoadStrategy: 'join', include: {
           client: { select: { raisonSociale: true } },
           lignes: { select: { montantHT: true, estTVA: true, categorie: true, codePrestation: true, compteComptable: true } },
         },
@@ -792,7 +793,7 @@ router.post('/compta-auto/generer', authorize('COMPTABILITE:CREER'), async (req:
     if (typesVoulus.has('FACTURE_FOURNISSEUR')) {
       const factures = await prisma.factureFournisseur.findMany({
         where: { societeId, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, dateFacture: { gte: debut, lte: fin }, id: { notIn: [...dFF] } },
-        include: { fournisseur: { select: { raisonSociale: true } } },
+        relationLoadStrategy: 'join', include: { fournisseur: { select: { raisonSociale: true } } },
       });
       for (const f of factures) {
         const ttc = n(f.montantTTC), tva = n(f.montantTVA), ht = ttc - tva;
@@ -895,7 +896,7 @@ router.get('/grand-livre', authorize('COMPTABILITE:LIRE'), async (req: AuthReque
           ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
         },
       },
-      include: {
+      relationLoadStrategy: 'join', include: {
         compte: { select: { id: true, numero: true, libelle: true } },
         ecriture: { select: { id: true, numero: true, dateEcriture: true, libelle: true, reference: true, journal: { select: { code: true } } } },
       },
@@ -930,19 +931,21 @@ router.get('/balance', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, 
     const { exerciceId, origine, dateDebut, dateFin } = req.query;
     const societeId = req.user!.societeId;
 
-    const comptes = await prisma.compteComptable.findMany({ where: { societeId }, orderBy: { numero: 'asc' } });
-
     const ecritureFilter: any = {
       ...(exerciceId && { exerciceId }),
       ...filtreOrigine(origine as string),
       ...(dateDebut && dateFin && { dateEcriture: { gte: new Date(dateDebut as string), lte: new Date(dateFin as string) } }),
     };
 
-    const mouvements = await prisma.mouvementComptable.groupBy({
-      by: ['compteId'],
-      where: { compte: { societeId }, ecriture: ecritureFilter },
-      _sum: { debit: true, credit: true },
-    });
+    // Comptes et agrégats en parallèle (1 aller-retour au lieu de 2)
+    const [comptes, mouvements] = await Promise.all([
+      prisma.compteComptable.findMany({ where: { societeId }, orderBy: { numero: 'asc' } }),
+      prisma.mouvementComptable.groupBy({
+        by: ['compteId'],
+        where: { compte: { societeId }, ecriture: ecritureFilter },
+        _sum: { debit: true, credit: true },
+      }),
+    ]);
     const parCompte = new Map(mouvements.map(m => [m.compteId, { debit: Number(m._sum.debit || 0), credit: Number(m._sum.credit || 0) }]));
 
     const lignes = comptes
@@ -974,15 +977,17 @@ router.get('/bilan', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, re
     const { exerciceId } = req.query;
     const societeId = req.user!.societeId;
 
-    const comptes = await prisma.compteComptable.findMany({ where: { societeId } });
-    const mouvements = await prisma.mouvementComptable.groupBy({
-      by: ['compteId'],
-      where: {
-        compte: { societeId },
-        ecriture: { ...(exerciceId && { exerciceId: exerciceId as string }) },
-      },
-      _sum: { debit: true, credit: true },
-    });
+    const [comptes, mouvements] = await Promise.all([
+      prisma.compteComptable.findMany({ where: { societeId } }),
+      prisma.mouvementComptable.groupBy({
+        by: ['compteId'],
+        where: {
+          compte: { societeId },
+          ecriture: { ...(exerciceId && { exerciceId: exerciceId as string }) },
+        },
+        _sum: { debit: true, credit: true },
+      }),
+    ]);
     const parCompte = new Map(mouvements.map(m => [m.compteId, { debit: Number(m._sum.debit || 0), credit: Number(m._sum.credit || 0) }]));
 
     const soldeCompte = (c: { id: string }) => {

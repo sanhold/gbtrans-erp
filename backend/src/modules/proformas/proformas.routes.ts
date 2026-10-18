@@ -146,7 +146,7 @@ router.get('/', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Respo
       prisma.proforma.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateProforma: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           _count: { select: { lignes: true } },
@@ -167,7 +167,7 @@ router.get('/en-attente', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, 
         factureId: null,
         client: { societeId: req.user!.societeId },
       },
-      include: {
+      relationLoadStrategy: 'join', include: {
         client: { select: { id: true, code: true, raisonSociale: true } },
         dossier: { select: { id: true, numero: true, numeroPhysique: true } },
         lignes: { orderBy: { ordre: 'asc' } },
@@ -182,7 +182,7 @@ router.get('/:id', authorize('PROFORMAS:LIRE'), async (req: AuthRequest, res: Re
   try {
     const p = await prisma.proforma.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
-      include: {
+      relationLoadStrategy: 'join', include: {
         client: true,
         dossier: {
           select: {
@@ -384,7 +384,7 @@ router.post('/:id/transformer-facture', authorize('PROFORMAS:MODIFIER'), audit('
   try {
     const proforma = await prisma.proforma.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
-      include: { lignes: { orderBy: { ordre: 'asc' } }, client: true },
+      relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, client: true },
     });
 
     if (!proforma) { ApiResponse.notFound(res, 'Proforma non trouvée'); return; }

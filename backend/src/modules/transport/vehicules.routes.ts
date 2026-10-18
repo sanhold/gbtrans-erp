@@ -26,7 +26,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
     };
     const vehicules = await prisma.vehicule.findMany({
       where, orderBy: { immatriculation: 'asc' },
-      include: { _count: { select: { courses: true, maintenances: true } } },
+      relationLoadStrategy: 'join', include: { _count: { select: { courses: true, maintenances: true } } },
     });
     ApiResponse.success(res, vehicules);
   } catch (e: any) { ApiResponse.error(res, e.message); }
@@ -36,7 +36,7 @@ router.get('/:id', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Re
   try {
     const vehicule = await prisma.vehicule.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: {
+      relationLoadStrategy: 'join', include: {
         courses: { orderBy: { createdAt: 'desc' }, take: 10, include: { chauffeur: { select: { nom: true, prenom: true } } } },
         maintenances: { orderBy: { date: 'desc' }, take: 10 },
       },
@@ -114,7 +114,7 @@ router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res
 
 router.delete('/:id', authorize('TRANSPORT:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.vehicule.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, include: { _count: { select: { courses: true } } } });
+    const existing = await prisma.vehicule.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, relationLoadStrategy: 'join', include: { _count: { select: { courses: true } } } });
     if (!existing) { ApiResponse.notFound(res); return; }
     if (existing._count.courses > 0) { ApiResponse.badRequest(res, `Ce véhicule est lié à ${existing._count.courses} course(s). Désactivez-le plutôt.`); return; }
     await prisma.vehicule.delete({ where: { id: req.params.id } });

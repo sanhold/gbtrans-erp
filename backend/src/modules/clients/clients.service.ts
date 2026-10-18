@@ -62,6 +62,7 @@ export class ClientService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
+        relationLoadStrategy: 'join',
         include: {
           _count: {
             select: { dossiers: true, factures: true },
@@ -77,6 +78,7 @@ export class ClientService {
   async findById(id: string, societeId: string) {
     return prisma.client.findFirst({
       where: { id, societeId },
+      relationLoadStrategy: 'join',
       include: {
         contacts: true,
         dossiers: {

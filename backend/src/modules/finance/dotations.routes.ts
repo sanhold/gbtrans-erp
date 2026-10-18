@@ -36,7 +36,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
       prisma.dotation.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateDotation: 'desc' },
-        include: { agent: { select: { id: true, nom: true, prenom: true } } },
+        relationLoadStrategy: 'join', include: { agent: { select: { id: true, nom: true, prenom: true } } },
       }),
       prisma.dotation.count({ where }),
     ]);
@@ -48,7 +48,7 @@ router.get('/:id', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Resp
   try {
     const dotation = await prisma.dotation.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: {
+      relationLoadStrategy: 'join', include: {
         agent: { select: { id: true, nom: true, prenom: true } },
         depenses: { orderBy: { dateDepense: 'desc' } },
       },

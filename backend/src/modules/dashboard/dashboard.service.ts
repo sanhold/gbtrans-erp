@@ -1,8 +1,17 @@
 import prisma from '../../config/database';
 import { DashboardStats } from '../../types';
+import { cacheSociete } from '../../utils/cacheMemoire';
+
+const TTL_DASHBOARD_MS = 30_000;
 
 export class DashboardService {
-  async getStats(societeId: string, annee?: number): Promise<DashboardStats> {
+  /** Statistiques du tableau de bord, mises en cache 30 s par société + année. */
+  getStats(societeId: string, annee?: number): Promise<DashboardStats> {
+    const year = annee || new Date().getFullYear();
+    return cacheSociete('stats:dashboard:stats', societeId, TTL_DASHBOARD_MS, () => this.calculerStats(societeId, year), String(year));
+  }
+
+  private async calculerStats(societeId: string, annee?: number): Promise<DashboardStats> {
     const year = annee || new Date().getFullYear();
     const dateDebutAnnee = new Date(year, 0, 1);
     const dateFinAnnee = new Date(year + 1, 0, 1);
@@ -13,16 +22,12 @@ export class DashboardService {
     const dossierFilter = { societeId, annee: year };
 
     const [
-      totalDossiers,
-      dossiersImport,
-      dossiersExport,
-      dossiersTransit,
+      dossiersParNature,
       totalClients,
       totalFournisseurs,
       facturesAgg,
       paiementsAgg,
       totalProformas,
-      totalFactures,
       atActives,
       atExpirees,
       totalCautions,
@@ -34,10 +39,7 @@ export class DashboardService {
       facturesImpayeesCount,
       factureMoisAgg,
     ] = await Promise.all([
-      prisma.dossier.count({ where: dossierFilter }),
-      prisma.dossier.count({ where: { ...dossierFilter, nature: 'IMPORT' } }),
-      prisma.dossier.count({ where: { ...dossierFilter, nature: 'EXPORT' } }),
-      prisma.dossier.count({ where: { ...dossierFilter, nature: 'TRANSIT' } }),
+      prisma.dossier.groupBy({ by: ['nature'], where: dossierFilter, _count: { _all: true } }),
       prisma.client.count({ where: { societeId, actif: true } }),
       prisma.fournisseur.count({ where: { societeId, actif: true } }),
       prisma.facture.aggregate({
@@ -47,6 +49,7 @@ export class DashboardService {
           dateFacture: { gte: dateDebutAnnee, lt: dateFinAnnee },
         },
         _sum: { montantTTC: true, montantPaye: true, resteAPayer: true },
+        _count: { _all: true },
       }),
       prisma.paiement.aggregate({
         where: {
@@ -60,13 +63,6 @@ export class DashboardService {
         where: {
           client: { societeId },
           statut: { not: 'ANNULEE' },
-        },
-      }),
-      prisma.facture.count({
-        where: {
-          societeId,
-          statut: { not: 'ANNULEE' },
-          dateFacture: { gte: dateDebutAnnee, lt: dateFinAnnee },
         },
       }),
       prisma.admissionTemporaire.count({ where: { societeId, statut: 'ACTIVE' } }),
@@ -108,6 +104,13 @@ export class DashboardService {
         _sum: { montantTTC: true },
       }),
     ]);
+
+    const compteNature = (n: string) => dossiersParNature.find((d) => d.nature === n)?._count._all ?? 0;
+    const dossiersImport = compteNature('IMPORT');
+    const dossiersExport = compteNature('EXPORT');
+    const dossiersTransit = compteNature('TRANSIT');
+    const totalDossiers = dossiersParNature.reduce((t, d) => t + d._count._all, 0);
+    const totalFactures = facturesAgg._count._all;
 
     const montantFacture = Number(facturesAgg._sum.montantTTC || 0);
     const montantEncaisse = Number(facturesAgg._sum.montantPaye || 0);
@@ -218,7 +221,7 @@ export class DashboardService {
           dateEcheance: { lt: maintenant },
           resteAPayer: { gt: 0 },
         },
-        include: {
+        relationLoadStrategy: 'join', include: {
           client: { select: { raisonSociale: true } },
         },
         orderBy: { dateEcheance: 'asc' },

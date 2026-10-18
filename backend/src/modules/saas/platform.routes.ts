@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../../config/database';
 import { config } from '../../config';
 import { ApiResponse } from '../../utils/apiResponse';
+import { invaliderSociete } from '../../utils/cacheMemoire';
 import { MODULES, chiffrerChamps, dechiffrerChamps, champsConfigures } from './fournisseurs/registry';
 import { estimerTailleParTable } from '../../utils/tablesSocietes';
 
@@ -104,6 +105,7 @@ router.patch('/societes/:id/abonnement', authenticatePlatform, requireSuperAdmin
       where: { id: abonnement.id },
       data: { ...(statut && { statut: statut as any }), ...(dateFin && { dateFin: new Date(dateFin) }) },
     });
+    invaliderSociete(req.params.id, 'abonnement:');
     await tracerActivite(req, 'ABONNEMENT_MODIFIE', 'Societe', req.params.id, { statut, dateFin, ancienStatut: abonnement.statut });
     ApiResponse.success(res, updated, 'Abonnement mis à jour manuellement');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
@@ -120,6 +122,7 @@ router.post('/societes/:id/prolonger-essai', authenticatePlatform, requireSuperA
       where: { id: abonnement.id },
       data: { dateFinEssai: nouvelleDate, dateProchainPaiement: nouvelleDate, ...(abonnement.statut === 'EXPIRE' && { statut: 'ESSAI' }) },
     });
+    invaliderSociete(req.params.id, 'abonnement:');
     await tracerActivite(req, 'ESSAI_PROLONGE', 'Societe', req.params.id, { jours, nouvelleDate });
     ApiResponse.success(res, updated, `Essai prolongé de ${jours} jour(s)`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
@@ -183,6 +186,7 @@ router.put('/plans/:id', authenticatePlatform, requireSuperAdmin, async (req: Pl
         ...(backupFrequenceMinJours !== undefined && { backupFrequenceMinJours: parseInt(backupFrequenceMinJours) }),
       },
     });
+    invaliderSociete('_global', 'vitrine');
     await tracerActivite(req, 'FORMULE_MODIFIEE', 'Plan', req.params.id, { nom });
     ApiResponse.success(res, plan, 'Formule modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
@@ -395,6 +399,7 @@ router.put('/contenu-vitrine', authenticatePlatform, requireSuperAdmin, async (r
     const contenu = existant
       ? await prisma.contenuVitrine.update({ where: { id: existant.id }, data })
       : await prisma.contenuVitrine.create({ data });
+    invaliderSociete('_global', 'vitrine');
     await tracerActivite(req, 'VITRINE_MODIFIEE', 'ContenuVitrine', contenu.id);
     ApiResponse.success(res, contenu, 'Contenu mis à jour');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

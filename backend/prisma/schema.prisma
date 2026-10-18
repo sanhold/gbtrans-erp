@@ -1,6 +1,7 @@
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -346,6 +347,7 @@ model Utilisateur {
   @@index([societeId])
   @@index([email])
   @@index([matricule])
+  @@index([societeId, actif])
   @@map("utilisateurs")
 }
 
@@ -565,6 +567,10 @@ model Dossier {
   @@index([numero])
   @@index([numeroBL])
   @@index([numeroDeclaration])
+  @@index([societeId, annee])
+  @@index([societeId, statut])
+  @@index([societeId, dateCreation])
+  @@index([societeId, clientId])
   @@map("dossiers")
 }
 
@@ -684,6 +690,7 @@ model EtapeDossier {
 
   @@unique([dossierId, etapeProcessusId])
   @@index([dossierId])
+  @@index([dossierId, statut])
   @@map("etapes_dossiers")
 }
 
@@ -701,6 +708,7 @@ model HistoriqueDossier {
 
   @@index([dossierId])
   @@index([createdAt])
+  @@index([dossierId, createdAt])
   @@map("historique_dossiers")
 }
 
@@ -785,6 +793,8 @@ model Client {
   @@index([raisonSociale])
   @@index([ncc])
   @@index([code])
+  @@index([societeId, actif])
+  @@index([societeId, raisonSociale])
   @@map("clients")
 }
 
@@ -858,6 +868,7 @@ model Fournisseur {
   @@index([societeId])
   @@index([raisonSociale])
   @@index([type])
+  @@index([societeId, actif])
   @@map("fournisseurs")
 }
 
@@ -1070,6 +1081,7 @@ model Proforma {
   @@index([dossierId])
   @@index([numero])
   @@index([statut])
+  @@index([clientId, statut])
   @@map("proformas")
 }
 
@@ -1183,6 +1195,10 @@ model Facture {
   @@index([statut])
   @@index([dateFacture])
   @@index([dateEcheance])
+  @@index([societeId, statut, dateFacture])
+  @@index([societeId, dateFacture])
+  @@index([societeId, statut, dateEcheance])
+  @@index([clientId, statut])
   @@map("factures")
 }
 
@@ -1245,6 +1261,8 @@ model FactureFournisseur {
   @@index([dossierId])
   @@index([statut])
   @@index([dateFacture])
+  @@index([societeId, statut])
+  @@index([societeId, dateFacture])
   @@map("factures_fournisseurs")
 }
 
@@ -1368,6 +1386,7 @@ model Paiement {
   @@index([statut])
   @@index([caisseId])
   @@index([compteBancaireId])
+  @@index([clientId, statut, datePaiement])
   @@map("paiements")
 }
 
@@ -1525,6 +1544,8 @@ model EcritureComptable {
   @@unique([factureFournisseurId])
   @@unique([paiementFournisseurId])
   @@unique([depenseId])
+  @@index([journalId, dateEcriture])
+  @@index([exerciceId, dateEcriture])
   @@map("ecritures_comptables")
 }
 
@@ -1713,6 +1734,7 @@ model OperationFinanciere {
   @@index([agentId])
   @@index([dateOperation])
   @@index([type])
+  @@index([societeId, dateOperation])
   @@map("operations_financieres")
 }
 
@@ -1799,6 +1821,8 @@ model Depense {
   @@index([dotationId])
   @@index([dateDepense])
   @@index([categorie])
+  @@index([societeId, statut, dateDepense])
+  @@index([societeId, dateDepense])
   @@map("depenses")
 }
 
@@ -1824,6 +1848,7 @@ model Dotation {
   @@unique([societeId, numero])
   @@index([societeId])
   @@index([agentId])
+  @@index([societeId, dateDotation])
   @@map("dotations")
 }
 
@@ -1933,6 +1958,9 @@ model AdmissionTemporaire {
   @@index([statut])
   @@index([dateExpiration])
   @@index([societeId])
+  @@index([societeId, statut])
+  @@index([societeId, statut, dateExpiration])
+  @@index([societeId, dateCreation])
   @@map("admissions_temporaires")
 }
 
@@ -2013,6 +2041,8 @@ model Caution {
   @@index([statut])
   @@index([dossierId])
   @@index([clientId])
+  @@index([societeId, statut])
+  @@index([societeId, numero])
   @@map("cautions")
 }
 
@@ -2063,6 +2093,7 @@ model Courrier {
   @@index([type])
   @@index([statut])
   @@index([dateCreation])
+  @@index([societeId, dateCreation])
   @@map("courriers")
 }
 
@@ -2190,6 +2221,8 @@ model Document {
   @@index([clientId])
   @@index([categorie])
   @@index([createdAt])
+  @@index([societeId, archive])
+  @@index([societeId, createdAt])
   @@map("documents")
 }
 
@@ -2240,6 +2273,7 @@ model Notification {
   @@index([utilisateurId])
   @@index([lue])
   @@index([createdAt])
+  @@index([utilisateurId, lue])
   @@map("notifications")
 }
 
@@ -2601,6 +2635,8 @@ model Course {
   @@index([dossierId])
   @@index([clientId])
   @@index([factureId])
+  @@index([societeId, createdAt])
+  @@index([societeId, statut])
   @@map("courses")
 }
 
@@ -2647,6 +2683,7 @@ model DevisTransport {
 
   @@index([societeId])
   @@index([clientId])
+  @@index([societeId, createdAt])
   @@map("devis_transport")
 }
 
@@ -2716,5 +2753,6 @@ model MaintenanceVehicule {
 
   @@index([societeId])
   @@index([vehiculeId])
+  @@index([societeId, date])
   @@map("maintenances_vehicules")
 }

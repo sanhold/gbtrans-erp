@@ -36,7 +36,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
       prisma.operationFinanciere.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateOperation: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           caisse: { select: { id: true, code: true, libelle: true } },
           compteBancaire: { select: { id: true, code: true, libelle: true, banque: true } },
           compteTiers: { select: { id: true, code: true, libelle: true, type: true } },

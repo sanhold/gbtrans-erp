@@ -69,7 +69,7 @@ router.get('/:id/etapes', authorize('DOSSIERS:LIRE'), async (req: AuthRequest, r
 
     const etapesDossier = await prisma.etapeDossier.findMany({
       where: { dossierId: dossier.id },
-      include: { executant: { select: { id: true, nom: true, prenom: true } }, etapeProcessus: true },
+      relationLoadStrategy: 'join', include: { executant: { select: { id: true, nom: true, prenom: true } }, etapeProcessus: true },
       orderBy: { ordre: 'asc' },
     });
 

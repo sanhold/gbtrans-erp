@@ -70,7 +70,7 @@ router.post('/:id/lignes', authorize('FACTURATION:MODIFIER'), audit('FACTURATION
     });
 
     await recalculerTotauxFacture(req.params.id);
-    const updated = await prisma.facture.findFirst({ where: { id: req.params.id }, include: { lignes: { orderBy: { ordre: 'asc' } }, client: true } });
+    const updated = await prisma.facture.findFirst({ where: { id: req.params.id }, relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, client: true } });
     ApiResponse.created(res, updated, 'Ligne ajoutée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -88,7 +88,7 @@ router.delete('/:id/lignes/:ligneId', authorize('FACTURATION:MODIFIER'), audit('
     await prisma.ligneFacture.delete({ where: { id: req.params.ligneId } });
     await recalculerTotauxFacture(req.params.id);
 
-    const updated = await prisma.facture.findFirst({ where: { id: req.params.id }, include: { lignes: { orderBy: { ordre: 'asc' } }, client: true } });
+    const updated = await prisma.facture.findFirst({ where: { id: req.params.id }, relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, client: true } });
     ApiResponse.success(res, updated, 'Ligne supprimée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -118,7 +118,7 @@ router.put('/:id/lignes/:ligneId', authorize('FACTURATION:MODIFIER'), audit('FAC
     });
     await recalculerTotauxFacture(req.params.id);
 
-    const updated = await prisma.facture.findFirst({ where: { id: req.params.id }, include: { lignes: { orderBy: { ordre: 'asc' } }, client: true } });
+    const updated = await prisma.facture.findFirst({ where: { id: req.params.id }, relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, client: true } });
     ApiResponse.success(res, updated, 'Ligne modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });

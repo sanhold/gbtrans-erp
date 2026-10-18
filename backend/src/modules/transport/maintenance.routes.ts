@@ -18,7 +18,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
       ...(vehiculeId && { vehiculeId }),
       ...(type && { type: type as any }),
     };
-    const maintenances = await prisma.maintenanceVehicule.findMany({ where, orderBy: { date: 'desc' }, include: INCLUDE_VEHICULE });
+    const maintenances = await prisma.maintenanceVehicule.findMany({ where, orderBy: { date: 'desc' }, relationLoadStrategy: 'join', include: INCLUDE_VEHICULE });
     ApiResponse.success(res, maintenances);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
@@ -32,7 +32,7 @@ router.get('/alertes', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res
     const [vehiculesAssurance, vehiculesVisite, maintenancesRappel] = await Promise.all([
       prisma.vehicule.findMany({ where: { societeId, actif: true, dateExpirationAssurance: { lte: dans30jours } }, select: { id: true, immatriculation: true, dateExpirationAssurance: true } }),
       prisma.vehicule.findMany({ where: { societeId, actif: true, dateExpirationVisiteTechnique: { lte: dans30jours } }, select: { id: true, immatriculation: true, dateExpirationVisiteTechnique: true } }),
-      prisma.maintenanceVehicule.findMany({ where: { societeId, prochaineDateRappel: { lte: dans30jours } }, include: INCLUDE_VEHICULE, orderBy: { prochaineDateRappel: 'asc' } }),
+      prisma.maintenanceVehicule.findMany({ where: { societeId, prochaineDateRappel: { lte: dans30jours } }, relationLoadStrategy: 'join', include: INCLUDE_VEHICULE, orderBy: { prochaineDateRappel: 'asc' } }),
     ]);
 
     ApiResponse.success(res, { vehiculesAssurance, vehiculesVisite, maintenancesRappel });

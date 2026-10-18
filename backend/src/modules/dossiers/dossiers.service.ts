@@ -3,6 +3,7 @@ import { genererNumero, suggererNumeroPhysiqueDossier } from '../../utils/numero
 import { FilterDossier, PaginationParams } from '../../types';
 import { Prisma, StatutDossier } from '@prisma/client';
 import { dossierEstFerme } from '../../utils/dossierGuard';
+import { cacheSociete } from '../../utils/cacheMemoire';
 
 // Liste blanche des champs modifiables d'un dossier via create/update. Exclut volontairement
 // societeId, agenceId, numero, annee, statut, createurId et toute relation imbriquée Prisma.
@@ -143,10 +144,11 @@ export class DossierService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
+        relationLoadStrategy: 'join',
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
           agent: { select: { id: true, nom: true, prenom: true } },
-          conteneurs: true,
+          // conteneurs retirés de la liste (non utilisés par le frontend hors fiche détail)
           processus: { select: { _count: { select: { etapes: true } } } },
           _count: {
             select: {
@@ -163,8 +165,10 @@ export class DossierService {
   }
 
   async findById(id: string, societeId: string) {
+    // relationLoadStrategy 'join' : une seule requête SQL au lieu d'une par relation (~14 allers-retours)
     return prisma.dossier.findFirst({
       where: { id, societeId },
+      relationLoadStrategy: 'join',
       include: {
         client: true,
         createur: { select: { id: true, nom: true, prenom: true } },
@@ -296,15 +300,12 @@ export class DossierService {
   async getStatistiques(societeId: string, annee?: number) {
     const currentYear = annee || new Date().getFullYear();
 
+    return cacheSociete('stats:dossiers', societeId, 30_000, async () => {
     const [
-      total,
       parStatut,
       parNature,
       parMois,
     ] = await Promise.all([
-      prisma.dossier.count({
-        where: { societeId, annee: currentYear },
-      }),
       prisma.dossier.groupBy({
         by: ['statut'],
         where: { societeId, annee: currentYear },
@@ -324,12 +325,14 @@ export class DossierService {
       `,
     ]);
 
+    const total = parStatut.reduce((t, g) => t + (g._count as number), 0);
     return { total, parStatut, parNature, parMois };
+    }, String(currentYear));
   }
 
   async getBilanDossiers(societeId: string, params: { annee?: number; statut?: string; clientId?: string; page?: number; limit?: number }) {
-    const page = params.page || 1;
-    const limit = params.limit || 20;
+    const page = Math.max(params.page || 1, 1);
+    const limit = Math.min(Math.max(params.limit || 20, 1), 100);
     const skip = (page - 1) * limit;
 
     const conditions: Prisma.Sql[] = [Prisma.sql`d."societeId" = ${societeId}`];
@@ -338,35 +341,42 @@ export class DossierService {
     if (params.clientId) conditions.push(Prisma.sql`d."clientId" = ${params.clientId}`);
     const whereClause = Prisma.join(conditions, ' AND ');
 
-    const data: any[] = await prisma.$queryRaw`
-      SELECT d.id, d.numero, d.statut, d.annee, d."dateCreation",
-        COALESCE(p.montant_proforma, 0)::float AS "montantProforma",
-        COALESCE(f.montant_tva, 0)::float AS "montantTVA",
-        COALESCE(f.montant_prestation, 0)::float AS "montantPrestation",
-        COALESCE(f.montant_paye, 0)::float AS "montantPaye",
-        COALESCE(f.montant_restant, 0)::float AS "montantRestant",
-        COALESCE(dep.montant_depense, 0)::float AS "montantDepense"
-      FROM dossiers d
-      LEFT JOIN (
-        SELECT "dossierId", SUM("montantTTC") AS montant_proforma
-        FROM proformas WHERE statut NOT IN ('ANNULEE', 'EXPIREE') GROUP BY "dossierId"
-      ) p ON p."dossierId" = d.id
-      LEFT JOIN (
-        SELECT "dossierId", SUM("montantTVA") AS montant_tva, SUM("montantPrestation") AS montant_prestation,
-               SUM("montantPaye") AS montant_paye, SUM("resteAPayer") AS montant_restant
-        FROM factures WHERE statut NOT IN ('ANNULEE', 'BROUILLON') GROUP BY "dossierId"
-      ) f ON f."dossierId" = d.id
-      LEFT JOIN (
-        SELECT "dossierId", SUM(montant) AS montant_depense FROM depenses GROUP BY "dossierId"
-      ) dep ON dep."dossierId" = d.id
-      WHERE ${whereClause}
-      ORDER BY d."dateCreation" DESC
-      LIMIT ${limit} OFFSET ${skip}
-    `;
-
-    const totalResult: any[] = await prisma.$queryRaw`
-      SELECT COUNT(*)::int AS count FROM dossiers d WHERE ${whereClause}
-    `;
+    // La page de dossiers est d'abord extraite (CTE), puis les agrégats ne sont calculés que pour
+    // ces ~20 dossiers (LATERAL) au lieu de sommer proformas/factures/dépenses de TOUTE la base.
+    // Données et total en parallèle.
+    const [data, totalResult] = await Promise.all([
+      prisma.$queryRaw<any[]>`
+        WITH page AS (
+          SELECT d.id, d.numero, d.statut, d.annee, d."dateCreation"
+          FROM dossiers d
+          WHERE ${whereClause}
+          ORDER BY d."dateCreation" DESC
+          LIMIT ${limit} OFFSET ${skip}
+        )
+        SELECT page.id, page.numero, page.statut, page.annee, page."dateCreation",
+          COALESCE(p.montant_proforma, 0)::float AS "montantProforma",
+          COALESCE(f.montant_tva, 0)::float AS "montantTVA",
+          COALESCE(f.montant_prestation, 0)::float AS "montantPrestation",
+          COALESCE(f.montant_paye, 0)::float AS "montantPaye",
+          COALESCE(f.montant_restant, 0)::float AS "montantRestant",
+          COALESCE(dep.montant_depense, 0)::float AS "montantDepense"
+        FROM page
+        LEFT JOIN LATERAL (
+          SELECT SUM("montantTTC") AS montant_proforma
+          FROM proformas WHERE "dossierId" = page.id AND statut NOT IN ('ANNULEE', 'EXPIREE')
+        ) p ON true
+        LEFT JOIN LATERAL (
+          SELECT SUM("montantTVA") AS montant_tva, SUM("montantPrestation") AS montant_prestation,
+                 SUM("montantPaye") AS montant_paye, SUM("resteAPayer") AS montant_restant
+          FROM factures WHERE "dossierId" = page.id AND statut NOT IN ('ANNULEE', 'BROUILLON')
+        ) f ON true
+        LEFT JOIN LATERAL (
+          SELECT SUM(montant) AS montant_depense FROM depenses WHERE "dossierId" = page.id
+        ) dep ON true
+        ORDER BY page."dateCreation" DESC
+      `,
+      prisma.$queryRaw<any[]>`SELECT COUNT(*)::int AS count FROM dossiers d WHERE ${whereClause}`,
+    ]);
 
     return { data, total: totalResult[0]?.count || 0, page, limit };
   }

@@ -29,7 +29,7 @@ router.get('/', authorize('OFFRES:LIRE'), async (req: AuthRequest, res: Response
       prisma.offreCommerciale.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateOffre: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           _count: { select: { lignes: true } },
@@ -45,7 +45,7 @@ router.get('/:id', authorize('OFFRES:LIRE'), async (req: AuthRequest, res: Respo
   try {
     const o = await prisma.offreCommerciale.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
-      include: {
+      relationLoadStrategy: 'join', include: {
         client: true,
         dossier: { select: { id: true, numero: true, designation: true } },
         lignes: { orderBy: { ordre: 'asc' } },
@@ -150,7 +150,7 @@ router.post('/:id/transformer-proforma', authorize('OFFRES:MODIFIER'), async (re
   try {
     const offre = await prisma.offreCommerciale.findFirst({
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
-      include: { lignes: { orderBy: { ordre: 'asc' } } },
+      relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } } },
     });
     if (!offre) { ApiResponse.notFound(res); return; }
     if (offre.proformaId) { ApiResponse.badRequest(res, 'Cette offre a déjà été transformée en proforma'); return; }

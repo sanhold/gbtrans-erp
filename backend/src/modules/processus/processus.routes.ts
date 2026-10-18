@@ -14,7 +14,7 @@ router.get('/', authorize('DOSSIERS:LIRE', 'PARAMETRES:LIRE'), async (req: AuthR
   try {
     const data = await prisma.processusSuivi.findMany({
       where: { societeId: req.user!.societeId },
-      include: { etapes: { orderBy: { ordre: 'asc' } }, _count: { select: { dossiers: true } } },
+      relationLoadStrategy: 'join', include: { etapes: { orderBy: { ordre: 'asc' } }, _count: { select: { dossiers: true } } },
       orderBy: { nom: 'asc' },
     });
     ApiResponse.success(res, data);
@@ -26,7 +26,7 @@ router.get('/:id', authorize('DOSSIERS:LIRE', 'PARAMETRES:LIRE'), async (req: Au
   try {
     const p = await prisma.processusSuivi.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { etapes: { orderBy: { ordre: 'asc' } } },
+      relationLoadStrategy: 'join', include: { etapes: { orderBy: { ordre: 'asc' } } },
     });
     if (!p) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, p);

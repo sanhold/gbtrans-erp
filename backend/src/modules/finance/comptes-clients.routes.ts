@@ -41,7 +41,7 @@ router.get('/:clientId', authorize('FINANCE:LIRE'), async (req: AuthRequest, res
     const paiements = await prisma.paiement.findMany({
       where: { clientId: req.params.clientId },
       orderBy: { datePaiement: 'asc' },
-      include: { affectations: { include: { facture: { select: { numero: true } } } } },
+      relationLoadStrategy: 'join', include: { affectations: { include: { facture: { select: { numero: true } } } } },
     });
 
     ApiResponse.success(res, { client, factures, paiements });

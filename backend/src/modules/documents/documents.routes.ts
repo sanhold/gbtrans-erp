@@ -60,7 +60,7 @@ router.get('/', authorize('ARCHIVES:LIRE'), async (req: AuthRequest, res: Respon
       prisma.document.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { createdAt: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           admissionTemporaire: { select: { id: true, numero: true } },
           client: { select: { id: true, raisonSociale: true } },

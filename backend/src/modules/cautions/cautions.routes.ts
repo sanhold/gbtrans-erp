@@ -3,6 +3,7 @@ import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
+import { cacheSociete } from '../../utils/cacheMemoire';
 import { Prisma } from '@prisma/client';
 
 const router = Router();
@@ -48,7 +49,7 @@ router.get('/', authorize('CAUTIONS:LIRE'), async (req: AuthRequest, res: Respon
       prisma.caution.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { numero: 'desc' },
-        include: INCLUDE_CAUTION,
+        relationLoadStrategy: 'join', include: INCLUDE_CAUTION,
       }),
       prisma.caution.count({ where }),
     ]);
@@ -60,12 +61,10 @@ router.get('/', authorize('CAUTIONS:LIRE'), async (req: AuthRequest, res: Respon
 router.get('/stats', authorize('CAUTIONS:LIRE'), async (req: AuthRequest, res: Response) => {
   try {
     const societeId = req.user!.societeId;
-    const [nonActive, enAttente, courrierDepose, payees] = await Promise.all([
-      prisma.caution.count({ where: { societeId, statut: 'NON_ACTIVE' } }),
-      prisma.caution.count({ where: { societeId, statut: 'EN_ATTENTE' } }),
-      prisma.caution.count({ where: { societeId, statut: 'COURRIER_DEPOSE' } }),
-      prisma.caution.count({ where: { societeId, statut: 'PAYEE' } }),
-    ]);
+    const groupes = await cacheSociete('stats:cautions', societeId, 30_000, () =>
+      prisma.caution.groupBy({ by: ['statut'], where: { societeId }, _count: { _all: true } }));
+    const n = (st: string) => groupes.find((g) => g.statut === st)?._count._all ?? 0;
+    const nonActive = n('NON_ACTIVE'), enAttente = n('EN_ATTENTE'), courrierDepose = n('COURRIER_DEPOSE'), payees = n('PAYEE');
     ApiResponse.success(res, { nonActive, enAttente, courrierNonDepose: enAttente, courrierDepose, payees });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });

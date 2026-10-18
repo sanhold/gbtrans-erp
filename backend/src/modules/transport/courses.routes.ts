@@ -36,7 +36,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
       }),
     };
     const [data, total] = await Promise.all([
-      prisma.course.findMany({ where, skip, take: Math.min(parseInt(limit) || 20, 100), orderBy: { createdAt: 'desc' }, include: INCLUDE_COURSE }),
+      prisma.course.findMany({ where, skip, take: Math.min(parseInt(limit) || 20, 100), orderBy: { createdAt: 'desc' }, relationLoadStrategy: 'join', include: INCLUDE_COURSE }),
       prisma.course.count({ where }),
     ]);
     ApiResponse.paginated(res, data, total, parseInt(page), parseInt(limit));
@@ -47,7 +47,7 @@ router.get('/:id', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Re
   try {
     const course = await prisma.course.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { ...INCLUDE_COURSE, historique: { orderBy: { createdAt: 'desc' } } },
+      relationLoadStrategy: 'join', include: { ...INCLUDE_COURSE, historique: { orderBy: { createdAt: 'desc' } } },
     });
     if (!course) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, course);
@@ -246,7 +246,7 @@ router.post('/facturer', authorize('TRANSPORT:MODIFIER', 'FACTURATION:CREER'), a
 
     const courses = await prisma.course.findMany({
       where: { id: { in: courseIds }, societeId },
-      include: { client: true },
+      relationLoadStrategy: 'join', include: { client: true },
     });
     if (courses.length !== courseIds.length) { ApiResponse.badRequest(res, 'Une ou plusieurs courses sont introuvables'); return; }
     if (courses.some(c => c.statut !== 'TERMINEE')) { ApiResponse.badRequest(res, 'Seules les courses terminées peuvent être facturées'); return; }

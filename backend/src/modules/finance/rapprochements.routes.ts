@@ -17,7 +17,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
         ...(compteBancaireId && { compteBancaireId: compteBancaireId as string }),
       },
       orderBy: { dateBancaire: 'desc' },
-      include: { compteBancaire: { select: { id: true, code: true, libelle: true, banque: true } } },
+      relationLoadStrategy: 'join', include: { compteBancaire: { select: { id: true, code: true, libelle: true, banque: true } } },
     });
     ApiResponse.success(res, data);
   } catch (e: any) { ApiResponse.error(res, e.message); }

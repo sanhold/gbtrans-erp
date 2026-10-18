@@ -11,7 +11,7 @@ export class AuthService {
   async login(email: string, motDePasse: string, ip?: string, userAgent?: string) {
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { email },
-      include: {
+      relationLoadStrategy: 'join', include: {
         profil: {
           include: {
             permissions: { include: { permission: true } },
@@ -97,7 +97,7 @@ export class AuthService {
 
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { id: decoded.id },
-      include: {
+      relationLoadStrategy: 'join', include: {
         profil: {
           include: {
             permissions: { include: { permission: true } },

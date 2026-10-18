@@ -34,7 +34,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
       prisma.depense.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateDepense: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
           fournisseur: { select: { id: true, raisonSociale: true } },
           caisse: { select: { id: true, code: true, libelle: true } },
@@ -182,7 +182,7 @@ router.post('/:id/annuler', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'ANN
       // d'origine, pas sa contre-passation.
       const ecritureExistante = await tx.ecritureComptable.findFirst({
         where: { depenseId: depense.id },
-        include: { mouvements: true, journal: { select: { id: true, code: true } } },
+        relationLoadStrategy: 'join', include: { mouvements: true, journal: { select: { id: true, code: true } } },
       });
       let extourneGeneree = false;
       let extourneImpossibleCar: string | null = null;

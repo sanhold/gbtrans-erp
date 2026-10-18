@@ -30,7 +30,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
       prisma.paiement.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { datePaiement: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
           affectations: { include: { facture: { select: { id: true, numero: true } } } },
         },

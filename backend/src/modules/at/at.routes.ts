@@ -48,7 +48,7 @@ router.get('/', authorize('AT:LIRE'), async (req: AuthRequest, res: Response) =>
       prisma.admissionTemporaire.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateCreation: 'desc' },
-        include: INCLUDE_AT,
+        relationLoadStrategy: 'join', include: INCLUDE_AT,
       }),
       prisma.admissionTemporaire.count({ where }),
     ]);
@@ -65,7 +65,7 @@ router.get('/:id', authorize('AT:LIRE'), async (req: AuthRequest, res: Response)
   try {
     const at = await prisma.admissionTemporaire.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: INCLUDE_AT,
+      relationLoadStrategy: 'join', include: INCLUDE_AT,
     });
     if (!at) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, withEtat(at));
@@ -141,7 +141,7 @@ router.post('/', authorize('AT:CREER'), async (req: AuthRequest, res: Response) 
       return created;
     });
 
-    const full = await prisma.admissionTemporaire.findFirst({ where: { id: at.id }, include: INCLUDE_AT });
+    const full = await prisma.admissionTemporaire.findFirst({ where: { id: at.id }, relationLoadStrategy: 'join', include: INCLUDE_AT });
     ApiResponse.created(res, withEtat(full), `AT ${numero} créée`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -197,7 +197,7 @@ router.put('/:id', authorize('AT:MODIFIER'), async (req: AuthRequest, res: Respo
       return updated;
     });
 
-    const full = await prisma.admissionTemporaire.findFirst({ where: { id: at.id }, include: INCLUDE_AT });
+    const full = await prisma.admissionTemporaire.findFirst({ where: { id: at.id }, relationLoadStrategy: 'join', include: INCLUDE_AT });
     ApiResponse.success(res, withEtat(full), 'AT modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });

@@ -42,7 +42,7 @@ router.get('/mes-dotations', async (req: AuthRequest, res: Response) => {
     const dotations = await prisma.dotation.findMany({
       where: { societeId, agentId: userId, statut: 'VALIDE' },
       orderBy: { dateDotation: 'desc' },
-      include: { justificatifs: { select: SELECT_LISTE, orderBy: { createdAt: 'desc' } } },
+      relationLoadStrategy: 'join', include: { justificatifs: { select: SELECT_LISTE, orderBy: { createdAt: 'desc' } } },
     });
     const ids = dotations.map((d) => d.id);
     const sums = ids.length
@@ -147,7 +147,7 @@ router.post('/:id/valider', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MOD
     }
     if (!MODES_PAIEMENT.includes(modePaiement)) { ApiResponse.badRequest(res, 'Mode de paiement invalide'); return; }
 
-    const j = await prisma.justificatifDotation.findFirst({ where: { id: req.params.id, societeId }, include: { dotation: true } });
+    const j = await prisma.justificatifDotation.findFirst({ where: { id: req.params.id, societeId }, relationLoadStrategy: 'join', include: { dotation: true } });
     if (!j) { ApiResponse.notFound(res, 'Justificatif introuvable'); return; }
     if (j.statut !== 'EN_ATTENTE') { ApiResponse.badRequest(res, 'Ce justificatif est déjà traité'); return; }
     if (j.dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }

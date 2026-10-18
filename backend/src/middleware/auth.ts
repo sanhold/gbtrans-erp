@@ -6,6 +6,7 @@ import { AuthRequest } from '../types';
 import { ApiResponse } from '../utils/apiResponse';
 import { getCachedUser, setCachedUser } from '../utils/sessionCache';
 import { logger } from '../utils/logger';
+import { cacheSociete, invaliderSociete } from '../utils/cacheMemoire';
 
 export const authenticate = async (
   req: AuthRequest,
@@ -122,12 +123,20 @@ export const requireSociete = async (
   // '/abonnement/paiement' ici sans prefixe ni query string a contourner.
   const estEcriture = req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS';
   const estPaiementAbonnement = req.method === 'POST' && req.path === '/abonnement/paiement';
+  // Toute écriture invalide les statistiques/dashboards en cache de la société (espaces 'stats:'),
+  // pour qu'un élément créé à l'instant apparaisse immédiatement dans les chiffres.
+  if (estEcriture) {
+    const societeIdEcriture = req.user.societeId;
+    res.on('finish', () => invaliderSociete(societeIdEcriture, 'stats:'));
+  }
   if (estEcriture && !estPaiementAbonnement) {
     try {
-      const abonnement = await prisma.abonnement.findUnique({
-        where: { societeId: req.user.societeId },
-        select: { statut: true },
-      });
+      // Statut d'abonnement mis en cache 30 s par société (invalidé lors des changements de statut) :
+      // évite un aller-retour DB (~125 ms) sur chaque écriture.
+      const societeId = req.user.societeId;
+      const abonnement = await cacheSociete('abonnement:statut', societeId, 30_000, () =>
+        prisma.abonnement.findUnique({ where: { societeId }, select: { statut: true } }),
+      );
       if (abonnement && (abonnement.statut === 'EXPIRE' || abonnement.statut === 'IMPAYE')) {
         ApiResponse.forbidden(res, 'Abonnement expiré ou impayé. Réglez votre abonnement pour continuer à utiliser GBTRANS ERP.');
         return;

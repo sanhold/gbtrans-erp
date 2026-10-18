@@ -26,7 +26,7 @@ router.get('/', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res: Re
       prisma.factureFournisseur.findMany({
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateFacture: 'desc' },
-        include: {
+        relationLoadStrategy: 'join', include: {
           fournisseur: { select: { id: true, code: true, raisonSociale: true } },
           dossier: { select: { id: true, numero: true, numeroPhysique: true } },
         },
@@ -41,7 +41,7 @@ router.get('/:id', authorize('FOURNISSEURS:LIRE'), async (req: AuthRequest, res:
   try {
     const f = await prisma.factureFournisseur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: {
+      relationLoadStrategy: 'join', include: {
         lignes: { orderBy: { ordre: 'asc' } },
         fournisseur: true,
         dossier: { select: { id: true, numero: true, numeroPhysique: true } },
@@ -108,7 +108,7 @@ router.post('/:id/lignes', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISSEU
     });
 
     await recalculerTotauxFactureFournisseur(req.params.id);
-    const updated = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id }, include: { lignes: { orderBy: { ordre: 'asc' } }, fournisseur: true } });
+    const updated = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id }, relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, fournisseur: true } });
     ApiResponse.created(res, updated, 'Ligne ajoutée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -134,7 +134,7 @@ router.put('/:id/lignes/:ligneId', authorize('FOURNISSEURS:MODIFIER'), audit('FO
     });
     await recalculerTotauxFactureFournisseur(req.params.id);
 
-    const updated = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id }, include: { lignes: { orderBy: { ordre: 'asc' } }, fournisseur: true } });
+    const updated = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id }, relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, fournisseur: true } });
     ApiResponse.success(res, updated, 'Ligne modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -151,7 +151,7 @@ router.delete('/:id/lignes/:ligneId', authorize('FOURNISSEURS:MODIFIER'), audit(
     await prisma.ligneFactureFournisseur.delete({ where: { id: req.params.ligneId } });
     await recalculerTotauxFactureFournisseur(req.params.id);
 
-    const updated = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id }, include: { lignes: { orderBy: { ordre: 'asc' } }, fournisseur: true } });
+    const updated = await prisma.factureFournisseur.findFirst({ where: { id: req.params.id }, relationLoadStrategy: 'join', include: { lignes: { orderBy: { ordre: 'asc' } }, fournisseur: true } });
     ApiResponse.success(res, updated, 'Ligne supprimée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -172,7 +172,7 @@ router.post('/:id/paiement', authorize('FOURNISSEURS:MODIFIER'), audit('FOURNISS
     const factureId = req.params.id as string;
     const { montant, modePaiement, reference, banque, caisseId, compteBancaireId, compteTiersId } = req.body;
 
-    const facture = await prisma.factureFournisseur.findFirst({ where: { id: factureId, societeId }, include: { fournisseur: true } });
+    const facture = await prisma.factureFournisseur.findFirst({ where: { id: factureId, societeId }, relationLoadStrategy: 'join', include: { fournisseur: true } });
     if (!facture) { ApiResponse.notFound(res, 'Facture fournisseur non trouvée'); return; }
     if (!['VALIDEE', 'PARTIELLEMENT_PAYEE'].includes(facture.statut)) {
       ApiResponse.badRequest(res, 'Seule une facture validée peut recevoir un paiement'); return;

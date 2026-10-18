@@ -26,7 +26,7 @@ router.get('/', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Respo
       }),
     };
     const chauffeurs = await prisma.chauffeur.findMany({
-      where, orderBy: { nom: 'asc' }, include: { ...INCLUDE_EMPLOYE, _count: { select: { courses: true } } },
+      where, orderBy: { nom: 'asc' }, relationLoadStrategy: 'join', include: { ...INCLUDE_EMPLOYE, _count: { select: { courses: true } } },
     });
     ApiResponse.success(res, chauffeurs);
   } catch (e: any) { ApiResponse.error(res, e.message); }
@@ -36,7 +36,7 @@ router.get('/:id', authorize('TRANSPORT:LIRE'), async (req: AuthRequest, res: Re
   try {
     const chauffeur = await prisma.chauffeur.findFirst({
       where: { id: req.params.id, societeId: req.user!.societeId },
-      include: { ...INCLUDE_EMPLOYE, courses: { orderBy: { createdAt: 'desc' }, take: 10, include: { vehicule: { select: { immatriculation: true } } } } },
+      relationLoadStrategy: 'join', include: { ...INCLUDE_EMPLOYE, courses: { orderBy: { createdAt: 'desc' }, take: 10, include: { vehicule: { select: { immatriculation: true } } } } },
     });
     if (!chauffeur) { ApiResponse.notFound(res); return; }
     ApiResponse.success(res, chauffeur);
@@ -96,7 +96,7 @@ router.put('/:id', authorize('TRANSPORT:MODIFIER'), async (req: AuthRequest, res
 
 router.delete('/:id', authorize('TRANSPORT:SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.chauffeur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, include: { _count: { select: { courses: true } } } });
+    const existing = await prisma.chauffeur.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId }, relationLoadStrategy: 'join', include: { _count: { select: { courses: true } } } });
     if (!existing) { ApiResponse.notFound(res); return; }
     if (existing._count.courses > 0) { ApiResponse.badRequest(res, `Ce chauffeur est lié à ${existing._count.courses} course(s). Désactivez-le plutôt.`); return; }
     await prisma.chauffeur.delete({ where: { id: req.params.id } });
