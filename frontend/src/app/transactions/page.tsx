@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -117,7 +118,7 @@ export default function TransactionsPage() {
             </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Type</th><th className="table-header !text-[10px] !px-1.5 truncate">Compte</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={6} />
               : operations.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucune opération enregistrée</td></tr>
               : operations.map(op => (
                 <tr key={op.id} className="table-row">

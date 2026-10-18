@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -50,7 +51,7 @@ export default function CreancesClientsPage() {
             </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TTC</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={8} />
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune créance ouverte</td></tr>
               : paged.map(f => (
                 <tr key={f.id} className="table-row">

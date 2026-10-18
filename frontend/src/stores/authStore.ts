@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import { authApi } from '@/lib/api';
+import { invalidateCache } from '@/lib/cache';
+
+const PROFILE_TTL = 5 * 60_000;
+let profileFetchedAt = 0;
+let profileInFlight: Promise<void> | null = null;
 
 interface User {
   id: string;
@@ -24,7 +29,7 @@ interface AuthState {
   isLoading: boolean;
   login: (email: string, motDePasse: string) => Promise<any>;
   logout: () => Promise<void>;
-  loadProfile: () => Promise<void>;
+  loadProfile: (force?: boolean) => Promise<void>;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -46,6 +51,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return data;
       }
 
+      invalidateCache();
+      profileFetchedAt = Date.now();
       localStorage.setItem('gbtrans_token', data.token);
       localStorage.setItem('gbtrans_user', JSON.stringify(data.utilisateur));
 
@@ -73,10 +80,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     localStorage.removeItem('gbtrans_token');
     localStorage.removeItem('gbtrans_user');
+    // Les clés du cache client ne contiennent pas la société : on le vide pour qu'un
+    // autre utilisateur ne voie jamais les données du précédent.
+    invalidateCache();
+    profileFetchedAt = 0;
+    profileInFlight = null;
     set({ user: null, token: null, isAuthenticated: false });
   },
 
-  loadProfile: async () => {
+  loadProfile: async (force = false) => {
     if (typeof window === 'undefined') return;
 
     const savedToken = localStorage.getItem('gbtrans_token');
@@ -85,27 +97,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
-    set({ token: savedToken, isAuthenticated: true });
-
-    try {
-      const response = await authApi.profile();
-      const user = response.data.data;
-      localStorage.setItem('gbtrans_user', JSON.stringify(user));
-      set({ user, isAuthenticated: true });
-    } catch {
+    // Affichage immédiat depuis le stockage local (pas d'attente réseau)
+    let hasLocalUser = !!get().user;
+    if (!hasLocalUser) {
       const savedUser = localStorage.getItem('gbtrans_user');
       if (savedUser) {
         try {
-          set({ user: JSON.parse(savedUser), isAuthenticated: true });
-          return;
+          set({ user: JSON.parse(savedUser), token: savedToken, isAuthenticated: true });
+          hasLocalUser = true;
         } catch {
           // invalide
         }
       }
-      set({ user: null, isAuthenticated: false });
-      localStorage.removeItem('gbtrans_token');
-      localStorage.removeItem('gbtrans_user');
     }
+    if (!get().isAuthenticated) set({ token: savedToken, isAuthenticated: true });
+
+    const fresh = Date.now() - profileFetchedAt < PROFILE_TTL;
+    if (hasLocalUser && !force && fresh) return;
+
+    if (!profileInFlight || force) {
+      profileInFlight = authApi
+        .profile()
+        .then((response) => {
+          const user = response.data.data;
+          profileFetchedAt = Date.now();
+          localStorage.setItem('gbtrans_user', JSON.stringify(user));
+          set({ user, isAuthenticated: true });
+        })
+        .catch((error: any) => {
+          if (error?.response?.status === 401 || !hasLocalUser) {
+            set({ user: null, token: null, isAuthenticated: false });
+            localStorage.removeItem('gbtrans_token');
+            localStorage.removeItem('gbtrans_user');
+          }
+        })
+        .finally(() => { profileInFlight = null; });
+    }
+    // Avec un profil local, on rafraîchit en arrière-plan sans bloquer le rendu
+    if (hasLocalUser && !force) return;
+    await profileInFlight;
   },
 
   hasPermission: (permission: string) => {

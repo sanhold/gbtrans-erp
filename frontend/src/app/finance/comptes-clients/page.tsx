@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -60,7 +61,7 @@ export default function ComptesClientsPage() {
               </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total facturé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Factures</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={7} />
               : rows.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun client facturé</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">

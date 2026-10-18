@@ -3,7 +3,6 @@
 import { montantEnLettres } from './montantEnLettres';
 import api from './api';
 import { useAuthStore } from '@/stores/authStore';
-import QRCode from 'qrcode';
 
 export interface SocieteBranding {
   logo?: string | null;
@@ -154,6 +153,7 @@ function buildQrText(data: DocData): string {
 }
 
 export async function generateDocQrDataUrl(data: DocData): Promise<string> {
+  const QRCode = (await import('qrcode')).default;
   return QRCode.toDataURL(buildQrText(data), { margin: 0, width: 200, color: { dark: '#16232e', light: '#00000000' } });
 }
 

@@ -51,6 +51,8 @@ export default function LoginPage() {
       const { authApi } = await import('@/lib/api');
       const response = await authApi.verify2FA(email, code2FA, tempToken);
       const { data } = response.data;
+      const { invalidateCache } = await import('@/lib/cache');
+      invalidateCache();
       localStorage.setItem('gbtrans_token', data.token);
       localStorage.setItem('gbtrans_user', JSON.stringify(data.utilisateur));
       toast.success('Connexion réussie');

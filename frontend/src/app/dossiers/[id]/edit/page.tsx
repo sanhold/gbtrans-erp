@@ -45,7 +45,7 @@ export default function EditDossierPage() {
     try {
       const [dossierRes, clientsRes] = await Promise.all([
         dossiersApi.get(dossierId),
-        clientsApi.list({ limit: 500 }),
+        clientsApi.listRef(),
       ]);
       if (!dossierRes.data.data) { toast.error('Dossier non trouvé'); router.push('/dossiers'); return; }
       if (STATUTS_DOSSIER_FERME.includes(dossierRes.data.data.statut)) {

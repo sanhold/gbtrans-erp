@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -51,7 +52,8 @@ export default function FacturationPage() {
     } catch { setProformasAttente([]); }
   };
 
-  useEffect(() => { loadFactures(); loadProformasAttente(); }, [page, limit]);
+  useEffect(() => { loadFactures(); }, [page, limit]);
+  useEffect(() => { loadProformasAttente(); }, []);
 
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
   const totalPages = Math.ceil(total / limit);
@@ -158,7 +160,7 @@ export default function FacturationPage() {
                 <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
               </tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan={11} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
+                {loading ? <SkeletonRows cols={11} />
                 : factures.length === 0 ? <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune facture</td></tr>
                 : factures.map(f => (
                   <tr key={f.id} className="table-row cursor-pointer" onClick={() => openFactureDetail(f.id)}>

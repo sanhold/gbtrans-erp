@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -48,7 +49,7 @@ export default function CoursesPage() {
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [page, statutFiltre]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { clientsApi.list({ limit: 500 }).then(r => setClients(r.data.data || [])).catch(() => {}); }, []);
+  useEffect(() => { clientsApi.listRef().then(r => setClients(r.data.data || [])).catch(() => {}); }, []);
 
   const ouvrirCreation = async () => {
     setForm(FORM_VIDE);
@@ -162,7 +163,7 @@ export default function CoursesPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={11} />
               ) : data.length === 0 ? (
                 <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune course</td></tr>
               ) : data.map(c => (

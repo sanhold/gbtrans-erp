@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -86,7 +87,7 @@ export default function ExercicesPanel() {
             <thead><tr><th className="table-header">Actions</th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header text-right">Écritures</th><th className="table-header">Statut</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={7} />
               ) : exercices.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-8 text-gray-500">Aucun exercice comptable</td></tr>
               ) : exercices.map(ex => (

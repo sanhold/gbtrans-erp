@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -93,7 +94,7 @@ export default function ParametresPage() {
       await parametresApi.societe.update({ [champ]: valeur });
       toast.success(valeur ? 'Activité ajoutée' : 'Activité désactivée');
       loadSociete();
-      useAuthStore.getState().loadProfile(); // rafraichit le menu lateral sans recharger la page
+      useAuthStore.getState().loadProfile(true); // rafraichit le menu lateral sans recharger la page
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
     finally { setTogglingActivite(false); }
   };
@@ -450,7 +451,7 @@ export default function ParametresPage() {
                     </tr></thead>
                     <tbody>
                       {loadingUsers ? (
-                        <tr><td colSpan={6} className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                        <SkeletonRows cols={6} />
                       ) : utilisateurs.length === 0 ? (
                         <tr><td colSpan={6} className="text-center py-8 text-gray-500">Aucun utilisateur</td></tr>
                       ) : utilisateurs.map(u => {

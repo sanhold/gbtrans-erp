@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -137,7 +138,7 @@ export default function EmployesPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={8} />
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun employé</td></tr>
               ) : filtered.map(e => (

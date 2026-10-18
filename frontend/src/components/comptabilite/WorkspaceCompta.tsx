@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -252,7 +253,7 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
           </tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+              <SkeletonRows cols={8} />
             ) : ecritures.length === 0 ? (
               <tr><td colSpan={8} className="text-center py-12 text-gray-500">{lectureSeule ? 'Aucune écriture. Lancez la génération depuis l\'onglet Génération.' : 'Aucune écriture. Cliquez sur "+ Nouvelle écriture".'}</td></tr>
             ) : ecritures.map(ec => {
@@ -466,7 +467,7 @@ function BalanceTab({ exerciceId, origine }: { exerciceId: string; origine: 'AUT
         </tr></thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={6} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+            <SkeletonRows cols={6} />
           ) : lignes.length === 0 ? (
             <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun mouvement</td></tr>
           ) : lignes.map((l: any) => (
@@ -737,7 +738,7 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
           </tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+              <SkeletonRows cols={6} />
             ) : items.length === 0 ? (
               <tr><td colSpan={6} className="text-center py-12 text-gray-500">{statutFiltre === 'EN_ATTENTE' ? 'Aucune entrée en attente' : 'Aucune entrée rejetée'}</td></tr>
             ) : items.map(item => (

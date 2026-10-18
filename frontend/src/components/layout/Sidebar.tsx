@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '@/lib/api';
+import { useCachedFetch, TTL } from '@/lib/cache';
 import { getRequiredModule } from '@/lib/permissions';
 
 interface NavItem {
@@ -117,15 +118,11 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
     return !navGroups.some((g) => g.items.some((i) => i.href.length > href.length && (pathname === i.href || pathname.startsWith(i.href + '/'))));
   };
 
+  const { data: badgeStats } = useCachedFetch(`dashboard:stats:${new Date().getFullYear()}`, () => dashboardApi.stats(new Date().getFullYear()), TTL.normal);
   useEffect(() => {
-    dashboardApi
-      .stats()
-      .then((res) => {
-        const data = res.data.data;
-        setBadges((prev) => ({ ...prev, dossiers: data?.totalDossiers, courriers: data?.totalCourriers }));
-      })
-      .catch(() => {});
-  }, []);
+    const d = badgeStats?.data?.data;
+    if (d) setBadges({ dossiers: d.totalDossiers, courriers: d.totalCourriers });
+  }, [badgeStats]);
 
   const handleLogout = async () => {
     await logout();

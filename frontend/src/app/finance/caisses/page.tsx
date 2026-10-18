@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -61,7 +62,7 @@ export default function CaissesPage() {
               </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Plafond</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={7} />
               : caisses.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucune caisse. Créez-en une.</td></tr>
               : paged.map(c => (
                 <tr key={c.id} className="table-row">

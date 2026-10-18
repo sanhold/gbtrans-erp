@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { devisTransportApi, clientsApi, vehiculesApi, chauffeursApi } from '@/lib/api';
@@ -59,7 +60,7 @@ export default function DevisTransportPage() {
 
   const ouvrirCreation = async () => {
     setClientId(''); setObjet(''); setDateValidite(''); setLignes([{ ...LIGNE_VIDE }]);
-    try { const r = await clientsApi.list({ limit: 500 }); setClients(r.data.data || []); setShowModal(true); }
+    try { const r = await clientsApi.listRef(); setClients(r.data.data || []); setShowModal(true); }
     catch { toast.error('Erreur de chargement des clients'); }
   };
 
@@ -170,7 +171,7 @@ export default function DevisTransportPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={6} />
               ) : data.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun devis</td></tr>
               ) : data.map(d => (

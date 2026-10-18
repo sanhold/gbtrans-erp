@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -125,7 +126,7 @@ export default function ProspectsPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
+                <SkeletonRows cols={8} />
               ) : prospects.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun prospect. Ajoutez votre premier prospect commercial.</td></tr>
               ) : paged.map(p => (

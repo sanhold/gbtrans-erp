@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -72,7 +73,7 @@ export default function CautionsHistoriquePage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</td></tr>
+                <SkeletonRows cols={11} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune caution payée</td></tr>
               ) : items.map(c => (

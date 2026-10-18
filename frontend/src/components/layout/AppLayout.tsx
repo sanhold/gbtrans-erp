@@ -9,15 +9,19 @@ import Header, { getModuleName } from './Header';
 import SplashLoader from './SplashLoader';
 import TableEnhancer from '@/components/tables/TableEnhancer';
 
+// Chaque page enveloppe son contenu dans AppLayout (remonté à chaque navigation) :
+// on mémorise que le profil est déjà chargé pour ne plus afficher le splash.
+let layoutReady = false;
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loadProfile, hasPermission } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(layoutReady);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    loadProfile().then(() => setReady(true));
+    loadProfile().then(() => { layoutReady = true; setReady(true); });
   }, [loadProfile]);
 
   useEffect(() => {

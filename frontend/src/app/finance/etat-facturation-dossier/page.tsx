@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -217,7 +218,7 @@ export default function EtatFacturationDossierPage() {
               <th className="table-header !text-[10px] !px-1.5 truncate">Facturation</th>
             </tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={9} />
               : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucun dossier trouvé pour ces critères</td></tr>
               : rows.map((r: any) => {
                 const facture = Number(r.montantTVA) > 0 || Number(r.montantPrestation) > 0;

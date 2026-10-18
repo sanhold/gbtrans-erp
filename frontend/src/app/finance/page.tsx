@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -270,7 +271,7 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
           <table className="w-full">
             <thead><tr><th className="table-header">Date</th><th className="table-header">Sens</th><th className="table-header">Origine</th><th className="table-header">Réf.</th><th className="table-header text-right">Montant</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={5} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={5} />
               : rows.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-gray-500">Aucune transaction sur cette période</td></tr>
               : paged.map(op => (
                 <tr key={op.id} className="table-row">

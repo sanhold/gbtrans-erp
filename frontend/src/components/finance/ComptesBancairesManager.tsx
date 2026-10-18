@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useState } from 'react';
 import Link from 'next/link';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -55,7 +56,7 @@ export default function ComptesBancairesManager({ onSelectAccount }: { onSelectA
         <table className="w-full">
           <thead><tr><th className="table-header"></th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Banque</th><th className="table-header">Devise</th><th className="table-header text-right">Solde</th><th className="table-header">Statut</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+            {loading ? <SkeletonRows cols={7} />
             : comptesActifs.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun compte bancaire actif. Créez-en un.</td></tr>
             : paged.map(c => (
               <tr key={c.id} className={`table-row ${onSelectAccount ? 'cursor-pointer' : ''}`} onClick={() => onSelectAccount?.(c.id)}>

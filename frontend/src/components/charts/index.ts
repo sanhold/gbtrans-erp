@@ -1,4 +1,4 @@
-export { default as GraphifyChart } from './GraphifyChart';
+export { default as GraphifyChart } from './GraphifyChartLazy';
 export { default as GraphifyContainer } from './GraphifyContainer';
 export { default as GraphifyLegend } from './GraphifyLegend';
 export { default as GraphifyToolbar } from './GraphifyToolbar';

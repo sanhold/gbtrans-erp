@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import AppLayout from '@/components/layout/AppLayout';
@@ -107,7 +108,7 @@ export default function JustificatifsDotationPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-10 text-gray-500">Chargement...</td></tr>
+                <SkeletonRows cols={9} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={9} className="text-center py-10 text-gray-500">Aucun justificatif {statut === 'EN_ATTENTE' ? 'en attente de validation' : ''}</td></tr>
               ) : items.map(j => (

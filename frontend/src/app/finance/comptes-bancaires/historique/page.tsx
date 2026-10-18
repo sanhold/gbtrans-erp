@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -60,7 +61,7 @@ export default function ComptesBancairesHistoriquePage() {
             </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Banque</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={6} />
               : comptesDesactives.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun compte bancaire désactivé</td></tr>
               : paged.map(c => (
                 <tr key={c.id} className="table-row cursor-pointer" onClick={() => setSelectedId(c.id)}>
@@ -128,7 +129,7 @@ function CompteHistoriqueDetail({ compte, onBack, onReactiver }: { compte: any; 
           <table className="w-full">
             <thead><tr><th className="table-header">Date</th><th className="table-header">Sens</th><th className="table-header">Origine</th><th className="table-header">Réf.</th><th className="table-header text-right">Montant</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={5} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={5} />
               : rows.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-gray-500">Aucune transaction sur cette période</td></tr>
               : paged.map(op => (
                 <tr key={op.id} className="table-row">

@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
 import ImporterSyscohadaModal from './ImporterSyscohadaModal';
@@ -171,7 +172,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</td></tr>
+                <SkeletonRows cols={8} />
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun compte</td></tr>
               ) : filtered.map(c => (

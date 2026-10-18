@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminShell from '@/components/admin/AdminShell';
@@ -119,7 +120,7 @@ export default function AdminSocietesPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={9} />
               ) : filtrees.length === 0 ? (
                 <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune société</td></tr>
               ) : filtrees.map(s => (

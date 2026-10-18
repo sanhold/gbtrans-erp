@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { parametresApi } from '@/lib/api';
+import { cachedGet, TTL } from '@/lib/cache';
 
 const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/dashboard', name: 'Accueil' },
@@ -80,7 +81,9 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
   const [identite, setIdentite] = useState<{ raisonSociale?: string; logo?: string | null } | null>(null);
 
   useEffect(() => {
-    parametresApi.societe.identite().then((r) => setIdentite(r.data.data)).catch(() => {});
+    cachedGet('ref:identite', () => parametresApi.societe.identite(), TTL.reference)
+      .then((r) => setIdentite(r.data.data))
+      .catch(() => {});
   }, []);
 
   const toggleDarkMode = () => {

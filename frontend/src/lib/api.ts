@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getTenantSlug } from './tenant';
+import { invalidateCache, cachedGet, TTL } from './cache';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -24,7 +25,12 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // toute mutation réussie invalide le cache client (données de référence, dashboard...)
+    const method = (response.config?.method || 'get').toLowerCase();
+    if (method !== 'get' && method !== 'head') invalidateCache();
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       const isLoginRequest = error.config?.url?.includes('/auth/login');
@@ -70,6 +76,9 @@ export const dashboardApi = {
 export const dossiersApi = {
   list: (params?: Record<string, any>) =>
     api.get('/dossiers', { params }),
+  /** Liste de référence (listes déroulantes) : mise en cache 5 min, requêtes en vol dédoublonnées. */
+  listRef: (limit = 500) =>
+    cachedGet(`ref:dossiers:${limit}`, () => api.get('/dossiers', { params: { limit } }), TTL.reference),
   get: (id: string) => api.get(`/dossiers/${id}`),
   create: (data: any) => api.post('/dossiers', data),
   update: (id: string, data: any) => api.put(`/dossiers/${id}`, data),
@@ -202,6 +211,9 @@ export const documentsApi = {
 export const clientsApi = {
   list: (params?: Record<string, any>) =>
     api.get('/clients', { params }),
+  /** Liste de référence (listes déroulantes) : mise en cache 5 min, requêtes en vol dédoublonnées. */
+  listRef: (limit = 500) =>
+    cachedGet(`ref:clients:${limit}`, () => api.get('/clients', { params: { limit } }), TTL.reference),
   get: (id: string) => api.get(`/clients/${id}`),
   create: (data: any) => api.post('/clients', data),
   update: (id: string, data: any) => api.put(`/clients/${id}`, data),

@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -47,7 +48,7 @@ export default function PaiementsPage() {
             </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Client</th><th className="table-header !text-[10px] !px-1.5 truncate">Mode</th><th className="table-header !text-[10px] !px-1.5 truncate">Facture(s)</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={7} />
               : paiements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun paiement enregistré</td></tr>
               : paiements.map(p => (
                 <tr key={p.id} className="table-row">

@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -85,7 +86,7 @@ export default function RapprochementPage() {
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {!compteId ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sélectionnez un compte bancaire</td></tr>
-              : loading ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              : loading ? <SkeletonRows cols={7} />
               : rapprochements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun rapprochement en cours</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">

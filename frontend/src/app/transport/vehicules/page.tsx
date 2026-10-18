@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -100,7 +101,7 @@ export default function VehiculesPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={7} />
               ) : vehicules.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun véhicule</td></tr>
               ) : vehicules.map(v => (

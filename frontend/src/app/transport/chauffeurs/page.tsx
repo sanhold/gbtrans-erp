@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { chauffeursApi } from '@/lib/api';
@@ -91,7 +92,7 @@ export default function ChauffeursPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={6} />
               ) : chauffeurs.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun chauffeur</td></tr>
               ) : chauffeurs.map(c => (

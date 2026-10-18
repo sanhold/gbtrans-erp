@@ -33,7 +33,7 @@ export default function MesDotationsPage() {
 
   useEffect(() => {
     load();
-    dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
+    dossiersApi.listRef().then(r => setDossiers(r.data.data || [])).catch(() => {});
   }, [load]);
 
   const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));

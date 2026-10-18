@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { maintenanceApi, vehiculesApi } from '@/lib/api';
@@ -145,7 +146,7 @@ export default function MaintenancePage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></td></tr>
+                <SkeletonRows cols={7} />
               ) : maintenances.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucune maintenance enregistrée</td></tr>
               ) : maintenances.map(m => (

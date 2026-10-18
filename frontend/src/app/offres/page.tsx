@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
@@ -54,8 +55,8 @@ export default function OffresPage() {
   useEffect(() => { load(); }, [page, pageSize]);
 
   useEffect(() => {
-    clientsApi.list({ limit: 500 }).then(r => setClients(r.data.data || [])).catch(() => {});
-    dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
+    clientsApi.listRef().then(r => setClients(r.data.data || [])).catch(() => {});
+    dossiersApi.listRef().then(r => setDossiers(r.data.data || [])).catch(() => {});
     catalogueApi.list().then(r => setCatalogue((r.data.data || []).filter((p: any) => p.actif))).catch(() => {});
   }, []);
 
@@ -137,7 +138,7 @@ export default function OffresPage() {
               <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
             </tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"/>Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={8} />
               : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune offre commerciale. Créez votre première offre.</td></tr>
               : offres.map(o => (
                 <tr key={o.id} className="table-row cursor-pointer" onClick={() => router.push(`/offres/${o.id}`)}>

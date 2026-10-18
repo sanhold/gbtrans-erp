@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  compress: true,
+  poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ['@heroicons/react', '@headlessui/react', 'date-fns', 'chart.js', 'react-chartjs-2'],
+  },
   images: {
     domains: ['localhost'],
   },

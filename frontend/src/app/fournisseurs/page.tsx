@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -86,7 +87,7 @@ export default function FournisseursPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</td></tr>
+                <SkeletonRows cols={7} />
               ) : fournisseurs.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun fournisseur. Créez votre premier fournisseur.</td></tr>
               ) : fournisseurs.map((f) => (

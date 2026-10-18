@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -89,7 +90,7 @@ export default function DepensesPage() {
             </colgroup>
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Catégorie</th><th className="table-header !text-[10px] !px-1.5 truncate">Désignation</th><th className="table-header !text-[10px] !px-1.5 truncate">Compte débité</th><th className="table-header !text-[10px] !px-1.5 truncate">Dotation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={8} />
               : depenses.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dépense enregistrée</td></tr>
               : depenses.map(d => (
                 <tr key={d.id} className="table-row">

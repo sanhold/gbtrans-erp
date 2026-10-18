@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -56,7 +57,7 @@ export default function CourriersPage() {
   useEffect(() => { load(); }, [tab, page, limit, appliedSearch, statutFiltre]);
 
   useEffect(() => {
-    dossiersApi.list({ limit: 500 }).then(r => setDossiers(r.data.data || [])).catch(() => {});
+    dossiersApi.listRef().then(r => setDossiers(r.data.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -194,7 +195,7 @@ export default function CourriersPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</td></tr>
+                <SkeletonRows cols={8} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun courrier {tab === 'ENTRANT' ? 'reçu' : 'envoyé'}</td></tr>
               ) : items.map(c => (

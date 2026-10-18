@@ -118,8 +118,8 @@ function NouvelleProformaForm() {
 
   useEffect(() => {
     Promise.all([
-      clientsApi.list({ limit: 500 }),
-      dossiersApi.list({ limit: 500 }),
+      clientsApi.listRef(),
+      dossiersApi.listRef(),
       api.get('/proformas/catalogue'),
     ]).then(([cRes, dRes, catRes]) => {
       setClients(cRes.data.data || []);

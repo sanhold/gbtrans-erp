@@ -1,5 +1,6 @@
 'use client';
 
+import { cachedGet, peekCache, invalidateCache, TTL } from './cache';
 import { useCallback, useEffect, useState } from 'react';
 import { financeApi } from '@/lib/api';
 
@@ -39,24 +40,30 @@ export function parseCompteValue(value: string): { type: 'CAISSE' | 'BANQUE' | '
   return { type: type as 'CAISSE' | 'BANQUE' | 'TIERS', id };
 }
 
-export function useComptesFinanciers() {
-  const [caisses, setCaisses] = useState<any[]>([]);
-  const [comptes, setComptes] = useState<any[]>([]);
-  const [tiers, setTiers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+const COMPTES_KEY = 'ref:comptesFinanciers';
+type ComptesData = { caisses: any[]; comptes: any[]; tiers: any[] };
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+export function useComptesFinanciers() {
+  // Stale-while-revalidate : les soldes en cache s'affichent immédiatement
+  const initial = peekCache<ComptesData>(COMPTES_KEY);
+  const [caisses, setCaisses] = useState<any[]>(initial?.caisses ?? []);
+  const [comptes, setComptes] = useState<any[]>(initial?.comptes ?? []);
+  const [tiers, setTiers] = useState<any[]>(initial?.tiers ?? []);
+  const [loading, setLoading] = useState(!initial);
+
+  const reload = useCallback(async (force = true) => {
+    if (force) invalidateCache(COMPTES_KEY);
     try {
-      const [cRes, bRes, tRes] = await Promise.all([financeApi.caisses.list(), financeApi.comptesBancaires.list(), financeApi.comptesTiers.list()]);
-      setCaisses(cRes.data.data || []);
-      setComptes(bRes.data.data || []);
-      setTiers(tRes.data.data || []);
+      const d = await cachedGet<ComptesData>(COMPTES_KEY, async () => {
+        const [cRes, bRes, tRes] = await Promise.all([financeApi.caisses.list(), financeApi.comptesBancaires.list(), financeApi.comptesTiers.list()]);
+        return { caisses: cRes.data.data || [], comptes: bRes.data.data || [], tiers: tRes.data.data || [] };
+      }, TTL.court);
+      setCaisses(d.caisses); setComptes(d.comptes); setTiers(d.tiers);
     } catch { setCaisses([]); setComptes([]); setTiers([]); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { reload(false); }, [reload]);
 
-  return { caisses, comptes, tiers, loading, reload };
+  return { caisses, comptes, tiers, loading, reload: () => reload(true) };
 }

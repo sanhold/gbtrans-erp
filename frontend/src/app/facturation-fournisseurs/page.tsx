@@ -1,5 +1,6 @@
 'use client';
 
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api, { financeApi } from '@/lib/api';
@@ -108,7 +109,7 @@ export default function FacturationFournisseursPage() {
               <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th>
             </tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Chargement...</td></tr>
+              {loading ? <SkeletonRows cols={8} />
               : factures.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune facture fournisseur</td></tr>
               : factures.map(f => (
                 <tr key={f.id} className="table-row cursor-pointer" onClick={() => openDetail(f.id)}>

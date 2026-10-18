@@ -48,7 +48,7 @@ export default function NouveauDossierPage() {
   });
 
   useEffect(() => {
-    clientsApi.list({ limit: 500 }).then(res => setClients(res.data.data || [])).catch(() => {});
+    clientsApi.listRef().then(res => setClients(res.data.data || [])).catch(() => {});
     api.get('/processus').then(res => setProcessusList(res.data.data || [])).catch(() => {});
   }, []);
 

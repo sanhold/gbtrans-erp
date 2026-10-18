@@ -100,7 +100,7 @@ export default function MonComptePage() {
       setQrCodeUrl(null);
       setCode2FA('');
       // Rafraîchit le profil en mémoire sans recharger toute la page
-      useAuthStore.getState().loadProfile();
+      useAuthStore.getState().loadProfile(true);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Code de vérification invalide');
     } finally {

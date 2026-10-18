@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
+import { useCachedFetch, TTL } from '@/lib/cache';
+import { SkeletonCards, Skeleton } from '@/components/ui/Skeleton';
 import { useAuthStore } from '@/stores/authStore';
 import CAMensuelChart from '@/components/dashboard/CAMensuelChart';
 import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
@@ -110,34 +111,18 @@ function SectionCard({ title, action, children }: { title: string; action?: Reac
 export default function DashboardHomePage() {
   const { hasPermission } = useAuthStore();
   const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [caMensuel, setCaMensuel] = useState<CAMensuel[]>([]);
-  const [topClients, setTopClients] = useState<TopClient[]>([]);
-  const [alertes, setAlertes] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const year = new Date().getFullYear();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [statsRes, caRes, topRes, alertesRes] = await Promise.all([
-        dashboardApi.stats(year),
-        dashboardApi.caMensuel(year),
-        dashboardApi.topClients(5, year),
-        dashboardApi.alertes(),
-      ]);
-      setStats(statsRes.data.data);
-      setCaMensuel(caRes.data.data || []);
-      setTopClients(topRes.data.data || []);
-      setAlertes(alertesRes.data.data);
-    } catch {
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [year]);
-
-  useEffect(() => { load(); }, [load]);
+  // Affichage immédiat du cache puis rafraîchissement ; les 4 requêtes partent en parallèle
+  // et "stats" est partagé avec les pastilles du menu latéral (une seule requête réseau).
+  const { data: statsRes, loading: loadingStats } = useCachedFetch(`dashboard:stats:${year}`, () => dashboardApi.stats(year), TTL.normal);
+  const { data: caRes, loading: loadingCa } = useCachedFetch(`dashboard:ca:${year}`, () => dashboardApi.caMensuel(year), TTL.normal);
+  const { data: topRes } = useCachedFetch(`dashboard:top:${year}`, () => dashboardApi.topClients(5, year), TTL.normal);
+  const { data: alertesRes } = useCachedFetch('dashboard:alertes', () => dashboardApi.alertes(), TTL.normal);
+  const stats: Stats | null = statsRes?.data?.data ?? null;
+  const caMensuel: CAMensuel[] = caRes?.data?.data || [];
+  const topClients: TopClient[] = topRes?.data?.data || [];
+  const alertes = alertesRes?.data?.data ?? null;
+  const loading = loadingStats;
 
   const dossiersAnneePrecedente = stats?.dossiersParAnnee?.[String(year - 1)] || 0;
   const dossiersTrendPct = dossiersAnneePrecedente > 0 && stats
@@ -155,8 +140,13 @@ export default function DashboardHomePage() {
   return (
     <AppLayout>
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+        <div>
+          <SkeletonCards count={4} className="mb-3" />
+          <SkeletonCards count={4} className="mb-4" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <Skeleton className="h-[240px] lg:col-span-2" />
+            <Skeleton className="h-[240px]" />
+          </div>
         </div>
       ) : (
         <>
@@ -231,7 +221,7 @@ export default function DashboardHomePage() {
                   </div>
                 }
               >
-                {canSeeMontants ? <CAMensuelChart caMensuel={caMensuel} height={170} /> : <MontantsMasques height={170} label="Chiffre d'affaires masqué" />}
+                {canSeeMontants ? loadingCa ? <Skeleton className="h-[170px]" /> : <CAMensuelChart caMensuel={caMensuel} height={170} /> : <MontantsMasques height={170} label="Chiffre d'affaires masqué" />}
               </SectionCard>
             </div>
 

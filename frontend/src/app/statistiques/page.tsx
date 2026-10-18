@@ -1,7 +1,9 @@
 'use client';
 
+import { SkeletonCards } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import { useCachedFetch, TTL } from '@/lib/cache';
 import { dashboardApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
@@ -11,16 +13,12 @@ const MONTANT_MASQUE = '•••••••';
 export default function StatistiquesPage() {
   const { hasPermission } = useAuthStore();
   const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
-  const [stats, setStats] = useState<any>(null);
-  const [topClients, setTopClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([dashboardApi.stats(), dashboardApi.topClients(10)])
-      .then(([s, c]) => { setStats(s.data.data); setTopClients(c.data.data || []); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const year = new Date().getFullYear();
+  const { data: sRes, loading: l1 } = useCachedFetch(`dashboard:stats:${year}`, () => dashboardApi.stats(year), TTL.normal);
+  const { data: cRes, loading: l2 } = useCachedFetch('dashboard:top:10', () => dashboardApi.topClients(10), TTL.normal);
+  const stats: any = sRes?.data?.data ?? null;
+  const topClients: any[] = cRes?.data?.data || [];
+  const loading = l1 || l2;
 
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n);
 
@@ -37,7 +35,7 @@ export default function StatistiquesPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" /></div>
+          <SkeletonCards count={4} />
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

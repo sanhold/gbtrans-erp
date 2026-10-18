@@ -1,6 +1,6 @@
 'use client';
 
-import GraphifyChart from './GraphifyChart';
+import GraphifyChart from './GraphifyChartLazy';
 import GraphifyLegend from './GraphifyLegend';
 import GraphifyToolbar from './GraphifyToolbar';
 import type { GraphifyChartType, GraphifyConfig, GraphifyData } from '@/types/graphify';
