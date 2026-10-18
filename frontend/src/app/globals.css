@@ -40,7 +40,7 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 bg-primary-500 text-white rounded-sm
+    @apply inline-flex items-center justify-center px-4 py-2 bg-primary-500 text-white rounded-md cursor-pointer
            hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
            transition-colors duration-150 font-medium text-sm;
   }
@@ -65,12 +65,12 @@
   }
 
   .card {
-    @apply bg-white rounded-sm border border-gray-300 p-6
+    @apply bg-white rounded-lg border border-gray-200 shadow-card p-6
            dark:bg-surface-800 dark:border-surface-700;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-sm
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
            dark:bg-surface-800 dark:border-surface-700 dark:text-white
            placeholder:text-gray-400 text-sm transition-colors;
@@ -85,7 +85,7 @@
   }
 
   .table-container {
-    @apply overflow-x-auto bg-white rounded-sm border border-gray-300
+    @apply overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-card
            dark:bg-surface-800 dark:border-surface-700;
   }
 
@@ -94,32 +94,31 @@
   }
 
   .table-header {
-    @apply px-2 py-2 text-left text-[10.5px] font-bold text-white uppercase tracking-wider
-           bg-primary-600 border border-white/20 whitespace-nowrap
-           dark:bg-primary-700 dark:border-white/10;
-    letter-spacing: 0.04em;
+    @apply px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider
+           bg-gray-50 border-0 border-b border-gray-200 whitespace-nowrap
+           dark:bg-surface-800 dark:text-gray-300 dark:border-surface-700;
+    letter-spacing: 0.05em;
   }
 
   .table-cell {
-    @apply px-2 py-2 text-[12.5px] text-gray-700 border-0 border-b border-gray-200 whitespace-nowrap
+    @apply px-3 py-2.5 text-[13px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap
            dark:text-gray-200 dark:border-surface-700;
     letter-spacing: 0.01em;
   }
 
   .table-row {
-    @apply even:bg-gray-50 hover:bg-amber-50 dark:even:bg-white/[.03] dark:hover:bg-primary-900/25
-           transition-colors;
+    @apply hover:bg-primary-50/60 dark:hover:bg-white/[.04] transition-colors;
   }
 
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-bold;
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold;
   }
 
-  .badge-success { @apply bg-green-600 text-white; }
-  .badge-warning { @apply bg-amber-500 text-white; }
-  .badge-danger { @apply bg-red-600 text-white; }
-  .badge-info { @apply bg-primary-500 text-white; }
-  .badge-gray { @apply bg-gray-500 text-white; }
+  .badge-success { @apply bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300; }
+  .badge-warning { @apply bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300; }
+  .badge-danger { @apply bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300; }
+  .badge-info { @apply bg-primary-50 text-primary-700 dark:bg-primary-500/20 dark:text-primary-200; }
+  .badge-gray { @apply bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300; }
 
   .pill-btn {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium
@@ -127,7 +126,7 @@
   }
 
   .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium
            text-gray-600 hover:text-primary-500 hover:bg-primary-50
            dark:text-gray-400 dark:hover:text-white dark:hover:bg-surface-700
            transition-all duration-200 cursor-pointer;
