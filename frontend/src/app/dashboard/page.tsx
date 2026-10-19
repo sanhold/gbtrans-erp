@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { dashboardApi } from '@/lib/api';
@@ -8,6 +9,10 @@ import { SkeletonCards, Skeleton } from '@/components/ui/Skeleton';
 import { useAuthStore } from '@/stores/authStore';
 import CAMensuelChart from '@/components/dashboard/CAMensuelChart';
 import RepartitionDossiersChart from '@/components/dashboard/RepartitionDossiersChart';
+import KpiCard from '@/components/dashboard/KpiCard';
+import PeriodSwitch from '@/components/dashboard/PeriodSwitch';
+import AlertsPanel from '@/components/dashboard/AlertsPanel';
+import { formatMontantAbrege } from '@/components/dashboard/format';
 import MontantsMasques from '@/components/ui/MontantsMasques';
 
 const MONTANT_MASQUE = '•••••••';
@@ -53,52 +58,13 @@ interface TopClient {
 }
 
 const formatMontant = (montant: number) => {
-  if (montant >= 1_000_000) return `${Math.round(montant / 1_000_000).toLocaleString('fr-FR')} M FCFA`;
-  if (montant >= 1_000) return `${Math.round(montant / 1_000).toLocaleString('fr-FR')} K FCFA`;
-  return `${Math.round(montant)} FCFA`;
+  const { value, unit } = formatMontantAbrege(montant);
+  return `${value} ${unit}`;
 };
-
-function KpiCard({ label, value, icon, color, trend }: {
-  label: string; value: string; icon: string; color: 'violet' | 'amber' | 'teal' | 'rose' | 'blue' | 'slate'; trend?: { label: string; up?: boolean };
-}) {
-  const iconBg: Record<string, string> = {
-    violet: 'bg-primary-100 text-primary-700',
-    amber: 'bg-amber-50 text-amber-500',
-    teal: 'bg-accent-50 text-accent-600',
-    rose: 'bg-[#fdeaef] text-[#c93b63]',
-    blue: 'bg-[#e6effc] text-[#1f6fd6]',
-    slate: 'bg-[#eef0f4] text-[#525a6b]',
-  };
-  return (
-    <div className="bg-white dark:bg-surface-800 border border-gray-300 dark:border-surface-700 rounded-sm p-3.5">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="min-w-0">
-          <div className="text-[11px] text-gray-400 truncate dark:text-gray-500 font-medium">{label}</div>
-          <div className="font-display text-[17px] xl:text-[19px] font-extrabold tracking-tight leading-tight mt-0.5 whitespace-nowrap text-gray-900 dark:text-white">{value}</div>
-        </div>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg[color]}`}>
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d={icon} />
-          </svg>
-        </div>
-      </div>
-      {trend && (
-        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-full truncate ${trend.up ? 'bg-accent-50 text-accent-600' : 'bg-surface-100 dark:bg-surface-700 text-gray-500 dark:text-gray-400'}`}>
-          {trend.up && (
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 17L17 7M17 7H9M17 7v8" />
-            </svg>
-          )}
-          {trend.label}
-        </span>
-      )}
-    </div>
-  );
-}
 
 function SectionCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-surface-800 border border-gray-300 dark:border-surface-700 rounded-sm p-4">
+    <div className="card !p-4 sm:!p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[13px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
         {action}
@@ -111,7 +77,10 @@ function SectionCard({ title, action, children }: { title: string; action?: Reac
 export default function DashboardHomePage() {
   const { hasPermission } = useAuthStore();
   const canSeeMontants = hasPermission('FINANCE:VOIR_MONTANTS');
-  const year = new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+  const moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
+  const montant = (m: number) => (canSeeMontants ? formatMontantAbrege(m) : { value: MONTANT_MASQUE, unit: undefined });
   // Affichage immédiat du cache puis rafraîchissement ; les 4 requêtes partent en parallèle
   // et "stats" est partagé avec les pastilles du menu latéral (une seule requête réseau).
   const { data: statsRes, loading: loadingStats } = useCachedFetch(`dashboard:stats:${year}`, () => dashboardApi.stats(year), TTL.normal);
@@ -135,122 +104,111 @@ export default function DashboardHomePage() {
     { label: 'Transit', value: stats?.dossiersTransit || 0 },
   ];
 
-  const nbAlertes = (alertes?.facturesEnRetard?.length || 0) + (alertes?.atExpirationProche?.length || 0) + (alertes?.cautionsCourrierEnAttente?.length || 0);
+
+  const caMois = montant(stats?.montantFactureMois ?? 0);
+  const creances = montant(stats?.montantImpaye ?? 0);
 
   return (
     <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+        <div>
+          <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Tableau de bord</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">Vue d&apos;ensemble de l&apos;activité du bureau de transit</p>
+        </div>
+        <PeriodSwitch years={[currentYear - 1, currentYear]} value={year} onChange={setYear} />
+      </div>
       {loading ? (
         <div>
-          <SkeletonCards count={4} className="mb-3" />
           <SkeletonCards count={4} className="mb-4" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <Skeleton className="h-[240px] lg:col-span-2" />
-            <Skeleton className="h-[240px]" />
+          <SkeletonCards count={4} className="mb-4" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Skeleton className="h-[320px] lg:col-span-2" />
+            <Skeleton className="h-[320px]" />
           </div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
             <KpiCard
-              label={`Dossiers ${year}`}
+              label={`Dossiers ouverts en ${year}`}
               value={`${stats?.totalDossiers ?? 0}`}
               icon="M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-              color="violet"
-              trend={dossiersTrendPct !== null ? { label: `${dossiersTrendPct >= 0 ? '+' : ''}${dossiersTrendPct}% vs ${year - 1}`, up: dossiersTrendPct >= 0 } : undefined}
+              context={dossiersTrendPct !== null ? (
+                <span className={`font-semibold ${dossiersTrendPct >= 0 ? 'text-accent-600 dark:text-accent-500' : 'text-red-600'}`}>
+                  {dossiersTrendPct >= 0 ? '↑ +' : '↓ '}{dossiersTrendPct} % vs {year - 1}
+                </span>
+              ) : undefined}
             />
             <KpiCard
               label="Dossiers en cours"
               value={`${stats?.dossiersEnCours ?? 0}`}
               icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
-              color="amber"
-              trend={{ label: 'En traitement actuellement' }}
+              context="En traitement actuellement"
             />
             <KpiCard
-              label="Chiffre d'affaires (mois)"
-              value={canSeeMontants ? formatMontant(stats?.montantFactureMois ?? 0) : MONTANT_MASQUE}
-              icon="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
-              color="teal"
+              label={`Chiffre d'affaires · ${moisCourant}`}
+              value={caMois.value}
+              unit={caMois.unit}
+              icon="M3 17l6-6 4 4 8-8M21 7v5h-5"
+              iconClass="text-accent-600 dark:text-accent-500"
+              context="Facturé sur le mois"
             />
             <KpiCard
               label="Créances clients"
-              value={canSeeMontants ? formatMontant(stats?.montantImpaye ?? 0) : MONTANT_MASQUE}
-              icon="M12 2v20M5 5h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h9"
-              color="rose"
-              trend={{ label: `${stats?.facturesImpayeesCount ?? 0} facture(s) impayée(s)` }}
+              value={creances.value}
+              unit={creances.unit}
+              icon="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+              iconClass="text-red-600"
+              context={<span className="font-semibold text-red-600 dark:text-red-400">{stats?.facturesImpayeesCount ?? 0} facture(s) impayée(s)</span>}
             />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <KpiCard
               label="Clients actifs"
               value={`${stats?.totalClients ?? 0}`}
-              icon="M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6"
-              color="blue"
-              trend={{ label: `${stats?.totalFournisseurs ?? 0} fournisseur(s)` }}
+              icon="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"
+              context={`${stats?.totalFournisseurs ?? 0} fournisseur(s)`}
             />
             <KpiCard
-              label="Admissions Temporaires"
+              label="Admissions temporaires"
               value={`${stats?.atActives ?? 0}`}
-              icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
-              color="slate"
-              trend={stats?.atExpirees ? { label: `${stats.atExpirees} expirée(s)`, up: false } : { label: 'Aucune expirée' }}
+              icon="M6 2h12M6 22h12M7 2c0 5 5 6 5 10s-5 5-5 10M17 2c0 5-5 6-5 10s5 5 5 10"
+              context={stats?.atExpirees ? <span className="font-semibold text-amber-600 dark:text-amber-400">{stats.atExpirees} expirée(s)</span> : 'Aucune expirée'}
             />
             <KpiCard
               label="Cautions en cours"
               value={`${stats?.totalCautions ?? 0}`}
               icon="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"
-              color="teal"
+              context="Actives"
             />
             <KpiCard
               label="Documents archivés"
               value={`${stats?.documentsArchives ?? 0}`}
               icon="M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"
-              color="violet"
+              context={<Link href="/archives" className="font-semibold text-primary-600 dark:text-primary-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded">Archiver un document →</Link>}
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
-            <div className="lg:col-span-2">
-              <SectionCard
-                title={`Chiffre d'affaires mensuel — ${year}`}
-                action={
-                  <div className="flex items-center gap-3 text-[11px] whitespace-nowrap text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary-500" />Facturé</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-accent-500" />Encaissé</span>
-                    <Link href="/dashboard/analytique" className="text-primary-600 hover:underline font-medium">Détails →</Link>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <div className="lg:col-span-2 min-w-0">
+              <div className="card !p-4 sm:!p-5 h-full">
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                  <div>
+                    <h3 className="text-[16px] font-bold text-gray-900 dark:text-white">Chiffre d&apos;affaires mensuel {year}</h3>
+                    <p className="text-[12.5px] text-gray-500 dark:text-gray-400">En FCFA</p>
                   </div>
-                }
-              >
-                {canSeeMontants ? loadingCa ? <Skeleton className="h-[170px]" /> : <CAMensuelChart caMensuel={caMensuel} height={170} /> : <MontantsMasques height={170} label="Chiffre d'affaires masqué" />}
-              </SectionCard>
+                  <div className="flex items-center gap-4 text-[12.5px] whitespace-nowrap text-gray-600 dark:text-gray-300">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-[3px] rounded bg-primary-500" />Facturé</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-[3px] rounded bg-amber-500" />Encaissé</span>
+                    <Link href="/dashboard/analytique" className="inline-flex items-center min-h-[44px] sm:min-h-0 text-primary-600 dark:text-primary-300 underline underline-offset-2 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded">Détails</Link>
+                  </div>
+                </div>
+                {canSeeMontants ? loadingCa ? <Skeleton className="h-[260px]" /> : <CAMensuelChart caMensuel={caMensuel} height={260} /> : <MontantsMasques height={260} label="Chiffre d'affaires masqué" />}
+              </div>
             </div>
 
-            <SectionCard title="Alertes" action={nbAlertes > 0 ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{nbAlertes}</span> : undefined}>
-              <div className="space-y-2.5 max-h-[220px] overflow-y-auto">
-                {alertes?.facturesEnRetard?.slice(0, 4).map((f: any) => (
-                  <div key={f.id} className="px-2.5 py-1.5 rounded-lg border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/10">
-                    <span className="text-[9px] font-semibold uppercase text-gray-500">Facture en retard</span>
-                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">{f.numero} — {f.client?.raisonSociale}</p>
-                  </div>
-                ))}
-                {alertes?.atExpirationProche?.slice(0, 4).map((at: any) => (
-                  <div key={at.id} className="px-2.5 py-1.5 rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/10">
-                    <span className="text-[9px] font-semibold uppercase text-gray-500">AT expire bientôt</span>
-                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">{at.numero} — {new Date(at.dateExpiration).toLocaleDateString('fr-FR')}</p>
-                  </div>
-                ))}
-                {alertes?.cautionsCourrierEnAttente?.slice(0, 4).map((c: any) => (
-                  <div key={c.id} className="px-2.5 py-1.5 rounded-lg border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/10">
-                    <span className="text-[9px] font-semibold uppercase text-gray-500">Courrier caution en attente</span>
-                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">Caution N°{c.numero}</p>
-                  </div>
-                ))}
-                {nbAlertes === 0 && <p className="text-sm text-gray-400 text-center py-6">Aucune alerte 🎉</p>}
-              </div>
-            </SectionCard>
+            <AlertsPanel alertes={alertes} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <SectionCard title={`Répartition des dossiers — ${year}`}>
               <RepartitionDossiersChart items={repartition} height={160} />
             </SectionCard>

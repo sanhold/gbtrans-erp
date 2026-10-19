@@ -27,7 +27,7 @@ export default function CAMensuelChart({ caMensuel, height = 190 }: CAMensuelCha
     labels: MOIS_LABELS,
     series: [
       { label: 'Facturé', color: '#345c80', data: MOIS_LABELS.map((_, i) => caMensuel.find(m => m.mois === i + 1)?.ca || 0) },
-      { label: 'Encaissé', color: '#00b884', data: MOIS_LABELS.map((_, i) => caMensuel.find(m => m.mois === i + 1)?.encaisse || 0) },
+      { label: 'Encaissé', color: '#e8821e', data: MOIS_LABELS.map((_, i) => caMensuel.find(m => m.mois === i + 1)?.encaisse || 0) },
     ],
   };
 

@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
-import { parametresApi } from '@/lib/api';
-import { cachedGet, TTL } from '@/lib/cache';
+import { parametresApi, dashboardApi } from '@/lib/api';
+import { cachedGet, useCachedFetch, TTL } from '@/lib/cache';
 
 const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/dashboard', name: 'Accueil' },
@@ -78,6 +78,12 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const [darkMode, setDarkMode] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [query, setQuery] = useState('');
+  const [now, setNow] = useState('');
+  const { data: alertesRes } = useCachedFetch('dashboard:alertes', () => dashboardApi.alertes(), TTL.normal);
+  const al = alertesRes?.data?.data;
+  const nbAlertes = (al?.facturesEnRetard?.length || 0) + (al?.atExpirationProche?.length || 0) + (al?.cautionsCourrierEnAttente?.length || 0);
+  const iconBtn = 'w-11 h-11 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70';
   const [identite, setIdentite] = useState<{ raisonSociale?: string; logo?: string | null } | null>(null);
 
   useEffect(() => {
@@ -85,6 +91,25 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
       .then((r) => setIdentite(r.data.data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const fmt = () => {
+      const d = new Date();
+      const jour = d.toLocaleDateString('fr-FR', { weekday: 'short' });
+      const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const heure = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      setNow(`${jour.charAt(0).toUpperCase()}${jour.slice(1)} ${date} · ${heure}`);
+    };
+    fmt();
+    const t = setInterval(fmt, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    router.push(q ? `/dossiers?search=${encodeURIComponent(q)}` : '/dossiers');
+  };
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -100,41 +125,65 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
   const initials = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`.toUpperCase() || 'U';
 
   return (
-    <header className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 h-[46px] bg-primary-600 text-white sticky top-0 z-30 flex-shrink-0">
+    <header className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 h-14 bg-primary-600 dark:bg-primary-700 text-white sticky top-0 z-30 flex-shrink-0">
       <button
         onClick={onToggleSidebar}
         title="Menu"
-        className="lg:hidden w-9 h-9 flex-shrink-0 rounded-sm flex items-center justify-center hover:bg-white/10 transition-colors"
+        aria-label="Ouvrir le menu"
+        className="lg:hidden w-11 h-11 flex-shrink-0 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
       >
         <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
 
-      <div className="flex items-center gap-2.5 min-w-0">
-        <img src={identite?.logo || '/brand/logo-icon.png'} alt="Logo" className="h-7 max-w-[84px] object-contain rounded bg-white/10 flex-shrink-0" />
-        <span className="font-display font-extrabold text-[16px] leading-none truncate">{identite?.raisonSociale || user?.societe?.raisonSociale || 'GBTrans'}</span>
-        <span className="hidden lg:inline text-[12px] text-white/60 truncate">· GBTrans ERP</span>
+      <div className="flex items-center gap-2.5 min-w-0 lg:w-[210px] flex-shrink-0">
+        <img src={identite?.logo || '/brand/logo-icon.png'} alt="Logo" className="h-9 w-9 p-0.5 object-contain rounded-lg bg-white flex-shrink-0" />
+        <span className="hidden sm:block min-w-0 leading-tight">
+          <span className="block font-display font-extrabold text-[15px] truncate">{identite?.raisonSociale || user?.societe?.raisonSociale || 'GBTrans'}</span>
+          <span className="block text-[11px] text-white/65 truncate">Gestion Bureau de Transit</span>
+        </span>
       </div>
 
-      <div className="ml-auto flex items-center gap-4 text-[12px]">
-        <button onClick={toggleDarkMode} title="Mode sombre" className="hidden sm:inline hover:underline">
-          {darkMode ? 'Mode clair' : 'Mode sombre'}
+      <form onSubmit={handleSearch} role="search" className="flex-1 min-w-0 max-w-xl relative">
+        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Rechercher un dossier"
+          placeholder="Rechercher un dossier, client, facture…"
+          className="w-full h-10 rounded-lg bg-white/10 border border-white/10 pl-9 pr-3 text-[13px] text-white placeholder:text-white/55 focus:outline-none focus:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/60"
+        />
+      </form>
+
+      <div className="ml-auto flex items-center gap-1 sm:gap-2 text-[12px]">
+        <span className="hidden xl:inline text-[12.5px] text-white/85 whitespace-nowrap mr-2" suppressHydrationWarning>{now}</span>
+        <button onClick={toggleDarkMode} title="Mode sombre" aria-label={darkMode ? 'Activer le mode clair' : 'Activer le mode sombre'} className={iconBtn}>
+          {darkMode ? (
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+          ) : (
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+          )}
         </button>
-        <span className="hidden sm:inline text-white/40">|</span>
-        <button title="Aide" className="hover:underline">Aide</button>
-        <span className="text-white/40">|</span>
-        <button title="Notifications" className="relative hover:underline">
-          Notifications
-          <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-amber-500" />
+        <button title="Aide" aria-label="Aide" onClick={() => router.push('/mon-compte')} className={`${iconBtn} hidden sm:flex`}>
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 17h.01" /></svg>
+        </button>
+        <button title="Notifications" aria-label={`Notifications${nbAlertes ? `, ${nbAlertes} alertes` : ''}`} onClick={() => router.push('/dashboard')} className={`${iconBtn} relative`}>
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" /></svg>
+          {nbAlertes > 0 && (
+            <span className="absolute top-1 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">{nbAlertes > 99 ? '99+' : nbAlertes}</span>
+          )}
         </button>
 
         <div className="relative">
           <button
             onClick={() => setShowProfile((v) => !v)}
-            className="flex items-center gap-2 pl-3 border-l border-white/25 hover:text-white/90"
+            aria-label="Menu du profil"
+            aria-expanded={showProfile}
+            className="flex items-center gap-2 pl-2 sm:pl-3 sm:ml-1 min-h-[44px] sm:border-l border-white/25 hover:text-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 rounded-md"
           >
-            <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center font-bold text-[11px]">{initials}</span>
+            <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center font-bold text-[11px]">{initials}</span>
             <span className="hidden md:block text-left leading-tight">
               <span className="block text-[12px] font-semibold">{user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}</span>
               <span className="block text-[10.5px] text-white/65">{user?.profil?.nom || 'Administrateur'}</span>

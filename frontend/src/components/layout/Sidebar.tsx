@@ -102,14 +102,6 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
-  const [now, setNow] = useState('');
-
-  useEffect(() => {
-    const fmt = () => setNow(new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''));
-    fmt();
-    const t = setInterval(fmt, 30000);
-    return () => clearInterval(t);
-  }, []);
 
   const isItemActive = (href: string) => {
     if (pathname === href) return true;
@@ -129,7 +121,18 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
     router.push('/auth/login');
   };
 
-  const initials = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`.toUpperCase() || 'U';
+  const linkCls = (active: boolean) => clsx(
+    'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+    active
+      ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-white font-semibold'
+      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
+  );
+  const titleCls = 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500';
+  const Icon = ({ d, active }: { d: string; active: boolean }) => (
+    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600 dark:text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
 
   return (
     <>
@@ -137,30 +140,27 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
         <div
           className="fixed inset-0 bg-black/40 z-40 lg:hidden animate-fade-in"
           onClick={onClose}
+          aria-hidden="true"
         />
       )}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-[232px] xl:w-[240px] flex-shrink-0 bg-[#ececec] dark:bg-surface-800 border-r border-gray-300 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
+          'fixed inset-y-0 left-0 z-50 w-[250px] xl:w-[260px] flex-shrink-0 bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
-          'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-[46px] lg:h-[calc(100vh-46px)]',
+          'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-14 lg:h-[calc(100vh-56px)]',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Fermeture (mobile) */}
-        <div className="lg:hidden flex items-center justify-between px-4 h-[46px] bg-primary-600 text-white flex-shrink-0">
+        <div className="lg:hidden flex items-center justify-between px-4 h-14 bg-primary-600 text-white flex-shrink-0">
           <span className="font-display font-extrabold text-[17px]">GBTrans</span>
-          <button onClick={onClose} className="w-9 h-9 rounded-sm hover:bg-white/10 flex items-center justify-center" title="Fermer le menu">
+          <button onClick={onClose} aria-label="Fermer le menu" className="w-11 h-11 rounded-md hover:bg-white/10 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" title="Fermer le menu">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        <div className="px-4 pt-3 pb-3 text-center text-[12px] text-gray-600 dark:text-gray-300">
-          Date : {now}
-        </div>
-
       {/* Navigation */}
-      <nav className="flex-1">
+      <nav aria-label="Navigation principale" className="flex-1 pb-2">
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((item) => {
             if (item.activite === 'TRANSIT' && user?.societe?.activiteTransit === false) return false;
@@ -171,10 +171,8 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
           if (visibleItems.length === 0) return null;
 
           return (
-          <div key={group.title} className="mt-1.5">
-            <div className="bg-primary-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-[7px]">
-              {group.title}
-            </div>
+          <div key={group.title}>
+            <div className={titleCls}>{group.title}</div>
             {visibleItems.map((item) => {
               const isActive = isItemActive(item.href);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
@@ -184,17 +182,13 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
-                  className={clsx(
-                    'flex items-center gap-2.5 px-5 py-[9px] text-[12.5px] border-b border-gray-200 dark:border-surface-700 transition-colors',
-                    isActive
-                      ? 'bg-white dark:bg-surface-900 text-primary-600 dark:text-white font-bold border-l-[3px] border-l-amber-500 pl-[17px]'
-                      : 'bg-[#f7f7f7] dark:bg-surface-800 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-surface-700 hover:text-primary-600'
-                  )}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={linkCls(isActive)}
                 >
-                  <span className={clsx('w-[7px] h-[7px] rounded-full border-2 flex-shrink-0', isActive ? 'border-amber-500 bg-amber-500' : 'border-gray-500')} />
+                  <Icon d={item.icon} active={isActive} />
                   <span className="truncate">{item.name}</span>
                   {!!badge && (
-                    <span className="ml-auto bg-primary-600 text-white text-[10.5px] font-bold px-1.5 py-0.5 rounded-sm">
+                    <span className="ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full">
                       {badge}
                     </span>
                   )}
@@ -207,29 +201,21 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto pt-2 border-t border-gray-300 dark:border-surface-700">
+      <div className="mt-auto pb-3 border-t border-gray-200 dark:border-surface-700">
         {hasPermission('PARAMETRES:LIRE') && (
           <>
-            <div className="bg-primary-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-[7px]">Configuration</div>
-            <Link
-              href="/parametres"
-              onClick={onClose}
-              className={clsx(
-                'flex items-center gap-2.5 px-5 py-[9px] text-[12.5px] border-b border-gray-200 dark:border-surface-700 transition-colors',
-                isItemActive('/parametres')
-                  ? 'bg-white dark:bg-surface-900 text-primary-600 dark:text-white font-bold border-l-[3px] border-l-amber-500 pl-[17px]'
-                  : 'bg-[#f7f7f7] dark:bg-surface-800 hover:bg-white dark:hover:bg-surface-700 hover:text-primary-600'
-              )}
-            >
-              <span className="w-[7px] h-[7px] rounded-full border-2 border-gray-500 flex-shrink-0" />
+            <div className={titleCls}>Configuration</div>
+            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} className={linkCls(isItemActive('/parametres'))}>
+              <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" active={isItemActive('/parametres')} />
               Paramètres
             </Link>
           </>
         )}
         <button
           onClick={handleLogout}
-          className="w-full text-left px-5 py-[9px] text-[12.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+          className="flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
         >
+          <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
           Déconnexion
         </button>
       </div>

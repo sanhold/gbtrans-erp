@@ -32,6 +32,12 @@ export default function DossiersPage() {
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
 
+  // Recherche globale du header : /dossiers?search=...
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('search');
+    if (q) { setSearch(q); setAppliedSearch(q); }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     const params: any = { page, limit, sortBy: 'dateCreation', sortOrder };
