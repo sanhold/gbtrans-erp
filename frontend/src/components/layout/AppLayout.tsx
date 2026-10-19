@@ -44,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const authorized = !requiredModule || hasPermission(`${requiredModule}:LIRE`);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-surface-900">
+    <div className="min-h-screen flex flex-col bg-canvas dark:bg-surface-900">
       <TableEnhancer />
       <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
       <div className="flex-1 flex min-h-0">

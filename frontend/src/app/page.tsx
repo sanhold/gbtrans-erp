@@ -42,7 +42,7 @@ export default function HomePage() {
   const faqs = contenu?.faq?.length ? contenu.faq : FAQS_DEFAUT;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-surface-900">
+    <div className="min-h-screen bg-canvas dark:bg-surface-900">
       <MarketingNav />
       <main>
         <Hero

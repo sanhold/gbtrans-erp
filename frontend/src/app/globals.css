@@ -23,7 +23,7 @@
   }
 
   body {
-    @apply bg-white text-gray-800 dark:bg-surface-900 dark:text-surface-50 font-sans antialiased;
+    @apply bg-canvas text-gray-800 dark:bg-surface-900 dark:text-surface-50 font-sans antialiased;
     font-feature-settings: 'tnum' 1, 'cv05' 1;
   }
 
