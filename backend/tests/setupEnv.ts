@@ -27,3 +27,7 @@ if (!cibleAutorisee) {
 if (databaseUrl.includes('supabase')) {
   throw new Error('Garde-fou sécurité tests : DATABASE_URL contient "supabase" — exécution bloquée.');
 }
+
+// Les suites enchaînent beaucoup de connexions/inscriptions : on relève le plafond anti-force-brute
+// (20 en production). tests/rateLimit.test.ts vérifie le plafond réel.
+process.env.AUTH_RATE_LIMIT_MAX = process.env.AUTH_RATE_LIMIT_MAX || '10000';
