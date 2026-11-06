@@ -259,7 +259,10 @@ async function main() {
   }
 
   // Utilisateurs de test (un par profil, mot de passe commun pour faciliter les tests)
-  const hashedPassword = await bcrypt.hash('Admin@2024!', 12);
+  if (process.env.NODE_ENV === 'production' && !process.env.SEED_PASSWORD) {
+    throw new Error('SEED_PASSWORD est requis pour exécuter le seed en production.');
+  }
+  const hashedPassword = await bcrypt.hash(process.env.SEED_PASSWORD || 'Admin@2024!', 12);
   await prisma.utilisateur.upsert({
     where: { email: 'admin@gbtrans.ci' },
     update: {},

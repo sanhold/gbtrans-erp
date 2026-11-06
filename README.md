@@ -83,7 +83,7 @@ cd frontend && npm run dev     # http://localhost:3000
 ### 5. Connexion
 
 - Email : `admin@gbtrans.ci`
-- Mot de passe : `Admin@2024!`
+- Mot de passe : `Admin@2024!` (**développement local uniquement** ; en production, définir `SEED_PASSWORD` avant le seed et changer ce mot de passe)
 
 ## Scripts utiles
 
@@ -128,7 +128,7 @@ Côté frontend : `frontend/.env.local` → `NEXT_PUBLIC_API_URL=http://localhos
   npx prisma migrate deploy
   ```
 - Sur Windows, **arrêtez le serveur backend avant `npx prisma generate`** : le moteur Prisma (`query_engine-windows.dll.node`) reste verrouillé tant que `tsx watch` tourne, et la régénération échoue avec `EPERM`.
-- `prisma/migrations/` est exclu du dépôt par `.gitignore` — à vérifier/adapter selon vos besoins d'équipe (généralement les migrations devraient être versionnées).
+- `prisma/migrations/` est versionné dans le dépôt (ne pas l'ignorer).
 
 ## Conventions métier notables
 

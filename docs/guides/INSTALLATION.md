@@ -67,7 +67,7 @@ npm run dev
 
 ### 7. Connexion initiale
 - Email : `admin@gbtrans.ci`
-- Mot de passe : `Admin@2024!`
+- Mot de passe : `Admin@2024!` (**développement local uniquement** ; en production, définir `SEED_PASSWORD` avant le seed et changer ce mot de passe)
 
 ## Installation avec Docker
 
