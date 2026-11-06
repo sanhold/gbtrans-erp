@@ -25,6 +25,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
   const [comptes, setComptes] = useState<any[]>([]);
   const [journaux, setJournaux] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erreurChargement, setErreurChargement] = useState(false);
 
   const [showExerciceModal, setShowExerciceModal] = useState(false);
   const [exerciceForm, setExerciceForm] = useState(emptyExerciceForm);
@@ -43,12 +44,18 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
     }).catch(() => {});
   };
 
-  useEffect(() => {
+  const chargerReferentiels = () => {
     setLoading(true);
+    setErreurChargement(false);
     Promise.all([comptabiliteApi.comptes(), comptabiliteApi.journaux()])
       .then(([cRes, jRes]) => { setComptes(cRes.data.data || []); setJournaux(jRes.data.data || []); })
+      .catch(() => setErreurChargement(true))
       .finally(() => setLoading(false));
     loadExercices();
+  };
+
+  useEffect(() => {
+    chargerReferentiels();
   }, []);
 
   const handleCreerExercice = async (e: React.FormEvent) => {
@@ -66,6 +73,16 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
   };
 
   if (loading) return <AppLayout><div className="flex items-center justify-center h-96"><div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" /></div></AppLayout>;
+
+  if (erreurChargement) return (
+    <AppLayout>
+      <div className="flex flex-col items-center justify-center h-96 gap-3 text-center px-4">
+        <p className="text-base font-medium text-gray-900 dark:text-white">Impossible de charger la comptabilité</p>
+        <p className="text-sm text-gray-500">Le serveur ne répond pas pour le moment. Vérifiez votre connexion puis réessayez.</p>
+        <button onClick={chargerReferentiels} className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700">Réessayer</button>
+      </div>
+    </AppLayout>
+  );
 
   return (
     <AppLayout>
