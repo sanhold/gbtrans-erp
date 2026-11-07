@@ -66,6 +66,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return data;
     } catch (error: any) {
       set({ isLoading: false });
+      // Pas de réponse du serveur (réseau coupé, serveur endormi, API mal configurée) :
+      // ne pas faire croire à un mauvais mot de passe.
+      if (!error.response) {
+        throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez dans un instant.');
+      }
       throw new Error(
         error.response?.data?.message || 'Identifiants incorrects'
       );
