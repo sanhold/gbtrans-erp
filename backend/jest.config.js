@@ -4,6 +4,8 @@ module.exports = {
   testEnvironment: 'node',
   rootDir: '.',
   testMatch: ['<rootDir>/tests/**/*.test.ts'],
+  // Les tests unitaires purs (tests/unit) ont leur propre config : npm run test:unit
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/tests/unit/'],
   // Charge backend/.env.test et vérifie le garde-fou anti-production AVANT tout import
   // de code source par chaque fichier de test.
   setupFiles: ['<rootDir>/tests/setupEnv.ts'],

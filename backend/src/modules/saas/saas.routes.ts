@@ -92,7 +92,9 @@ router.post('/inscription', async (req: Request, res: Response) => {
       const { profilAdmin } = await creerProfilsDefautPourSociete(tx, societe.id);
       const utilisateur = await tx.utilisateur.create({
         data: {
-          societeId: societe.id, matricule: 'ADM001', nom, prenom, email, telephone,
+          // Le matricule est unique sur toute la base : un matricule fixe ('ADM001') faisait echouer
+          // toute inscription apres la premiere. Le code societe est unique, donc ce matricule aussi.
+          societeId: societe.id, matricule: `ADM-${code}`.slice(0, 50), nom, prenom, email, telephone,
           motDePasse: motDePasseHash, profilId: profilAdmin.id,
         },
       });
