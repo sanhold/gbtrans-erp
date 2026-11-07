@@ -36,9 +36,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Plafond partage entre login, 2FA, login plateforme et inscription (20 par defaut).
+// AUTH_RATE_LIMIT_MAX permet de le relever dans la suite de tests uniquement.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10) || 20,
   message: { success: false, message: 'Trop de tentatives. Réessayez dans 15 minutes.' },
 });
 app.use('/api/v1/auth/login', authLimiter);
