@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [code2FA, setCode2FA] = useState('');
   const [tempToken, setTempToken] = useState('');
+  const [erreur, setErreur] = useState('');
+  const [verification, setVerification] = useState(false);
 
   const comptesTest = [
     { label: 'Administrateur', email: 'admin@gbtrans.ci', color: 'bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300' },
@@ -30,6 +32,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErreur('');
     try {
       const result = await login(email, motDePasse);
       if (result.requiresTwoFactor) {
@@ -41,12 +44,14 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (error: any) {
-      toast.error(error.message);
+      setErreur(error.message || 'Connexion impossible. Vérifiez vos identifiants.');
     }
   };
 
   const handle2FA = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErreur('');
+    setVerification(true);
     try {
       const { authApi } = await import('@/lib/api');
       const response = await authApi.verify2FA(email, code2FA, tempToken);
@@ -58,7 +63,8 @@ export default function LoginPage() {
       toast.success('Connexion réussie');
       router.push('/dashboard');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Code invalide');
+      setErreur(error.response?.data?.message || 'Code invalide');
+      setVerification(false);
     }
   };
 
@@ -85,22 +91,19 @@ export default function LoginPage() {
           <p className="text-white/60 max-w-md">
             Solution professionnelle de gestion de transit, douane et logistique internationale
           </p>
-          <div className="mt-12 flex gap-6 justify-center text-white/70 text-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">Multi</div>
-              <div>Sociétés</div>
-            </div>
-            <div className="w-px bg-white/30" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">OHADA</div>
-              <div>Conforme</div>
-            </div>
-            <div className="w-px bg-white/30" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">100%</div>
-              <div>Sécurisé</div>
-            </div>
-          </div>
+          <ul className="mt-10 space-y-3 text-left max-w-sm mx-auto text-white/80 text-sm">
+            {[
+              'Dossiers de transit, AT et cautions suivis étape par étape',
+              'Proformas, factures et paiements au même endroit',
+              'Comptabilité conforme OHADA, générée automatiquement',
+              'Transport : véhicules, chauffeurs et courses',
+            ].map((t) => (
+              <li key={t} className="flex gap-3">
+                <svg className="w-5 h-5 flex-shrink-0 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
@@ -112,7 +115,7 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">GBTRANS ERP</h1>
           </div>
 
-          <div className="bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-8">
+          <div className="bg-white dark:bg-surface-800 rounded-xl border border-gray-200 dark:border-surface-700 shadow-card p-6 sm:p-8">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {show2FA ? 'Vérification 2FA' : 'Connexion'}
@@ -124,12 +127,22 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {erreur && (
+              <div role="alert" className="mb-5 flex gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>{erreur}</span>
+              </div>
+            )}
+
             {!show2FA ? (
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label className="label">Email</label>
+                  <label htmlFor="email" className="label">Adresse e-mail</label>
                   <input
+                    id="email"
                     type="email"
+                    autoComplete="username"
+                    autoFocus
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="input-field"
@@ -139,9 +152,11 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="label">Mot de passe</label>
+                  <label htmlFor="motdepasse" className="label">Mot de passe</label>
                   <div className="relative">
                     <input
+                      id="motdepasse"
+                      autoComplete="current-password"
                       type={showPassword ? 'text' : 'password'}
                       value={motDePasse}
                       onChange={(e) => setMotDePasse(e.target.value)}
@@ -152,7 +167,8 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 rounded-md text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         {showPassword ? (
@@ -165,20 +181,14 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Se souvenir</span>
-                  </label>
-                  <a href="#" className="text-sm text-primary-500 hover:text-primary-600">
-                    Mot de passe oublié ?
-                  </a>
-                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Mot de passe oublié ? Contactez l&apos;administrateur de votre société pour le réinitialiser.
+                </p>
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="btn-primary w-full py-2.5 disabled:opacity-50"
+                  className="btn-primary w-full py-2.5"
                 >
                   {isLoading ? (
                     <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -193,9 +203,12 @@ export default function LoginPage() {
             ) : (
               <form onSubmit={handle2FA} className="space-y-5">
                 <div>
-                  <label className="label">Code de vérification</label>
+                  <label htmlFor="code2fa" className="label">Code de vérification</label>
                   <input
+                    id="code2fa"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     value={code2FA}
                     onChange={(e) => setCode2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="input-field text-center text-2xl tracking-[0.5em] font-mono"
@@ -206,14 +219,14 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <button type="submit" className="btn-primary w-full py-2.5">
-                  Vérifier
+                <button type="submit" disabled={verification} className="btn-primary w-full py-2.5">
+                  {verification ? 'Vérification…' : 'Vérifier'}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setShow2FA(false)}
-                  className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+                  onClick={() => { setShow2FA(false); setErreur(''); }}
+                  className="btn-ghost w-full"
                 >
                   Retour à la connexion
                 </button>

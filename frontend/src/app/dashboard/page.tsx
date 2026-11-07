@@ -14,6 +14,8 @@ import PeriodSwitch from '@/components/dashboard/PeriodSwitch';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import { formatMontantAbrege } from '@/components/dashboard/format';
 import MontantsMasques from '@/components/ui/MontantsMasques';
+import PageHeader from '@/components/ui/PageHeader';
+import ErrorState from '@/components/ui/ErrorState';
 
 const MONTANT_MASQUE = '•••••••';
 
@@ -83,7 +85,7 @@ export default function DashboardHomePage() {
   const montant = (m: number) => (canSeeMontants ? formatMontantAbrege(m) : { value: MONTANT_MASQUE, unit: undefined });
   // Affichage immédiat du cache puis rafraîchissement ; les 4 requêtes partent en parallèle
   // et "stats" est partagé avec les pastilles du menu latéral (une seule requête réseau).
-  const { data: statsRes, loading: loadingStats } = useCachedFetch(`dashboard:stats:${year}`, () => dashboardApi.stats(year), TTL.normal);
+  const { data: statsRes, loading: loadingStats, error: erreurStats, reload: recharger } = useCachedFetch(`dashboard:stats:${year}`, () => dashboardApi.stats(year), TTL.normal);
   const { data: caRes, loading: loadingCa } = useCachedFetch(`dashboard:ca:${year}`, () => dashboardApi.caMensuel(year), TTL.normal);
   const { data: topRes } = useCachedFetch(`dashboard:top:${year}`, () => dashboardApi.topClients(5, year), TTL.normal);
   const { data: alertesRes } = useCachedFetch('dashboard:alertes', () => dashboardApi.alertes(), TTL.normal);
@@ -110,14 +112,15 @@ export default function DashboardHomePage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
-        <div>
-          <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Tableau de bord</h1>
-          <p className="text-[14px] text-gray-500 dark:text-gray-400">Vue d&apos;ensemble de l&apos;activité du bureau de transit</p>
-        </div>
-        <PeriodSwitch years={[currentYear - 1, currentYear]} value={year} onChange={setYear} />
-      </div>
-      {loading ? (
+      <PageHeader
+        titre="Tableau de bord"
+        sousTitre="Vue d'ensemble de l'activité du bureau de transit"
+        actions={<PeriodSwitch years={[currentYear - 1, currentYear]} value={year} onChange={setYear} />}
+      />
+      {!loading && !stats && erreurStats ? (
+        <div className="card"><ErrorState titre="Impossible de charger le tableau de bord" onRetry={recharger} /></div>
+      ) : null}
+      {!loading && !stats && erreurStats ? null : loading ? (
         <div>
           <SkeletonCards count={4} className="mb-4" />
           <SkeletonCards count={4} className="mb-4" />
