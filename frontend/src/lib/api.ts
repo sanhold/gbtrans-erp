@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { getTenantSlug } from './tenant';
 import { invalidateCache, cachedGet, TTL } from './cache';
 
@@ -31,7 +32,27 @@ api.interceptors.response.use(
     if (method !== 'get' && method !== 'head') invalidateCache();
     return response;
   },
-  (error) => {
+  async (error) => {
+    // Serveur injoignable ou en train de se reveiller (hebergement gratuit qui s'endort) :
+    // une lecture (GET) est rejouee une fois apres quelques secondes, avec un message clair.
+    const config = error.config;
+    const statut = error.response?.status;
+    const serveurIndisponible = !error.response || statut === 502 || statut === 503 || statut === 504;
+    if (config && serveurIndisponible && (config.method || 'get').toLowerCase() === 'get' && !config.__dejaRejoue) {
+      config.__dejaRejoue = true;
+      if (typeof window !== 'undefined') {
+        toast.loading('Le serveur met du temps à répondre, nouvelle tentative…', { id: 'serveur-lent' });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      try {
+        const reponse = await api.request(config);
+        if (typeof window !== 'undefined') toast.dismiss('serveur-lent');
+        return reponse;
+      } catch (e) {
+        if (typeof window !== 'undefined') toast.dismiss('serveur-lent');
+        return Promise.reject(e);
+      }
+    }
     if (error.response?.status === 401) {
       const isLoginRequest = error.config?.url?.includes('/auth/login');
       const isProfileRequest = error.config?.url?.includes('/auth/profile');
