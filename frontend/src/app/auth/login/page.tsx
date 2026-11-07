@@ -17,6 +17,10 @@ export default function LoginPage() {
   const [erreur, setErreur] = useState('');
   const [verification, setVerification] = useState(false);
 
+  // Comptes de test : uniquement hors production (ou si explicitement activé).
+  const afficherComptesTest =
+    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_TEST_ACCOUNTS === 'true';
+
   const comptesTest = [
     { label: 'Administrateur', email: 'admin@gbtrans.ci', color: 'bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300' },
     { label: 'Transitaire', email: 'transitaire@gbtrans.ci', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' },
@@ -234,7 +238,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          {!show2FA && (
+          {!show2FA && afficherComptesTest && (
             <div className="mt-6 bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-5">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
                 Comptes de test
