@@ -28,6 +28,8 @@ export default function AdminSocieteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [mdpTest, setMdpTest] = useState('');
+  const [resultatTest, setResultatTest] = useState<{ prets: { email: string; profil: string }[]; ignores: { email: string; raison: string }[] } | null>(null);
 
   useEffect(() => { setIsSuperAdmin(!!platformAuth.getAdmin()?.superAdmin); }, []);
 
@@ -57,6 +59,20 @@ export default function AdminSocieteDetailPage() {
       toast.success('Essai prolongé de 7 jours');
       load();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
+    finally { setBusy(false); }
+  };
+
+  const creerComptesTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setResultatTest(null);
+    try {
+      const r = await platformApi.creerComptesTest(params.id as string, mdpTest);
+      setResultatTest(r.data.data);
+      setMdpTest('');
+      toast.success(r.data.message || 'Comptes de test prêts');
+      load();
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
     finally { setBusy(false); }
   };
 
@@ -135,6 +151,36 @@ export default function AdminSocieteDetailPage() {
             )}
           </div>
         </div>
+
+        {isSuperAdmin && (
+          <form onSubmit={creerComptesTest} className="card space-y-3">
+            <div>
+              <h3 className="font-bold text-gray-900 dark:text-white">Comptes de test</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Crée ou met à jour 5 comptes (Administrateur, Transitaire, Comptable, Commercial, Consultation @gbtrans.ci) dans cette société,
+                avec le mot de passe choisi. Le compte Administrateur a tous les droits : réservez cette action à une société de test.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="password"
+                value={mdpTest}
+                onChange={(e) => setMdpTest(e.target.value)}
+                className="input-field sm:max-w-xs"
+                placeholder="Mot de passe (8 caractères minimum)"
+                autoComplete="new-password"
+                aria-label="Mot de passe des comptes de test"
+              />
+              <button type="submit" disabled={busy || mdpTest.length < 8} className="btn-primary">Créer les comptes de test</button>
+            </div>
+            {resultatTest && (
+              <ul className="text-sm space-y-1" aria-live="polite">
+                {resultatTest.prets.map((c) => <li key={c.email} className="text-green-700 dark:text-green-400">✓ {c.email} ({c.profil})</li>)}
+                {resultatTest.ignores.map((c) => <li key={c.email} className="text-amber-700 dark:text-amber-400">! {c.email} ignoré : {c.raison}</li>)}
+              </ul>
+            )}
+          </form>
+        )}
 
         <div className="card">
           <h3 className="font-bold text-gray-900 dark:text-white mb-3">Utilisateurs ({societe.utilisateurs?.length || 0})</h3>
