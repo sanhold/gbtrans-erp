@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../config/database';
 import { creerComptesTest } from '../../utils/comptesTest';
+import { AuthService } from '../auth/auth.service';
 import { config } from '../../config';
 import { ApiResponse } from '../../utils/apiResponse';
 import { invaliderSociete } from '../../utils/cacheMemoire';
@@ -152,6 +153,28 @@ router.post('/societes/:id/comptes-test', authenticatePlatform, requireSuperAdmi
     const resultat = await creerComptesTest(prisma, societe, motDePasse);
     await tracerActivite(req, 'COMPTES_TEST_CREES', 'Societe', societe.id, { prets: resultat.prets.map(c => c.email), ignores: resultat.ignores });
     ApiResponse.success(res, resultat, `${resultat.prets.length} compte(s) de test prêt(s)`);
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+/**
+ * « Se connecter en tant que » : le super-admin ouvre une session applicative pour un utilisateur d'une
+ * société, sans connaître son mot de passe (support, tests). Action tracée dans le journal d'audit.
+ */
+router.post('/societes/:id/utilisateurs/:userId/connexion', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
+  try {
+    const utilisateur = await prisma.utilisateur.findFirst({
+      where: { id: req.params.userId, societeId: req.params.id },
+      select: { id: true, email: true, actif: true },
+    });
+    if (!utilisateur) { ApiResponse.notFound(res, 'Utilisateur introuvable dans cette société'); return; }
+    if (!utilisateur.actif) { ApiResponse.badRequest(res, 'Ce compte est désactivé'); return; }
+    const session = await new AuthService().ouvrirSessionPour(
+      utilisateur.id,
+      req.ip,
+      `[super-admin ${req.platformAdminEmail || 'inconnu'}] ${req.headers['user-agent'] || ''}`.slice(0, 250)
+    );
+    await tracerActivite(req, 'CONNEXION_EN_TANT_QUE', 'Utilisateur', utilisateur.id, { email: utilisateur.email, societeId: req.params.id });
+    ApiResponse.success(res, session, `Session ouverte pour ${utilisateur.email}`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

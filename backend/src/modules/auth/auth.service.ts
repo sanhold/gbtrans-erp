@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import { config } from '../../config';
@@ -270,6 +271,25 @@ export class AuthService {
     };
   }
 
+  /**
+   * Ouvre une session pour un utilisateur sans mot de passe : réservé à la route super-admin
+   * « Se connecter en tant que » (support / tests). La double authentification de l'utilisateur
+   * n'est volontairement pas demandée : l'appelant est déjà authentifié comme super-admin plateforme.
+   */
+  async ouvrirSessionPour(utilisateurId: string, ip?: string, userAgent?: string) {
+    const utilisateur = await prisma.utilisateur.findUnique({
+      where: { id: utilisateurId },
+      relationLoadStrategy: 'join', include: {
+        profil: { include: { permissions: { include: { permission: true } } } },
+        societe: { select: { id: true, raisonSociale: true, code: true, activiteTransit: true, activiteTransport: true } },
+      },
+    });
+    if (!utilisateur) throw new Error('Utilisateur introuvable');
+    if (!utilisateur.actif) throw new Error('Ce compte est désactivé');
+    await prisma.utilisateur.update({ where: { id: utilisateur.id }, data: { derniereConnexion: new Date() } });
+    return this.createSession(utilisateur, ip, userAgent);
+  }
+
   private async createSession(
     utilisateur: any,
     ip?: string,
@@ -280,6 +300,9 @@ export class AuthService {
         id: utilisateur.id,
         societeId: utilisateur.societeId,
         email: utilisateur.email,
+        // Identifiant unique de jeton : sans lui, deux connexions du même utilisateur dans la même
+        // seconde donnent un jeton identique et la 2e échoue (token unique en base).
+        jti: randomUUID(),
       },
       config.jwt.secret,
       { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] }
