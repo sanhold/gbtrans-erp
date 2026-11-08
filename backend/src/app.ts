@@ -19,8 +19,18 @@ app.set('trust proxy', 1);
 
 // Sécurité
 app.use(helmet());
+// Prévisualisations Vercel de l'équipe (environnement de test) : gbtrans-<branche ou hash>-sanhold-projects.vercel.app.
+// Le domaine de production n'a pas ce motif ; il reste géré par CORS_ORIGIN.
+const ORIGINE_PREVISUALISATION = /^https:\/\/gbtrans-[a-z0-9-]+-sanhold-projects\.vercel\.app$/;
+
 app.use(cors({
-  origin: config.cors.origin,
+  origin: (origin, callback) => {
+    if (!origin || config.cors.origin.includes(origin) || ORIGINE_PREVISUALISATION.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Slug'],

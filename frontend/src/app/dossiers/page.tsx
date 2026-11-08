@@ -1,6 +1,9 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -30,6 +33,9 @@ export default function DossiersPage() {
   const [dateFin, setDateFin] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState(false);
+  const [filtresOuverts, setFiltresOuverts] = useState(false);
+  const [rechargement, setRechargement] = useState(0);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
 
   // Recherche globale du header : /dossiers?search=...
@@ -40,6 +46,7 @@ export default function DossiersPage() {
 
   useEffect(() => {
     setLoading(true);
+    setErreur(false);
     const params: any = { page, limit, sortBy: 'dateCreation', sortOrder };
     if (appliedSearch) params.search = appliedSearch;
     if (filterNature) params.nature = filterNature;
@@ -54,9 +61,14 @@ export default function DossiersPage() {
         setDossiers(response.data.data);
         setTotal(response.data.pagination.total);
       })
-      .catch(() => setDossiers([]))
+      .catch(() => { setDossiers([]); setErreur(true); })
       .finally(() => setLoading(false));
-  }, [page, limit, filterNature, filterStatut, appliedSearch, sortOrder, dateDebut, dateFin]);
+  }, [page, limit, filterNature, filterStatut, appliedSearch, sortOrder, dateDebut, dateFin, rechargement]);
+
+  const filtresActifs = [filterNature, filterStatut, dateDebut, dateFin, appliedSearch].filter(Boolean).length;
+  const reinitialiserFiltres = () => {
+    setSearch(''); setAppliedSearch(''); setFilterNature(''); setFilterStatut(''); setDateDebut(''); setDateFin(''); setPage(1);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,66 +81,76 @@ export default function DossiersPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* En-tête + Filtres */}
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Dossiers</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">{total} au total</p>
-            </div>
+      <div className="space-y-4">
+        <PageHeader
+          titre="Dossiers"
+          sousTitre={`${total} dossier${total > 1 ? 's' : ''} au total`}
+          actions={
+            <>
+              <Link href="/dossiers/historique" className="btn-secondary">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Historique
+              </Link>
+              <Link href="/dossiers/nouveau" className="btn-primary">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Nouveau dossier
+              </Link>
+            </>
+          }
+        />
+
+        {/* Filtres : recherche toujours visible ; les autres filtres se replient sur téléphone */}
+        <form onSubmit={handleSearch} className="card !p-3 space-y-3" role="search" aria-label="Rechercher un dossier">
+          <div className="flex gap-2">
             <input
-              type="text"
+              type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input-field !py-1.5 text-xs w-36 flex-shrink-0"
-              placeholder="N°, BL, client..."
+              className="input-field flex-1 min-w-0"
+              placeholder="N°, BL, client…"
+              aria-label="Rechercher"
             />
-            <select
-              value={filterNature}
-              onChange={(e) => { setFilterNature(e.target.value); setPage(1); }}
-              className="input-field !py-1.5 text-xs w-24 flex-shrink-0"
+            <button type="submit" className="btn-primary flex-shrink-0" aria-label="Rechercher">
+              <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" /></svg>
+              <span className="hidden sm:inline">Rechercher</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltresOuverts((v) => !v)}
+              aria-expanded={filtresOuverts}
+              className="btn-secondary flex-shrink-0 md:hidden"
             >
+              Filtres{filtresActifs > 0 ? ` (${filtresActifs})` : ''}
+            </button>
+          </div>
+          <div className={`${filtresOuverts ? 'grid' : 'hidden'} md:grid grid-cols-2 md:grid-cols-5 gap-2`}>
+            <select value={filterNature} onChange={(e) => { setFilterNature(e.target.value); setPage(1); }} className="input-field" aria-label="Nature">
               <option value="">Nature</option>
               {Object.entries(natureLabels).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
               ))}
             </select>
-            <select
-              value={filterStatut}
-              onChange={(e) => { setFilterStatut(e.target.value); setPage(1); }}
-              className="input-field !py-1.5 text-xs w-24 flex-shrink-0"
-            >
+            <select value={filterStatut} onChange={(e) => { setFilterStatut(e.target.value); setPage(1); }} className="input-field" aria-label="Statut">
               <option value="">Statut</option>
               {STATUTS_DOSSIER.map((k) => (
                 <option key={k} value={k}>{statutLabels[k]}</option>
               ))}
             </select>
-            <input type="date" value={dateDebut} onChange={(e) => { setDateDebut(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Période : du" />
-            <input type="date" value={dateFin} onChange={(e) => { setDateFin(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Période : au" />
-            <select
-              value={sortOrder}
-              onChange={(e) => { setSortOrder(e.target.value as 'desc' | 'asc'); setPage(1); }}
-              className="input-field !py-1.5 text-xs w-28 flex-shrink-0"
-            >
-              <option value="desc">Récent</option>
-              <option value="asc">Ancien</option>
+            <input type="date" value={dateDebut} onChange={(e) => { setDateDebut(e.target.value); setPage(1); }} className="input-field" aria-label="Période : du" title="Période : du" />
+            <input type="date" value={dateFin} onChange={(e) => { setDateFin(e.target.value); setPage(1); }} className="input-field" aria-label="Période : au" title="Période : au" />
+            <select value={sortOrder} onChange={(e) => { setSortOrder(e.target.value as 'desc' | 'asc'); setPage(1); }} className="input-field" aria-label="Tri">
+              <option value="desc">Récents</option>
+              <option value="asc">Anciens</option>
             </select>
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Rechercher</button>
-            <Link href="/dossiers/historique" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Historique
-            </Link>
-            <Link href="/dossiers/nouveau" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Nouveau Dossier
-            </Link>
-          </form>
-        </div>
+          </div>
+          {filtresActifs > 0 && (
+            <button type="button" onClick={reinitialiserFiltres} className="btn-ghost btn-sm">Effacer les filtres</button>
+          )}
+        </form>
 
         {/* Tableau */}
         <div className="table-container">
@@ -169,16 +191,34 @@ export default function DossiersPage() {
             <tbody>
               {loading ? (
                 <SkeletonRows cols={13} />
+              ) : erreur ? (
+                <tr>
+                  <td colSpan={13}>
+                    <ErrorState titre="Impossible de charger les dossiers" onRetry={() => setRechargement((n) => n + 1)} />
+                  </td>
+                </tr>
               ) : dossiers.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="text-center py-12 text-gray-500">
-                    Aucun dossier trouvé
+                  <td colSpan={13}>
+                    {filtresActifs > 0 ? (
+                      <EmptyState
+                        titre="Aucun dossier ne correspond"
+                        description="Essayez d'élargir votre recherche ou d'effacer les filtres."
+                        action={<button type="button" onClick={reinitialiserFiltres} className="btn-secondary">Effacer les filtres</button>}
+                      />
+                    ) : (
+                      <EmptyState
+                        titre="Aucun dossier pour le moment"
+                        description="Créez votre premier dossier pour commencer le suivi d'une opération."
+                        action={<Link href="/dossiers/nouveau" className="btn-primary">Nouveau dossier</Link>}
+                      />
+                    )}
                   </td>
                 </tr>
               ) : (
                 dossiers.map((d) => (
                   <tr key={d.id} className="table-row">
-                    <td className="table-cell !px-1" data-label="Actions">
+                    <td className="table-cell !px-1 row-actions" data-label="Actions">
                       <div className="flex gap-1">
                         <Link
                           href={`/dossiers/${d.id}`}
@@ -202,7 +242,7 @@ export default function DossiersPage() {
                         )}
                       </div>
                     </td>
-                    <td className="table-cell font-medium text-primary-600 !px-2 !text-[11px] truncate" data-label="N° Dossier" title={d.numeroPhysique || d.numero}>
+                    <td className="table-cell cell-title font-medium text-primary-600 !px-2 !text-[11px] truncate" data-label="N° Dossier" title={d.numeroPhysique || d.numero}>
                       <Link href={`/dossiers/${d.id}`} className="hover:underline block truncate">
                         {d.numeroPhysique || d.numero}
                       </Link>
@@ -211,18 +251,18 @@ export default function DossiersPage() {
                     <td className="table-cell !px-2" data-label="Nature">
                       <span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{natureLabels[d.nature] || d.nature}</span>
                     </td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate" data-label="BL" title={d.numeroBL || undefined}>{d.numeroBL || '-'}</td>
-                    <td className="table-cell !px-2 !text-[11px] truncate" data-label="Navire" title={d.navire || undefined}>{d.navire || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate" data-label="Déclaration" title={d.numeroDeclaration || undefined}>{d.numeroDeclaration || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate col-opt" data-label="BL" title={d.numeroBL || undefined}>{d.numeroBL || '-'}</td>
+                    <td className="table-cell !px-2 !text-[11px] truncate col-opt" data-label="Navire" title={d.navire || undefined}>{d.navire || '-'}</td>
+                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate col-opt" data-label="Déclaration" title={d.numeroDeclaration || undefined}>{d.numeroDeclaration || '-'}</td>
                     <td className="table-cell text-right font-mono !px-2 !text-[10.5px] truncate" data-label="Valeur CAF">
                       {d.valeurCAF
                         ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(d.valeurCAF))
                         : '-'}
                     </td>
-                    <td className="table-cell text-center !px-1" data-label="Proformas">
+                    <td className="table-cell text-center !px-1 col-opt" data-label="Proformas">
                       <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">{d._count?.proformas ?? 0}</span>
                     </td>
-                    <td className="table-cell text-center !px-1" data-label="Factures">
+                    <td className="table-cell text-center !px-1 col-opt" data-label="Factures">
                       <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">{d._count?.factures ?? 0}</span>
                     </td>
                     <td className="table-cell !px-2" data-label="Statut">
@@ -230,7 +270,7 @@ export default function DossiersPage() {
                         {statutLabels[d.statut] || d.statut}
                       </span>
                     </td>
-                    <td className="table-cell !px-2" data-label="Suivi">
+                    <td className="table-cell !px-2 col-opt" data-label="Suivi">
                       {(() => {
                         const totalEtapes = d.processus?._count?.etapes ?? 0;
                         const validees = d._count?.etapesDossier ?? 0;
@@ -246,7 +286,7 @@ export default function DossiersPage() {
                         );
                       })()}
                     </td>
-                    <td className="table-cell !text-[10.5px] !px-2 truncate" data-label="Date">
+                    <td className="table-cell cell-normal !text-[10.5px] !px-2 truncate" data-label="Date">
                       {new Date(d.dateCreation).toLocaleDateString('fr-FR')}
                     </td>
                   </tr>
