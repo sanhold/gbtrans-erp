@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
+import DossierActions from '@/components/dossiers/DossierActions';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -254,7 +255,6 @@ export default function DossiersPage() {
             {(() => {
               const d = selection;
               const p = progression(d);
-              const ferme = STATUTS_DOSSIER_FERME.includes(d.statut);
               const champs: [string, React.ReactNode][] = [
                 ['Client', d.client?.raisonSociale],
                 ['Nature', natureLabels[d.nature] || d.nature],
@@ -290,10 +290,8 @@ export default function DossiersPage() {
                       </div>
                     ))}
                   </dl>
-                  <div className="flex flex-wrap gap-2 mt-7">
-                    <Link href={`/dossiers/${d.id}`} className="btn-primary">Fiche complète</Link>
-                    <Link href={`/dossiers/suivi/${d.id}`} className="btn-secondary">Suivi des étapes</Link>
-                    {!ferme && <Link href={`/dossiers/${d.id}/edit`} className="btn-secondary">Modifier</Link>}
+                  <div className="mt-7 pt-5 border-t border-gray-100 dark:border-surface-700">
+                    <DossierActions dossier={d} onChange={() => setRechargement((n) => n + 1)} onDeleted={() => { setPanneauOuvert(false); setSelectedId(null); setRechargement((n) => n + 1); }} />
                   </div>
                 </div>
               );
