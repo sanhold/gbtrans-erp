@@ -92,7 +92,7 @@ export default function DossiersPage() {
 
   // Dossier affiché dans le panneau de détail (ordinateur)
   const selection = dossiers.find((d) => d.id === selectedId) || null;
-  const GRILLE = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3';
+  const GRILLE = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3';
 
   const progression = (d: any) => {
     const total = d.processus?._count?.etapes ?? 0;
@@ -109,19 +109,19 @@ export default function DossiersPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <PageHeader
           titre="Dossiers"
           sousTitre={`${total} dossier${total > 1 ? 's' : ''} au total`}
           actions={
             <>
-              <Link href="/dossiers/historique" className="btn-secondary">
+              <Link href="/dossiers/historique" className="btn-secondary" aria-label="Historique" title="Historique">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Historique
+                <span className="hidden sm:inline">Historique</span>
               </Link>
-              <Link href="/dossiers/nouveau" className="btn-primary">
+              <Link href="/dossiers/nouveau" className="btn-primary hidden lg:inline-flex">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -132,7 +132,7 @@ export default function DossiersPage() {
         />
 
         {/* Filtres : recherche toujours visible ; les autres filtres se replient sur téléphone */}
-        <form onSubmit={handleSearch} className="card !p-3 space-y-3" role="search" aria-label="Rechercher un dossier">
+        <form onSubmit={handleSearch} className="card !p-2 sm:!p-3 space-y-2 sm:space-y-3" role="search" aria-label="Rechercher un dossier">
           <div className="flex gap-2">
             <input
               type="search"
@@ -220,19 +220,19 @@ export default function DossiersPage() {
                         type="button"
                         onClick={() => ouvrir(d)}
                         aria-current={actif ? 'true' : undefined}
-                        className={`w-full h-full text-left p-4 min-h-[104px] flex flex-col gap-2 rounded-2xl border bg-white dark:bg-surface-800 shadow-sm transition-all hover:shadow-md hover:-translate-y-px active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${actif ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200 dark:border-surface-700'}`}
+                        className={`relative w-full h-full text-left px-3 py-2.5 sm:p-4 flex flex-col gap-0.5 sm:gap-2 overflow-hidden rounded-xl sm:rounded-2xl border bg-white dark:bg-surface-800 shadow-sm transition-all hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${actif ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200 dark:border-surface-700'}`}
                       >
-                        <span className="flex items-center justify-between gap-3">
-                          <span className="font-mono font-semibold text-[15px] text-primary-600 dark:text-primary-300 truncate">{d.numeroPhysique || d.numero}</span>
-                          <span className={`badge ${statutColors[d.statut] || 'badge-gray'} flex-shrink-0`}>{statutLabels[d.statut] || d.statut}</span>
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-mono font-semibold text-[14px] sm:text-[15px] text-primary-600 dark:text-primary-300 truncate">{d.numeroPhysique || d.numero}</span>
+                          <span className={`badge ${statutColors[d.statut] || 'badge-gray'} flex-shrink-0 !text-[10px] sm:!text-[11px] !px-2 !py-0.5`}>{statutLabels[d.statut] || d.statut}</span>
                         </span>
-                        <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{d.client?.raisonSociale || '—'}</span>
+                        <span className="flex items-center justify-between gap-2 text-[13px] sm:text-sm">
+                          <span className="text-gray-800 dark:text-gray-100 truncate">{d.client?.raisonSociale || '—'}</span>
+                          {p && <span className="text-[11px] text-gray-500 whitespace-nowrap flex-shrink-0" title={`${p.validees}/${p.total} étapes validées`}>{p.validees}/{p.total}</span>}
+                        </span>
                         {p && (
-                          <span className="flex items-center gap-2" title={`${p.validees}/${p.total} étapes validées`}>
-                            <span className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden">
-                              <span className={`block h-full rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} />
-                            </span>
-                            <span className="text-[11px] text-gray-500 whitespace-nowrap">{p.validees}/{p.total} étapes</span>
+                          <span className="absolute inset-x-0 bottom-0 h-[3px] sm:static sm:h-1.5 sm:mt-1 sm:rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden" aria-hidden="true">
+                            <span className={`block h-full sm:rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} />
                           </span>
                         )}
                       </button>

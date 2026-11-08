@@ -66,7 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex min-h-0">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={collapsed} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <nav aria-label="Fil d'Ariane" className="flex items-center gap-2 px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-surface-700 text-[11.5px] text-primary-600 dark:text-primary-300">
+        <nav aria-label="Fil d'Ariane" className="hidden lg:flex items-center gap-2 px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-surface-700 text-[11.5px] text-primary-600 dark:text-primary-300">
           <button onClick={() => router.push('/dashboard')} className="hover:underline" title="Accueil">⌂</button>
           <span className="text-gray-400">›</span>
           <span>{getModuleName(pathname)}</span>

@@ -148,9 +148,9 @@ export default function Header({ onToggleSidebar = () => {}, onToggleCollapse, c
       </div>
 
       <button type="button" onClick={ouvrirPalette} aria-label="Rechercher (Ctrl K)" title="Rechercher (Ctrl K)"
-        className="flex-1 min-w-0 max-w-xl h-10 rounded-lg bg-white/10 border border-white/10 px-3 flex items-center gap-2 text-left text-[13px] text-white/60 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+        className="flex-none w-11 sm:flex-1 sm:w-auto min-w-0 max-w-xl h-10 rounded-lg bg-white/10 border border-white/10 px-0 sm:px-3 flex items-center justify-center sm:justify-start gap-2 text-left text-[13px] text-white/60 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
         <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-        <span className="truncate flex-1">Rechercher un dossier, client, page…</span>
+        <span className="hidden sm:block truncate flex-1">Rechercher un dossier, client, page…</span>
         <kbd className="hidden md:inline text-[11px] text-white/70 bg-white/15 rounded px-1.5 py-0.5">Ctrl K</kbd>
       </button>
 
