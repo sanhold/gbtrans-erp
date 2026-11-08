@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { reveillerServeur } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [tempToken, setTempToken] = useState('');
   const [erreur, setErreur] = useState('');
   const [verification, setVerification] = useState(false);
+  const [lent, setLent] = useState(false);
 
   // Comptes de test : visibles hors production, sur les prévisualisations Vercel (environnement de test),
   // si NEXT_PUBLIC_SHOW_TEST_ACCOUNTS=true, ou en ouvrant la page avec ?comptes-test. Jamais affichés
@@ -27,6 +29,9 @@ export default function LoginPage() {
   const [compteEnAttente, setCompteEnAttente] = useState<string | null>(null);
   const [saisieMdpTest, setSaisieMdpTest] = useState('');
   const CLE_MDP_TEST = 'gbtrans_test_pwd';
+
+  // Réveille le serveur dès l'ouverture de la page (il s'endort après inactivité).
+  useEffect(() => { reveillerServeur(); }, []);
 
   useEffect(() => {
     try {
@@ -51,6 +56,8 @@ export default function LoginPage() {
 
   const connecter = async (emailSaisi: string, mdpSaisi: string) => {
     setErreur('');
+    // Après 6 s sans réponse, on explique l'attente au lieu de laisser croire à un blocage.
+    const minuteur = setTimeout(() => setLent(true), 6000);
     try {
       const result = await login(emailSaisi, mdpSaisi);
       if (result.requiresTwoFactor) {
@@ -63,6 +70,9 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       setErreur(error.message || 'Connexion impossible. Vérifiez vos identifiants.');
+    } finally {
+      clearTimeout(minuteur);
+      setLent(false);
     }
   };
 
@@ -255,6 +265,11 @@ export default function LoginPage() {
                     'Se connecter'
                   )}
                 </button>
+                {lent && isLoading && (
+                  <p role="status" className="text-xs text-center text-gray-500 dark:text-gray-400">
+                    Le serveur se réveille, cela peut prendre jusqu'à une minute. Merci de patienter…
+                  </p>
+                )}
               </form>
             ) : (
               <form onSubmit={handle2FA} className="space-y-5">

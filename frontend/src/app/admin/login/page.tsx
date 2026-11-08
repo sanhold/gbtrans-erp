@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { platformAuth } from '@/lib/platformApi';
+import { reveillerServeur } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -11,11 +12,16 @@ export default function AdminLoginPage() {
   const [afficher, setAfficher] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState('');
+  const [lent, setLent] = useState(false);
+
+  // Réveille le serveur dès l'ouverture de la page (il s'endort après inactivité).
+  useEffect(() => { reveillerServeur(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErreur('');
+    const minuteur = setTimeout(() => setLent(true), 6000);
     try {
       const res = await platformAuth.login(email, motDePasse);
       const { token, admin } = res.data.data;
@@ -29,6 +35,8 @@ export default function AdminLoginPage() {
           : err.response?.data?.message || 'Identifiants incorrects'
       );
     } finally {
+      clearTimeout(minuteur);
+      setLent(false);
       setLoading(false);
     }
   };
@@ -77,6 +85,11 @@ export default function AdminLoginPage() {
           <button type="submit" disabled={loading} className="btn-primary w-full !py-2.5">
             {loading ? 'Connexion…' : 'Se connecter'}
           </button>
+          {lent && loading && (
+            <p role="status" className="text-xs text-center text-gray-500 dark:text-gray-400">
+              Le serveur se réveille, cela peut prendre jusqu&apos;à une minute. Merci de patienter…
+            </p>
+          )}
         </form>
 
         <p className="text-center text-xs text-white/40 mt-6">GBTrans ERP · Administration de la plateforme</p>
