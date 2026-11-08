@@ -87,6 +87,7 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
     const societeId = req.user!.societeId;
     const existing = await prisma.dotation.findFirst({ where: { id: req.params.id, societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
+    if (existing.statut === 'SOLDEE') { ApiResponse.badRequest(res, 'Cette dotation est soldée : elle ne peut plus être modifiée'); return; }
 
     const { montant, motif, agentId } = req.body;
     const montantNum = Number(montant);
@@ -116,6 +117,7 @@ router.patch('/:id/annuler', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MO
   try {
     const existing = await prisma.dotation.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
+    if (existing.statut === 'SOLDEE') { ApiResponse.badRequest(res, 'Cette dotation est soldée : elle ne peut plus être annulée'); return; }
     const dotation = await prisma.dotation.update({ where: { id: req.params.id }, data: { statut: 'ANNULEE' } });
     ApiResponse.success(res, dotation, 'Dotation annulée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

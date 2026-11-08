@@ -70,3 +70,20 @@ export async function debiterCompte(tx: TxClient, compte: CompteADebiter, montan
   if (compte.compteTiersId) return debiterCompteTiers(tx, compte.compteTiersId, montant);
   throw new Error('Aucun compte à débiter spécifié');
 }
+
+/**
+ * Crédite, de façon atomique, une caisse ou un compte bancaire (retour de fonds, reliquat de dotation...).
+ */
+export async function crediterCompte(tx: TxClient, compte: { caisseId?: string | null; compteBancaireId?: string | null }, montant: number): Promise<void> {
+  if (compte.caisseId) {
+    const r = await tx.caisse.updateMany({ where: { id: compte.caisseId }, data: { solde: { increment: montant } } });
+    if (r.count !== 1) throw new Error('Caisse introuvable');
+    return;
+  }
+  if (compte.compteBancaireId) {
+    const r = await tx.compteBancaire.updateMany({ where: { id: compte.compteBancaireId }, data: { solde: { increment: montant } } });
+    if (r.count !== 1) throw new Error('Compte bancaire introuvable');
+    return;
+  }
+  throw new Error('Aucun compte à créditer spécifié');
+}

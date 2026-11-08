@@ -1,198 +1,99 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import PickerField from '@/components/ui/PickerField';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 import { financeApi } from '@/lib/api';
-import { fmt, mergedComptes, parseCompteValue, MODE_PAIEMENT_LABELS, useComptesFinanciers } from '@/lib/financeHelpers';
-import { ouvrirPiece } from '@/lib/pieceJointe';
+import { fmt } from '@/lib/financeHelpers';
 
-const STATUT_LABEL: Record<string, string> = { EN_ATTENTE: 'En attente', VALIDE: 'Validé', REJETE: 'Rejeté' };
-const STATUT_BADGE: Record<string, string> = { EN_ATTENTE: 'badge-warning', VALIDE: 'badge-success', REJETE: 'badge-danger' };
-// Modes acceptés par la validation (un justificatif correspond à un décaissement réel).
-const MODES = ['ESPECES', 'CHEQUE', 'VIREMENT', 'MOBILE_MONEY', 'ORANGE_MONEY', 'MTN_MONEY', 'WAVE', 'MOOV_MONEY'];
+const VUES = [
+  { id: 'A_VALIDER', label: 'À valider' },
+  { id: 'OUVERTES', label: 'Dotations ouvertes' },
+  { id: 'SOLDEES', label: 'Soldées' },
+];
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR');
 
-export default function JustificatifsDotationPage() {
-  const { caisses, comptes } = useComptesFinanciers();
-  const [statut, setStatut] = useState('EN_ATTENTE');
-  const [items, setItems] = useState<any[]>([]);
+/** File d'attente de la trésorerie : une carte par dotation, qu'on ouvre pour cocher et valider les dépenses. */
+export default function DotationsAValiderPage() {
+  const [vue, setVue] = useState('A_VALIDER');
+  const [dotations, setDotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aValider, setAValider] = useState<any | null>(null);
-  const [compte, setCompte] = useState('');
-  const [mode, setMode] = useState('ESPECES');
-  const [aRejeter, setARejeter] = useState<any | null>(null);
-  const [motif, setMotif] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [erreur, setErreur] = useState(false);
 
   const load = useCallback(() => {
-    setLoading(true);
-    financeApi.justificatifs.list({ statut })
-      .then(r => setItems(r.data.data || []))
-      .catch(() => setItems([]))
+    setLoading(true); setErreur(false);
+    financeApi.justificatifs.file(vue)
+      .then(r => setDotations(r.data.data || []))
+      .catch(() => { setDotations([]); setErreur(true); })
       .finally(() => setLoading(false));
-  }, [statut]);
+  }, [vue]);
 
   useEffect(() => { load(); }, [load]);
 
-  const compteOptions = mergedComptes(caisses, comptes).map(o => ({ id: o.value, label: o.label }));
-
-  const valider = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const c = parseCompteValue(compte);
-    if (!aValider || !c) { toast.error('Sélectionnez le compte à débiter'); return; }
-    setBusy(true);
-    try {
-      const r = await financeApi.justificatifs.valider(aValider.id, {
-        modePaiement: mode,
-        caisseId: c.type === 'CAISSE' ? c.id : undefined,
-        compteBancaireId: c.type === 'BANQUE' ? c.id : undefined,
-      });
-      toast.success(r.data.message || 'Dépense validée');
-      setAValider(null); setCompte('');
-      load();
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
-    finally { setBusy(false); }
-  };
-
-  const rejeter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aRejeter) return;
-    setBusy(true);
-    try {
-      await financeApi.justificatifs.rejeter(aRejeter.id, motif);
-      toast.success('Dépense rejetée');
-      setARejeter(null); setMotif('');
-      load();
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
-    finally { setBusy(false); }
-  };
-
-  const voirPiece = async (j: any) => {
-    try { const r = await financeApi.justificatifs.piece(j.id); ouvrirPiece(r.data.data.piece); }
-    catch (err: any) { toast.error(err.response?.data?.message || 'Pièce introuvable'); }
-  };
-
   return (
     <AppLayout>
-      <div className="space-y-4">
-        <div className="card !p-3 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Dotations à valider — file de la trésorerie</h1>
-            <p className="text-[11px] text-gray-500">Dépenses soumises par les agents sur leurs dotations. Vérifiez chaque dépense, puis validez-la en choisissant le compte de trésorerie à débiter : elle est imputée au dossier.</p>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Dotations à valider"
+          sousTitre="Ouvrez une dotation pour vérifier les dépenses saisies, cocher celles à retenir et choisir les comptes de trésorerie."
+        />
+
+        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
+          {VUES.map(v => (
+            <button key={v.id} onClick={() => setVue(v.id)}
+              className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-all ${vue === v.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 dark:text-gray-300'}`}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {[0, 1].map(i => <div key={i} className="card !p-0 animate-pulse h-40" />)}
           </div>
-          <select value={statut} onChange={e => setStatut(e.target.value)} className="input-field !py-1.5 text-xs w-44">
-            <option value="EN_ATTENTE">À valider</option>
-            <option value="VALIDE">Validés</option>
-            <option value="REJETE">Rejetés</option>
-            <option value="TOUS">Tous</option>
-          </select>
-        </div>
-
-        <div className="table-container">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="table-header">Actions</th>
-                <th className="table-header">Date</th>
-                <th className="table-header">Bénéficiaire</th>
-                <th className="table-header">Dotation</th>
-                <th className="table-header">Dossier</th>
-                <th className="table-header">Catégorie</th>
-                <th className="table-header">Désignation</th>
-                <th className="table-header text-right">Montant</th>
-                <th className="table-header">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={9} />
-              ) : items.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-gray-500">Aucune dépense {statut === 'EN_ATTENTE' ? 'à valider pour le moment' : ''}</td></tr>
-              ) : items.map(j => (
-                <tr key={j.id} className="table-row">
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex gap-3 text-xs">
-                      {j.aPiece && <button type="button" onClick={() => voirPiece(j)} className="text-primary-600 hover:underline">Pièce</button>}
-                      {j.statut === 'EN_ATTENTE' && (
-                        <>
-                          <button type="button" onClick={() => { setAValider(j); setCompte(''); setMode('ESPECES'); }} className="text-green-700 font-semibold hover:underline">Valider</button>
-                          <button type="button" onClick={() => { setARejeter(j); setMotif(''); }} className="text-red-600 hover:underline">Rejeter</button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  <td className="table-cell" data-label="Date">{fmtDate(j.dateJustificatif)}</td>
-                  <td className="table-cell" data-label="Bénéficiaire">{j.auteur?.nom} {j.auteur?.prenom}</td>
-                  <td className="table-cell font-mono" data-label="Dotation">{j.dotation?.numero}</td>
-                  <td className="table-cell font-mono" data-label="Dossier">{j.dossier ? (j.dossier.numeroPhysique || j.dossier.numero) : '-'}</td>
-                  <td className="table-cell" data-label="Catégorie">{j.categorie}</td>
-                  <td className="table-cell !whitespace-normal" data-label="Désignation">{j.designation}</td>
-                  <td className="table-cell text-right font-mono" data-label="Montant">{fmt(j.montant)}</td>
-                  <td className="table-cell" data-label="Statut">
-                    <span className={`badge ${STATUT_BADGE[j.statut]}`}>{STATUT_LABEL[j.statut]}</span>
-                    {j.statut === 'REJETE' && j.motifRejet && <div className="text-[11px] text-red-600 mt-1 !whitespace-normal">{j.motifRejet}</div>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {aValider && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setAValider(null)}>
-          <form onSubmit={valider} className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-md border border-gray-300 dark:border-surface-700" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 bg-primary-600 text-white font-bold">Valider la dépense</div>
-            <div className="p-4 space-y-3 text-sm">
-              <div className="p-3 bg-gray-50 dark:bg-surface-700 rounded-sm">
-                <div className="font-semibold">{aValider.designation}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {aValider.auteur?.nom} {aValider.auteur?.prenom} — {aValider.dotation?.numero}
-                  {aValider.dossier ? ` — dossier ${aValider.dossier.numeroPhysique || aValider.dossier.numero}` : ''}
+        ) : erreur ? (
+          <div className="card"><ErrorState titre="Impossible de charger les dotations" onRetry={load} /></div>
+        ) : dotations.length === 0 ? (
+          <div className="card">
+            <EmptyState
+              titre={vue === 'A_VALIDER' ? 'Aucune dotation à valider' : vue === 'SOLDEES' ? 'Aucune dotation soldée' : 'Aucune dotation ouverte'}
+              description={vue === 'A_VALIDER' ? 'Les dotations apparaissent ici dès qu\'un agent soumet son état de dépenses.' : undefined}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+            {dotations.map(d => (
+              <div key={d.id} className="card !p-0 overflow-hidden">
+                <div className="flex items-center justify-between flex-wrap gap-3 px-4 py-3 bg-primary-600 text-white">
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{d.numero} <span className="font-normal text-white/70">— {fmtDate(d.dateDotation)}</span></div>
+                    <div className="text-xs text-white/75 truncate">{d.agent ? `${d.agent.prenom} ${d.agent.nom}` : ''}{d.motif ? ` · ${d.motif}` : ''}</div>
+                  </div>
+                  <Link href={`/finance/justificatifs/${d.id}`} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-primary-700 shadow-sm hover:bg-primary-50">
+                    {d.statut === 'SOLDEE' ? 'Consulter' : 'Ouvrir et valider'} →
+                  </Link>
                 </div>
-                <div className="font-mono font-bold mt-1">{fmt(aValider.montant)} F</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-200 dark:bg-surface-700 text-center">
+                  {[
+                    { l: 'Montant dotation', v: d.montant, c: '' },
+                    { l: 'Dépensé (validé)', v: d.montantUtilise, c: 'text-green-600' },
+                    { l: `Soumis (${d.nbEnAttente})`, v: d.montantEnAttente, c: 'text-amber-600' },
+                    { l: d.statut === 'SOLDEE' ? 'Reliquat retourné' : 'Reste', v: d.montantRestant, c: 'text-primary-600 dark:text-primary-300' },
+                  ].map(k => (
+                    <div key={k.l} className="bg-white dark:bg-surface-800 py-2.5">
+                      <div className="text-[10px] uppercase text-gray-500">{k.l}</div>
+                      <div className={`font-bold font-mono ${k.c}`}>{fmt(k.v)} F</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <p className="text-xs text-gray-500">La dépense sera enregistrée, rattachée à la dotation{aValider.dossier ? ' et au dossier' : ''}, et le compte choisi sera débité de ce montant.</p>
-              <div>
-                <label className="label">Compte à débiter *</label>
-                <PickerField value={compte} onChange={setCompte} options={compteOptions} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
-              </div>
-              <div>
-                <label className="label">Mode de paiement</label>
-                <select value={mode} onChange={e => setMode(e.target.value)} className="input-field">
-                  {MODES.map(m => <option key={m} value={m}>{MODE_PAIEMENT_LABELS[m] || m}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="px-4 pb-4 flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setAValider(null)}>Annuler</button>
-              <button type="submit" className="btn-success" disabled={busy}>{busy ? 'Validation...' : 'Valider et enregistrer la dépense'}</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {aRejeter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setARejeter(null)}>
-          <form onSubmit={rejeter} className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-md border border-gray-300 dark:border-surface-700" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 bg-primary-600 text-white font-bold">Rejeter la dépense</div>
-            <div className="p-4 space-y-3 text-sm">
-              <p className="text-gray-600 dark:text-gray-300">« {aRejeter.designation} » — {fmt(aRejeter.montant)} F</p>
-              <div>
-                <label className="label">Motif du rejet *</label>
-                <textarea value={motif} onChange={e => setMotif(e.target.value)} rows={3} className="input-field" placeholder="Ex : pièce illisible, montant différent du reçu..." required />
-              </div>
-            </div>
-            <div className="px-4 pb-4 flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setARejeter(null)}>Annuler</button>
-              <button type="submit" className="btn-danger" disabled={busy}>{busy ? 'Rejet...' : 'Rejeter'}</button>
-            </div>
-          </form>
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </AppLayout>
   );
 }
