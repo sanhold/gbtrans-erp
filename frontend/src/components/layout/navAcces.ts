@@ -6,8 +6,8 @@ type Utilisateur = { societe?: { activiteTransit?: boolean; activiteTransport?: 
 export function peutAcceder(href: string, user: Utilisateur, hasPermission: (p: string) => boolean, activite?: 'TRANSIT' | 'TRANSPORT'): boolean {
   if (activite === 'TRANSIT' && user?.societe?.activiteTransit === false) return false;
   if (activite === 'TRANSPORT' && user?.societe?.activiteTransport !== true) return false;
-  const module = getRequiredModule(href);
-  return !module || hasPermission(`${module}:LIRE`);
+  const moduleRequis = getRequiredModule(href);
+  return !moduleRequis || hasPermission(`${moduleRequis}:LIRE`);
 }
 
 export function peutCreer(module: string, hasPermission: (p: string) => boolean): boolean {
