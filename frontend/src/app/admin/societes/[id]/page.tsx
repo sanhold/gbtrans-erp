@@ -29,6 +29,7 @@ export default function AdminSocieteDetailPage() {
   const [busy, setBusy] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [mdpTest, setMdpTest] = useState('');
+  const [connexionEnCours, setConnexionEnCours] = useState<string | null>(null);
   const [resultatTest, setResultatTest] = useState<{ prets: { email: string; profil: string }[]; ignores: { email: string; raison: string }[] } | null>(null);
 
   useEffect(() => { setIsSuperAdmin(!!platformAuth.getAdmin()?.superAdmin); }, []);
@@ -74,6 +75,21 @@ export default function AdminSocieteDetailPage() {
       load();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
     finally { setBusy(false); }
+  };
+
+  // Ouvre une session applicative pour l'utilisateur, sans mot de passe, puis va sur son tableau de bord.
+  const seConnecterEnTantQue = async (u: any) => {
+    setConnexionEnCours(u.id);
+    try {
+      const r = await platformApi.connexionEnTantQue(params.id as string, u.id);
+      const { token, utilisateur } = r.data.data;
+      localStorage.setItem('gbtrans_token', token);
+      localStorage.setItem('gbtrans_user', JSON.stringify(utilisateur));
+      window.location.href = '/dashboard';
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Connexion impossible');
+      setConnexionEnCours(null);
+    }
   };
 
   const relancer = async () => {
@@ -195,15 +211,28 @@ export default function AdminSocieteDetailPage() {
                   <th className="table-header">Profil</th>
                   <th className="table-header">Statut</th>
                   <th className="table-header">Dernière connexion</th>
+                  {isSuperAdmin && <th className="table-header">Accès</th>}
                 </tr></thead>
                 <tbody>
                   {societe.utilisateurs.map((u: any) => (
                     <tr key={u.id} className="table-row">
-                      <td className="table-cell font-medium" data-label="Nom">{u.prenom} {u.nom}</td>
+                      <td className="table-cell cell-title font-medium" data-label="Nom">{u.prenom} {u.nom}</td>
                       <td className="table-cell text-xs" data-label="Email">{u.email}</td>
                       <td className="table-cell" data-label="Profil">{u.profil?.nom || '-'}</td>
                       <td className="table-cell" data-label="Statut"><span className={`badge ${u.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{u.actif ? 'Actif' : 'Désactivé'}</span></td>
                       <td className="table-cell text-xs" data-label="Dernière connexion">{fmtDateHeure(u.derniereConnexion)}</td>
+                      {isSuperAdmin && (
+                        <td className="table-cell row-actions" data-label="Accès">
+                          <button
+                            onClick={() => seConnecterEnTantQue(u)}
+                            disabled={!u.actif || connexionEnCours !== null}
+                            title={u.actif ? `Ouvrir l'application en tant que ${u.email}` : 'Compte désactivé'}
+                            className="btn-secondary btn-sm"
+                          >
+                            {connexionEnCours === u.id ? 'Ouverture…' : 'Se connecter en tant que'}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

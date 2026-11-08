@@ -52,6 +52,7 @@ export const platformApi = {
   societe: (id: string) => platformClient.get(`/societes/${id}`),
   majAbonnement: (societeId: string, data: { statut?: string; dateFin?: string }) => platformClient.patch(`/societes/${societeId}/abonnement`, data),
   prolongerEssai: (societeId: string, jours: number) => platformClient.post(`/societes/${societeId}/prolonger-essai`, { jours }),
+  connexionEnTantQue: (societeId: string, utilisateurId: string) => platformClient.post(`/societes/${societeId}/utilisateurs/${utilisateurId}/connexion`),
   creerComptesTest: (societeId: string, motDePasse: string) => platformClient.post(`/societes/${societeId}/comptes-test`, { motDePasse }),
   relancerSociete: (societeId: string) => platformClient.post(`/societes/${societeId}/relancer`),
   auditLog: (params?: { page?: number; limit?: number }) => platformClient.get('/audit-log', { params }),
