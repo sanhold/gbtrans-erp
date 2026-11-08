@@ -134,6 +134,17 @@ export default function FactureDetailPage() {
 
   const isBrouillon = facture?.statut === 'BROUILLON';
 
+  // Lien direct depuis la liste : /facturation/[id]?action=paiement ou ?action=avoir
+  const [actionDirecteFaite, setActionDirecteFaite] = useState(false);
+  useEffect(() => {
+    if (!facture || actionDirecteFaite) return;
+    const action = new URLSearchParams(window.location.search).get('action');
+    setActionDirecteFaite(true);
+    if (action === 'paiement' && ['VALIDEE', 'ENVOYEE', 'PARTIELLEMENT_PAYEE', 'EN_RETARD', 'CONTENTIEUX'].includes(facture.statut) && Number(facture.resteAPayer) > 0) openPaiementModal();
+    else if (action === 'avoir' && facture.type === 'FACTURE' && facture.statut !== 'BROUILLON' && facture.statut !== 'ANNULEE') setShowAvoir(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facture]);
+
   const handleAddLigne = async (prestation: any) => {
     try {
       const res = await api.post(`/factures/${factureId}/lignes`, {
