@@ -41,7 +41,7 @@ router.put('/:id', authorize('CLIENTS:MODIFIER'), async (req: AuthRequest, res: 
   try {
     const existing = await prisma.prospect.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!existing) { ApiResponse.notFound(res); return; }
-    const { societeId, ...data } = req.body;
+    const { societeId: _societeId, ...data } = req.body;
     const p = await prisma.prospect.update({ where: { id: req.params.id }, data });
     ApiResponse.success(res, p, 'Prospect modifié');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }

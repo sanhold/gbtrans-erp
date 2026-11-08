@@ -85,6 +85,8 @@ export default function AdminSocieteDetailPage() {
       const { token, utilisateur } = r.data.data;
       localStorage.setItem('gbtrans_token', token);
       localStorage.setItem('gbtrans_user', JSON.stringify(utilisateur));
+      // Rechargement complet volontaire : repart d'un etat (stores, caches) propre.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = '/dashboard';
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Connexion impossible');

@@ -254,7 +254,6 @@ export default function MonComptePage() {
               </div>
 
               <div className="flex flex-col items-center gap-2 py-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={qrCodeUrl} alt="QR code de double authentification" className="w-44 h-44 rounded-lg border border-gray-200 dark:border-surface-700" />
                 <p className="text-xs text-gray-500 text-center max-w-xs">
                   Scannez ce QR code, puis entrez le code à 6 chiffres affiché par votre application.
