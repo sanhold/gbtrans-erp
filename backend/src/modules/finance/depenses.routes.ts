@@ -79,7 +79,7 @@ router.post('/', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'), async (r
     if (dotationId) {
       const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId } });
       if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
-      if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }
+      if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée' : 'Cette dotation est annulée'); return; }
       const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId, statut: { not: 'ANNULEE' } } });
       const montantRestant = Number(dotation.montant) - Number(sum._sum.montant || 0);
       if (montantNum > montantRestant) { ApiResponse.badRequest(res, `Montant supérieur au reste disponible sur cette dotation (${montantRestant})`); return; }

@@ -124,3 +124,97 @@ describe('Dotation : saisie par l\'agent, soumission, validation par la trésore
     expect(ligne.resultat).toBe(80000);
   });
 });
+
+
+describe('Validation d\'une dotation : dépenses cochées, compte débité, reliquat retourné', () => {
+  let A: ContexteSociete;
+  let utilisateurId: string;
+  let dossierId: string;
+  let dotationId: string;
+  let caisseX: string;
+  let caisseY: string;
+  const FINB = '/api/v1/finance';
+  const ids: string[] = [];
+
+  beforeAll(async () => {
+    A = await creerContexteSociete('Société validation dotation');
+    utilisateurId = (await prisma.utilisateur.findFirstOrThrow({ where: { societeId: A.societeId } })).id;
+    const client = await creerClient(A, 'Client validation');
+    dossierId = (await creerDossier(A, client.id, 'V-01/2026')).id;
+    caisseX = (await prisma.caisse.create({ data: { societeId: A.societeId, code: 'CX', libelle: 'Caisse X', solde: 500000 } })).id;
+    caisseY = (await prisma.caisse.create({ data: { societeId: A.societeId, code: 'CY', libelle: 'Caisse Y', solde: 0 } })).id;
+    const dot = await api().post(`${FINB}/dotations`).set(authHeader(A.token)).send({ montant: 100000, motif: 'Mission', agentId: utilisateurId });
+    dotationId = dot.body.data.id;
+    // Deux dépenses saisies par l'agent puis soumises, une saisie directement par le comptable.
+    for (const [montant, designation] of [[20000, 'Péage'], [30000, 'Transport']] as const) {
+      const r = await api().post(`${FINB}/justificatifs`).set(authHeader(A.token)).send({ dotationId, dossierId, montant, designation, categorie: 'DIVERS' });
+      expect(r.status).toBe(201);
+    }
+    expect((await api().post(`${FINB}/justificatifs/soumettre`).set(authHeader(A.token)).send({ dotationId })).status).toBe(200);
+    const c = await api().post(`${FINB}/justificatifs/comptable`).set(authHeader(A.token)).send({ dotationId, dossierId, montant: 10000, designation: 'Frais divers', categorie: 'DIVERS' });
+    expect(c.status).toBe(201);
+    expect(c.body.data.statut).toBe('EN_ATTENTE');
+  });
+
+  afterAll(async () => { await prisma.$disconnect(); });
+
+  it('affiche la dotation dans la file avec ses dépenses en attente', async () => {
+    const file = await api().get(`${FINB}/justificatifs/file`).set(authHeader(A.token));
+    expect(file.status).toBe(200);
+    const ligne = file.body.data.find((d: any) => d.id === dotationId);
+    expect(ligne.nbEnAttente).toBe(3);
+    expect(ligne.montantEnAttente).toBe(60000);
+    const detail = await api().get(`${FINB}/justificatifs/dotation/${dotationId}`).set(authHeader(A.token));
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.dotation.montant).toBe(100000);
+    expect(detail.body.data.justificatifs).toHaveLength(3);
+    for (const j of detail.body.data.justificatifs) ids.push(j.id);
+  });
+
+  const valider = (corps: object) => api().post(`${FINB}/justificatifs/valider-dotation`).set(authHeader(A.token)).send({ dotationId, modePaiement: 'ESPECES', ...corps });
+
+  it('exige le compte de retour quand il reste un reliquat', async () => {
+    const res = await valider({ justificatifIds: ids.slice(0, 2), caisseId: caisseX });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/reliquat|retourn/i);
+  });
+
+  it('refuse une dépense inconnue', async () => {
+    const res = await valider({ justificatifIds: ['00000000-0000-0000-0000-000000000000'], caisseId: caisseX, retour: { caisseId: caisseY } });
+    expect(res.status).toBe(400);
+  });
+
+  it('valide les dépenses cochées, rejette les autres, débite le compte et retourne le reliquat', async () => {
+    const detail = await api().get(`${FINB}/justificatifs/dotation/${dotationId}`).set(authHeader(A.token));
+    const par = (d: string) => detail.body.data.justificatifs.find((j: any) => j.designation === d).id;
+    const res = await valider({ justificatifIds: [par('Péage'), par('Transport')], caisseId: caisseX, retour: { caisseId: caisseY } });
+    expect(res.status).toBe(200);
+    expect(res.body.data.retenues).toBe(2);
+    expect(res.body.data.rejetees).toBe(1);
+    expect(res.body.data.reliquat).toBe(50000);
+    // Caisse X débitée de toute la dotation (50 000 de dépenses + 50 000 remis), Y créditée du reliquat.
+    expect(Number((await prisma.caisse.findUniqueOrThrow({ where: { id: caisseX } })).solde)).toBe(400000);
+    expect(Number((await prisma.caisse.findUniqueOrThrow({ where: { id: caisseY } })).solde)).toBe(50000);
+    const depenses = await prisma.depense.findMany({ where: { dotationId } });
+    expect(depenses).toHaveLength(2);
+    expect(depenses.every((d) => d.dossierId === dossierId)).toBe(true);
+    const rejetee = await prisma.justificatifDotation.findFirstOrThrow({ where: { dotationId, designation: 'Frais divers' } });
+    expect(rejetee.statut).toBe('REJETE');
+    expect((await prisma.dotation.findUniqueOrThrow({ where: { id: dotationId } })).statut).toBe('SOLDEE');
+  });
+
+  it('refuse une seconde validation et toute nouvelle dépense sur la dotation soldée', async () => {
+    expect((await valider({ justificatifIds: [], caisseId: caisseX, retour: { caisseId: caisseY } })).status).toBe(400);
+    const ajout = await api().post(`${FINB}/justificatifs/comptable`).set(authHeader(A.token)).send({ dotationId, dossierId, montant: 1000, designation: 'Trop tard', categorie: 'DIVERS' });
+    expect(ajout.status).toBe(400);
+    const modif = await api().patch(`${FINB}/dotations/${dotationId}/annuler`).set(authHeader(A.token));
+    expect(modif.status).toBe(400);
+  });
+
+  it('range la dotation dans la vue « soldées »', async () => {
+    const file = await api().get(`${FINB}/justificatifs/file?vue=SOLDEES`).set(authHeader(A.token));
+    expect(file.body.data.some((d: any) => d.id === dotationId)).toBe(true);
+    const aValider = await api().get(`${FINB}/justificatifs/file`).set(authHeader(A.token));
+    expect(aValider.body.data.some((d: any) => d.id === dotationId)).toBe(false);
+  });
+});

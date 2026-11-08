@@ -113,10 +113,10 @@ export default function MesDotationsPage() {
                 {d.motif && <div className="text-xs text-white/75">{d.motif}</div>}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => ouvrir(d)} disabled={Number(d.montantRestant) <= 0} className="btn-secondary !py-1 disabled:opacity-50" title={Number(d.montantRestant) <= 0 ? 'Dotation entièrement justifiée' : undefined}>
+                {d.statut === 'SOLDEE' ? <span className="badge badge-success">Soldée</span> : <button type="button" onClick={() => ouvrir(d)} disabled={Number(d.montantRestant) <= 0} className="btn-secondary !py-1 disabled:opacity-50" title={Number(d.montantRestant) <= 0 ? 'Dotation entièrement justifiée' : undefined}>
                   + Ajouter une dépense
-                </button>
-                {d.nbBrouillon > 0 && (
+                </button>}
+                {d.statut !== 'SOLDEE' && d.nbBrouillon > 0 && (
                   <button type="button" onClick={() => soumettre(d)} disabled={soumission === d.id} className="inline-flex items-center gap-1.5 rounded-lg bg-[#e8832a] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:bg-[#d4731f] disabled:opacity-60">
                     {soumission === d.id ? 'Envoi...' : `Soumettre à la trésorerie (${d.nbBrouillon})`}
                   </button>

@@ -284,7 +284,7 @@ export default function DotationPage() {
                   <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : 'Annulée'}</span></td>
+                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' || d.statut === 'SOLDEE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : d.statut === 'SOLDEE' ? 'Soldée' : 'Annulée'}</span></td>
                 </tr>
               ))}
             </tbody>
