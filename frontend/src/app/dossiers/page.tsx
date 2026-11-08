@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import DossierActions from '@/components/dossiers/DossierActions';
+import DataTable, { Colonne } from '@/components/tables/DataTable';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -89,6 +90,32 @@ export default function DossiersPage() {
     window.addEventListener('keydown', fermer);
     return () => window.removeEventListener('keydown', fermer);
   }, [panneauOuvert]);
+
+  const montant = (v: any) => (v ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(v)) : '');
+
+  // Colonnes du tableau (ordinateur)
+  const colonnes: Colonne<any>[] = [
+    { cle: 'numero', libelle: 'N° dossier', mono: true, texte: (d) => d.numeroPhysique || d.numero, rendu: (d) => <span className="font-semibold text-primary-600 dark:text-primary-300">{d.numeroPhysique || d.numero}</span> },
+    { cle: 'client', libelle: 'Client', texte: (d) => d.client?.raisonSociale || '', rendu: (d) => <span className="block max-w-[14rem] truncate text-gray-900 dark:text-white" title={d.client?.raisonSociale}>{d.client?.raisonSociale || '—'}</span> },
+    { cle: 'nature', libelle: 'Nature', texte: (d) => natureLabels[d.nature] || d.nature || '', rendu: (d) => <span className="badge badge-info">{natureLabels[d.nature] || d.nature}</span> },
+    { cle: 'bl', libelle: 'N° BL', mono: true, masquerSous: 'xl', texte: (d) => d.numeroBL || '', rendu: (d) => d.numeroBL || <span className="text-gray-300">—</span> },
+    { cle: 'navire', libelle: 'Navire', masquerSous: '2xl', texte: (d) => d.navire || '', rendu: (d) => <span className="block max-w-[10rem] truncate">{d.navire || <span className="text-gray-300">—</span>}</span> },
+    { cle: 'declaration', libelle: 'Déclaration', mono: true, masquerSous: '2xl', texte: (d) => d.numeroDeclaration || '', rendu: (d) => d.numeroDeclaration || <span className="text-gray-300">—</span> },
+    { cle: 'caf', libelle: 'Valeur CAF', align: 'right', mono: true, masquerSous: 'xl', texte: (d) => montant(d.valeurCAF), rendu: (d) => montant(d.valeurCAF) || <span className="text-gray-300">—</span> },
+    { cle: 'docs', libelle: 'Prof. / Fact.', align: 'center', masquerSous: 'xl', texte: (d) => `${d._count?.proformas ?? 0} / ${d._count?.factures ?? 0}`, rendu: (d) => <span className="text-gray-600 dark:text-gray-300">{d._count?.proformas ?? 0} / {d._count?.factures ?? 0}</span> },
+    { cle: 'statut', libelle: 'Statut', texte: (d) => statutLabels[d.statut] || d.statut, rendu: (d) => <span className={`badge ${statutColors[d.statut] || 'badge-gray'}`}>{statutLabels[d.statut] || d.statut}</span> },
+    { cle: 'suivi', libelle: 'Suivi', texte: (d) => { const p = progression(d); return p ? `${p.validees}/${p.total}` : ''; }, rendu: (d) => {
+      const p = progression(d);
+      if (!p) return <span className="text-gray-300">—</span>;
+      return (
+        <div className="flex items-center gap-2 min-w-[7rem]" title={`${p.validees}/${p.total} étapes validées`}>
+          <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden"><div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} /></div>
+          <span className="text-xs text-gray-500 tabular-nums">{p.validees}/{p.total}</span>
+        </div>
+      );
+    } },
+    { cle: 'date', libelle: 'Créé le', texte: (d) => new Date(d.dateCreation).toLocaleDateString('fr-FR'), rendu: (d) => <span className="text-gray-500">{new Date(d.dateCreation).toLocaleDateString('fr-FR')}</span> },
+  ];
 
   // Dossier affiché dans le panneau de détail (ordinateur)
   const selection = dossiers.find((d) => d.id === selectedId) || null;
@@ -184,7 +211,7 @@ export default function DossiersPage() {
         <div>
           <div>
             {loading ? (
-              <ul aria-busy="true" className={GRILLE}>
+              <ul aria-busy="true" className={`${GRILLE} lg:hidden`}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <li key={i} className="card !p-4 space-y-3 animate-pulse"><div className="h-4 w-1/2 bg-gray-200 dark:bg-surface-600 rounded" /><div className="h-3 w-3/4 bg-gray-100 dark:bg-surface-700 rounded" /><div className="h-1.5 w-full bg-gray-100 dark:bg-surface-700 rounded" /></li>
                 ))}
@@ -196,7 +223,7 @@ export default function DossiersPage() {
                 onRetry={() => setRechargement((n) => n + 1)}
               /></div>
             ) : dossiers.length === 0 ? (
-              <div className="card">{filtresActifs > 0 ? (
+              <div className="card lg:hidden">{filtresActifs > 0 ? (
                 <EmptyState
                   titre="Aucun dossier ne correspond"
                   description="Essayez d'élargir votre recherche ou d'effacer les filtres."
@@ -210,7 +237,7 @@ export default function DossiersPage() {
                 />
               )}</div>
             ) : (
-              <ul className={GRILLE}>
+              <ul className={`${GRILLE} lg:hidden`}>
                 {dossiers.map((d) => {
                   const p = progression(d);
                   const actif = d.id === selection?.id && panneauOuvert;
@@ -240,6 +267,38 @@ export default function DossiersPage() {
                   );
                 })}
               </ul>
+            )}
+            {!erreur && (
+              <div className="hidden lg:block">
+                <DataTable
+                  colonnes={colonnes}
+                  lignes={dossiers}
+                  cleLigne={(d) => d.id}
+                  onClicLigne={ouvrir}
+                  idSelectionne={panneauOuvert ? selectedId : null}
+                  chargement={loading}
+                  nomExport="dossiers"
+                  vide={
+                    filtresActifs > 0 ? (
+                      <EmptyState titre="Aucun dossier ne correspond" description="Essayez d'élargir votre recherche ou d'effacer les filtres." action={<button type="button" onClick={reinitialiserFiltres} className="btn-secondary">Effacer les filtres</button>} />
+                    ) : (
+                      <EmptyState titre="Aucun dossier pour le moment" description="Créez votre premier dossier pour commencer le suivi d'une opération." action={<Link href="/dossiers/nouveau" className="btn-primary">Nouveau dossier</Link>} />
+                    )
+                  }
+                  actions={(d) => (
+                    <>
+                      <Link href={`/dossiers/${d.id}`} title="Voir la fiche" aria-label="Voir la fiche" className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-500">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      </Link>
+                      {!STATUTS_DOSSIER_FERME.includes(d.statut) && (
+                        <Link href={`/dossiers/${d.id}/edit`} title="Modifier" aria-label="Modifier" className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-500">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </Link>
+                      )}
+                    </>
+                  )}
+                />
+              </div>
             )}
             <div className="card !p-0 mt-4 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
           </div>
