@@ -410,7 +410,7 @@ export default function DossierDetailPage() {
                   <label className={`btn-secondary cursor-pointer ${importingExcel ? 'opacity-50' : ''}`}>
                     <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     {importingExcel ? 'Import...' : 'Import Excel'}
-                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportExcel} className="hidden" disabled={importingExcel} />
+                    <input type="file" accept=".xlsx,.csv" onChange={handleImportExcel} className="hidden" disabled={importingExcel} />
                   </label>
                   <button onClick={() => { resetArticleForm(); setEditingArticle(null); setShowArticleModal(true); }} className="btn-primary">
                     <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -425,7 +425,7 @@ export default function DossierDetailPage() {
                 <ol className="list-decimal ml-4 space-y-0.5">
                   <li>Cliquez sur « Télécharger le modèle » : le fichier contient les colonnes attendues et une ligne d&apos;exemple.</li>
                   <li>Remplacez l&apos;exemple par vos articles, une ligne par article, sans changer les titres de colonnes.</li>
-                  <li>Enregistrez en .xlsx, .xls ou .csv, puis cliquez sur « Import Excel » et choisissez le fichier.</li>
+                  <li>Enregistrez en .xlsx ou .csv, puis cliquez sur « Import Excel » et choisissez le fichier.</li>
                 </ol>
                 <p><b>Colonne obligatoire :</b> Désignation (ou Type). Les autres sont facultatives : Marque, Modèle, Quantité (1 par défaut), Unité, Position tarifaire, Poids (kg), Valeur, Origine, Bon livraison, Observations.</p>
                 <p>La première feuille du classeur est lue. Les articles importés s&apos;ajoutent à la suite de ceux qui existent déjà, ils ne les remplacent pas. Les montants et poids s&apos;écrivent sans espace (ex. 4500000).</p>

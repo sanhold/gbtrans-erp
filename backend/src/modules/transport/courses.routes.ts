@@ -83,7 +83,7 @@ router.post('/', authorize('TRANSPORT:CREER'), async (req: AuthRequest, res: Res
     }
 
     // Le client peut etre choisi directement, ou repris automatiquement du dossier rattache.
-    let clientIdFinal: string | null = clientId || (dossier as any)?.clientId || null;
+    const clientIdFinal: string | null = clientId || (dossier as any)?.clientId || null;
     if (clientIdFinal) {
       const client = await prisma.client.findFirst({ where: { id: clientIdFinal, societeId } });
       if (!client) { ApiResponse.badRequest(res, 'Client introuvable'); return; }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().email('Email invalide'),
+    email: z.email('Email invalide'),
     motDePasse: z.string().min(1, 'Mot de passe requis'),
   }),
 });
@@ -22,7 +22,7 @@ export const changePasswordSchema = z.object({
 
 export const verify2FASchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    email: z.email(),
     code: z.string().length(6, 'Code à 6 chiffres requis'),
     token: z.string(),
   }),

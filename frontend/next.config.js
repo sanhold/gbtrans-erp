@@ -7,7 +7,10 @@ const nextConfig = {
     optimizePackageImports: ['@heroicons/react', '@headlessui/react', 'date-fns', 'chart.js', 'react-chartjs-2'],
   },
   images: {
-    domains: ['localhost'],
+    remotePatterns: [{ protocol: 'http', hostname: 'localhost' }],
+  },
+  turbopack: {
+    root: __dirname,
   },
   allowedDevOrigins: ['192.168.1.67'],
   async rewrites() {
