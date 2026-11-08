@@ -1,11 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { dossiersApi } from '@/lib/api';
@@ -22,6 +22,9 @@ const natureLabels: Record<string, string> = {
 };
 
 export default function DossiersPage() {
+  const router = useRouter();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [panneauOuvert, setPanneauOuvert] = useState(false);
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -78,6 +81,30 @@ export default function DossiersPage() {
 
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
   const totalPages = Math.ceil(total / limit);
+
+  useEffect(() => {
+    if (!panneauOuvert) return;
+    const fermer = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanneauOuvert(false); };
+    window.addEventListener('keydown', fermer);
+    return () => window.removeEventListener('keydown', fermer);
+  }, [panneauOuvert]);
+
+  // Dossier affiché dans le panneau de détail (ordinateur)
+  const selection = dossiers.find((d) => d.id === selectedId) || null;
+  const GRILLE = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3';
+
+  const progression = (d: any) => {
+    const total = d.processus?._count?.etapes ?? 0;
+    const validees = d._count?.etapesDossier ?? 0;
+    if (!d.processusId || total === 0) return null;
+    return { total, validees, pct: Math.round((validees / total) * 100) };
+  };
+
+  // Ordinateur : le détail glisse depuis la droite. Téléphone : on ouvre la page du dossier.
+  const ouvrir = (d: any) => {
+    if (window.matchMedia('(min-width: 1024px)').matches) { setSelectedId(d.id); setPanneauOuvert(true); }
+    else router.push(`/dossiers/${d.id}`);
+  };
 
   return (
     <AppLayout>
@@ -152,150 +179,128 @@ export default function DossiersPage() {
           )}
         </form>
 
-        {/* Tableau */}
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '5%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '4%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '5%' }} />
-              <col style={{ width: '5%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="table-header !text-[10px] !px-2 truncate">Actions</th>
-                <th className="table-header !text-[10px] !px-2 truncate">N° Dossier</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Nature</th>
-                <th className="table-header !text-[10px] !px-2 truncate">BL</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Navire</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Déclaration</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Valeur CAF</th>
-                <th className="table-header !text-[10px] !px-1 truncate text-center">Prof.</th>
-                <th className="table-header !text-[10px] !px-1 truncate text-center">Fact.</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Statut</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Suivi</th>
-                <th className="table-header !text-[10px] !px-2 truncate">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={13} />
-              ) : erreur ? (
-                <tr>
-                  <td colSpan={13}>
-                    <ErrorState titre="Impossible de charger les dossiers" onRetry={() => setRechargement((n) => n + 1)} />
-                  </td>
-                </tr>
-              ) : dossiers.length === 0 ? (
-                <tr>
-                  <td colSpan={13}>
-                    {filtresActifs > 0 ? (
-                      <EmptyState
-                        titre="Aucun dossier ne correspond"
-                        description="Essayez d'élargir votre recherche ou d'effacer les filtres."
-                        action={<button type="button" onClick={reinitialiserFiltres} className="btn-secondary">Effacer les filtres</button>}
-                      />
-                    ) : (
-                      <EmptyState
-                        titre="Aucun dossier pour le moment"
-                        description="Créez votre premier dossier pour commencer le suivi d'une opération."
-                        action={<Link href="/dossiers/nouveau" className="btn-primary">Nouveau dossier</Link>}
-                      />
-                    )}
-                  </td>
-                </tr>
+        {/* Liste compacte (4 informations) + détail : à droite sur ordinateur, page dédiée sur téléphone */}
+        <div>
+          <div>
+            {loading ? (
+              <ul aria-busy="true" className={GRILLE}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <li key={i} className="card !p-4 space-y-3 animate-pulse"><div className="h-4 w-1/2 bg-gray-200 dark:bg-surface-600 rounded" /><div className="h-3 w-3/4 bg-gray-100 dark:bg-surface-700 rounded" /><div className="h-1.5 w-full bg-gray-100 dark:bg-surface-700 rounded" /></li>
+                ))}
+              </ul>
+            ) : erreur ? (
+              <div className="card"><ErrorState
+                titre="Impossible de charger les dossiers"
+                message="Le serveur ne répond pas pour le moment. Vérifiez votre connexion puis réessayez."
+                onRetry={() => setRechargement((n) => n + 1)}
+              /></div>
+            ) : dossiers.length === 0 ? (
+              <div className="card">{filtresActifs > 0 ? (
+                <EmptyState
+                  titre="Aucun dossier ne correspond"
+                  description="Essayez d'élargir votre recherche ou d'effacer les filtres."
+                  action={<button type="button" onClick={reinitialiserFiltres} className="btn-secondary">Effacer les filtres</button>}
+                />
               ) : (
-                dossiers.map((d) => (
-                  <tr key={d.id} className="table-row">
-                    <td className="table-cell !px-1 row-actions" data-label="Actions">
-                      <div className="flex gap-1">
-                        <Link
-                          href={`/dossiers/${d.id}`}
-                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"
-                          title="Voir"
-                        >
-                          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </Link>
-                        {!STATUTS_DOSSIER_FERME.includes(d.statut) && (
-                          <Link
-                            href={`/dossiers/${d.id}/edit`}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"
-                            title="Modifier"
-                          >
-                            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </Link>
+                <EmptyState
+                  titre="Aucun dossier pour le moment"
+                  description="Créez votre premier dossier pour commencer le suivi d'une opération."
+                  action={<Link href="/dossiers/nouveau" className="btn-primary">Nouveau dossier</Link>}
+                />
+              )}</div>
+            ) : (
+              <ul className={GRILLE}>
+                {dossiers.map((d) => {
+                  const p = progression(d);
+                  const actif = d.id === selection?.id && panneauOuvert;
+                  return (
+                    <li key={d.id}>
+                      <button
+                        type="button"
+                        onClick={() => ouvrir(d)}
+                        aria-current={actif ? 'true' : undefined}
+                        className={`w-full h-full text-left p-4 min-h-[104px] flex flex-col gap-2 rounded-2xl border bg-white dark:bg-surface-800 shadow-sm transition-all hover:shadow-md hover:-translate-y-px active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${actif ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200 dark:border-surface-700'}`}
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="font-mono font-semibold text-[15px] text-primary-600 dark:text-primary-300 truncate">{d.numeroPhysique || d.numero}</span>
+                          <span className={`badge ${statutColors[d.statut] || 'badge-gray'} flex-shrink-0`}>{statutLabels[d.statut] || d.statut}</span>
+                        </span>
+                        <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{d.client?.raisonSociale || '—'}</span>
+                        {p && (
+                          <span className="flex items-center gap-2" title={`${p.validees}/${p.total} étapes validées`}>
+                            <span className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden">
+                              <span className={`block h-full rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} />
+                            </span>
+                            <span className="text-[11px] text-gray-500 whitespace-nowrap">{p.validees}/{p.total} étapes</span>
+                          </span>
                         )}
-                      </div>
-                    </td>
-                    <td className="table-cell cell-title font-medium text-primary-600 !px-2 !text-[11px] truncate" data-label="N° Dossier" title={d.numeroPhysique || d.numero}>
-                      <Link href={`/dossiers/${d.id}`} className="hover:underline block truncate">
-                        {d.numeroPhysique || d.numero}
-                      </Link>
-                    </td>
-                    <td className="table-cell !px-2 !text-[11px] truncate" data-label="Client" title={d.client?.raisonSociale}>{d.client?.raisonSociale}</td>
-                    <td className="table-cell !px-2" data-label="Nature">
-                      <span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{natureLabels[d.nature] || d.nature}</span>
-                    </td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate col-opt" data-label="BL" title={d.numeroBL || undefined}>{d.numeroBL || '-'}</td>
-                    <td className="table-cell !px-2 !text-[11px] truncate col-opt" data-label="Navire" title={d.navire || undefined}>{d.navire || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-2 truncate col-opt" data-label="Déclaration" title={d.numeroDeclaration || undefined}>{d.numeroDeclaration || '-'}</td>
-                    <td className="table-cell text-right font-mono !px-2 !text-[10.5px] truncate" data-label="Valeur CAF">
-                      {d.valeurCAF
-                        ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(d.valeurCAF))
-                        : '-'}
-                    </td>
-                    <td className="table-cell text-center !px-1 col-opt" data-label="Proformas">
-                      <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">{d._count?.proformas ?? 0}</span>
-                    </td>
-                    <td className="table-cell text-center !px-1 col-opt" data-label="Factures">
-                      <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">{d._count?.factures ?? 0}</span>
-                    </td>
-                    <td className="table-cell !px-2" data-label="Statut">
-                      <span className={`badge ${statutColors[d.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>
-                        {statutLabels[d.statut] || d.statut}
-                      </span>
-                    </td>
-                    <td className="table-cell !px-2 col-opt" data-label="Suivi">
-                      {(() => {
-                        const totalEtapes = d.processus?._count?.etapes ?? 0;
-                        const validees = d._count?.etapesDossier ?? 0;
-                        if (!d.processusId || totalEtapes === 0) return <span className="text-[10px] text-gray-400">-</span>;
-                        const pct = Math.round((validees / totalEtapes) * 100);
-                        return (
-                          <div className="flex items-center gap-1.5" title={`${validees}/${totalEtapes} étapes validées`}>
-                            <div className="w-10 h-1.5 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden flex-shrink-0">
-                              <div className={`h-full rounded-full ${pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-[10px] text-gray-500 whitespace-nowrap">{validees}/{totalEtapes}</span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="table-cell cell-normal !text-[10.5px] !px-2 truncate" data-label="Date">
-                      {new Date(d.dateCreation).toLocaleDateString('fr-FR')}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="card !p-0 mt-4 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
+          </div>
 
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
+          {/* Détail (ordinateur) */}
+          {panneauOuvert && selection && (
+          <div className="hidden lg:block fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Détail du dossier">
+            <div className="absolute inset-0 bg-black/30 animate-fade-in" onClick={() => setPanneauOuvert(false)} />
+          <aside className="absolute right-0 top-0 h-full w-[520px] max-w-full bg-white dark:bg-surface-800 shadow-2xl overflow-y-auto animate-slide-in">
+            <button type="button" onClick={() => setPanneauOuvert(false)} aria-label="Fermer" className="absolute top-3 right-3 w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700 flex items-center justify-center text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            {(() => {
+              const d = selection;
+              const p = progression(d);
+              const ferme = STATUTS_DOSSIER_FERME.includes(d.statut);
+              const champs: [string, React.ReactNode][] = [
+                ['Client', d.client?.raisonSociale],
+                ['Nature', natureLabels[d.nature] || d.nature],
+                ['N° BL', d.numeroBL],
+                ['Navire', d.navire],
+                ['N° déclaration', d.numeroDeclaration],
+                ['Valeur CAF', d.valeurCAF ? `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(d.valeurCAF))} FCFA` : null],
+                ['Proformas', d._count?.proformas ?? 0],
+                ['Factures', d._count?.factures ?? 0],
+                ['Créé le', new Date(d.dateCreation).toLocaleDateString('fr-FR')],
+                ['Processus', d.processus?.nom],
+              ];
+              return (
+                <div className="p-6 pt-12">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">{d.numeroPhysique || d.numero}</h2>
+                      <p className="text-sm text-gray-500 truncate">{d.client?.raisonSociale}</p>
+                    </div>
+                    <span className={`badge ${statutColors[d.statut] || 'badge-gray'}`}>{statutLabels[d.statut] || d.statut}</span>
+                  </div>
+                  {p && (
+                    <div className="mt-4">
+                      <div className="flex justify-between text-xs text-gray-500 mb-1"><span>Avancement du processus</span><span>{p.validees} / {p.total} étapes</span></div>
+                      <div className="h-2 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden"><div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} /></div>
+                    </div>
+                  )}
+                  <dl className="grid grid-cols-2 gap-x-5 gap-y-4 mt-6 text-sm">
+                    {champs.map(([label, val]) => (
+                      <div key={label} className="min-w-0">
+                        <dt className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{label}</dt>
+                        <dd className="text-gray-900 dark:text-white break-words">{val === null || val === undefined || val === '' ? '—' : val}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <div className="flex flex-wrap gap-2 mt-7">
+                    <Link href={`/dossiers/${d.id}`} className="btn-primary">Fiche complète</Link>
+                    <Link href={`/dossiers/suivi/${d.id}`} className="btn-secondary">Suivi des étapes</Link>
+                    {!ferme && <Link href={`/dossiers/${d.id}/edit`} className="btn-secondary">Modifier</Link>}
+                  </div>
+                </div>
+              );
+            })()}
+          </aside>
+          </div>
+          )}
         </div>
       </div>
     </AppLayout>
