@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import DossierActions from '@/components/dossiers/DossierActions';
 import DataTable, { Colonne } from '@/components/tables/DataTable';
+import TablePagination from '@/components/tables/TablePagination';
+import { Compteur, DoubleLigne, Montant, Progression, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -94,27 +96,21 @@ export default function DossiersPage() {
   const montant = (v: any) => (v ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(v)) : '');
 
   // Colonnes du tableau (ordinateur)
+  const dateCourte = (v: any) => new Date(v).toLocaleDateString('fr-FR');
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'N° dossier', mono: true, texte: (d) => d.numeroPhysique || d.numero, rendu: (d) => <span className="font-semibold text-primary-600 dark:text-primary-300">{d.numeroPhysique || d.numero}</span> },
-    { cle: 'client', libelle: 'Client', texte: (d) => d.client?.raisonSociale || '', rendu: (d) => <span className="block max-w-[14rem] truncate text-gray-900 dark:text-white" title={d.client?.raisonSociale}>{d.client?.raisonSociale || '—'}</span> },
-    { cle: 'nature', libelle: 'Nature', texte: (d) => natureLabels[d.nature] || d.nature || '', rendu: (d) => <span className="badge badge-info">{natureLabels[d.nature] || d.nature}</span> },
-    { cle: 'bl', libelle: 'N° BL', mono: true, masquerSous: 'xl', texte: (d) => d.numeroBL || '', rendu: (d) => d.numeroBL || <span className="text-gray-300">—</span> },
-    { cle: 'navire', libelle: 'Navire', masquerSous: '2xl', texte: (d) => d.navire || '', rendu: (d) => <span className="block max-w-[10rem] truncate">{d.navire || <span className="text-gray-300">—</span>}</span> },
+    { cle: 'numero', libelle: 'Dossier', texte: (d) => d.numeroPhysique || d.numero, rendu: (d) => <DoubleLigne mono haut={d.numeroPhysique || d.numero} bas={`Créé le ${dateCourte(d.dateCreation)}`} /> },
+    { cle: 'client', libelle: 'Client', texte: (d) => d.client?.raisonSociale || '', rendu: (d) => <Tiers nom={d.client?.raisonSociale} detail={[natureLabels[d.nature] || d.nature, d.type].filter(Boolean).join(' · ')} /> },
+    { cle: 'bl', libelle: 'BL / Navire', masquerSous: 'xl', texte: (d) => [d.numeroBL, d.navire].filter(Boolean).join(' — '), rendu: (d) => (d.numeroBL || d.navire) ? <DoubleLigne haut={<span className="font-mono text-[13px] font-medium text-gray-700 dark:text-gray-200">{d.numeroBL || '—'}</span>} bas={d.navire} /> : <span className="text-gray-300">—</span> },
     { cle: 'declaration', libelle: 'Déclaration', mono: true, masquerSous: '2xl', texte: (d) => d.numeroDeclaration || '', rendu: (d) => d.numeroDeclaration || <span className="text-gray-300">—</span> },
-    { cle: 'caf', libelle: 'Valeur CAF', align: 'right', mono: true, masquerSous: 'xl', texte: (d) => montant(d.valeurCAF), rendu: (d) => montant(d.valeurCAF) || <span className="text-gray-300">—</span> },
-    { cle: 'docs', libelle: 'Prof. / Fact.', align: 'center', masquerSous: 'xl', texte: (d) => `${d._count?.proformas ?? 0} / ${d._count?.factures ?? 0}`, rendu: (d) => <span className="text-gray-600 dark:text-gray-300">{d._count?.proformas ?? 0} / {d._count?.factures ?? 0}</span> },
-    { cle: 'statut', libelle: 'Statut', texte: (d) => statutLabels[d.statut] || d.statut, rendu: (d) => <span className={`badge ${statutColors[d.statut] || 'badge-gray'}`}>{statutLabels[d.statut] || d.statut}</span> },
-    { cle: 'suivi', libelle: 'Suivi', texte: (d) => { const p = progression(d); return p ? `${p.validees}/${p.total}` : ''; }, rendu: (d) => {
-      const p = progression(d);
-      if (!p) return <span className="text-gray-300">—</span>;
-      return (
-        <div className="flex items-center gap-2 min-w-[7rem]" title={`${p.validees}/${p.total} étapes validées`}>
-          <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden"><div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} /></div>
-          <span className="text-xs text-gray-500 tabular-nums">{p.validees}/{p.total}</span>
-        </div>
-      );
-    } },
-    { cle: 'date', libelle: 'Créé le', texte: (d) => new Date(d.dateCreation).toLocaleDateString('fr-FR'), rendu: (d) => <span className="text-gray-500">{new Date(d.dateCreation).toLocaleDateString('fr-FR')}</span> },
+    { cle: 'caf', libelle: 'Valeur CAF', align: 'right', masquerSous: 'xl', texte: (d) => montant(d.valeurCAF), rendu: (d) => <Montant valeur={d.valeurCAF} /> },
+    { cle: 'docs', libelle: 'Documents', align: 'center', masquerSous: 'xl', texte: (d) => `${d._count?.proformas ?? 0} proforma(s), ${d._count?.factures ?? 0} facture(s)`, rendu: (d) => (
+      <span className="inline-flex items-center gap-1.5">
+        <Compteur titre="Proformas" valeur={d._count?.proformas ?? 0} icone={<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6M7 3h7l5 5v12a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" /></svg>} />
+        <Compteur titre="Factures" valeur={d._count?.factures ?? 0} icone={<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 3h10v18l-3-2-2 2-2-2-3 2zM10 8h4M10 12h4" /></svg>} />
+      </span>
+    ) },
+    { cle: 'statut', libelle: 'Statut', texte: (d) => statutLabels[d.statut] || d.statut, rendu: (d) => <StatutPastille libelle={statutLabels[d.statut] || d.statut} ton={tonDepuisBadge(statutColors[d.statut])} /> },
+    { cle: 'suivi', libelle: 'Avancement', texte: (d) => { const p = progression(d); return p ? `${p.validees}/${p.total}` : ''; }, rendu: (d) => { const p = progression(d); return p ? <Progression fait={p.validees} total={p.total} /> : <span className="text-gray-300">—</span>; } },
   ];
 
   // Dossier affiché dans le panneau de détail (ordinateur)
@@ -278,6 +274,7 @@ export default function DossiersPage() {
                   idSelectionne={panneauOuvert ? selectedId : null}
                   chargement={loading}
                   nomExport="dossiers"
+                  pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />}
                   vide={
                     filtresActifs > 0 ? (
                       <EmptyState titre="Aucun dossier ne correspond" description="Essayez d'élargir votre recherche ou d'effacer les filtres." action={<button type="button" onClick={reinitialiserFiltres} className="btn-secondary">Effacer les filtres</button>} />
@@ -300,7 +297,7 @@ export default function DossiersPage() {
                 />
               </div>
             )}
-            <div className="card !p-0 mt-4 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
+            <div className="card !p-0 mt-4 overflow-hidden lg:hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
           </div>
 
           {/* Détail (ordinateur) */}

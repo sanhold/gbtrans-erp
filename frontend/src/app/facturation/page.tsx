@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import DataTable, { Colonne } from '@/components/tables/DataTable';
+import TablePagination from '@/components/tables/TablePagination';
+import { DoubleLigne, Montant, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
 import PaginationControls from '@/components/tables/PaginationControls';
 import api, { facturesApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -19,6 +21,11 @@ const statutColors: Record<string, string> = {
   PARTIELLEMENT_PAYEE: 'badge-warning', PAYEE: 'badge-success',
   EN_RETARD: 'badge-danger', ANNULEE: 'badge-danger', CONTENTIEUX: 'badge-danger',
 };
+const statutLibelles: Record<string, string> = {
+  BROUILLON: 'Brouillon', VALIDEE: 'Validée', ENVOYEE: 'Envoyée', PARTIELLEMENT_PAYEE: 'Partiellement payée',
+  PAYEE: 'Payée', EN_RETARD: 'En retard', ANNULEE: 'Annulée', CONTENTIEUX: 'Contentieux',
+};
+const statutLibelle = (s: string) => statutLibelles[s] || (s || '').replace(/_/g, ' ');
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FacturationPage() {
@@ -76,16 +83,15 @@ export default function FacturationPage() {
     finally { setTransforming(null); }
   };
 
+  const dateCourte = (v: any) => new Date(v).toLocaleDateString('fr-FR');
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'N° facture', mono: true, texte: (f) => f.numero, rendu: (f) => <span className="font-semibold text-primary-600 dark:text-primary-300">{f.numero}</span> },
+    { cle: 'numero', libelle: 'Facture', texte: (f) => f.numero, rendu: (f) => <DoubleLigne mono haut={f.numero} bas={`Du ${dateCourte(f.dateFacture)}`} /> },
+    { cle: 'client', libelle: 'Client', texte: (f) => f.client?.raisonSociale || '', rendu: (f) => <Tiers nom={f.client?.raisonSociale} detail={(f.dossier?.numeroPhysique || f.dossier?.numero) ? `Dossier ${f.dossier?.numeroPhysique || f.dossier?.numero}` : undefined} /> },
     { cle: 'normalise', libelle: 'N° normalisé', mono: true, masquerSous: '2xl', texte: (f) => f.numeroNormalise || '', rendu: (f) => f.numeroNormalise || <span className="text-gray-300">—</span> },
-    { cle: 'client', libelle: 'Client', texte: (f) => f.client?.raisonSociale || '', rendu: (f) => <span className="block max-w-[15rem] truncate text-gray-900 dark:text-white" title={f.client?.raisonSociale}>{f.client?.raisonSociale || '—'}</span> },
-    { cle: 'dossier', libelle: 'Dossier', mono: true, masquerSous: 'xl', texte: (f) => f.dossier?.numeroPhysique || f.dossier?.numero || '', rendu: (f) => f.dossier?.numeroPhysique || f.dossier?.numero || <span className="text-gray-300">—</span> },
-    { cle: 'ttc', libelle: 'Total TTC', align: 'right', mono: true, texte: (f) => fmt(f.montantTTC), rendu: (f) => <span className="font-semibold text-gray-900 dark:text-white">{fmt(f.montantTTC)}</span> },
-    { cle: 'paye', libelle: 'Payé', align: 'right', mono: true, masquerSous: 'xl', texte: (f) => fmt(f.montantPaye), rendu: (f) => <span className="text-green-600">{fmt(f.montantPaye)}</span> },
-    { cle: 'reste', libelle: 'Reste', align: 'right', mono: true, texte: (f) => fmt(f.resteAPayer), rendu: (f) => <span className={Number(f.resteAPayer) > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{fmt(f.resteAPayer)}</span> },
-    { cle: 'statut', libelle: 'Statut', texte: (f) => (f.statut || '').replace(/_/g, ' '), rendu: (f) => <span className={`badge ${statutColors[f.statut] || 'badge-gray'}`}>{f.statut?.replace(/_/g, ' ')}</span> },
-    { cle: 'date', libelle: 'Date', texte: (f) => new Date(f.dateFacture).toLocaleDateString('fr-FR'), rendu: (f) => <span className="text-gray-500">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</span> },
+    { cle: 'ttc', libelle: 'Total TTC', align: 'right', texte: (f) => fmt(f.montantTTC), rendu: (f) => <Montant valeur={f.montantTTC} /> },
+    { cle: 'paye', libelle: 'Payé', align: 'right', masquerSous: 'xl', texte: (f) => fmt(f.montantPaye), rendu: (f) => <Montant valeur={f.montantPaye} ton="positif" /> },
+    { cle: 'reste', libelle: 'Reste à payer', align: 'right', texte: (f) => fmt(f.resteAPayer), rendu: (f) => <Montant valeur={f.resteAPayer} ton="negatif" /> },
+    { cle: 'statut', libelle: 'Statut', texte: (f) => statutLibelle(f.statut), rendu: (f) => <StatutPastille libelle={statutLibelle(f.statut)} ton={tonDepuisBadge(statutColors[f.statut])} /> },
   ];
 
   // Ordinateur : le détail glisse depuis la droite. Téléphone : on ouvre la fiche de la facture.
@@ -145,7 +151,7 @@ export default function FacturationPage() {
                     >
                       <span className="flex items-center justify-between gap-2">
                         <span className="font-mono font-semibold text-[14px] sm:text-[15px] text-primary-600 dark:text-primary-300 truncate">{f.numero}</span>
-                        <span className={`badge ${statutColors[f.statut] || 'badge-gray'} flex-shrink-0 !text-[10px] sm:!text-[11px] !px-2 !py-0.5`}>{f.statut?.replace(/_/g, ' ')}</span>
+                        <span className={`badge ${statutColors[f.statut] || 'badge-gray'} flex-shrink-0 !text-[10px] sm:!text-[11px] !px-2 !py-0.5`}>{statutLibelle(f.statut)}</span>
                       </span>
                       <span className="flex items-center justify-between gap-2 text-[13px] sm:text-sm">
                         <span className="text-gray-800 dark:text-gray-100 truncate">{f.client?.raisonSociale || '—'}</span>
@@ -165,6 +171,7 @@ export default function FacturationPage() {
                 idSelectionne={panneauOuvert ? selectedId : null}
                 chargement={loading}
                 nomExport="factures"
+                pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />}
                 vide={<EmptyState titre="Aucune facture" description="Créez une facture ou facturez une proforma validée." action={<Link href="/facturation/nouveau" className="btn-primary">Nouvelle facture</Link>} />}
                 actions={(f) => (
                   <>
@@ -178,7 +185,7 @@ export default function FacturationPage() {
                 )}
               />
             </div>
-            <div className="card !p-0 mt-3 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
+            <div className="card !p-0 mt-3 overflow-hidden lg:hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
           </div>
         )}
 
@@ -231,7 +238,7 @@ export default function FacturationPage() {
                     <h2 className="text-xl font-bold font-mono text-gray-900 dark:text-white truncate">{f.numero}</h2>
                     <p className="text-sm text-gray-500 truncate">{f.client?.raisonSociale}</p>
                   </div>
-                  <span className={`badge ${statutColors[f.statut] || 'badge-gray'}`}>{f.statut?.replace(/_/g, ' ')}</span>
+                  <span className={`badge ${statutColors[f.statut] || 'badge-gray'}`}>{statutLibelle(f.statut)}</span>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-5 gap-y-4 mt-6 text-sm">
                   {champs.map(([label, val]) => (
