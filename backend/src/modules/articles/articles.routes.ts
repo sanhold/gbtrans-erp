@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { Readable } from 'stream';
 import { authenticate, requireSociete, authorize } from '../../middleware/auth';
 import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
@@ -109,10 +110,38 @@ router.post('/dossier/:dossierId/import-excel', authorize('DOSSIERS:MODIFIER'), 
     await assertDossierOuvert(dossierId, req.user!.societeId);
     if (!req.file) { ApiResponse.badRequest(res, 'Fichier requis'); return; }
 
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+    if (ext === 'xls') {
+      ApiResponse.badRequest(res, 'Le format .xls n\'est plus pris en charge : enregistrez le fichier en .xlsx ou .csv');
+      return;
+    }
+    const workbook = new ExcelJS.Workbook();
+    if (ext === 'csv') await workbook.csv.read(Readable.from(req.file.buffer));
+    else await workbook.xlsx.load(req.file.buffer as any);
+    const sheet = workbook.worksheets[0];
+    const rows: any[] = [];
+    if (sheet) {
+      const valeurCellule = (v: ExcelJS.CellValue): any => {
+        if (v && typeof v === 'object' && !(v instanceof Date)) {
+          const o = v as any;
+          if ('result' in o) return o.result;
+          if ('richText' in o) return o.richText.map((t: any) => t.text).join('');
+          if ('text' in o) return o.text;
+        }
+        return v;
+      };
+      const entetes: string[] = [];
+      sheet.getRow(1).eachCell((cell, col) => { entetes[col] = String(valeurCellule(cell.value) ?? ''); });
+      sheet.eachRow((row, num) => {
+        if (num === 1) return;
+        const obj: Record<string, any> = {};
+        row.eachCell((cell, col) => {
+          const v = valeurCellule(cell.value);
+          if (entetes[col] && v !== null && v !== undefined && v !== '') obj[entetes[col]] = v;
+        });
+        if (Object.keys(obj).length > 0) rows.push(obj);
+      });
+    }
 
     if (rows.length === 0) { ApiResponse.badRequest(res, 'Fichier vide'); return; }
 
