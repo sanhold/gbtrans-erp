@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
@@ -54,8 +54,10 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
     loadExercices();
   };
 
+  // Volontaire : chargement des referentiels une seule fois au montage (le bouton « Reessayer » relance a la demande).
   useEffect(() => {
     chargerReferentiels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreerExercice = async (e: React.FormEvent) => {
@@ -188,7 +190,7 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
   const [saving, setSaving] = useState(false);
   const [ouverte, setOuverte] = useState<string | null>(null);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     const params: any = { exerciceId, origine, limit: 100 };
     if (journalFiltre) params.journalId = journalFiltre;
@@ -196,8 +198,8 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
       .then(r => setEcritures(r.data.data || []))
       .catch(() => setEcritures([]))
       .finally(() => setLoading(false));
-  };
-  useEffect(() => { if (exerciceId) load(); }, [exerciceId, journalFiltre, origine]);
+  }, [exerciceId, origine, journalFiltre]);
+  useEffect(() => { if (exerciceId) load(); }, [exerciceId, load]);
 
   const openCreate = () => { setForm(emptyEcritureForm()); setShowModal(true); };
 
@@ -622,14 +624,14 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
   const [saving, setSaving] = useState(false);
   const [chargementProposition, setChargementProposition] = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     comptabiliteApi.ecrituresAttente({ statut: statutFiltre })
       .then(r => setItems(r.data.data || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [statutFiltre]);
+  }, [statutFiltre]);
+  useEffect(() => { load(); }, [load]);
 
   const handleAjouter = async () => {
     if (!addForm.libelle.trim() || !addForm.montant || !addForm.dateOperation) { toast.error('Libellé, montant et date sont requis'); return; }

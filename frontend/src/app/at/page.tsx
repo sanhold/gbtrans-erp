@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -75,7 +75,7 @@ export default function ATPage() {
     }).catch(() => {});
   };
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     const params: any = { page, limit };
     if (appliedSearch) params.search = appliedSearch;
@@ -84,9 +84,9 @@ export default function ATPage() {
       .then(res => { setItems(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  };
+  }, [page, limit, appliedSearch, etatFiltre]);
 
-  useEffect(() => { load(); }, [page, limit, appliedSearch, etatFiltre]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     clientsApi.listRef().then(r => setClients(r.data.data || [])).catch(() => {});

@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -35,7 +35,7 @@ export default function DossiersHistoriquePage() {
 
   const [appliedFiltres, setAppliedFiltres] = useState({ dateDebut: debutAnnee, dateFin: finAujourdhui, nature: '', statut: '', search: '' });
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     const params: any = { page, limit, sortBy: 'dateCreation', sortOrder: 'desc' };
     if (appliedFiltres.dateDebut) params.dateDebut = `${appliedFiltres.dateDebut}T00:00:00.000Z`;
@@ -48,9 +48,9 @@ export default function DossiersHistoriquePage() {
       .then(res => { setDossiers(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setDossiers([]))
       .finally(() => setLoading(false));
-  };
+  }, [page, limit, appliedFiltres]);
 
-  useEffect(() => { load(); }, [page, limit, appliedFiltres]);
+  useEffect(() => { load(); }, [load]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

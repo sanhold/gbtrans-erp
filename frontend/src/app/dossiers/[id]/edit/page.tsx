@@ -8,6 +8,28 @@ import { dossiersApi, clientsApi } from '@/lib/api';
 import { STATUTS_DOSSIER_FERME } from '@/lib/dossierStatut';
 import toast from 'react-hot-toast';
 
+const fields = [
+  'clientId', 'numeroPhysique', 'nature', 'type',
+  'compagnieMaritime', 'navire', 'voyage', 'numeroBL', 'portOrigine', 'portDestination',
+  'designation', 'poidsBrut', 'poidsNet', 'volume', 'nombreColis', 'emballage',
+  'valeurFOB', 'fret', 'assurance', 'valeurCAF', 'incoterm', 'devise',
+  'numeroDeclaration', 'regimeDouanier', 'bureauDouane',
+  'droitDouane', 'tva', 'autresTaxes', 'totalDroits',
+  'lieuLivraison', 'bonLivraison', 'observations',
+];
+
+const numFields = [
+  'poidsBrut', 'poidsNet', 'volume', 'nombreColis',
+  'valeurFOB', 'fret', 'assurance', 'valeurCAF',
+  'droitDouane', 'tva', 'autresTaxes', 'totalDroits',
+];
+
+const buildForm = (d: any): Record<string, string> => {
+  const f: Record<string, string> = {};
+  fields.forEach(k => { f[k] = d[k] != null ? String(d[k]) : ''; });
+  return f;
+};
+
 export default function EditDossierPage() {
   const params = useParams();
   const router = useRouter();
@@ -19,27 +41,6 @@ export default function EditDossierPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
-  const fields = [
-    'clientId', 'numeroPhysique', 'nature', 'type',
-    'compagnieMaritime', 'navire', 'voyage', 'numeroBL', 'portOrigine', 'portDestination',
-    'designation', 'poidsBrut', 'poidsNet', 'volume', 'nombreColis', 'emballage',
-    'valeurFOB', 'fret', 'assurance', 'valeurCAF', 'incoterm', 'devise',
-    'numeroDeclaration', 'regimeDouanier', 'bureauDouane',
-    'droitDouane', 'tva', 'autresTaxes', 'totalDroits',
-    'lieuLivraison', 'bonLivraison', 'observations',
-  ];
-
-  const numFields = [
-    'poidsBrut', 'poidsNet', 'volume', 'nombreColis',
-    'valeurFOB', 'fret', 'assurance', 'valeurCAF',
-    'droitDouane', 'tva', 'autresTaxes', 'totalDroits',
-  ];
-
-  const buildForm = (d: any): Record<string, string> => {
-    const f: Record<string, string> = {};
-    fields.forEach(k => { f[k] = d[k] != null ? String(d[k]) : ''; });
-    return f;
-  };
 
   const load = useCallback(async () => {
     try {
@@ -62,7 +63,7 @@ export default function EditDossierPage() {
     } finally {
       setLoading(false);
     }
-  }, [dossierId]);
+  }, [dossierId, router]);
 
   useEffect(() => { load(); }, [load]);
 

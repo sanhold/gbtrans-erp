@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -18,15 +18,15 @@ export default function CautionsHistoriquePage() {
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     cautionsApi.list({ page, limit, etat: 'PAYEE' })
       .then(res => { setItems(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  };
+  }, [page, limit]);
 
-  useEffect(() => { load(); }, [page, limit]);
+  useEffect(() => { load(); }, [load]);
 
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
   const totalPages = Math.ceil(total / limit);

@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import api, { financeApi } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -30,7 +30,7 @@ export default function FacturationFournisseursPage() {
 
   const fournisseurOptions = fournisseurs.map(f => ({ id: f.id, label: f.raisonSociale }));
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await financeApi.facturesFournisseurs.list({ page, limit: pageSize });
@@ -38,9 +38,9 @@ export default function FacturationFournisseursPage() {
       setTotal(res.data.pagination?.total || 0);
     } catch { setFactures([]); }
     finally { setLoading(false); }
-  };
+  }, [page, pageSize]);
 
-  useEffect(() => { load(); }, [page, pageSize]);
+  useEffect(() => { load(); }, [load]);
 
   const changePageSize = (n: number) => { setPageSize(n); setPage(1); };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

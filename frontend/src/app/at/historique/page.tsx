@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -20,7 +20,7 @@ export default function ATHistoriquePage() {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     const params: any = { page, limit, etat: 'APURE' };
     if (appliedSearch) params.search = appliedSearch;
@@ -28,9 +28,9 @@ export default function ATHistoriquePage() {
       .then(res => { setItems(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  };
+  }, [page, limit, appliedSearch]);
 
-  useEffect(() => { load(); }, [page, limit, appliedSearch]);
+  useEffect(() => { load(); }, [load]);
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); setAppliedSearch(search); };
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };

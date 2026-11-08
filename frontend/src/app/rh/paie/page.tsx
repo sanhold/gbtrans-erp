@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { rhApi } from '@/lib/api';
@@ -32,14 +32,14 @@ export default function PaiePage() {
   const [showPayer, setShowPayer] = useState(false);
   const [payerForm, setPayerForm] = useState({ modePaiement: 'VIREMENT', datePaiement: new Date().toISOString().slice(0, 10) });
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     rhApi.bulletins.list({ periodeMois: mois, periodeAnnee: annee })
       .then(r => setBulletins(r.data.data || []))
       .catch(() => toast.error('Erreur de chargement'))
       .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [mois, annee]);
+  }, [mois, annee]);
+  useEffect(() => { load(); }, [load]);
 
   const handleGenerer = async () => {
     if (!confirm(`Générer les bulletins de paie pour ${MOIS_LABELS[mois - 1]} ${annee} ? Les employés déjà traités pour cette période seront ignorés.`)) return;

@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -105,7 +105,7 @@ export default function ArchivesPage() {
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur lors du téléchargement'); }
   };
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     const params: any = { page, limit: pageSize };
     if (appliedSearch) params.search = appliedSearch;
@@ -115,9 +115,9 @@ export default function ArchivesPage() {
       .then(res => { setDocuments(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setDocuments([]))
       .finally(() => setLoading(false));
-  };
+  }, [appliedSearch, categorieFiltre, dossierFiltre, page, pageSize]);
 
-  useEffect(() => { load(); }, [appliedSearch, categorieFiltre, dossierFiltre, page, pageSize]);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [appliedSearch, categorieFiltre, dossierFiltre]);
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setAppliedSearch(search); };
