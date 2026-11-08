@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -42,7 +42,7 @@ export default function CourriersPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     const params: any = { page, limit, type: tab };
     if (appliedSearch) params.search = appliedSearch;
@@ -51,10 +51,10 @@ export default function CourriersPage() {
       .then(res => { setItems(res.data.data || []); setTotal(res.data.pagination?.total || 0); })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  };
+  }, [tab, page, limit, appliedSearch, statutFiltre]);
 
   useEffect(() => { setPage(1); }, [tab]);
-  useEffect(() => { load(); }, [tab, page, limit, appliedSearch, statutFiltre]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     dossiersApi.listRef().then(r => setDossiers(r.data.data || [])).catch(() => {});

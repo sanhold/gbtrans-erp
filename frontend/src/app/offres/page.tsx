@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
@@ -44,15 +44,15 @@ export default function OffresPage() {
   const [form, setForm] = useState({ clientId: '', dossierId: '', objet: '', description: '', dateValidite: '' });
   const [lignes, setLignes] = useState([ligneVide()]);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     offresApi.list({ page, limit: pageSize })
       .then(r => { setOffres(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
       .catch(() => setOffres([]))
       .finally(() => setLoading(false));
-  };
+  }, [page, pageSize]);
 
-  useEffect(() => { load(); }, [page, pageSize]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     clientsApi.listRef().then(r => setClients(r.data.data || [])).catch(() => {});

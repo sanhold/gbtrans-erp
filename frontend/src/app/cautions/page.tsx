@@ -71,6 +71,9 @@ export default function CautionsPage() {
     cautionsApi.stats().then(r => setStats(r.data.data)).catch(() => {});
   };
 
+  // Volontaire : la recherche/les filtres ne declenchent le rechargement qu'a la validation du formulaire,
+  // pas a chaque frappe ; l'effet ne suit donc que la pagination.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [page, limit]);
 
   useEffect(() => {

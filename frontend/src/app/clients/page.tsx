@@ -36,6 +36,9 @@ export default function ClientsPage() {
     }
   };
 
+  // Volontaire : la recherche/les filtres ne declenchent le rechargement qu'a la validation du formulaire,
+  // pas a chaque frappe ; l'effet ne suit donc que la pagination.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadClients(); }, [page, limit]);
 
   const handleSearch = (e: React.FormEvent) => {

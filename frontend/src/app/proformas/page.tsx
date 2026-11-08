@@ -1,7 +1,7 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -28,13 +28,13 @@ export default function ProformasPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const setPageSize = (n: number) => { setPageSizeState(n); setPage(1); };
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     api.get('/proformas', { params: { page, limit: pageSize } }).then(r => { setProformas(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
       .catch(() => {}).finally(() => setLoading(false));
-  };
+  }, [page, pageSize]);
 
-  useEffect(() => { load(); }, [page, pageSize]);
+  useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (p: any) => {
     if (p.statut !== 'BROUILLON') {
