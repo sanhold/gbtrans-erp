@@ -38,10 +38,14 @@ function applyFilters(table: HTMLTableElement) {
     idx: Number(i.dataset.col),
     v: norm(i.value.trim()),
   })).filter((f) => f.v);
+  let visibles = 0;
   dataRows(table).forEach((row) => {
     const ok = values.every((f) => norm(cellText(row.cells[f.idx] || row)).includes(f.v));
     row.style.display = ok ? '' : 'none';
+    if (ok) visibles++;
   });
+  const compteur = table.closest('.table-container')?.querySelector('[data-te-count]');
+  if (compteur) compteur.textContent = `${visibles} ligne${visibles > 1 ? 's' : ''} sur cette page`;
 }
 
 function exportExcel(table: HTMLTableElement, titre: string) {
@@ -75,12 +79,16 @@ function enhance(container: HTMLElement, titre: string) {
   if (!container.querySelector(`:scope > [${BAR}]`)) {
     const bar = document.createElement('div');
     bar.setAttribute(BAR, '');
-    bar.className = 'te-bar flex justify-end px-2 py-1.5 bg-gray-50 dark:bg-surface-800 border-b border-gray-200 dark:border-surface-700';
+    bar.className = 'te-bar flex items-center justify-between px-5 py-3 bg-white dark:bg-surface-800 border-b border-gray-100 dark:border-surface-700';
+    const compteur = document.createElement('span');
+    compteur.setAttribute('data-te-count', '');
+    compteur.className = 'text-sm text-gray-500 dark:text-gray-400';
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = 'Exporter en Excel';
-    btn.className = 'text-[11px] px-2.5 py-1 border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-sm dark:bg-surface-700 dark:text-gray-200 dark:border-surface-600';
+    btn.innerHTML = '<svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg><span>Exporter</span>';
+    btn.className = 'inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-surface-800 dark:text-gray-200 dark:border-surface-600 dark:hover:bg-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500';
     btn.addEventListener('click', () => exportExcel(table, titre));
+    bar.appendChild(compteur);
     bar.appendChild(btn);
     container.insertBefore(bar, container.firstChild);
   }
@@ -96,7 +104,7 @@ function enhance(container: HTMLElement, titre: string) {
     filterRow.setAttribute(FILTERS, '');
     heads.forEach((h, i) => {
       const th = document.createElement('th');
-      th.className = 'te-filter px-1 py-1 bg-gray-100 dark:bg-surface-700 border-b border-gray-300 dark:border-surface-600';
+      th.className = 'te-filter px-2 py-2 bg-white dark:bg-surface-800 border-b border-gray-200 dark:border-surface-700 first:pl-4';
       if (!isActionColumn(cellText(h))) {
         const input = document.createElement('input');
         input.type = 'text';
@@ -105,7 +113,8 @@ function enhance(container: HTMLElement, titre: string) {
         input.style.minWidth = '2.5rem';
         input.dataset.col = String(i);
         input.setAttribute('aria-label', `Filtrer ${cellText(h)}`);
-        input.className = 'w-full min-w-0 px-1.5 py-0.5 text-[11px] font-normal normal-case tracking-normal text-gray-800 bg-white border border-gray-300 rounded-sm focus:outline-none focus:border-primary-500 dark:bg-surface-800 dark:text-gray-100 dark:border-surface-600';
+        input.placeholder = 'Filtrer';
+        input.className = 'w-full min-w-0 px-2 py-1 text-xs font-normal normal-case tracking-normal text-gray-800 bg-gray-50 border border-gray-200 rounded-md placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:bg-surface-900/40 dark:text-gray-100 dark:border-surface-600';
         input.addEventListener('input', () => applyFilters(table));
         th.appendChild(input);
       }
