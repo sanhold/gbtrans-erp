@@ -190,8 +190,9 @@
     min-height: 44px;
   }
 
-  /* Tableaux -> vraies cartes d'appli mobile : titre en haut, infos en grille 2 colonnes,
-     actions en pleine largeur en bas. Plus de defilement horizontal, plus de liste a rallonge. */
+  /* Tableaux -> cartes compactes d'appli mobile (même principe que les cartes Dossiers) :
+     titre en gras + statut sur la première ligne, puis les autres informations en ligne
+     avec leur libellé, actions en bas à droite. Plus de défilement horizontal. */
   .table-container table,
   .table-container tbody {
     display: block;
@@ -202,17 +203,49 @@
     display: none;
   }
 
+  /* Barre « compteur + Exporter » ajoutée automatiquement : réduite à un bouton discret */
+  .table-container > .te-bar {
+    justify-content: flex-end;
+    padding: 0.4rem 0.6rem 0;
+    border-bottom: 0;
+  }
+
+  .table-container > .te-bar > [data-te-count] {
+    display: none;
+  }
+
+  .table-container tbody {
+    padding: 0.5rem;
+  }
+
   .table-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem 0.75rem;
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.8rem;
+    background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 0.625rem;
-    margin: 0 0.5rem 0.625rem;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  }
+
+  .table-row:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Saut de ligne après titre + statut : les autres informations passent à la ligne suivante */
+  .table-row::before {
+    content: '';
+    order: 2;
+    flex: 1 0 100%;
+    height: 0;
+    margin-top: -0.15rem;
   }
 
   .dark .table-row {
+    background: theme('colors.surface.800');
     border-color: theme('colors.surface.700');
   }
 
@@ -222,37 +255,35 @@
     display: none !important;
   }
 
+  /* Cellule ordinaire : « Libellé : valeur » sur une ligne, qui passe à la suivante si besoin */
   .table-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0.15rem;
-    width: 100%;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    order: 3;
+    width: auto;
     min-width: 0;
-    padding: 0.45rem 0.75rem;
+    max-width: 100%;
+    padding: 0 !important;
     border: none !important;
-    border-bottom: 1px solid #f0f0f0;
-    border-right: 1px solid #f0f0f0;
     white-space: normal;
+    overflow-wrap: anywhere;
     text-align: left;
-  }
-
-  .dark .table-cell {
-    border-color: theme('colors.surface.700');
-  }
-
-  .table-cell:nth-child(2n) {
-    border-right: none;
+    font-size: 12.5px;
   }
 
   .table-cell::before {
-    content: attr(data-label);
-    font-size: 9.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    content: attr(data-label) ' :';
+    font-family: theme('fontFamily.sans');
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 500;
     color: #9ca3af;
+  }
+
+  .table-cell:not([data-label])::before,
+  .table-cell[data-label='']::before {
+    content: none;
   }
 
   .table-cell > * {
@@ -260,42 +291,53 @@
     max-width: 100%;
   }
 
-  /* 1ere colonne = identifiant de la ligne : bandeau titre en pleine largeur, mis en avant */
-  .table-row > .table-cell:first-child:not(:only-child) {
-    grid-column: 1 / -1;
-    border-right: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0.6rem 0.75rem 0.5rem;
-    background: rgba(0, 0, 0, 0.015);
-  }
-
-  .dark .table-row > .table-cell:first-child:not(:only-child) {
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom-color: theme('colors.surface.700');
-  }
-
-  .table-row > .table-cell:first-child:not(:only-child) > *,
-  .table-row > .table-cell:first-child:not(:only-child) {
-    font-size: 13.5px !important;
+  /* Identifiant de la ligne : 1re colonne (ou celle qui suit une colonne « Actions » placée en tête) */
+  .table-row > .table-cell:first-child:not(:only-child):not([data-label='Actions']),
+  .table-row > .table-cell[data-label='Actions']:first-child + .table-cell,
+  .table-cell.cell-title {
+    order: 0;
+    flex: 1 1 8rem;
+    font-size: 14px !important;
     font-weight: 700;
   }
 
-  /* Derniere colonne = actions : barre pleine largeur, boutons centres, pas d'etiquette */
-  .table-row > .table-cell:last-child:not(:only-child) {
-    grid-column: 1 / -1;
-    flex-direction: row;
+  .table-row > .table-cell:first-child:not(:only-child):not([data-label='Actions'])::before,
+  .table-row > .table-cell[data-label='Actions']:first-child + .table-cell::before,
+  .table-cell.cell-title::before {
+    content: none;
+  }
+
+  /* Statut : sur la ligne du titre, à droite */
+  .table-cell:has(.badge) {
+    order: 1;
+    margin-left: auto;
+  }
+
+  .table-cell:has(.badge)::before {
+    content: none;
+  }
+
+  /* Actions : barre fine en bas de la carte, boutons alignés à droite */
+  .table-row > .table-cell[data-label='Actions'],
+  .table-row > .table-cell.row-actions,
+  .table-row > .table-cell:last-child:not(:only-child):not([data-label]) {
+    order: 9;
+    flex: 1 0 100%;
+    justify-content: flex-end;
     align-items: center;
-    justify-content: center;
-    border-bottom: none;
-    padding: 0.5rem 0.75rem;
-    background: rgba(0, 0, 0, 0.015);
+    margin-top: 0.2rem;
+    padding: 0.35rem 0 0 !important;
+    border-top: 1px solid #f1f2f4 !important;
   }
 
-  .dark .table-row > .table-cell:last-child:not(:only-child) {
-    background: rgba(255, 255, 255, 0.02);
+  .dark .table-row > .table-cell[data-label='Actions'],
+  .dark .table-row > .table-cell.row-actions,
+  .dark .table-row > .table-cell:last-child:not(:only-child):not([data-label]) {
+    border-top-color: theme('colors.surface.700') !important;
   }
 
-  .table-row > .table-cell:last-child:not(:only-child)::before {
+  .table-row > .table-cell[data-label='Actions']::before,
+  .table-row > .table-cell.row-actions::before {
     content: none;
   }
 
@@ -407,46 +449,8 @@ input[type='number'] {
   }
 }
 
-/* Carte mobile : classes optionnelles posées sur les <td> d'un tableau.
-   cell-title   -> bandeau titre de la carte (identifiant), même si ce n'est pas la 1re colonne
+/* Carte mobile : classes optionnelles posées sur les <td> d'un tableau (voir le bloc « cartes compactes » plus haut).
+   cell-title   -> titre de la carte (identifiant), même si ce n'est pas la 1re colonne
    cell-normal  -> cellule ordinaire même en dernière colonne (sinon traitée comme barre d'actions)
-   row-actions  -> barre d'actions rangée en bas de la carte, quelle que soit sa colonne */
-@media (max-width: 767px) {
-  .table-row > .table-cell.cell-title:not(:only-child) {
-    grid-column: 1 / -1;
-    order: -1;
-    border-right: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0.6rem 0.75rem 0.5rem;
-    background: rgba(0, 0, 0, 0.015);
-    font-size: 13.5px !important;
-    font-weight: 700;
-  }
-
-  .table-row > .table-cell.cell-normal:last-child:not(:only-child) {
-    grid-column: auto;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 0.45rem 0.75rem;
-    background: none;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .table-row > .table-cell.row-actions:not(:only-child) {
-    order: 99;
-    grid-column: 1 / -1;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 0.75rem;
-    background: rgba(0, 0, 0, 0.015);
-    border-bottom: none;
-    border-right: none;
-    font-size: inherit !important;
-    font-weight: 500;
-  }
-
-  .table-cell.row-actions::before { display: none; }
-  .table-row > .table-cell.cell-normal:last-child:not(:only-child)::before { content: attr(data-label); }
-}
+   row-actions  -> barre d'actions rangée en bas de la carte, quelle que soit sa colonne
+   col-opt      -> colonne masquée dans la carte mobile */
