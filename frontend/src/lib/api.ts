@@ -70,8 +70,9 @@ export default api;
 
 // Auth API
 export const authApi = {
+  // Délai allongé : le serveur gratuit s'endort et met jusqu'à ~1 minute à se réveiller.
   login: (email: string, motDePasse: string) =>
-    api.post('/auth/login', { email, motDePasse }),
+    api.post('/auth/login', { email, motDePasse }, { timeout: 90000 }),
   verify2FA: (email: string, code: string, token: string) =>
     api.post('/auth/verify-2fa', { email, code, token }),
   logout: () => api.post('/auth/logout'),
@@ -467,3 +468,18 @@ export const saasApi = {
   payerAbonnement: (correspondant: string, telephone: string) => api.post('/saas/abonnement/paiement', { correspondant, telephone }),
   statutPaiement: (depositId: string) => api.get(`/saas/paiements/${depositId}/statut`),
 };
+
+
+/**
+ * Réveille le serveur en arrière-plan (hébergement gratuit qui s'endort) : à appeler à l'ouverture
+ * d'une page de connexion pour que le serveur soit prêt quand l'utilisateur valide le formulaire.
+ * Sans effet visible : aucune erreur, aucun message.
+ */
+export function reveillerServeur() {
+  if (typeof window === 'undefined') return;
+  try {
+    fetch(`${API_BASE_URL}/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+  } catch {
+    // ignoré
+  }
+}

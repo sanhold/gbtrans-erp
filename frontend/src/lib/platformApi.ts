@@ -30,7 +30,7 @@ platformClient.interceptors.response.use(
 );
 
 export const platformAuth = {
-  login: (email: string, motDePasse: string) => platformClient.post('/login', { email, motDePasse }),
+  login: (email: string, motDePasse: string) => platformClient.post('/login', { email, motDePasse }, { timeout: 90000 }),
   setSession: (token: string, admin: any) => {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem('gbtrans_platform_admin', JSON.stringify(admin));
