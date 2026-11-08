@@ -4,6 +4,9 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminShell from '@/components/admin/AdminShell';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 import { platformApi, platformAuth } from '@/lib/platformApi';
 import { exportCSV } from '@/lib/exportCsv';
 import toast from 'react-hot-toast';
@@ -22,6 +25,7 @@ const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 export default function AdminSocietesPage() {
   const [societes, setSocietes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filtreStatut, setFiltreStatut] = useState<string | null>(null);
@@ -31,7 +35,8 @@ export default function AdminSocietesPage() {
 
   const load = () => {
     setLoading(true);
-    platformApi.societes().then(r => setSocietes(r.data.data || [])).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
+    setErreur(false);
+    platformApi.societes().then(r => setSocietes(r.data.data || [])).catch(() => setErreur(true)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -84,32 +89,37 @@ export default function AdminSocietesPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sociétés clientes</h1>
-            <p className="text-sm text-gray-500">{societes.length} société(s) inscrite(s)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="input-field !w-56 text-sm" />
-            <button onClick={exporter} className="btn-secondary !text-sm">Exporter CSV</button>
-          </div>
-        </div>
+      <div>
+        <PageHeader
+          titre="Sociétés clientes"
+          sousTitre={`${societes.length} société${societes.length > 1 ? 's' : ''} inscrite${societes.length > 1 ? 's' : ''}`}
+          actions={<button onClick={exporter} disabled={filtrees.length === 0} className="btn-secondary">Exporter en CSV</button>}
+        />
 
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setFiltreStatut(null)} className={`badge ${!filtreStatut ? 'badge-gray !border-2 !border-gray-400' : 'badge-gray'} !text-[11px]`}>Tous : {societes.length}</button>
-          {STATUTS.map(s => (
-            <button key={s} onClick={() => setFiltreStatut(filtreStatut === s ? null : s)} className={`badge ${STATUT_BADGE[s]} !text-[11px] ${filtreStatut === s ? '!ring-2 !ring-offset-1 !ring-primary-500' : ''}`}>
-              {STATUT_LABEL[s]} : {compteurs[s] || 0}
-            </button>
-          ))}
+        <div className="card !p-3 space-y-3">
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher une société…"
+            aria-label="Rechercher une société"
+            className="input-field"
+          />
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
+            <button onClick={() => setFiltreStatut(null)} aria-pressed={!filtreStatut} className={`badge badge-gray !text-[12px] !px-3 !py-1 ${!filtreStatut ? '!ring-2 !ring-primary-500' : ''}`}>Toutes : {societes.length}</button>
+            {STATUTS.filter(st => compteurs[st] > 0 || filtreStatut === st).map(st => (
+              <button key={st} onClick={() => setFiltreStatut(filtreStatut === st ? null : st)} aria-pressed={filtreStatut === st}
+                className={`badge ${STATUT_BADGE[st]} !text-[12px] !px-3 !py-1 ${filtreStatut === st ? '!ring-2 !ring-primary-500 !ring-offset-1' : ''}`}>
+                {STATUT_LABEL[st]} : {compteurs[st] || 0}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="table-container">
           <table className="w-full">
             <thead><tr>
               <th className="table-header">Société</th>
-              <th className="table-header">Sous-domaine</th>
               <th className="table-header">Formule</th>
               <th className="table-header">Statut</th>
               <th className="table-header">Prochain paiement</th>
@@ -120,24 +130,31 @@ export default function AdminSocietesPage() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <SkeletonRows cols={9} />
+                <SkeletonRows cols={8} />
+              ) : erreur ? (
+                <tr><td colSpan={8}><ErrorState titre="Impossible de charger les sociétés" onRetry={load} /></td></tr>
               ) : filtrees.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune société</td></tr>
+                <tr><td colSpan={8}>
+                  {societes.length === 0
+                    ? <EmptyState titre="Aucune société pour le moment" description="Les sociétés qui s'inscrivent depuis le site apparaîtront ici." />
+                    : <EmptyState titre="Aucune société ne correspond" description="Modifiez la recherche ou retirez le filtre de statut."
+                        action={<button onClick={() => { setSearch(''); setFiltreStatut(null); }} className="btn-secondary">Effacer les filtres</button>} />}
+                </td></tr>
               ) : filtrees.map(s => (
                 <tr key={s.id} className="table-row">
-                  <td className="table-cell font-medium" data-label="Société">
+                  <td className="table-cell cell-title font-medium" data-label="Société">
                     <Link href={`/admin/societes/${s.id}`} className="text-primary-600 hover:underline">{s.raisonSociale}</Link>
+                    {s.sousDomaine && <span className="block font-mono text-[11px] font-normal text-gray-400">{s.sousDomaine}.gbtrans.app</span>}
                   </td>
-                  <td className="table-cell font-mono text-xs" data-label="Sous-domaine">{s.sousDomaine ? `${s.sousDomaine}.gbtrans.app` : '-'}</td>
-                  <td className="table-cell" data-label="Formule">{s.abonnement?.plan?.nom || '-'}</td>
+                  <td className="table-cell" data-label="Formule">{s.abonnement?.plan?.nom || <span className="text-gray-400">Aucune</span>}</td>
                   <td className="table-cell" data-label="Statut">
-                    {s.abonnement ? <span className={`badge ${STATUT_BADGE[s.abonnement.statut]} !text-[10px]`}>{STATUT_LABEL[s.abonnement.statut]}</span> : '-'}
+                    {s.abonnement ? <span className={`badge ${STATUT_BADGE[s.abonnement.statut]} !text-[10px]`}>{STATUT_LABEL[s.abonnement.statut]}</span> : <span className="badge badge-gray !text-[10px]">Sans abonnement</span>}
                   </td>
-                  <td className="table-cell text-xs" data-label="Prochain paiement">{fmtDate(s.abonnement?.dateProchainPaiement)}</td>
+                  <td className="table-cell col-opt text-xs" data-label="Prochain paiement">{fmtDate(s.abonnement?.dateProchainPaiement)}</td>
                   <td className="table-cell text-center" data-label="Utilisateurs">{s._count?.utilisateurs ?? 0}</td>
                   <td className="table-cell text-center" data-label="Dossiers">{s._count?.dossiers ?? 0}</td>
-                  <td className="table-cell text-xs" data-label="Inscrite le">{fmtDate(s.createdAt)}</td>
-                  <td className="table-cell" data-label="Actions">
+                  <td className="table-cell cell-normal text-xs" data-label="Inscrite le">{fmtDate(s.createdAt)}</td>
+                  <td className="table-cell row-actions" data-label="Actions">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {s.abonnement && (
                         <select

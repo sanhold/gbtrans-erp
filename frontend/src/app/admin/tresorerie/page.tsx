@@ -29,7 +29,7 @@ export default function AdminTresoreriePage() {
     <AdminShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trésorerie SaaS</h1>
+          <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Trésorerie SaaS</h1>
           <p className="text-sm text-gray-500">Revenus toutes sociétés clientes confondues</p>
         </div>
 
