@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, utilisateursApi } from '@/lib/api';
@@ -9,6 +9,7 @@ import { statutColors } from '@/lib/dossierStatut';
 
 export default function SuiviDossiersPage() {
   const [dossiers, setDossiers] = useState<any[]>([]);
+  const detailRef = useRef<HTMLDivElement>(null);
   const [loadingDossiers, setLoadingDossiers] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -133,20 +134,20 @@ export default function SuiviDossiersPage() {
           <p className="text-sm text-gray-500">Sélectionnez un dossier pour valider ses étapes au fur et à mesure de leur exécution physique.</p>
         </div>
 
-        <div className="flex gap-4 items-start">
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
           {/* Panneau gauche : liste des dossiers */}
-          <div className="w-80 flex-shrink-0 card !p-3 space-y-2">
+          <div className="w-full lg:w-80 lg:flex-shrink-0 card !p-3 space-y-2">
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="N° physique, client, BL, déclaration..." className="input-field pl-9 text-sm" />
             </div>
-            <div className="max-h-[65vh] overflow-y-auto space-y-1">
+            <div className="max-h-[40vh] lg:max-h-[65vh] overflow-y-auto space-y-1">
               {loadingDossiers ? (
                 <div className="text-center py-8"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
               ) : dossiers.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 py-6">Aucun dossier</p>
               ) : dossiers.map(d => (
-                <button key={d.id} onClick={() => loadDossierEtapes(d.id)}
+                <button key={d.id} onClick={() => { loadDossierEtapes(d.id); if (typeof window !== 'undefined' && window.innerWidth < 1024) setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150); }}
                   className={`w-full text-left p-2.5 rounded-lg border transition-colors ${selectedId === d.id ? 'bg-primary-50 border-primary-300 dark:bg-primary-900/20' : 'border-transparent hover:bg-gray-50 dark:hover:bg-surface-700'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-xs font-semibold text-primary-600">{d.numeroPhysique || d.numero}</span>
@@ -159,11 +160,11 @@ export default function SuiviDossiersPage() {
           </div>
 
           {/* Panneau droit : étapes du dossier sélectionné */}
-          <div className="flex-1 card !p-0 overflow-hidden">
+          <div ref={detailRef} className="w-full lg:flex-1 min-w-0 card !p-0 overflow-hidden scroll-mt-20">
             {!selectedId ? (
               <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400">
                 <svg className="w-12 h-12 mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4" /></svg>
-                <p className="text-sm">Sélectionnez un dossier à gauche pour afficher ses étapes.</p>
+                <p className="text-sm">Sélectionnez un dossier dans la liste pour afficher ses étapes.</p>
               </div>
             ) : loadingEtapes ? (
               <div className="flex items-center justify-center py-24"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full" /></div>
@@ -226,7 +227,7 @@ export default function SuiviDossiersPage() {
                       const done = e.statut === 'VALIDEE';
                       return (
                         <div key={e.id} className={`border rounded-lg overflow-hidden ${done ? 'border-green-200 bg-green-50/50 dark:bg-green-900/10 dark:border-green-800' : 'border-gray-200 dark:border-surface-700'}`}>
-                          <div className="p-3 flex items-start gap-3">
+                          <div className="p-3 flex flex-wrap sm:flex-nowrap items-start gap-3">
                             {peutModifier && (
                               <div className="flex flex-col flex-shrink-0 -my-1">
                                 <button onClick={() => handleDeplacer(idx, -1)} disabled={idx === 0} title="Monter" className="text-gray-400 hover:text-primary-600 disabled:opacity-20 disabled:hover:text-gray-400 leading-none">
@@ -256,7 +257,7 @@ export default function SuiviDossiersPage() {
                                 </p>
                               ) : null}
                             </div>
-                            <div className="flex-shrink-0 flex items-center gap-2">
+                            <div className="sm:flex-shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end pl-10 sm:pl-0">
                               {done ? (
                                 peutModifier && <button onClick={() => handleReinitialiser(e.id)} className="text-xs text-gray-400 hover:text-red-500">Réinitialiser</button>
                               ) : validating === e.id ? null : (
