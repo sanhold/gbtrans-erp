@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
+import DossierActions from '@/components/dossiers/DossierActions';
 import { dossiersApi } from '@/lib/api';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -66,6 +67,12 @@ export default function DossierDetailPage() {
   }, [dossierId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Lien direct vers un onglet : /dossiers/[id]?onglet=proformas
+  useEffect(() => {
+    const o = new URLSearchParams(window.location.search).get('onglet');
+    if (o && ['infos', 'articles', 'transport', 'douane', 'proformas', 'factures', 'historique'].includes(o)) setTab(o);
+  }, []);
 
   const handleChangeStatut = async (statut: string) => {
     if (statut === dossier.statut) return;
@@ -322,6 +329,11 @@ export default function DossierDetailPage() {
             ))}
           </div>
         </div>
+
+        <details className="card !p-4 group" open>
+          <summary className="cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-200 list-none flex items-center justify-between">Actions rapides<span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span></summary>
+          <div className="mt-4"><DossierActions dossier={dossier} masquerFiche onChange={load} onDeleted={() => router.push('/dossiers')} /></div>
+        </details>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit">
