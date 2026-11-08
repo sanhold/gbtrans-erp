@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { parametresApi, dashboardApi } from '@/lib/api';
 import { cachedGet, useCachedFetch, TTL } from '@/lib/cache';
+import { ouvrirPalette } from './CommandPalette';
 
 const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/dashboard', name: 'Accueil' },
@@ -70,15 +71,16 @@ export function getModuleName(pathname: string | null): string {
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
+  onToggleCollapse?: () => void;
+  collapsed?: boolean;
 }
 
-export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
+export default function Header({ onToggleSidebar = () => {}, onToggleCollapse, collapsed = false }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [darkMode, setDarkMode] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [query, setQuery] = useState('');
   const [now, setNow] = useState('');
   const { data: alertesRes } = useCachedFetch('dashboard:alertes', () => dashboardApi.alertes(), TTL.normal);
   const al = alertesRes?.data?.data;
@@ -104,12 +106,6 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
     const t = setInterval(fmt, 30000);
     return () => clearInterval(t);
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    router.push(q ? `/dossiers?search=${encodeURIComponent(q)}` : '/dossiers');
-  };
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -137,6 +133,12 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
         </svg>
       </button>
 
+      {onToggleCollapse && (
+        <button onClick={onToggleCollapse} title={collapsed ? 'Déployer le menu' : 'Réduire le menu'} aria-label={collapsed ? 'Déployer le menu' : 'Réduire le menu'}
+          className="hidden lg:flex w-10 h-10 flex-shrink-0 rounded-md items-center justify-center hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+      )}
       <div className="flex items-center gap-2.5 min-w-0 lg:w-[210px] flex-shrink-0">
         <img src={identite?.logo || '/brand/logo-icon.png'} alt="Logo" className="h-9 w-9 p-0.5 object-contain rounded-lg bg-white flex-shrink-0" />
         <span className="hidden sm:block min-w-0 leading-tight">
@@ -145,17 +147,12 @@ export default function Header({ onToggleSidebar = () => {} }: HeaderProps) {
         </span>
       </div>
 
-      <form onSubmit={handleSearch} role="search" className="flex-1 min-w-0 max-w-xl relative">
-        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Rechercher un dossier"
-          placeholder="Rechercher un dossier, client, facture…"
-          className="w-full h-10 rounded-lg bg-white/10 border border-white/10 pl-9 pr-3 text-[13px] text-white placeholder:text-white/55 focus:outline-none focus:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/60"
-        />
-      </form>
+      <button type="button" onClick={ouvrirPalette} aria-label="Rechercher (Ctrl K)" title="Rechercher (Ctrl K)"
+        className="flex-1 min-w-0 max-w-xl h-10 rounded-lg bg-white/10 border border-white/10 px-3 flex items-center gap-2 text-left text-[13px] text-white/60 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+        <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+        <span className="truncate flex-1">Rechercher un dossier, client, page…</span>
+        <kbd className="hidden md:inline text-[11px] text-white/70 bg-white/15 rounded px-1.5 py-0.5">Ctrl K</kbd>
+      </button>
 
       <div className="ml-auto flex items-center gap-1 sm:gap-2 text-[12px]">
         <span className="hidden xl:inline text-[12.5px] text-white/85 whitespace-nowrap mr-2" suppressHydrationWarning>{now}</span>
