@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../config/database';
+import { creerComptesTest } from '../../utils/comptesTest';
 import { config } from '../../config';
 import { ApiResponse } from '../../utils/apiResponse';
 import { invaliderSociete } from '../../utils/cacheMemoire';
@@ -135,6 +136,22 @@ router.post('/societes/:id/relancer', authenticatePlatform, requireSuperAdmin, a
     if (!societe.email) { ApiResponse.badRequest(res, 'Cette société n\'a pas d\'email enregistré'); return; }
     await tracerActivite(req, 'RELANCE_ENVOYEE', 'Societe', req.params.id, { email: societe.email });
     ApiResponse.success(res, { email: societe.email, raisonSociale: societe.raisonSociale }, 'Relance enregistrée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+/**
+ * Crée / met à jour les 5 comptes de test (un par profil) d'une société. Réservé au super-admin ;
+ * le mot de passe est envoyé dans le corps de la requête et n'est ni journalisé ni renvoyé.
+ */
+router.post('/societes/:id/comptes-test', authenticatePlatform, requireSuperAdmin, async (req: PlatformRequest, res: Response) => {
+  try {
+    const motDePasse = typeof req.body?.motDePasse === 'string' ? req.body.motDePasse : '';
+    if (motDePasse.length < 8) { ApiResponse.badRequest(res, 'Le mot de passe doit comporter au moins 8 caractères'); return; }
+    const societe = await prisma.societe.findUnique({ where: { id: req.params.id }, select: { id: true, code: true } });
+    if (!societe) { ApiResponse.notFound(res, 'Société introuvable'); return; }
+    const resultat = await creerComptesTest(prisma, societe, motDePasse);
+    await tracerActivite(req, 'COMPTES_TEST_CREES', 'Societe', societe.id, { prets: resultat.prets.map(c => c.email), ignores: resultat.ignores });
+    ApiResponse.success(res, resultat, `${resultat.prets.length} compte(s) de test prêt(s)`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
