@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import DataTable, { Colonne } from '@/components/tables/DataTable';
 import PaginationControls from '@/components/tables/PaginationControls';
 import api, { facturesApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -75,6 +76,18 @@ export default function FacturationPage() {
     finally { setTransforming(null); }
   };
 
+  const colonnes: Colonne<any>[] = [
+    { cle: 'numero', libelle: 'N° facture', mono: true, texte: (f) => f.numero, rendu: (f) => <span className="font-semibold text-primary-600 dark:text-primary-300">{f.numero}</span> },
+    { cle: 'normalise', libelle: 'N° normalisé', mono: true, masquerSous: '2xl', texte: (f) => f.numeroNormalise || '', rendu: (f) => f.numeroNormalise || <span className="text-gray-300">—</span> },
+    { cle: 'client', libelle: 'Client', texte: (f) => f.client?.raisonSociale || '', rendu: (f) => <span className="block max-w-[15rem] truncate text-gray-900 dark:text-white" title={f.client?.raisonSociale}>{f.client?.raisonSociale || '—'}</span> },
+    { cle: 'dossier', libelle: 'Dossier', mono: true, masquerSous: 'xl', texte: (f) => f.dossier?.numeroPhysique || f.dossier?.numero || '', rendu: (f) => f.dossier?.numeroPhysique || f.dossier?.numero || <span className="text-gray-300">—</span> },
+    { cle: 'ttc', libelle: 'Total TTC', align: 'right', mono: true, texte: (f) => fmt(f.montantTTC), rendu: (f) => <span className="font-semibold text-gray-900 dark:text-white">{fmt(f.montantTTC)}</span> },
+    { cle: 'paye', libelle: 'Payé', align: 'right', mono: true, masquerSous: 'xl', texte: (f) => fmt(f.montantPaye), rendu: (f) => <span className="text-green-600">{fmt(f.montantPaye)}</span> },
+    { cle: 'reste', libelle: 'Reste', align: 'right', mono: true, texte: (f) => fmt(f.resteAPayer), rendu: (f) => <span className={Number(f.resteAPayer) > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{fmt(f.resteAPayer)}</span> },
+    { cle: 'statut', libelle: 'Statut', texte: (f) => (f.statut || '').replace(/_/g, ' '), rendu: (f) => <span className={`badge ${statutColors[f.statut] || 'badge-gray'}`}>{f.statut?.replace(/_/g, ' ')}</span> },
+    { cle: 'date', libelle: 'Date', texte: (f) => new Date(f.dateFacture).toLocaleDateString('fr-FR'), rendu: (f) => <span className="text-gray-500">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</span> },
+  ];
+
   // Ordinateur : le détail glisse depuis la droite. Téléphone : on ouvre la fiche de la facture.
   const ouvrir = (f: any) => {
     if (window.matchMedia('(min-width: 1024px)').matches) { setSelectedId(f.id); setPanneauOuvert(true); }
@@ -114,15 +127,15 @@ export default function FacturationPage() {
         {tab === 'factures' && (
           <div>
             {loading ? (
-              <ul aria-busy="true" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+              <ul aria-busy="true" className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:hidden">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <li key={i} className="card !p-3 space-y-2 animate-pulse"><div className="h-4 w-1/2 bg-gray-200 dark:bg-surface-600 rounded" /><div className="h-3 w-3/4 bg-gray-100 dark:bg-surface-700 rounded" /></li>
                 ))}
               </ul>
             ) : factures.length === 0 ? (
-              <div className="card"><EmptyState titre="Aucune facture" description="Créez une facture ou facturez une proforma validée." action={<Link href="/facturation/nouveau" className="btn-primary">Nouvelle facture</Link>} /></div>
+              <div className="card lg:hidden"><EmptyState titre="Aucune facture" description="Créez une facture ou facturez une proforma validée." action={<Link href="/facturation/nouveau" className="btn-primary">Nouvelle facture</Link>} /></div>
             ) : (
-              <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:hidden">
                 {factures.map((f) => (
                   <li key={f.id}>
                     <button
@@ -143,6 +156,28 @@ export default function FacturationPage() {
                 ))}
               </ul>
             )}
+            <div className="hidden lg:block">
+              <DataTable
+                colonnes={colonnes}
+                lignes={factures}
+                cleLigne={(f) => f.id}
+                onClicLigne={ouvrir}
+                idSelectionne={panneauOuvert ? selectedId : null}
+                chargement={loading}
+                nomExport="factures"
+                vide={<EmptyState titre="Aucune facture" description="Créez une facture ou facturez une proforma validée." action={<Link href="/facturation/nouveau" className="btn-primary">Nouvelle facture</Link>} />}
+                actions={(f) => (
+                  <>
+                    <Link href={`/facturation/${f.id}`} title="Voir la fiche" aria-label="Voir la fiche" className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-500">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    </Link>
+                    <button type="button" onClick={() => telechargerFacturePDF(f.id)} title="Télécharger le PDF" aria-label="Télécharger le PDF" className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-surface-700 text-red-500">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    </button>
+                  </>
+                )}
+              />
+            </div>
             <div className="card !p-0 mt-3 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
           </div>
         )}
