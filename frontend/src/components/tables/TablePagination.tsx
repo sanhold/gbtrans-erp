@@ -23,7 +23,7 @@ export default function TablePagination({ page, totalPages, total, pageSize, onP
   const inactif = 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent';
 
   return (
-    <div className="flex items-center justify-between gap-4 border-t border-gray-100 bg-gray-50/50 px-4 py-3 text-sm text-gray-500 dark:border-surface-700 dark:bg-surface-900/30 dark:text-gray-400">
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-between border-t border-gray-100 bg-gray-50/50 px-4 py-3 text-sm text-gray-500 dark:border-surface-700 dark:bg-surface-900/30 dark:text-gray-400">
       <span>
         <span className="font-medium text-gray-900 dark:text-white">{from}–{to}</span> sur <span className="font-medium text-gray-900 dark:text-white">{total}</span>
       </span>

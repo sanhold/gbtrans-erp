@@ -81,7 +81,8 @@
   }
 
   .table-container {
-    @apply overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-card
+    @apply overflow-x-auto bg-white rounded-2xl border border-gray-200/80
+           shadow-[0_1px_3px_rgba(16,24,40,0.06),0_1px_2px_rgba(16,24,40,0.04)]
            dark:bg-surface-800 dark:border-surface-700;
   }
 
@@ -90,20 +91,49 @@
   }
 
   .table-header {
-    @apply px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider
+    @apply px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase
            bg-gray-50 border-0 border-b border-gray-200 whitespace-nowrap
-           dark:bg-surface-800 dark:text-gray-300 dark:border-surface-700;
-    letter-spacing: 0.05em;
+           dark:bg-surface-900/50 dark:text-gray-400 dark:border-surface-700;
+    letter-spacing: 0.07em;
+  }
+
+  .table-header:first-child,
+  .table-cell:first-child {
+    padding-left: 1.25rem;
   }
 
   .table-cell {
-    @apply px-3 py-2.5 text-[13px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap
-           dark:text-gray-200 dark:border-surface-700;
-    letter-spacing: 0.01em;
+    @apply px-4 py-3 text-[13.5px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap align-middle
+           dark:text-gray-200 dark:border-surface-700/70;
+    letter-spacing: 0.005em;
   }
 
   .table-row {
-    @apply hover:bg-primary-50/60 dark:hover:bg-white/[.04] transition-colors;
+    @apply hover:bg-primary-50/40 dark:hover:bg-white/[.04] transition-colors;
+  }
+
+  .table-container tbody tr:last-child > .table-cell {
+    border-bottom: 0;
+  }
+
+  /* Statuts dans les tableaux : pastille avec point de couleur, comme les tableaux Dossiers / Factures */
+  .table-cell .badge {
+    @apply gap-1.5 px-2.5 py-1 text-xs font-medium ring-1 ring-inset ring-black/5 dark:ring-white/10;
+  }
+
+  .table-cell .badge::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+
+  /* Indicateurs « ✓ » / « - » et petits badges de comptage : pas de point */
+  .table-cell .badge.badge-count::before {
+    display: none;
   }
 
   .badge {
