@@ -8,8 +8,8 @@ import { dossiersApi, financeApi } from '@/lib/api';
 import { fmt, CATEGORIES_DEPENSE } from '@/lib/financeHelpers';
 import { lireFichierEnDataUrl, ouvrirPiece, PIECE_TYPES_ACCEPTES } from '@/lib/pieceJointe';
 
-const STATUT_LABEL: Record<string, string> = { EN_ATTENTE: 'En attente', VALIDE: 'Validé', REJETE: 'Rejeté' };
-const STATUT_BADGE: Record<string, string> = { EN_ATTENTE: 'badge-warning', VALIDE: 'badge-success', REJETE: 'badge-danger' };
+const STATUT_LABEL: Record<string, string> = { BROUILLON: 'Brouillon', EN_ATTENTE: 'Soumis — en attente', VALIDE: 'Validé', REJETE: 'Rejeté' };
+const STATUT_BADGE: Record<string, string> = { BROUILLON: 'badge-gray', EN_ATTENTE: 'badge-warning', VALIDE: 'badge-success', REJETE: 'badge-danger' };
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR');
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
@@ -22,6 +22,7 @@ export default function MesDotationsPage() {
   const [dotationCible, setDotationCible] = useState<any | null>(null);
   const [form, setForm] = useState(formVide());
   const [saving, setSaving] = useState(false);
+  const [soumission, setSoumission] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -51,6 +52,7 @@ export default function MesDotationsPage() {
   const envoyer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dotationCible) return;
+    if (!form.dossierId) { toast.error('Choisissez le dossier concerné par cette dépense'); return; }
     setSaving(true);
     try {
       await financeApi.justificatifs.create({
@@ -62,15 +64,26 @@ export default function MesDotationsPage() {
         dateJustificatif: form.dateJustificatif || undefined,
         piece: form.piece || undefined,
       });
-      toast.success('Justificatif envoyé à la comptabilité');
+      toast.success('Dépense enregistrée en brouillon. Soumettez votre état pour l\'envoyer à la trésorerie.');
       setDotationCible(null);
       load();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
     finally { setSaving(false); }
   };
 
+  const soumettre = async (d: any) => {
+    if (!confirm(`Soumettre ${d.nbBrouillon} dépense(s) pour ${fmt(d.montantBrouillon)} F à la trésorerie ? Vous ne pourrez plus les supprimer.`)) return;
+    setSoumission(d.id);
+    try {
+      const r = await financeApi.justificatifs.soumettre(d.id);
+      toast.success(r.data.message || 'État soumis à la trésorerie');
+      load();
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
+    finally { setSoumission(null); }
+  };
+
   const supprimer = async (j: any) => {
-    if (!confirm(`Supprimer le justificatif « ${j.designation} » ?`)) return;
+    if (!confirm(`Supprimer la dépense « ${j.designation} » ?`)) return;
     try { await financeApi.justificatifs.delete(j.id); toast.success('Justificatif supprimé'); load(); }
     catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
@@ -85,7 +98,7 @@ export default function MesDotationsPage() {
       <div className="space-y-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Mes dotations</h1>
-          <p className="text-sm text-gray-500">Saisissez vos justificatifs de dépense. Ils sont envoyés à la comptabilité pour validation ; une fois validés, ils deviennent des dépenses rattachées au dossier.</p>
+          <p className="text-sm text-gray-500">Saisissez vos dépenses en précisant le dossier concerné, puis soumettez votre état à la trésorerie. Le comptable vérifie chaque dépense et la valide sur un compte de trésorerie : elle devient alors une dépense du dossier.</p>
         </div>
 
         {loading ? (
@@ -99,19 +112,27 @@ export default function MesDotationsPage() {
                 <div className="font-bold">{d.numero} <span className="font-normal text-white/70">— {fmtDate(d.dateDotation)}</span></div>
                 {d.motif && <div className="text-xs text-white/75">{d.motif}</div>}
               </div>
-              <button type="button" onClick={() => ouvrir(d)} disabled={Number(d.montantRestant) <= 0} className="btn-secondary !py-1 disabled:opacity-50" title={Number(d.montantRestant) <= 0 ? 'Dotation entièrement justifiée' : undefined}>
-                + Ajouter un justificatif
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => ouvrir(d)} disabled={Number(d.montantRestant) <= 0} className="btn-secondary !py-1 disabled:opacity-50" title={Number(d.montantRestant) <= 0 ? 'Dotation entièrement justifiée' : undefined}>
+                  + Ajouter une dépense
+                </button>
+                {d.nbBrouillon > 0 && (
+                  <button type="button" onClick={() => soumettre(d)} disabled={soumission === d.id} className="inline-flex items-center gap-1.5 rounded-lg bg-[#e8832a] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:bg-[#d4731f] disabled:opacity-60">
+                    {soumission === d.id ? 'Envoi...' : `Soumettre à la trésorerie (${d.nbBrouillon})`}
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-200 dark:bg-surface-700 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px bg-gray-200 dark:bg-surface-700 text-center">
               {[
                 { l: 'Montant dotation', v: d.montant, c: '' },
                 { l: 'Dépensé (validé)', v: d.montantUtilise, c: 'text-green-600' },
-                { l: 'En attente de validation', v: d.montantEnAttente, c: 'text-amber-600' },
+                { l: 'Soumis, en attente', v: d.montantEnAttente, c: 'text-amber-600' },
+                { l: 'Brouillon (non soumis)', v: d.montantBrouillon, c: 'text-gray-500' },
                 { l: 'Reste à justifier', v: d.montantRestant, c: 'text-primary-600 dark:text-primary-300' },
               ].map(k => (
-                <div key={k.l} className="bg-white dark:bg-surface-800 py-2.5">
+                <div key={k.l} className="bg-white dark:bg-surface-800 py-2.5 last:col-span-2 sm:last:col-span-1">
                   <div className="text-[10px] uppercase text-gray-500">{k.l}</div>
                   <div className={`font-bold font-mono ${k.c}`}>{fmt(k.v)} F</div>
                 </div>
@@ -119,7 +140,7 @@ export default function MesDotationsPage() {
             </div>
 
             {d.justificatifs.length === 0 ? (
-              <p className="px-4 py-5 text-sm text-gray-500">Aucun justificatif saisi pour cette dotation.</p>
+              <p className="px-4 py-5 text-sm text-gray-500">Aucune dépense saisie pour cette dotation.</p>
             ) : (
               <div className="table-container !border-0 !rounded-none">
                 <table className="w-full" data-no-enhance>
@@ -149,7 +170,7 @@ export default function MesDotationsPage() {
                         <td className="table-cell" data-label="Actions">
                           <div className="flex gap-3 text-xs">
                             {j.aPiece && <button type="button" onClick={() => voirPiece(j)} className="text-primary-600 hover:underline">Voir la pièce</button>}
-                            {j.statut === 'EN_ATTENTE' && <button type="button" onClick={() => supprimer(j)} className="text-red-600 hover:underline">Supprimer</button>}
+                            {j.statut === 'BROUILLON' && <button type="button" onClick={() => supprimer(j)} className="text-red-600 hover:underline">Supprimer</button>}
                           </div>
                         </td>
                       </tr>
@@ -166,14 +187,14 @@ export default function MesDotationsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setDotationCible(null)}>
           <form onSubmit={envoyer} className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-300 dark:border-surface-700" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 bg-primary-600 text-white flex items-center justify-between">
-              <h3 className="font-bold">Nouveau justificatif — {dotationCible.numero}</h3>
+              <h3 className="font-bold">Nouvelle dépense — {dotationCible.numero}</h3>
               <button type="button" onClick={() => setDotationCible(null)} className="p-1 rounded-sm hover:bg-white/15" aria-label="Fermer">✕</button>
             </div>
             <div className="p-4 space-y-3">
               <p className="text-xs text-gray-500">Reste à justifier : <b className="font-mono">{fmt(dotationCible.montantRestant)} F</b></p>
               <div>
-                <label className="label">Dossier concerné</label>
-                <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="— Aucun —" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
+                <label className="label">Dossier concerné *</label>
+                <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="— Choisir un dossier —" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." required />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -215,7 +236,7 @@ export default function MesDotationsPage() {
             </div>
             <div className="px-4 pb-4 flex justify-end gap-2">
               <button type="button" className="btn-secondary" onClick={() => setDotationCible(null)}>Annuler</button>
-              <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Envoi...' : 'Envoyer à la comptabilité'}</button>
+              <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Enregistrement...' : 'Enregistrer en brouillon'}</button>
             </div>
           </form>
         </div>
