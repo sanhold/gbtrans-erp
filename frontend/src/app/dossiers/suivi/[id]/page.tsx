@@ -30,7 +30,7 @@ export default function SuiviDossierDetailPage() {
 
   const utilisateurOptions = utilisateurs.map(u => ({ id: u.id, label: `${u.prenom} ${u.nom}` }));
 
-  useEffect(() => { loadDossierEtapes(selectedId); }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadDossierEtapes(selectedId); }, [selectedId]);
 
   const loadDossierEtapes = async (id: string) => {
     setValidating(null);

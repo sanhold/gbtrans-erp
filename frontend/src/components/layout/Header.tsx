@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { parametresApi, dashboardApi } from '@/lib/api';
 import { cachedGet, useCachedFetch, TTL } from '@/lib/cache';
@@ -77,7 +77,6 @@ interface HeaderProps {
 
 export default function Header({ onToggleSidebar = () => {}, onToggleCollapse, collapsed = false }: HeaderProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [darkMode, setDarkMode] = useState(false);
   const [showProfile, setShowProfile] = useState(false);

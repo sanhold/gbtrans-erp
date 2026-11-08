@@ -23,6 +23,8 @@ platformClient.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem('gbtrans_platform_admin');
+      // Rechargement complet volontaire : repart d'un etat (stores, caches) propre.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       if (!window.location.pathname.startsWith('/admin/login')) window.location.href = '/admin/login';
     }
     return Promise.reject(error);

@@ -15,8 +15,6 @@ export function useGraphify<T>(fetcher: () => Promise<T>, deps: any[] = []): Use
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const refresh = useCallback(() => {
     setLoading(true);
     setError(null);

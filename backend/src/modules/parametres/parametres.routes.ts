@@ -10,7 +10,7 @@ import { cacheSociete, invaliderSociete } from '../../utils/cacheMemoire';
 
 // smtpPass ne doit jamais transiter en clair (ni chiffre) dans une reponse API.
 function sansSmtpPass<T extends { smtpPass?: string | null }>(societe: T): Omit<T, 'smtpPass'> {
-  const { smtpPass, ...safe } = societe;
+  const { smtpPass: _smtpPass, ...safe } = societe;
   return safe;
 }
 

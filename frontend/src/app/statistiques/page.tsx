@@ -1,7 +1,6 @@
 'use client';
 
 import { SkeletonCards } from '@/components/ui/Skeleton';
-import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useCachedFetch, TTL } from '@/lib/cache';
 import { dashboardApi } from '@/lib/api';

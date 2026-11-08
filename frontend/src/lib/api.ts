@@ -59,6 +59,8 @@ api.interceptors.response.use(
       if (typeof window !== 'undefined' && !isLoginRequest && !isProfileRequest) {
         localStorage.removeItem('gbtrans_token');
         localStorage.removeItem('gbtrans_user');
+        // Rechargement complet volontaire : repart d'un etat (stores, caches) propre.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = '/auth/login';
       }
     }
