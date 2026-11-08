@@ -50,7 +50,7 @@ export default function JustificatifsDotationPage() {
         caisseId: c.type === 'CAISSE' ? c.id : undefined,
         compteBancaireId: c.type === 'BANQUE' ? c.id : undefined,
       });
-      toast.success(r.data.message || 'Justificatif validé');
+      toast.success(r.data.message || 'Dépense validée');
       setAValider(null); setCompte('');
       load();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
@@ -63,7 +63,7 @@ export default function JustificatifsDotationPage() {
     setBusy(true);
     try {
       await financeApi.justificatifs.rejeter(aRejeter.id, motif);
-      toast.success('Justificatif rejeté');
+      toast.success('Dépense rejetée');
       setARejeter(null); setMotif('');
       load();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
@@ -80,11 +80,11 @@ export default function JustificatifsDotationPage() {
       <div className="space-y-4">
         <div className="card !p-3 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Justificatifs de dotation</h1>
-            <p className="text-[11px] text-gray-500">Validez les dépenses saisies par les bénéficiaires : la validation crée la dépense et débite le compte choisi.</p>
+            <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Dotations à valider — file de la trésorerie</h1>
+            <p className="text-[11px] text-gray-500">Dépenses soumises par les agents sur leurs dotations. Vérifiez chaque dépense, puis validez-la en choisissant le compte de trésorerie à débiter : elle est imputée au dossier.</p>
           </div>
           <select value={statut} onChange={e => setStatut(e.target.value)} className="input-field !py-1.5 text-xs w-44">
-            <option value="EN_ATTENTE">En attente</option>
+            <option value="EN_ATTENTE">À valider</option>
             <option value="VALIDE">Validés</option>
             <option value="REJETE">Rejetés</option>
             <option value="TOUS">Tous</option>
@@ -110,7 +110,7 @@ export default function JustificatifsDotationPage() {
               {loading ? (
                 <SkeletonRows cols={9} />
               ) : items.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-gray-500">Aucun justificatif {statut === 'EN_ATTENTE' ? 'en attente de validation' : ''}</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-gray-500">Aucune dépense {statut === 'EN_ATTENTE' ? 'à valider pour le moment' : ''}</td></tr>
               ) : items.map(j => (
                 <tr key={j.id} className="table-row">
                   <td className="table-cell" data-label="Actions">
@@ -145,7 +145,7 @@ export default function JustificatifsDotationPage() {
       {aValider && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setAValider(null)}>
           <form onSubmit={valider} className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-md border border-gray-300 dark:border-surface-700" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 bg-primary-600 text-white font-bold">Valider le justificatif</div>
+            <div className="px-4 py-3 bg-primary-600 text-white font-bold">Valider la dépense</div>
             <div className="p-4 space-y-3 text-sm">
               <div className="p-3 bg-gray-50 dark:bg-surface-700 rounded-sm">
                 <div className="font-semibold">{aValider.designation}</div>
@@ -178,7 +178,7 @@ export default function JustificatifsDotationPage() {
       {aRejeter && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setARejeter(null)}>
           <form onSubmit={rejeter} className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-md border border-gray-300 dark:border-surface-700" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 bg-primary-600 text-white font-bold">Rejeter le justificatif</div>
+            <div className="px-4 py-3 bg-primary-600 text-white font-bold">Rejeter la dépense</div>
             <div className="p-4 space-y-3 text-sm">
               <p className="text-gray-600 dark:text-gray-300">« {aRejeter.designation} » — {fmt(aRejeter.montant)} F</p>
               <div>

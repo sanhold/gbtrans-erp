@@ -52,9 +52,12 @@ router.get('/mes-dotations', async (req: AuthRequest, res: Response) => {
     const data = [];
     for (const d of dotations) {
       const justificatifs = await avecPiece(d.justificatifs);
-      const enAttente = d.justificatifs.filter((j) => j.statut === 'EN_ATTENTE').reduce((s, j) => s + Number(j.montant), 0);
+      const somme = (statut: string) => d.justificatifs.filter((j) => j.statut === statut).reduce((s, j) => s + Number(j.montant), 0);
+      const enAttente = somme('EN_ATTENTE');
+      const brouillon = somme('BROUILLON');
+      const nbBrouillon = d.justificatifs.filter((j) => j.statut === 'BROUILLON').length;
       const utilise = utiliseParId.get(d.id) || 0;
-      data.push({ ...d, justificatifs, montantUtilise: utilise, montantEnAttente: enAttente, montantRestant: Number(d.montant) - utilise - enAttente });
+      data.push({ ...d, justificatifs, montantUtilise: utilise, montantEnAttente: enAttente, montantBrouillon: brouillon, nbBrouillon, montantRestant: Number(d.montant) - utilise - enAttente - brouillon });
     }
     ApiResponse.success(res, data);
   } catch (e: any) { ApiResponse.error(res, e.message); }
@@ -66,6 +69,7 @@ router.post('/', audit('FINANCE', 'CREER'), async (req: AuthRequest, res: Respon
     const { dotationId, dossierId, designation, categorie, dateJustificatif, piece } = req.body;
     const montant = Number(req.body.montant);
     if (!dotationId) { ApiResponse.badRequest(res, 'Dotation requise'); return; }
+    if (!dossierId) { ApiResponse.badRequest(res, 'Le dossier concerné est obligatoire pour chaque dépense'); return; }
     if (!designation || !String(designation).trim()) { ApiResponse.badRequest(res, 'Désignation requise'); return; }
     if (!montant || montant <= 0) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
     if (piece != null && piece !== '') {
@@ -77,18 +81,18 @@ router.post('/', audit('FINANCE', 'CREER'), async (req: AuthRequest, res: Respon
     const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId, agentId: userId } });
     if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
     if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }
-    if (dossierId) await assertDossierOuvert(dossierId, societeId);
+    await assertDossierOuvert(dossierId, societeId);
 
     const [dep, att] = await Promise.all([
       prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId, statut: { not: 'ANNULEE' } } }),
-      prisma.justificatifDotation.aggregate({ _sum: { montant: true }, where: { dotationId, statut: 'EN_ATTENTE' } }),
+      prisma.justificatifDotation.aggregate({ _sum: { montant: true }, where: { dotationId, statut: { in: ['BROUILLON', 'EN_ATTENTE'] } } }),
     ]);
     const restant = Number(dotation.montant) - Number(dep._sum.montant || 0) - Number(att._sum.montant || 0);
     if (montant > restant) { ApiResponse.badRequest(res, `Montant supérieur au reste disponible sur cette dotation (${restant})`); return; }
 
     const j = await prisma.justificatifDotation.create({
       data: {
-        societeId, dotationId, dossierId: dossierId || null, auteurId: userId,
+        societeId, dotationId, dossierId, auteurId: userId, statut: 'BROUILLON',
         designation: String(designation).trim().slice(0, 500),
         categorie: categorie ? String(categorie).slice(0, 100) : 'DIVERS',
         montant,
@@ -97,16 +101,37 @@ router.post('/', audit('FINANCE', 'CREER'), async (req: AuthRequest, res: Respon
       },
       select: SELECT_LISTE,
     });
-    ApiResponse.created(res, j, 'Justificatif envoyé à la comptabilité');
+    ApiResponse.created(res, j, 'Dépense enregistrée en brouillon — soumettez votre état pour l\'envoyer à la trésorerie');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+/**
+ * L'agent soumet son état de dépenses : toutes ses dépenses en brouillon sur la dotation passent « en attente »
+ * dans la file de la trésorerie. Tant qu'il n'a pas soumis, la comptabilité ne voit rien.
+ */
+router.post('/soumettre', audit('FINANCE', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { societeId, id: userId } = req.user!;
+    const { dotationId } = req.body;
+    if (!dotationId) { ApiResponse.badRequest(res, 'Dotation requise'); return; }
+    const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId, agentId: userId } });
+    if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
+    if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }
+    const r = await prisma.justificatifDotation.updateMany({
+      where: { societeId, dotationId, auteurId: userId, statut: 'BROUILLON' },
+      data: { statut: 'EN_ATTENTE' },
+    });
+    if (r.count === 0) { ApiResponse.badRequest(res, 'Aucune dépense en brouillon à soumettre'); return; }
+    ApiResponse.success(res, { soumises: r.count }, `${r.count} dépense(s) envoyée(s) à la trésorerie pour validation`);
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
 router.delete('/:id', audit('FINANCE', 'SUPPRIMER'), async (req: AuthRequest, res: Response) => {
   try {
     const r = await prisma.justificatifDotation.deleteMany({
-      where: { id: req.params.id, societeId: req.user!.societeId, auteurId: req.user!.id, statut: 'EN_ATTENTE' },
+      where: { id: req.params.id, societeId: req.user!.societeId, auteurId: req.user!.id, statut: 'BROUILLON' },
     });
-    if (r.count === 0) { ApiResponse.badRequest(res, 'Justificatif introuvable ou déjà traité'); return; }
+    if (r.count === 0) { ApiResponse.badRequest(res, 'Dépense introuvable, ou déjà soumise à la trésorerie'); return; }
     ApiResponse.success(res, null, 'Justificatif supprimé');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
@@ -117,7 +142,7 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
   try {
     const statut = String(req.query.statut || 'EN_ATTENTE');
     const items = await prisma.justificatifDotation.findMany({
-      where: { societeId: req.user!.societeId, ...(statut !== 'TOUS' && { statut }) },
+      where: { societeId: req.user!.societeId, statut: statut !== 'TOUS' ? (statut === 'BROUILLON' ? 'EN_ATTENTE' : statut) : { not: 'BROUILLON' } },
       orderBy: { createdAt: 'desc' },
       take: 200,
       select: SELECT_LISTE,

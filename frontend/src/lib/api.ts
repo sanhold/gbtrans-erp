@@ -331,6 +331,7 @@ export const financeApi = {
   justificatifs: {
     mesDotations: () => api.get('/finance/justificatifs/mes-dotations'),
     create: (data: any) => api.post('/finance/justificatifs', data),
+    soumettre: (dotationId: string) => api.post('/finance/justificatifs/soumettre', { dotationId }),
     delete: (id: string) => api.delete(`/finance/justificatifs/${id}`),
     list: (params?: Record<string, any>) => api.get('/finance/justificatifs', { params }),
     piece: (id: string) => api.get(`/finance/justificatifs/${id}/piece`),

@@ -359,7 +359,8 @@ export class DossierService {
           COALESCE(f.montant_prestation, 0)::float AS "montantPrestation",
           COALESCE(f.montant_paye, 0)::float AS "montantPaye",
           COALESCE(f.montant_restant, 0)::float AS "montantRestant",
-          COALESCE(dep.montant_depense, 0)::float AS "montantDepense"
+          COALESCE(dep.montant_depense, 0)::float AS "montantDepense",
+          (COALESCE(f.montant_paye, 0) - COALESCE(dep.montant_depense, 0))::float AS "resultat"
         FROM page
         LEFT JOIN LATERAL (
           SELECT SUM("montantTTC") AS montant_proforma
@@ -371,7 +372,7 @@ export class DossierService {
           FROM factures WHERE "dossierId" = page.id AND statut NOT IN ('ANNULEE', 'BROUILLON')
         ) f ON true
         LEFT JOIN LATERAL (
-          SELECT SUM(montant) AS montant_depense FROM depenses WHERE "dossierId" = page.id
+          SELECT SUM(montant) AS montant_depense FROM depenses WHERE "dossierId" = page.id AND statut <> 'ANNULEE'
         ) dep ON true
         ORDER BY page."dateCreation" DESC
       `,

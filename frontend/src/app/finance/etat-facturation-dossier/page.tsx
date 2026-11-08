@@ -61,7 +61,7 @@ export default function EtatFacturationDossierPage() {
       factures.forEach((f: any, idx: number) => {
         (paiementsParFacture[idx] || []).forEach((aff: any) => paiementsAvecFacture.push({ ...aff, factureNumero: f.numero }));
       });
-      setDetail({ dossier, factures, depenses: dossier.depenses || [], paiements: paiementsAvecFacture });
+      setDetail({ dossier, factures, depenses: (dossier.depenses || []).filter((d: any) => d.statut !== 'ANNULEE'), paiements: paiementsAvecFacture });
     } catch { setDetail(null); toast.error('Erreur de chargement du détail du dossier'); }
     finally { setLoadingDetail(false); }
   };
@@ -89,6 +89,14 @@ export default function EtatFacturationDossierPage() {
           <tr><td style="padding:2px 0;color:#666;width:120px;">Client</td><td style="font-weight:700;">${dossier.client?.raisonSociale || '-'}</td></tr>
           <tr><td style="padding:2px 0;color:#666;">Statut</td><td style="font-weight:700;">${dossier.statut}</td></tr>
           <tr><td style="padding:2px 0;color:#666;">Nature</td><td>${dossier.nature || '-'}</td></tr>
+        </table>
+
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px;border:1px solid #ccd6e0;">
+          <tr>
+            <td style="padding:8px 10px;text-align:center;border-right:1px solid #ccd6e0;"><div style="font-size:9px;color:#666;">ENCAISSÉ (PAIEMENTS)</div><div style="font-weight:800;font-size:13px;color:#16a34a;">${fmt(totalPaye)} F</div></td>
+            <td style="padding:8px 10px;text-align:center;border-right:1px solid #ccd6e0;"><div style="font-size:9px;color:#666;">DÉPENSÉ</div><div style="font-weight:800;font-size:13px;color:#dc2626;">${fmt(totalDepenses)} F</div></td>
+            <td style="padding:8px 10px;text-align:center;background:#eaf0f5;"><div style="font-size:9px;color:#666;">RÉSULTAT DU DOSSIER</div><div style="font-weight:800;font-size:13px;color:${totalPaye - totalDepenses < 0 ? '#dc2626' : '#12314f'};">${fmt(totalPaye - totalDepenses)} F</div></td>
+          </tr>
         </table>
 
         <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:4px;">FACTURES (${factures.length})</div>
@@ -200,26 +208,27 @@ export default function EtatFacturationDossierPage() {
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
               <col style={{ width: '11%' }} />
               <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '11%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
               <col style={{ width: '10%' }} />
             </colgroup>
             <thead><tr>
               <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
               <th className="table-header !text-[10px] !px-1.5 truncate text-right">Proforma</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
               <th className="table-header !text-[10px] !px-1.5 truncate text-right">Prestation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Dépensé</th>
+              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Dépensé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Résultat</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Facturation</th>
             </tr></thead>
             <tbody>
-              {loading ? <SkeletonRows cols={9} />
-              : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucun dossier trouvé pour ces critères</td></tr>
+              {loading ? <SkeletonRows cols={10} />
+              : rows.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucun dossier trouvé pour ces critères</td></tr>
               : rows.map((r: any) => {
                 const facture = Number(r.montantTVA) > 0 || Number(r.montantPrestation) > 0;
                 return (
@@ -232,6 +241,7 @@ export default function EtatFacturationDossierPage() {
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Payé">{fmt(r.montantPaye)}</td>
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Restant">{fmt(r.montantRestant)}</td>
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Dépensé">{fmt(r.montantDepense)}</td>
+                    <td className={`table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate ${Number(r.resultat) < 0 ? 'text-red-600' : Number(r.resultat) > 0 ? 'text-green-600' : ''}`} data-label="Résultat" title="Payé − dépensé">{fmt(r.resultat)}</td>
                     <td className="table-cell !px-1.5" data-label="Facturation">{facture ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Facturé</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Non facturé</span>}</td>
                   </tr>
                 );
@@ -259,6 +269,19 @@ export default function EtatFacturationDossierPage() {
                     <div className="text-sm text-gray-600 dark:text-gray-300">
                       <span className="font-semibold">{detail.dossier?.client?.raisonSociale}</span> — <span className="badge badge-info">{detail.dossier?.statut}</span>
                     </div>
+
+                    {(() => {
+                      const encaisse = (detail.factures || []).reduce((s: number, f: any) => s + Number(f.montantPaye || 0), 0);
+                      const depense = (detail.depenses || []).reduce((s: number, d: any) => s + Number(d.montant || 0), 0);
+                      const resultat = encaisse - depense;
+                      return (
+                        <div className="grid grid-cols-3 gap-px rounded-xl overflow-hidden border border-gray-200 dark:border-surface-700 bg-gray-200 dark:bg-surface-700 text-center">
+                          <div className="bg-white dark:bg-surface-800 py-3"><div className="text-[10px] uppercase text-gray-500">Encaissé (paiements)</div><div className="font-bold font-mono text-green-600">{fmt(encaisse)} F</div></div>
+                          <div className="bg-white dark:bg-surface-800 py-3"><div className="text-[10px] uppercase text-gray-500">Dépensé</div><div className="font-bold font-mono text-red-600">{fmt(depense)} F</div></div>
+                          <div className="bg-primary-50 dark:bg-primary-500/15 py-3"><div className="text-[10px] uppercase text-gray-500">Résultat du dossier</div><div className={`font-bold font-mono ${resultat < 0 ? 'text-red-600' : 'text-primary-700 dark:text-primary-200'}`}>{fmt(resultat)} F</div></div>
+                        </div>
+                      );
+                    })()}
 
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Factures ({detail.factures?.length || 0})</h4>
