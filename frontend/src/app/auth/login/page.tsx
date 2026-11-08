@@ -17,9 +17,9 @@ export default function LoginPage() {
   const [erreur, setErreur] = useState('');
   const [verification, setVerification] = useState(false);
 
-  // Comptes de test : visibles hors production, ou si NEXT_PUBLIC_SHOW_TEST_ACCOUNTS=true, ou
-  // en ouvrant la page avec ?comptes-test (lien à mettre en favori). Jamais affichés par défaut
-  // aux visiteurs en production.
+  // Comptes de test : visibles hors production, sur les prévisualisations Vercel (environnement de test),
+  // si NEXT_PUBLIC_SHOW_TEST_ACCOUNTS=true, ou en ouvrant la page avec ?comptes-test. Jamais affichés
+  // par défaut aux visiteurs sur le domaine de production.
   const [comptesTestActifs, setComptesTestActifs] = useState(
     process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_TEST_ACCOUNTS === 'true'
   );
@@ -30,7 +30,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     try {
-      if (new URLSearchParams(window.location.search).has('comptes-test')) setComptesTestActifs(true);
+      // Prévisualisations Vercel (ex : gbtrans-git-test-sanhold-projects.vercel.app) = environnement de test.
+      // Le domaine de production (gbtrans.vercel.app, gbtrans-sanhold-projects.vercel.app) ne correspond pas.
+      const hote = window.location.hostname;
+      const estPrevisualisation = /^gbtrans-.+-sanhold-projects\.vercel\.app$/.test(hote);
+      if (estPrevisualisation || new URLSearchParams(window.location.search).has('comptes-test')) setComptesTestActifs(true);
       setMdpTestEnregistre(!!localStorage.getItem(CLE_MDP_TEST));
     } catch {
       // stockage indisponible : le formulaire reste utilisable à la main
