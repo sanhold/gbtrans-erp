@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -17,9 +17,25 @@ export default function LoginPage() {
   const [erreur, setErreur] = useState('');
   const [verification, setVerification] = useState(false);
 
-  // Comptes de test : uniquement hors production (ou si explicitement activé).
-  const afficherComptesTest =
-    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_TEST_ACCOUNTS === 'true';
+  // Comptes de test : visibles hors production, ou si NEXT_PUBLIC_SHOW_TEST_ACCOUNTS=true, ou
+  // en ouvrant la page avec ?comptes-test (lien à mettre en favori). Jamais affichés par défaut
+  // aux visiteurs en production.
+  const [comptesTestActifs, setComptesTestActifs] = useState(
+    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_TEST_ACCOUNTS === 'true'
+  );
+  const [mdpTestEnregistre, setMdpTestEnregistre] = useState(false);
+  const [compteEnAttente, setCompteEnAttente] = useState<string | null>(null);
+  const [saisieMdpTest, setSaisieMdpTest] = useState('');
+  const CLE_MDP_TEST = 'gbtrans_test_pwd';
+
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).has('comptes-test')) setComptesTestActifs(true);
+      setMdpTestEnregistre(!!localStorage.getItem(CLE_MDP_TEST));
+    } catch {
+      // stockage indisponible : le formulaire reste utilisable à la main
+    }
+  }, []);
 
   const comptesTest = [
     { label: 'Administrateur', email: 'admin@gbtrans.ci', color: 'bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300' },
@@ -29,16 +45,10 @@ export default function LoginPage() {
     { label: 'Consultation', email: 'consultation@gbtrans.ci', color: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300' },
   ];
 
-  const remplirCompteTest = (testEmail: string) => {
-    setEmail(testEmail);
-    setMotDePasse('Admin@2024!');
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const connecter = async (emailSaisi: string, mdpSaisi: string) => {
     setErreur('');
     try {
-      const result = await login(email, motDePasse);
+      const result = await login(emailSaisi, mdpSaisi);
       if (result.requiresTwoFactor) {
         setShow2FA(true);
         setTempToken(result.tempToken);
@@ -50,6 +60,44 @@ export default function LoginPage() {
     } catch (error: any) {
       setErreur(error.message || 'Connexion impossible. Vérifiez vos identifiants.');
     }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await connecter(email, motDePasse);
+  };
+
+  // Un clic sur un profil de test = connexion directe. Le mot de passe de test n'est jamais dans le
+  // code : il est saisi une fois puis gardé sur cet appareil seulement (localStorage).
+  const cliquerCompteTest = async (testEmail: string) => {
+    let mdp = '';
+    try { mdp = localStorage.getItem(CLE_MDP_TEST) || ''; } catch { /* ignoré */ }
+    if (!mdp && process.env.NODE_ENV !== 'production') mdp = 'Admin@2024!'; // défaut du seed, développement local uniquement
+    setEmail(testEmail);
+    if (!mdp) {
+      setCompteEnAttente(testEmail);
+      return;
+    }
+    setMotDePasse(mdp);
+    await connecter(testEmail, mdp);
+  };
+
+  const enregistrerMdpTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!compteEnAttente || !saisieMdpTest) return;
+    try { localStorage.setItem(CLE_MDP_TEST, saisieMdpTest); setMdpTestEnregistre(true); } catch { /* ignoré */ }
+    const cible = compteEnAttente;
+    const mdp = saisieMdpTest;
+    setCompteEnAttente(null);
+    setSaisieMdpTest('');
+    setMotDePasse(mdp);
+    await connecter(cible, mdp);
+  };
+
+  const oublierMdpTest = () => {
+    try { localStorage.removeItem(CLE_MDP_TEST); } catch { /* ignoré */ }
+    setMdpTestEnregistre(false);
+    setCompteEnAttente(null);
   };
 
   const handle2FA = async (e: React.FormEvent) => {
@@ -238,26 +286,49 @@ export default function LoginPage() {
             )}
           </div>
 
-          {!show2FA && afficherComptesTest && (
-            <div className="mt-6 bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-5">
+          {!show2FA && comptesTestActifs && (
+            <div className="mt-6 bg-white dark:bg-surface-800 rounded-xl border border-gray-200 dark:border-surface-700 shadow-card p-5">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
-                Comptes de test
+                Comptes de test : un clic pour se connecter
               </p>
               <div className="flex flex-wrap gap-2">
                 {comptesTest.map((compte) => (
                   <button
                     key={compte.email}
                     type="button"
-                    onClick={() => remplirCompteTest(compte.email)}
+                    onClick={() => cliquerCompteTest(compte.email)}
+                    disabled={isLoading}
                     title={compte.email}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${compte.color}`}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${compte.color}`}
                   >
                     {compte.label}
                   </button>
                 ))}
               </div>
+              {compteEnAttente && (
+                <form onSubmit={enregistrerMdpTest} className="mt-4 space-y-2">
+                  <label htmlFor="mdptest" className="label">Mot de passe des comptes de test</label>
+                  <input
+                    id="mdptest"
+                    type="password"
+                    value={saisieMdpTest}
+                    onChange={(e) => setSaisieMdpTest(e.target.value)}
+                    className="input-field"
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  <button type="submit" disabled={!saisieMdpTest} className="btn-primary w-full">
+                    Enregistrer et me connecter
+                  </button>
+                </form>
+              )}
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
-                Cliquez sur un profil pour pré-remplir le formulaire (mot de passe: Admin@2024!)
+                {mdpTestEnregistre
+                  ? 'Mot de passe enregistré sur cet appareil uniquement. '
+                  : 'Le mot de passe est demandé une seule fois, puis gardé sur cet appareil uniquement. '}
+                {mdpTestEnregistre && (
+                  <button type="button" onClick={oublierMdpTest} className="underline hover:text-gray-600">Oublier</button>
+                )}
               </p>
             </div>
           )}
