@@ -22,7 +22,7 @@ export default function AdminConfigurationPage() {
     <AdminShell>
       <div className="space-y-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configuration</h1>
+          <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Configuration</h1>
           <p className="text-sm text-gray-500">Réglages de la plateforme SaaS</p>
         </div>
 

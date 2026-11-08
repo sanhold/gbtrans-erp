@@ -102,7 +102,7 @@ export default function AdminSocieteDetailPage() {
             <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{societe.raisonSociale}</h1>
+            <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">{societe.raisonSociale}</h1>
             <p className="text-sm text-gray-500">{societe.code} · Inscrite le {fmtDate(societe.createdAt)}</p>
           </div>
         </div>

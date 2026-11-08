@@ -63,7 +63,7 @@ export default function AdminPaiementsPage() {
       <div className="space-y-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Factures &amp; paiements d&apos;abonnement</h1>
+            <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Factures &amp; paiements d&apos;abonnement</h1>
             <p className="text-sm text-gray-500">{total} paiement(s), toutes sociétés confondues</p>
           </div>
           <div className="flex items-center gap-2">
