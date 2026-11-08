@@ -8,10 +8,14 @@ import Sidebar from './Sidebar';
 import Header, { getModuleName } from './Header';
 import SplashLoader from './SplashLoader';
 import TableEnhancer from '@/components/tables/TableEnhancer';
+import BottomNav from './BottomNav';
+import CommandPalette from './CommandPalette';
 
 // Chaque page enveloppe son contenu dans AppLayout (remonté à chaque navigation) :
 // on mémorise que le profil est déjà chargé pour ne plus afficher le splash.
 let layoutReady = false;
+const CLE_MENU_REDUIT = 'gbtrans_menu_reduit';
+let menuReduit = false;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loadProfile, hasPermission } = useAuthStore();
@@ -19,6 +23,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [ready, setReady] = useState(layoutReady);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(menuReduit);
+
+  useEffect(() => {
+    try { const v = localStorage.getItem(CLE_MENU_REDUIT) === '1'; menuReduit = v; setCollapsed(v); } catch { /* stockage indisponible */ }
+  }, []);
+
+  const basculerMenu = () => {
+    const v = !collapsed;
+    menuReduit = v; setCollapsed(v);
+    try { localStorage.setItem(CLE_MENU_REDUIT, v ? '1' : '0'); } catch { /* ignoré */ }
+  };
 
   useEffect(() => {
     loadProfile().then(() => { layoutReady = true; setReady(true); });
@@ -46,16 +61,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-canvas dark:bg-surface-900">
       <TableEnhancer />
-      <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
+      <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} onToggleCollapse={basculerMenu} collapsed={collapsed} />
+      <CommandPalette />
       <div className="flex-1 flex min-h-0">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={collapsed} />
       <div className="flex-1 min-w-0 flex flex-col">
         <nav aria-label="Fil d'Ariane" className="flex items-center gap-2 px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-surface-700 text-[11.5px] text-primary-600 dark:text-primary-300">
           <button onClick={() => router.push('/dashboard')} className="hover:underline" title="Accueil">⌂</button>
           <span className="text-gray-400">›</span>
           <span>{getModuleName(pathname)}</span>
         </nav>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-5">
           {authorized ? children : (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center gap-3">
               <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
@@ -69,6 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       </div>
+      <BottomNav />
     </div>
   );
 }

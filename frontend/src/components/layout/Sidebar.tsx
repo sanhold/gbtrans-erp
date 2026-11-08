@@ -9,7 +9,7 @@ import { dashboardApi } from '@/lib/api';
 import { useCachedFetch, TTL } from '@/lib/cache';
 import { getRequiredModule } from '@/lib/permissions';
 
-interface NavItem {
+export interface NavItem {
   name: string;
   href: string;
   icon: string;
@@ -22,7 +22,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
+export const navGroups: NavGroup[] = [
   {
     title: 'Général',
     items: [
@@ -95,9 +95,11 @@ const navGroups: NavGroup[] = [
 interface SidebarProps {
   open?: boolean;
   onClose?: () => void;
+  /** Mode réduit (icônes seules) sur ordinateur. */
+  collapsed?: boolean;
 }
 
-export default function Sidebar({ open = false, onClose = () => {} }: SidebarProps) {
+export default function Sidebar({ open = false, onClose = () => {}, collapsed = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
@@ -122,12 +124,13 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
   };
 
   const linkCls = (active: boolean) => clsx(
+    collapsed && 'lg:justify-center lg:px-0 lg:mx-2',
     'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
     active
       ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-white font-semibold'
       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
   );
-  const titleCls = 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500';
+  const titleCls = clsx(collapsed && 'lg:hidden', 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
   const Icon = ({ d, active }: { d: string; active: boolean }) => (
     <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600 dark:text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d={d} />
@@ -145,9 +148,10 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
       )}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-[250px] xl:w-[260px] flex-shrink-0 bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
+          collapsed ? 'lg:w-[72px]' : 'lg:w-[250px] xl:w-[260px]',
+          'fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] flex-shrink-0 bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
-          'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-14 lg:h-[calc(100vh-56px)]',
+          'lg:max-w-none lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-14 lg:h-[calc(100vh-56px)]',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -183,12 +187,13 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
                   href={item.href}
                   onClick={onClose}
                   aria-current={isActive ? 'page' : undefined}
+                  title={collapsed ? item.name : undefined}
                   className={linkCls(isActive)}
                 >
                   <Icon d={item.icon} active={isActive} />
-                  <span className="truncate">{item.name}</span>
+                  <span className={clsx('truncate', collapsed && 'lg:hidden')}>{item.name}</span>
                   {!!badge && (
-                    <span className="ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                    <span className={clsx(collapsed && 'lg:hidden', 'ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
                       {badge}
                     </span>
                   )}
@@ -205,18 +210,19 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
         {hasPermission('PARAMETRES:LIRE') && (
           <>
             <div className={titleCls}>Configuration</div>
-            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} className={linkCls(isItemActive('/parametres'))}>
+            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} title={collapsed ? 'Paramètres' : undefined} className={linkCls(isItemActive('/parametres'))}>
               <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" active={isItemActive('/parametres')} />
-              Paramètres
+              <span className={clsx(collapsed && 'lg:hidden')}>Paramètres</span>
             </Link>
           </>
         )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+          title={collapsed ? 'Déconnexion' : undefined}
+          className={clsx(collapsed && 'lg:justify-center lg:px-0', 'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400')}
         >
           <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-          Déconnexion
+          <span className={clsx(collapsed && 'lg:hidden')}>Déconnexion</span>
         </button>
       </div>
       </aside>
