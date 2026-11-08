@@ -24,6 +24,7 @@ const natureLabels: Record<string, string> = {
 export default function DossiersPage() {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [panneauOuvert, setPanneauOuvert] = useState(false);
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -81,8 +82,16 @@ export default function DossiersPage() {
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
   const totalPages = Math.ceil(total / limit);
 
-  // Dossier affiché dans le panneau de droite (ordinateur) : le premier par défaut
-  const selection = dossiers.find((d) => d.id === selectedId) || dossiers[0] || null;
+  useEffect(() => {
+    if (!panneauOuvert) return;
+    const fermer = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanneauOuvert(false); };
+    window.addEventListener('keydown', fermer);
+    return () => window.removeEventListener('keydown', fermer);
+  }, [panneauOuvert]);
+
+  // Dossier affiché dans le panneau de détail (ordinateur)
+  const selection = dossiers.find((d) => d.id === selectedId) || null;
+  const GRILLE = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3';
 
   const progression = (d: any) => {
     const total = d.processus?._count?.etapes ?? 0;
@@ -91,9 +100,9 @@ export default function DossiersPage() {
     return { total, validees, pct: Math.round((validees / total) * 100) };
   };
 
-  // Ordinateur : on affiche le détail à droite. Téléphone : on ouvre la page du dossier.
+  // Ordinateur : le détail glisse depuis la droite. Téléphone : on ouvre la page du dossier.
   const ouvrir = (d: any) => {
-    if (window.matchMedia('(min-width: 1024px)').matches) setSelectedId(d.id);
+    if (window.matchMedia('(min-width: 1024px)').matches) { setSelectedId(d.id); setPanneauOuvert(true); }
     else router.push(`/dossiers/${d.id}`);
   };
 
@@ -171,22 +180,22 @@ export default function DossiersPage() {
         </form>
 
         {/* Liste compacte (4 informations) + détail : à droite sur ordinateur, page dédiée sur téléphone */}
-        <div className="lg:grid lg:grid-cols-[minmax(380px,460px)_1fr] lg:gap-4 lg:items-start">
-          <div className="card !p-0 overflow-hidden">
+        <div>
+          <div>
             {loading ? (
-              <ul aria-busy="true" className="divide-y divide-gray-100 dark:divide-surface-700">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <li key={i} className="p-4 space-y-2 animate-pulse"><div className="h-4 w-1/3 bg-gray-200 dark:bg-surface-600 rounded" /><div className="h-3 w-2/3 bg-gray-100 dark:bg-surface-700 rounded" /></li>
+              <ul aria-busy="true" className={GRILLE}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <li key={i} className="card !p-4 space-y-3 animate-pulse"><div className="h-4 w-1/2 bg-gray-200 dark:bg-surface-600 rounded" /><div className="h-3 w-3/4 bg-gray-100 dark:bg-surface-700 rounded" /><div className="h-1.5 w-full bg-gray-100 dark:bg-surface-700 rounded" /></li>
                 ))}
               </ul>
             ) : erreur ? (
-              <ErrorState
+              <div className="card"><ErrorState
                 titre="Impossible de charger les dossiers"
                 message="Le serveur ne répond pas pour le moment. Vérifiez votre connexion puis réessayez."
                 onRetry={() => setRechargement((n) => n + 1)}
-              />
+              /></div>
             ) : dossiers.length === 0 ? (
-              filtresActifs > 0 ? (
+              <div className="card">{filtresActifs > 0 ? (
                 <EmptyState
                   titre="Aucun dossier ne correspond"
                   description="Essayez d'élargir votre recherche ou d'effacer les filtres."
@@ -198,19 +207,19 @@ export default function DossiersPage() {
                   description="Créez votre premier dossier pour commencer le suivi d'une opération."
                   action={<Link href="/dossiers/nouveau" className="btn-primary">Nouveau dossier</Link>}
                 />
-              )
+              )}</div>
             ) : (
-              <ul className="divide-y divide-gray-100 dark:divide-surface-700">
+              <ul className={GRILLE}>
                 {dossiers.map((d) => {
                   const p = progression(d);
-                  const actif = d.id === selection?.id;
+                  const actif = d.id === selection?.id && panneauOuvert;
                   return (
                     <li key={d.id}>
                       <button
                         type="button"
                         onClick={() => ouvrir(d)}
                         aria-current={actif ? 'true' : undefined}
-                        className={`w-full text-left px-4 py-3.5 min-h-[72px] flex flex-col gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 ${actif ? 'lg:bg-primary-50 lg:dark:bg-primary-500/15 lg:shadow-[inset_3px_0_0_theme(colors.primary.600)]' : 'hover:bg-gray-50 dark:hover:bg-surface-700 active:bg-gray-100'}`}
+                        className={`w-full h-full text-left p-4 min-h-[104px] flex flex-col gap-2 rounded-2xl border bg-white dark:bg-surface-800 shadow-sm transition-all hover:shadow-md hover:-translate-y-px active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${actif ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200 dark:border-surface-700'}`}
                       >
                         <span className="flex items-center justify-between gap-3">
                           <span className="font-mono font-semibold text-[15px] text-primary-600 dark:text-primary-300 truncate">{d.numeroPhysique || d.numero}</span>
@@ -231,12 +240,18 @@ export default function DossiersPage() {
                 })}
               </ul>
             )}
-            <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
+            <div className="card !p-0 mt-4 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
           </div>
 
           {/* Détail (ordinateur) */}
-          <aside className="hidden lg:block card !p-0 sticky top-4" aria-label="Détail du dossier">
-            {selection ? (() => {
+          {panneauOuvert && selection && (
+          <div className="hidden lg:block fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Détail du dossier">
+            <div className="absolute inset-0 bg-black/30 animate-fade-in" onClick={() => setPanneauOuvert(false)} />
+          <aside className="absolute right-0 top-0 h-full w-[520px] max-w-full bg-white dark:bg-surface-800 shadow-2xl overflow-y-auto animate-slide-in">
+            <button type="button" onClick={() => setPanneauOuvert(false)} aria-label="Fermer" className="absolute top-3 right-3 w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700 flex items-center justify-center text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            {(() => {
               const d = selection;
               const p = progression(d);
               const ferme = STATUTS_DOSSIER_FERME.includes(d.statut);
@@ -253,7 +268,7 @@ export default function DossiersPage() {
                 ['Processus', d.processus?.nom],
               ];
               return (
-                <div className="p-6">
+                <div className="p-6 pt-12">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
                       <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">{d.numeroPhysique || d.numero}</h2>
@@ -267,7 +282,7 @@ export default function DossiersPage() {
                       <div className="h-2 rounded-full bg-gray-200 dark:bg-surface-600 overflow-hidden"><div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${p.pct}%` }} /></div>
                     </div>
                   )}
-                  <dl className="grid grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-4 mt-6 text-sm">
+                  <dl className="grid grid-cols-2 gap-x-5 gap-y-4 mt-6 text-sm">
                     {champs.map(([label, val]) => (
                       <div key={label} className="min-w-0">
                         <dt className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{label}</dt>
@@ -282,10 +297,10 @@ export default function DossiersPage() {
                   </div>
                 </div>
               );
-            })() : (
-              <p className="p-10 text-center text-sm text-gray-400">Sélectionnez un dossier pour voir ses informations.</p>
-            )}
+            })()}
           </aside>
+          </div>
+          )}
         </div>
       </div>
     </AppLayout>
