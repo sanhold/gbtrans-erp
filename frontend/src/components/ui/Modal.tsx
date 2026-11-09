@@ -24,6 +24,10 @@ const LARGEURS = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl:
 export default function Modal({ open, onClose, title, description, children, footer, size = 'md' }: ModalProps) {
   const panneau = useRef<HTMLDivElement>(null);
   const precedent = useRef<HTMLElement | null>(null);
+  // onClose est souvent une fonction recréée à chaque rendu : on la garde en référence pour que
+  // l'effet ci-dessous ne se relance pas (et ne vole pas le focus du champ en cours de saisie).
+  const fermer = useRef(onClose);
+  fermer.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -33,7 +37,7 @@ export default function Modal({ open, onClose, title, description, children, foo
     panneau.current?.focus();
 
     const surTouche = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') fermer.current();
     };
     document.addEventListener('keydown', surTouche);
     return () => {
@@ -41,7 +45,7 @@ export default function Modal({ open, onClose, title, description, children, foo
       document.body.style.overflow = overflow;
       precedent.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -54,7 +58,7 @@ export default function Modal({ open, onClose, title, description, children, foo
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative w-full ${LARGEURS[size]} max-h-[92vh] flex flex-col bg-white dark:bg-surface-800
+        className={`relative w-full ${LARGEURS[size]} max-h-[92vh] max-h-[92dvh] flex flex-col bg-white dark:bg-surface-800
                     rounded-t-2xl sm:rounded-xl shadow-elevated animate-slide-up outline-none`}
       >
         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
