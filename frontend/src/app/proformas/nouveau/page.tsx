@@ -672,6 +672,7 @@ function NouvelleProformaForm() {
         :root { --pf-ink:#16232e; --pf-ink-soft:#56626f; --pf-gold:#e8821e; --pf-gold-soft:#fdf1e3; --pf-paper:#FFFFFF; --pf-line:#dbe2e8; --pf-danger:#B3492F; }
 
         .pf-sheet-wrap { background:#e9edf1; padding:28px 20px; border-radius:2px; display:flex; justify-content:center; overflow-x:auto; min-width:0; }
+        @media (max-width:767px){ .pf-sheet-wrap{ padding:8px 0; } .pf-sheet{ padding:12px 10px !important; min-height:0 !important; } .pf-doc-head{ flex-wrap:wrap; gap:10px; } }
         .pf-sheet { width:210mm; max-width:100%; min-height:280mm; background:var(--pf-paper); color:var(--pf-ink); padding:14mm 13mm; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 2px 10px rgba(0,0,0,.18); }
 
         .pf-doc-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--pf-ink); padding-bottom:12px; margin-bottom:18px; }

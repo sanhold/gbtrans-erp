@@ -326,7 +326,7 @@ export default function ParametresPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                       <label className="label">Logo de l&apos;entreprise</label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-wrap">
                         <div className="w-20 h-20 rounded-xl border border-gray-200 dark:border-surface-700 bg-gray-50 dark:bg-surface-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                           {societe?.logo ? <img src={societe.logo} alt="Logo" className="w-full h-full object-contain" /> : <span className="text-[10px] text-gray-400">Aucun</span>}
                         </div>
@@ -341,7 +341,7 @@ export default function ParametresPage() {
                     </div>
                     <div>
                       <label className="label">Signature (cachet du responsable)</label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-wrap">
                         <div className="w-20 h-20 rounded-xl border border-gray-200 dark:border-surface-700 bg-gray-50 dark:bg-surface-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                           {societe?.signature ? <img src={societe.signature} alt="Signature" className="w-full h-full object-contain" /> : <span className="text-[10px] text-gray-400">Aucune</span>}
                         </div>

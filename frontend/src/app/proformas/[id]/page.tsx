@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import api from '@/lib/api';
@@ -18,6 +18,18 @@ export default function ProformaDetailPage() {
   const [devalidating, setDevalidating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [branding, setBranding] = useState<SocieteBranding | undefined>(undefined);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  useEffect(() => {
+    const fit = () => {
+      const w = wrapRef.current?.clientWidth || 0;
+      if (!w) return;
+      setZoom(Math.min(1, (w - 16) / 794)); // 794px = 210mm
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [proforma]);
   const { hasPermission } = useAuthStore();
   const canImprimer = hasPermission('PROFORMAS:IMPRIMER');
 
@@ -208,15 +220,16 @@ export default function ProformaDetailPage() {
         {/* Aperçu — genere par exactement la meme fonction que le PDF telecharge et l'impression,
             pour garantir un rendu identique (cf. buildProformaHtml dans lib/generatePDF.ts). */}
         {docData && (
-          <div className="pv-sheet-wrap">
-            <div className="pv-sheet" dangerouslySetInnerHTML={{ __html: buildProformaHtml(docData, undefined, branding) }} />
+          <div className="pv-sheet-wrap" ref={wrapRef}>
+            <div className="pv-sheet" style={{ zoom }} dangerouslySetInnerHTML={{ __html: buildProformaHtml(docData, undefined, branding) }} />
           </div>
         )}
       </div>
 
       <style jsx global>{`
         .pv-sheet-wrap { background:#0a1622; padding:28px 20px; border-radius:14px; display:flex; justify-content:center; overflow-x:auto; }
-        .pv-sheet { width:210mm; min-height:293mm; box-sizing:border-box; position:relative; background:#FFFFFF; color:#16232e;
+        @media (max-width:767px){ .pv-sheet-wrap{ padding:10px 4px; } }
+        .pv-sheet { width:210mm; flex-shrink:0; min-height:293mm; box-sizing:border-box; position:relative; background:#FFFFFF; color:#16232e;
           padding:10mm 12mm; font-family:'Segoe UI',Arial,sans-serif; font-size:11px; box-shadow:0 16px 40px rgba(0,0,0,.4); }
       `}</style>
     </AppLayout>

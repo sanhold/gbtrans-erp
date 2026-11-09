@@ -293,7 +293,7 @@ export default function FactureDetailPage() {
     <AppLayout>
       <div className="space-y-4">
         {/* Header */}
-        <div className="bg-primary-700 rounded-lg p-3 flex items-center justify-between">
+        <div className="bg-primary-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/facturation')} className="p-2 rounded-lg hover:bg-primary-600 text-white">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -303,12 +303,12 @@ export default function FactureDetailPage() {
               <p className="text-primary-100 text-xs">{facture.numero} — {facture.statut}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <label className={`flex items-center gap-1.5 text-xs text-primary-100 ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
               <input type="checkbox" checked={!!facture.afficherSignature} disabled={!canSignature} onChange={e => handleToggleSignature(e.target.checked)} className="rounded border-gray-300" />
               Afficher la signature
             </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {isBrouillon && (
               <button onClick={handleValiderFacture} disabled={validating} className="px-4 py-2 bg-white text-primary-700 rounded-lg font-semibold text-sm hover:bg-primary-50 disabled:opacity-50 flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -349,22 +349,22 @@ export default function FactureDetailPage() {
             onBlur={handleSaveNumeroNormalise}
             placeholder="Numéro reçu du système de facturation normalisée (DGI)"
             disabled={savingNumeroNormalise}
-            className="input-field !py-1.5 text-sm flex-1 min-w-[260px]"
+            className="input-field !py-1.5 text-sm w-full sm:flex-1 sm:min-w-[260px]"
           />
           {savingNumeroNormalise && <span className="text-xs text-gray-400">Enregistrement...</span>}
         </div>
 
         {/* Aperçu état */}
-        {facture.modele === 'PROFORMA' ? (
-          <div className="bg-white rounded-sm border border-gray-300 overflow-x-auto p-4">
+        {facture.modele === 'PROFORMA' && (
+          <div className="hidden md:block bg-white rounded-sm border border-gray-300 overflow-x-auto p-4">
             {(() => {
               const d = buildDocData();
               return d ? <div style={{ position: 'relative', width: '210mm', maxWidth: '100%', minHeight: '293mm', boxSizing: 'border-box', padding: '10mm 12mm', margin: '0 auto', background: '#fff', color: '#16232e', fontFamily: "'Segoe UI',Arial,sans-serif", fontSize: 11 }} dangerouslySetInnerHTML={{ __html: buildProformaHtml(d, qrDataUrl, branding || undefined) }} /> : null;
             })()}
           </div>
-        ) : (
-        <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-100 dark:border-surface-700 shadow-card overflow-hidden">
-          <div className="p-6 space-y-4">
+        )}
+        <div className={`${facture.modele === 'PROFORMA' ? 'md:hidden ' : ''}bg-white dark:bg-surface-800 rounded-2xl border border-surface-100 dark:border-surface-700 shadow-card overflow-hidden`}>
+          <div className="p-3 sm:p-6 space-y-4">
             {/* Header */}
             <div className="flex justify-between items-start gap-4 flex-wrap">
               <div className="flex items-center gap-3.5">
@@ -378,7 +378,7 @@ export default function FactureDetailPage() {
                   </div>
                 </div>
               </div>
-              <div className="min-w-[220px] text-right">
+              <div className="w-full sm:w-auto sm:min-w-[220px] text-right">
                 <span className="inline-block w-full text-center font-display text-sm font-extrabold text-gray-900 dark:text-white bg-surface-100 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-md px-4 py-2 tracking-wide">FACTURE</span>
                 {qrDataUrl && (
                   <div className="flex justify-end mt-2">
@@ -433,8 +433,47 @@ export default function FactureDetailPage() {
               </div>
             )}
 
-            {/* Tableau lignes */}
-            <div className="border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden overflow-x-auto">
+            {/* Lignes — téléphone : une carte par ligne */}
+            <div className="sm:hidden space-y-3">
+              {(() => {
+                let n = 0;
+                return groupedLignes.map(group => (
+                  <div key={group.categorie} className="border border-surface-100 dark:border-surface-700 rounded-lg overflow-hidden">
+                    <div className="bg-surface-50 dark:bg-surface-700/60 px-3 py-1.5 font-bold text-[11px] tracking-wide text-gray-900 dark:text-white">{group.categorie}</div>
+                    <ul className="divide-y divide-surface-100 dark:divide-surface-700">
+                      {group.lignes.map((l: any) => { n++; return (
+                        <li key={l.id} className="px-3 py-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-[13px] leading-snug text-gray-800 dark:text-gray-200 min-w-0 break-words"><span className="text-gray-400 mr-1.5">{n}.</span>{l.designation}</p>
+                            {isBrouillon && (
+                              <button onClick={() => handleDeleteLigne(l.id)} aria-label="Supprimer la ligne" className="text-red-400 hover:text-red-600 p-1 -m-1 flex-shrink-0">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            )}
+                          </div>
+                          <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1.5">
+                              Qté <span className="font-mono text-gray-700 dark:text-gray-300">{Number(l.quantite || 1)}</span>
+                              <span>×</span> PU
+                              {isBrouillon ? (
+                                <input type="number" inputMode="numeric" defaultValue={Number(l.prixUnitaire)} onBlur={e => handleUpdateMontant(l.id, parseFloat(e.target.value) || 0, l.designation, l.categorie, l.estTVA)} className="w-24 rounded border border-surface-200 dark:border-surface-600 bg-transparent px-1.5 py-1 text-right font-mono text-xs text-gray-900 dark:text-white" />
+                              ) : <span className="font-mono text-gray-700 dark:text-gray-300">{fmt(l.prixUnitaire)}</span>}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">{fmt(l.prixUnitaire)} F</span>
+                          </div>
+                        </li>
+                      ); })}
+                    </ul>
+                    <div className="flex items-center justify-between bg-surface-50/70 dark:bg-surface-700/40 px-3 py-1.5 text-[11px] font-extrabold text-gray-900 dark:text-white">
+                      <span>SOUS-TOTAL {group.categorie}</span><span className="font-mono">{fmt(group.sousTotal)}</span>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Tableau lignes (dès la tablette) */}
+            <div className="hidden sm:block border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-surface-50 dark:bg-surface-700 text-[10px] text-gray-900 dark:text-white">
@@ -485,11 +524,11 @@ export default function FactureDetailPage() {
 
             {/* Montant en lettres + Totaux */}
             <div className="flex justify-between items-start gap-4 flex-wrap">
-              <div className="flex-1 min-w-[240px] border border-surface-100 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/40 rounded-md p-3">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[240px] border border-surface-100 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/40 rounded-md p-3">
                 <p className="text-[10px] font-extrabold text-gray-900 dark:text-white tracking-wide">MONTANT ARRÊTÉ À LA SOMME DE :</p>
                 <p className="text-sm font-bold italic mt-1 text-gray-900 dark:text-white">{montantEnLettres(Number(facture.montantTTC))}</p>
               </div>
-              <table className="text-sm border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden min-w-[240px]">
+              <table className="text-sm border border-surface-100 dark:border-surface-700 rounded-md overflow-hidden w-full sm:w-auto sm:min-w-[240px]">
                 <tbody>
                   <tr><td className="px-3 py-1.5 text-gray-500 dark:text-gray-400">TOTAL HT</td><td className="px-3 py-1.5 text-right font-mono font-bold text-gray-900 dark:text-white">{fmt(facture.montantHT)}</td></tr>
                   {facture.montantPrestation ? <tr><td className="px-3 py-1.5 text-gray-500 dark:text-gray-400">Montant Prestation</td><td className="px-3 py-1.5 text-right font-mono font-bold text-gray-900 dark:text-white">{fmt(facture.montantPrestation)}</td></tr> : null}
@@ -507,7 +546,7 @@ export default function FactureDetailPage() {
             </div>
 
             {/* Acompte / Reste à payer */}
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <div><p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Acompte</p><div className="px-3 py-1.5 border border-surface-100 dark:border-surface-700 rounded-lg font-mono text-sm">{fmt(facture.acompte)}</div></div>
               <div><p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Reste à payer</p><div className="px-3 py-1.5 border border-surface-100 dark:border-surface-700 rounded-lg font-mono text-sm font-bold text-red-600">{fmt(facture.resteAPayer)}</div></div>
             </div>
@@ -531,7 +570,6 @@ export default function FactureDetailPage() {
             <p className="mt-1">GBTRANS SARL — Cocody Angré 7ème Tranche, Abidjan, Côte d&apos;Ivoire — RCCM CI-ABJ-2018-B-12345 — CC 1812345 Z — contact@gbtrans.ci</p>
           </div>
         </div>
-        )}
 
         {/* Historique des paiements */}
         <div className="card">
