@@ -1,9 +1,15 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, StatutPastille } from '@/components/tables/cellules';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import Modal from '@/components/ui/Modal';
+import FicheDetail from '@/components/ui/FicheDetail';
 import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt, mergedComptes, parseCompteValue, MODE_PAIEMENT_LABELS, CATEGORIES_DEPENSE, useComptesFinanciers } from '@/lib/financeHelpers';
@@ -19,6 +25,7 @@ export default function DepensesPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [detail, setDetail] = useState<any | null>(null);
   const [form, setForm] = useState({ categorie: CATEGORIES_DEPENSE[0], designation: '', montant: '', modePaiement: 'ESPECES', compte: '', reference: '', observations: '', dotationId: '' });
 
   const load = useCallback(async () => {
@@ -66,85 +73,130 @@ export default function DepensesPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR');
+  const nomCompte = (d: any) => d.caisse?.libelle || d.compteBancaire?.libelle || '—';
+  const statut = (d: any): { libelle: string; ton: 'success' | 'gray' } => d.statut === 'VALIDE' ? { libelle: 'Validée', ton: 'success' } : { libelle: d.statut === 'ANNULEE' ? 'Annulée' : d.statut, ton: 'gray' };
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'dep', libelle: 'Dépense', rendu: d => <DoubleLigne haut={d.designation} bas={`${d.numero} · ${fmtDate(d.dateDepense)}`} />, texte: d => d.designation },
+    { cle: 'cat', libelle: 'Catégorie', rendu: d => <StatutPastille libelle={d.categorie} ton="info" />, texte: d => d.categorie },
+    { cle: 'compte', libelle: 'Compte débité', masquerSous: 'xl', rendu: d => nomCompte(d), texte: d => nomCompte(d) },
+    { cle: 'dotation', libelle: 'Dotation', masquerSous: 'xl', mono: true, rendu: d => d.dotation?.numero || '—', texte: d => d.dotation?.numero || '' },
+    { cle: 'montant', libelle: 'Montant', align: 'right', rendu: d => <span className="tabular-nums font-semibold text-red-600">−{fmt(d.montant)} <span className="text-[11px] font-normal text-gray-400">F</span></span>, texte: d => String(d.montant) },
+    { cle: 'statut', libelle: 'Statut', rendu: d => { const st = statut(d); return <StatutPastille libelle={st.libelle} ton={st.ton} />; }, texte: d => statut(d).libelle },
+  ];
+
+  const vide = <EmptyState titre="Aucune dépense" description="Les dépenses enregistrées apparaîtront ici." />;
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dépenses</h1><p className="text-sm text-gray-500">Gérez vos dépenses et sorties de caisse</p></div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Dépense
-          </button>
-        </div>
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-            </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Catégorie</th><th className="table-header !text-[10px] !px-1.5 truncate">Désignation</th><th className="table-header !text-[10px] !px-1.5 truncate">Compte débité</th><th className="table-header !text-[10px] !px-1.5 truncate">Dotation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={8} />
-              : depenses.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dépense enregistrée</td></tr>
-              : depenses.map(d => (
-                <tr key={d.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={d.numero}>{d.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDepense).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Catégorie" title={d.categorie}>{d.categorie}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Désignation" title={d.designation}>{d.designation}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compte débité">{d.caisse?.libelle || d.compteBancaire?.libelle || '-'}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dotation">{d.dotation?.numero || '-'}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Dépenses"
+          sousTitre="Gérez vos dépenses et sorties de caisse"
+          sousTitreMasqueMobile
+          actions={
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              <span className="sm:hidden">Nouvelle</span><span className="hidden sm:inline">Nouvelle dépense</span>
+            </button>
+          }
+        />
+
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={depenses}
+            cleLigne={(d) => d.id}
+            onClicLigne={setDetail}
+            chargement={loading}
+            nomExport="depenses"
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />}
+            vide={vide}
+          />
         </div>
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">Nouvelle Dépense</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleCreate} className="p-6 space-y-4">
-                <div><label className="label">Catégorie *</label>
-                  <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className="input-field">
-                    {CATEGORIES_DEPENSE.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div><label className="label">Désignation *</label><input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required /></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Montant *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
-                  <div><label className="label">Mode de paiement</label>
-                    <select value={form.modePaiement} onChange={e => setForm({ ...form, modePaiement: e.target.value })} className="input-field">
-                      {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div><label className="label">Compte débité *</label>
-                  <PickerField value={form.compte} onChange={id => setForm({ ...form, compte: id })} options={compteOptions} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
-                </div>
-                <div><label className="label">Dotation (agent)</label>
-                  <PickerField value={form.dotationId} onChange={id => setForm({ ...form, dotationId: id })} options={dotationOptions} placeholder="Aucune" title="Sélectionner une dotation" searchPlaceholder="N° dotation, agent..." />
-                </div>
-                <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
-                <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Enregistrer</button></div>
-              </form>
+        <div className="lg:hidden space-y-2">
+          {loading ? (
+            [0, 1, 2, 3].map(i => <div key={i} className="card !p-0 animate-pulse h-16" />)
+          ) : depenses.length === 0 ? (
+            <div className="card">{vide}</div>
+          ) : depenses.map(d => {
+            const st = statut(d);
+            return (
+              <button key={d.id} type="button" onClick={() => setDetail(d)} className="card !p-3 w-full text-left flex items-center gap-3 active:scale-[0.99] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+                <span aria-hidden="true" className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 17L7 7M7 17V7h10" /></svg>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-[14px] text-gray-900 dark:text-white">{d.designation}</span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium text-gray-600 dark:bg-white/10 dark:text-gray-300 truncate max-w-[9rem]">{d.categorie}</span>
+                    <span className="truncate">{fmtDate(d.dateDepense)}{st.libelle !== 'Validée' ? ` · ${st.libelle}` : ''}</span>
+                  </span>
+                </span>
+                <span className="flex-shrink-0 text-right font-mono font-bold tabular-nums text-[14px] text-red-600">−{fmt(d.montant)}<span className="block text-[10px] font-normal text-gray-400">F CFA</span></span>
+              </button>
+            );
+          })}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} /></div>
+        </div>
+      </div>
+
+      <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.designation || 'Dépense'} description={detail ? `${detail.numero} · ${fmtDate(detail.dateDepense)}` : undefined}>
+        {detail && (
+          <FicheDetail
+            mise={{ libelle: 'Montant sorti', valeur: `−${fmt(detail.montant)} F`, ton: 'negatif' }}
+            lignes={[
+              ['Catégorie', detail.categorie],
+              ['Compte débité', nomCompte(detail)],
+              ['Mode de paiement', MODE_PAIEMENT_LABELS[detail.modePaiement] || detail.modePaiement],
+              ['Dotation', detail.dotation?.numero],
+              ['Dossier', detail.dossier?.numeroPhysique || detail.dossier?.numero],
+              ['Référence', detail.reference],
+              ['Observations', detail.observations],
+              ['Statut', statut(detail).libelle],
+            ]}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Nouvelle dépense"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-depense" className="btn-primary">Enregistrer</button>
+          </>
+        }
+      >
+        <form id="form-depense" onSubmit={handleCreate} className="space-y-4">
+          <div><label className="label">Catégorie *</label>
+            <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className="input-field">
+              {CATEGORIES_DEPENSE.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div><label className="label">Désignation *</label><input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label className="label">Montant (F CFA) *</label><input type="text" inputMode="numeric" value={form.montant ? fmt(form.montant) : ''} onChange={e => setForm({ ...form, montant: e.target.value.replace(/\D/g, '') })} className="input-field" placeholder="0" required /></div>
+            <div><label className="label">Mode de paiement</label>
+              <select value={form.modePaiement} onChange={e => setForm({ ...form, modePaiement: e.target.value })} className="input-field">
+                {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
             </div>
           </div>
-        )}
-      </div>
+          <div><label className="label">Compte débité *</label>
+            <PickerField value={form.compte} onChange={id => setForm({ ...form, compte: id })} options={compteOptions} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
+          </div>
+          <div><label className="label">Dotation (agent)</label>
+            <PickerField value={form.dotationId} onChange={id => setForm({ ...form, dotationId: id })} options={dotationOptions} placeholder="Aucune" title="Sélectionner une dotation" searchPlaceholder="N° dotation, agent..." />
+          </div>
+          <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
+          <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }
