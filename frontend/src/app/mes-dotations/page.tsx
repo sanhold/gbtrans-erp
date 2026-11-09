@@ -23,6 +23,8 @@ export default function MesDotationsPage() {
   const [form, setForm] = useState(formVide());
   const [saving, setSaving] = useState(false);
   const [soumission, setSoumission] = useState<string | null>(null);
+  const [depliees, setDepliees] = useState<Set<string>>(new Set());
+  const basculer = (id: string) => setDepliees(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -139,7 +141,11 @@ export default function MesDotationsPage() {
               ))}
             </div>
 
-            {d.justificatifs.length === 0 ? (
+            <button type="button" onClick={() => basculer(d.id)} aria-expanded={depliees.has(d.id)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-primary-700 dark:text-primary-200 hover:bg-gray-50 dark:hover:bg-surface-700/40">
+              <span>{depliees.has(d.id) ? 'Masquer les dépenses' : 'Voir les dépenses'} ({d.justificatifs.length})</span>
+              <svg className={`w-4 h-4 transition-transform ${depliees.has(d.id) ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {!depliees.has(d.id) ? null : d.justificatifs.length === 0 ? (
               <p className="px-4 py-5 text-sm text-gray-500">Aucune dépense saisie pour cette dotation.</p>
             ) : (
               <div className="table-container !border-0 !rounded-none">
