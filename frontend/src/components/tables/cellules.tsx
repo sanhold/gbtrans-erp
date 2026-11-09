@@ -86,10 +86,10 @@ export function Montant({ valeur, ton = 'normal', unite = 'F' }: { valeur: any; 
 }
 
 /** Barre de progression fine avec compteur. */
-export function Progression({ fait, total }: { fait: number; total: number }) {
+export function Progression({ fait, total, titre }: { fait: number; total: number; titre?: string }) {
   const pct = total > 0 ? Math.round((fait / total) * 100) : 0;
   return (
-    <div className="flex min-w-[8.5rem] items-center gap-2" title={`${fait}/${total} étapes validées`}>
+    <div className="flex min-w-[8.5rem] items-center gap-2" title={titre ?? `${fait}/${total} étapes validées`}>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-surface-700">
         <div className={clsx('h-full rounded-full', pct >= 100 ? 'bg-emerald-500' : 'bg-primary-500')} style={{ width: `${pct}%` }} />
       </div>

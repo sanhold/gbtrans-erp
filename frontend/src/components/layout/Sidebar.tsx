@@ -15,6 +15,10 @@ export interface NavItem {
   icon: string;
   badgeKey?: 'dossiers' | 'courriers';
   activite?: 'TRANSIT' | 'TRANSPORT';
+  /** Page de repli quand le profil n'a pas accès à `href` (ex : l'agent qui n'a que « Mes dotations »). */
+  repli?: string;
+  /** Pages regroupées sous cette entrée (onglets) : elles activent l'entrée et sont cherchables. */
+  sous?: { name: string; href: string }[];
 }
 
 interface NavGroup {
@@ -68,9 +72,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { name: 'Comptes', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
       { name: 'Transactions', href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5' },
-      { name: 'Dotation', href: '/finance/dotation', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22' },
-      { name: 'Dotations à valider', href: '/finance/justificatifs', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { name: 'Mes dotations', href: '/mes-dotations', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
+      { name: 'Dotations', href: '/finance/dotation', repli: '/mes-dotations', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22', sous: [{ name: 'Dotations à valider', href: '/finance/justificatifs' }, { name: 'Mes dotations', href: '/mes-dotations' }] },
       { name: 'État Facturation Dossier', href: '/finance/etat-facturation-dossier', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
       { name: 'Statistique', href: '/statistiques', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z' },
     ],
@@ -105,7 +107,8 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
 
-  const isItemActive = (href: string) => {
+  const isItemActive = (href: string, sous?: { href: string }[]) => {
+    if (sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))) return true;
     if (pathname === href) return true;
     if (!pathname?.startsWith(href + '/')) return false;
     // un autre élément du menu, plus spécifique, correspond-il mieux ?
@@ -170,7 +173,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
             if (item.activite === 'TRANSIT' && user?.societe?.activiteTransit === false) return false;
             if (item.activite === 'TRANSPORT' && user?.societe?.activiteTransport !== true) return false;
             const requiredModule = getRequiredModule(item.href);
-            return !requiredModule || hasPermission(`${requiredModule}:LIRE`);
+            return !requiredModule || hasPermission(`${requiredModule}:LIRE`) || !!item.repli;
           });
           if (visibleItems.length === 0) return null;
 
@@ -178,13 +181,15 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
           <div key={group.title}>
             <div className={titleCls}>{group.title}</div>
             {visibleItems.map((item) => {
-              const isActive = isItemActive(item.href);
+              const moduleItem = getRequiredModule(item.href);
+              const cible = item.repli && moduleItem && !hasPermission(`${moduleItem}:LIRE`) ? item.repli : item.href;
+              const isActive = isItemActive(cible, item.sous);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={cible}
                   onClick={onClose}
                   aria-current={isActive ? 'page' : undefined}
                   title={collapsed ? item.name : undefined}

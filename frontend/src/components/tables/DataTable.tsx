@@ -33,6 +33,8 @@ interface DataTableProps<T> {
   /** Nom du fichier d'export (sans extension). Affiche le bouton « Exporter » si renseigné. */
   nomExport?: string;
   pied?: ReactNode;
+  /** Garde les actions visibles en permanence (par défaut : au survol), utile sur écran tactile. */
+  actionsToujoursVisibles?: boolean;
 }
 
 // NB : l'utilitaire Tailwind « table-cell » est en collision avec la classe maison .table-cell : on passe par une propriété arbitraire.
@@ -54,7 +56,7 @@ function exporterCsv<T>(colonnes: Colonne<T>[], lignes: T[], nom: string) {
 }
 
 /** Tableau de bureau soigné : en-tête collant, lignes aérées, survol, ligne sélectionnée, export. */
-export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied }: DataTableProps<T>) {
+export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles }: DataTableProps<T>) {
   const alignement = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
   const nbCols = colonnes.length + (actions ? 1 : 0);
 
@@ -113,7 +115,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
                     ))}
                     {actions && (
                       <td className="whitespace-nowrap px-3 py-3.5 text-right align-middle" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 group-focus:opacity-100">{actions(l)}</div>
+                        <div className={clsx('flex items-center justify-end gap-1', !actionsToujoursVisibles && 'gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 group-focus:opacity-100')}>{actions(l)}</div>
                       </td>
                     )}
                   </tr>

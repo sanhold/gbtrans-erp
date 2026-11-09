@@ -1,10 +1,16 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, Montant, Progression, StatutPastille } from '@/components/tables/cellules';
+import EmptyState from '@/components/ui/EmptyState';
 import PickerField from '@/components/ui/PickerField';
+import Modal from '@/components/ui/Modal';
+import PageHeader from '@/components/ui/PageHeader';
+import DotationTabs from '@/components/finance/DotationTabs';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -109,6 +115,41 @@ export default function DotationPage() {
     acc[key].totalRestant += Number(d.montantRestant);
     return acc;
   }, {});
+
+  const statutDotation = (d: any): { libelle: string; ton: 'info' | 'warning' | 'success' | 'gray' } =>
+    d.statut === 'SOLDEE' ? { libelle: 'Soldée', ton: 'success' }
+    : d.statut === 'ANNULEE' ? { libelle: 'Annulée', ton: 'gray' }
+    : d.soumise ? { libelle: 'Soumise', ton: 'warning' } : { libelle: 'En cours', ton: 'info' };
+
+  const bouton = 'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50';
+  const actionsLigne = (d: any) => (
+    <>
+      {d.modifiable && <button type="button" onClick={() => openEdit(d)} className={`${bouton} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}>Modifier</button>}
+      {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} className={`${bouton} border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}>Supprimer</button>}
+      <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="Reçu de dotation (PDF)">Fiche 1</button>
+      <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="État d'utilisation (PDF)">Fiche 2</button>
+    </>
+  );
+
+  const iconBtn = 'inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500';
+  const actionsTableau = (d: any) => (
+    <>
+      {d.modifiable && <button type="button" onClick={() => openEdit(d)} title="Modifier la dotation" aria-label="Modifier la dotation" className={`${iconBtn} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 112.828 2.828L11.828 15.83a2 2 0 01-.89.514L7 17l.657-3.94A2 2 0 018.172 12.2z" /></svg></button>}
+      {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} title="Supprimer la dotation" aria-label="Supprimer la dotation" className={`${iconBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" /></svg></button>}
+      <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} title="Fiche 1 : reçu de dotation (PDF)" aria-label="Fiche 1, reçu de dotation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
+      <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} title="Fiche 2 : état d'utilisation (PDF)" aria-label="Fiche 2, état d'utilisation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4" /></svg></button>
+    </>
+  );
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'numero', libelle: 'Dotation', rendu: d => <DoubleLigne mono haut={d.numero} bas={`${new Date(d.dateDotation).toLocaleDateString('fr-FR')}${d.motif ? ' · ' + d.motif : ''}`} />, texte: d => d.numero },
+    { cle: 'agent', libelle: 'Agent', rendu: d => <Tiers nom={d.agent ? `${d.agent.prenom} ${d.agent.nom}` : null} />, texte: d => (d.agent ? `${d.agent.prenom} ${d.agent.nom}` : '') },
+    { cle: 'montant', libelle: 'Montant', align: 'right', rendu: d => <Montant valeur={d.montant} />, texte: d => String(d.montant) },
+    { cle: 'utilise', libelle: 'Utilisé', align: 'right', rendu: d => <Montant valeur={d.montantUtilise} ton="negatif" />, texte: d => String(d.montantUtilise) },
+    { cle: 'restant', libelle: 'Restant', align: 'right', rendu: d => <Montant valeur={d.montantRestant} ton="positif" />, texte: d => String(d.montantRestant) },
+    { cle: 'avancement', libelle: 'Utilisation', masquerSous: '2xl', rendu: d => <Progression fait={Number(d.montantUtilise)} total={Number(d.montant)} titre={`${fmt(d.montantUtilise)} F utilisés sur ${fmt(d.montant)} F`} /> },
+    { cle: 'statut', libelle: 'Statut', rendu: d => { const st = statutDotation(d); return <StatutPastille libelle={st.libelle} ton={st.ton} />; }, texte: d => statutDotation(d).libelle },
+  ];
 
   const handlePrintFiche1 = async (d: any) => {
     setPrinting(d.id + '-1');
@@ -220,115 +261,133 @@ export default function DotationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Dotation</h1>
-            <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field !py-1.5 text-xs !w-32 flex-shrink-0" placeholder="N° Dotation..." />
-            <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="!py-1.5 text-xs w-36 flex-shrink-0" />
-            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <label className={`flex items-center gap-1.5 text-[10.5px] text-gray-600 dark:text-gray-300 flex-shrink-0 whitespace-nowrap ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
-              <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300" />
-              Signature sur fiches
-            </label>
-            <div className="flex gap-2 flex-shrink-0 ml-auto">
-              <button onClick={openHistorique} className="btn-secondary !px-3 !py-1.5 text-xs">Historique</button>
-              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs">
-                <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Nouvelle Dotation
+        <DotationTabs />
+        <PageHeader
+          titre="Dotations"
+          sousTitre="Remises de fonds aux agents, justifiées ensuite par leurs dépenses."
+          actions={
+            <>
+              <button onClick={openHistorique} className="btn-secondary">Historique</button>
+              <button onClick={openCreate} className="btn-primary">
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Nouvelle dotation
               </button>
+            </>
+          }
+        />
+
+        <form onSubmit={e => { e.preventDefault(); setPage(1); load(); }} className="card !p-3 sm:!p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+            <div>
+              <label className="label">N° de dotation</label>
+              <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field" placeholder="DOT/2026/..." />
             </div>
+            <div>
+              <label className="label">Agent</label>
+              <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." />
+            </div>
+            <button type="submit" className="btn-primary w-full sm:w-auto">Afficher</button>
           </div>
+          <label className={`mt-3 inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+            <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300" />
+            Ajouter la signature sur les fiches imprimées
+          </label>
+        </form>
+
+        {/* Ordinateur : tableau de bureau */}
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={rows}
+            cleLigne={(d) => d.id}
+            chargement={loading}
+            nomExport="dotations"
+            actionsToujoursVisibles
+            actions={actionsTableau}
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />}
+            vide={<EmptyState titre="Aucune dotation" description="Créez une dotation pour remettre des fonds à un agent." />}
+          />
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '9%' }} />
-              </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate"></th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dotation</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Utilisé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Agent</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Motif</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={9} />
-              : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune dotation enregistrée</td></tr>
-              : rows.map(d => (
-                <tr key={d.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <div className="flex gap-1.5 items-center flex-wrap">
-                      {d.modifiable && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
-                      {d.statut === 'VALIDE' && !d.soumise && <button onClick={() => handleAnnuler(d)} className="text-[10px] text-red-600 hover:underline">Supprimer</button>}
-                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 1</button>
-                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
-                    </div>
-                  </td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' || d.statut === 'SOLDEE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : d.statut === 'SOLDEE' ? 'Soldée' : 'Annulée'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
-        </div>
-
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">{editing ? 'Modifier la Dotation' : 'Fiche Dotation'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {editing && <p className="text-xs text-gray-500 font-mono">{editing.numero}</p>}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Montant *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
-                  {<div><label className="label">Date</label><input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" /></div>}
-                </div>
-                {editing && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="label text-gray-400">Montant Utilisé</label><input type="text" value={fmt(editing.montantUtilise)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-400" /></div>
-                    <div><label className="label text-gray-400">Montant Restant</label><input type="text" value={fmt(editing.montantRestant)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-400" /></div>
+        {/* Téléphone et tablette : une carte par dotation */}
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1].map(i => <div key={i} className="card !p-0 animate-pulse h-36" />)
+          ) : rows.length === 0 ? (
+            <div className="card"><EmptyState titre="Aucune dotation" description="Créez une dotation pour remettre des fonds à un agent." /></div>
+          ) : rows.map(d => {
+            const st = statutDotation(d);
+            return (
+              <div key={d.id} className="card !p-0 overflow-hidden">
+                <div className="flex items-start justify-between gap-2 px-4 pt-3">
+                  <div className="min-w-0">
+                    <div className="font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">{d.numero}</div>
+                    <div className="text-xs text-gray-500 truncate">{d.agent ? `${d.agent.prenom} ${d.agent.nom}` : '—'} · {new Date(d.dateDotation).toLocaleDateString('fr-FR')}</div>
                   </div>
-                )}
-                <div><label className="label">Agent *</label>
-                  <PickerField value={form.agentId} onChange={id => setForm({ ...form, agentId: id })} options={agentOptions} placeholder="Sélectionner un agent..." title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." required />
+                  <StatutPastille libelle={st.libelle} ton={st.ton} />
                 </div>
-                <div><label className="label">Motif</label><textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Valider</button></div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {showHistorique && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-                <h3 className="font-bold text-lg">Historique des Dotations par Agent</h3>
-                <button onClick={() => setShowHistorique(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                {d.motif && <p className="px-4 pt-1 text-xs text-gray-500 line-clamp-2">{d.motif}</p>}
+                <div className="mt-3 grid grid-cols-3 gap-px bg-gray-200 dark:bg-surface-700 text-center">
+                  {[
+                    { l: 'Montant', v: d.montant, c: '' },
+                    { l: 'Utilisé', v: d.montantUtilise, c: 'text-red-600' },
+                    { l: 'Restant', v: d.montantRestant, c: 'text-green-600' },
+                  ].map(k => (
+                    <div key={k.l} className="bg-white dark:bg-surface-800 py-2">
+                      <div className="text-[10px] uppercase text-gray-500">{k.l}</div>
+                      <div className={`font-bold font-mono text-[13px] ${k.c}`}>{fmt(k.v)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 px-4 py-3">{actionsLigne(d)}</div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
+            );
+          })}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} /></div>
+        </div>
+
+        <Modal
+          open={showModal}
+          onClose={() => setShowModal(false)}
+          title={editing ? 'Modifier la dotation' : 'Nouvelle dotation'}
+          description={editing ? editing.numero : 'Remise de fonds à un agent, qu\'il justifiera ensuite par ses dépenses.'}
+          footer={
+            <>
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+              <button type="submit" form="form-dotation" className="btn-primary">{editing ? 'Enregistrer' : 'Créer la dotation'}</button>
+            </>
+          }
+        >
+          <form id="form-dotation" onSubmit={handleSubmit} className="space-y-4">
+            {editing && (
+              <div className="grid grid-cols-2 gap-px rounded-xl overflow-hidden border border-gray-200 dark:border-surface-700 bg-gray-200 dark:bg-surface-700 text-center">
+                <div className="bg-gray-50 dark:bg-surface-800 py-2.5"><div className="text-[10px] uppercase text-gray-500">Utilisé</div><div className="font-bold font-mono text-red-600">{fmt(editing.montantUtilise)} F</div></div>
+                <div className="bg-gray-50 dark:bg-surface-800 py-2.5"><div className="text-[10px] uppercase text-gray-500">Restant</div><div className="font-bold font-mono text-green-600">{fmt(editing.montantRestant)} F</div></div>
+              </div>
+            )}
+            <div>
+              <label className="label">Agent *</label>
+              <PickerField value={form.agentId} onChange={id => setForm({ ...form, agentId: id })} options={agentOptions} placeholder="Sélectionner un agent..." title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." required />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Montant (F CFA) *</label>
+                <input type="text" inputMode="numeric" required className="input-field" placeholder="0" value={form.montant ? fmt(form.montant) : ''} onChange={e => setForm({ ...form, montant: e.target.value.replace(/\D/g, '') })} />
+              </div>
+              <div>
+                <label className="label">Date</label>
+                <input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" />
+              </div>
+            </div>
+            <div>
+              <label className="label">Motif</label>
+              <textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} placeholder="Ex : frais de mission, débours portuaires..." />
+            </div>
+          </form>
+        </Modal>
+
+        <Modal open={showHistorique} onClose={() => setShowHistorique(false)} title="Historique par agent" description="Total des dotations attribuées, utilisées et restantes pour chaque agent." size="lg">
+          <div className="overflow-x-auto">
                 {loadingHistorique ? <p className="text-center text-gray-500 py-8">Chargement...</p> : (
                   <table className="w-full text-sm">
                     <thead><tr><th className="table-header">Agent</th><th className="table-header text-right">Nb. Dotations</th><th className="table-header text-right">Total Montant</th><th className="table-header text-right">Total Utilisé</th><th className="table-header text-right">Total Restant</th></tr></thead>
@@ -347,9 +406,7 @@ export default function DotationPage() {
                   </table>
                 )}
               </div>
-            </div>
-          </div>
-        )}
+        </Modal>
       </div>
     </AppLayout>
   );

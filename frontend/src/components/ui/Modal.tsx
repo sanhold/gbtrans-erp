@@ -61,7 +61,8 @@ export default function Modal({ open, onClose, title, description, children, foo
         className={`relative w-full ${LARGEURS[size]} max-h-[92vh] max-h-[92dvh] flex flex-col bg-white dark:bg-surface-800
                     rounded-t-2xl sm:rounded-xl shadow-elevated animate-slide-up outline-none`}
       >
-        <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
+        <div className="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-gray-300 dark:bg-surface-600" aria-hidden="true" />
+        <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:pt-5 pb-3 border-b border-gray-100 dark:border-surface-700">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
             {description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>}
@@ -75,9 +76,9 @@ export default function Modal({ open, onClose, title, description, children, foo
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <div className="px-5 pb-5 overflow-y-auto">{children}</div>
+        <div className="px-5 py-4 overflow-y-auto overscroll-contain">{children}</div>
         {footer && (
-          <div className="px-5 py-3 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <div className="px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-gray-200 dark:border-surface-700 bg-gray-50/60 dark:bg-surface-900/30 rounded-b-xl flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             {footer}
           </div>
         )}

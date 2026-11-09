@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
+import Modal from '@/components/ui/Modal';
+import PageHeader from '@/components/ui/PageHeader';
+import DotationTabs from '@/components/finance/DotationTabs';
 import { dossiersApi, financeApi } from '@/lib/api';
 import { fmt, CATEGORIES_DEPENSE } from '@/lib/financeHelpers';
 import { lireFichierEnDataUrl, ouvrirPiece, PIECE_TYPES_ACCEPTES } from '@/lib/pieceJointe';
@@ -98,10 +101,8 @@ export default function MesDotationsPage() {
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Mes dotations</h1>
-          <p className="text-sm text-gray-500">Saisissez vos dépenses en précisant le dossier concerné, puis soumettez votre état à la trésorerie. Le comptable vérifie chaque dépense et la valide sur un compte de trésorerie : elle devient alors une dépense du dossier.</p>
-        </div>
+        <DotationTabs />
+        <PageHeader titre="Mes dotations" sousTitre="Saisissez vos dépenses en précisant le dossier concerné, puis soumettez votre état à la trésorerie." />
 
         {loading ? (
           <div className="card text-center text-gray-500 py-10">Chargement...</div>
@@ -189,64 +190,58 @@ export default function MesDotationsPage() {
         ))}
       </div>
 
-      {dotationCible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setDotationCible(null)}>
-          <form onSubmit={envoyer} className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-300 dark:border-surface-700" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 bg-primary-600 text-white flex items-center justify-between">
-              <h3 className="font-bold">Nouvelle dépense — {dotationCible.numero}</h3>
-              <button type="button" onClick={() => setDotationCible(null)} className="p-1 rounded-sm hover:bg-white/15" aria-label="Fermer">✕</button>
+      <Modal
+        open={!!dotationCible}
+        onClose={() => setDotationCible(null)}
+        title="Nouvelle dépense"
+        description={dotationCible ? `${dotationCible.numero} — reste à justifier : ${fmt(dotationCible.montantRestant)} F` : undefined}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setDotationCible(null)}>Annuler</button>
+            <button type="submit" form="form-depense-agent" className="btn-primary" disabled={saving}>{saving ? 'Enregistrement...' : 'Enregistrer en brouillon'}</button>
+          </>
+        }
+      >
+        <form id="form-depense-agent" onSubmit={envoyer} className="space-y-4">
+          <div>
+            <label className="label">Dossier concerné *</label>
+            <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="— Choisir un dossier —" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." required />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Catégorie</label>
+              <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className="input-field">
+                {CATEGORIES_DEPENSE.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
-            <div className="p-4 space-y-3">
-              <p className="text-xs text-gray-500">Reste à justifier : <b className="font-mono">{fmt(dotationCible.montantRestant)} F</b></p>
-              <div>
-                <label className="label">Dossier concerné *</label>
-                <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="— Choisir un dossier —" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." required />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Catégorie</label>
-                  <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className="input-field">
-                    {CATEGORIES_DEPENSE.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Date</label>
-                  <input type="date" value={form.dateJustificatif} onChange={e => setForm({ ...form, dateJustificatif: e.target.value })} className="input-field" required />
-                </div>
-              </div>
-              <div>
-                <label className="label">Désignation *</label>
-                <input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" placeholder="Ex : Frais de manutention conteneur" required />
-              </div>
-              <div>
-                <label className="label">Montant (F CFA) *</label>
-                <input
-                  type="text" inputMode="numeric" required className="input-field"
-                  value={form.montant ? fmt(form.montant) : ''}
-                  onChange={e => setForm({ ...form, montant: e.target.value.replace(/\D/g, '') })}
-                />
-              </div>
-              <div>
-                <label className="label">Pièce justificative (facture, reçu...)</label>
-                <label className="btn-secondary cursor-pointer w-fit">
-                  Choisir un fichier
-                  <input type="file" accept={PIECE_TYPES_ACCEPTES} className="hidden" onChange={e => { choisirPiece(e.target.files?.[0]); e.target.value = ''; }} />
-                </label>
-                {form.nomPiece && (
-                  <span className="ml-3 text-xs text-gray-600">
-                    {form.nomPiece} <button type="button" onClick={() => setForm({ ...form, piece: '', nomPiece: '' })} className="text-red-500 hover:underline ml-1">retirer</button>
-                  </span>
-                )}
-                <p className="text-[11px] text-gray-400 mt-1">Image (PNG, JPG, WebP) ou PDF, 3 Mo maximum.</p>
-              </div>
+            <div>
+              <label className="label">Date</label>
+              <input type="date" value={form.dateJustificatif} onChange={e => setForm({ ...form, dateJustificatif: e.target.value })} className="input-field" required />
             </div>
-            <div className="px-4 pb-4 flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setDotationCible(null)}>Annuler</button>
-              <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Enregistrement...' : 'Enregistrer en brouillon'}</button>
-            </div>
-          </form>
-        </div>
-      )}
+          </div>
+          <div>
+            <label className="label">Désignation *</label>
+            <input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" placeholder="Ex : Frais de manutention conteneur" required />
+          </div>
+          <div>
+            <label className="label">Montant (F CFA) *</label>
+            <input type="text" inputMode="numeric" required className="input-field" placeholder="0" value={form.montant ? fmt(form.montant) : ''} onChange={e => setForm({ ...form, montant: e.target.value.replace(/\D/g, '') })} />
+          </div>
+          <div>
+            <label className="label">Pièce justificative (facture, reçu...)</label>
+            <label className="btn-secondary cursor-pointer w-fit">
+              Choisir un fichier
+              <input type="file" accept={PIECE_TYPES_ACCEPTES} className="hidden" onChange={e => { choisirPiece(e.target.files?.[0]); e.target.value = ''; }} />
+            </label>
+            {form.nomPiece && (
+              <span className="ml-3 text-xs text-gray-600">
+                {form.nomPiece} <button type="button" onClick={() => setForm({ ...form, piece: '', nomPiece: '' })} className="text-red-500 hover:underline ml-1">retirer</button>
+              </span>
+            )}
+            <p className="text-[11px] text-gray-400 mt-1">Image (PNG, JPG, WebP) ou PDF, 3 Mo maximum.</p>
+          </div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }
