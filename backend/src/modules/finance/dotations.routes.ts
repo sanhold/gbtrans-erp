@@ -16,9 +16,15 @@ async function withMontants(dotations: any[]) {
     ? await prisma.depense.groupBy({ by: ['dotationId'], _sum: { montant: true }, where: { dotationId: { in: ids }, statut: { not: 'ANNULEE' } } })
     : [];
   const utiliseParId = new Map(sums.map((s) => [s.dotationId as string, Number(s._sum.montant || 0)]));
+  // Une dotation est « soumise » dès qu'une de ses dépenses a quitté l'état de brouillon.
+  const soumises = ids.length
+    ? await prisma.justificatifDotation.groupBy({ by: ['dotationId'], _count: { _all: true }, where: { dotationId: { in: ids }, statut: { not: 'BROUILLON' } } })
+    : [];
+  const soumisParId = new Set(soumises.map((s) => s.dotationId as string));
   return dotations.map((d) => {
     const montantUtilise = utiliseParId.get(d.id) || 0;
-    return { ...d, montantUtilise, montantRestant: Number(d.montant) - montantUtilise };
+    const soumise = soumisParId.has(d.id);
+    return { ...d, montantUtilise, montantRestant: Number(d.montant) - montantUtilise, soumise, modifiable: d.statut === 'VALIDE' && !soumise };
   });
 }
 
@@ -89,7 +95,11 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
     if (!existing) { ApiResponse.notFound(res); return; }
     if (existing.statut === 'SOLDEE') { ApiResponse.badRequest(res, 'Cette dotation est soldée : elle ne peut plus être modifiée'); return; }
 
-    const { montant, motif, agentId } = req.body;
+    if (existing.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée : elle ne peut plus être modifiée'); return; }
+    const nbSoumis = await prisma.justificatifDotation.count({ where: { dotationId: req.params.id, statut: { not: 'BROUILLON' } } });
+    if (nbSoumis > 0) { ApiResponse.badRequest(res, 'Cette dotation est déjà soumise à la trésorerie : elle ne peut plus être modifiée'); return; }
+
+    const { montant, motif, agentId, dateDotation } = req.body;
     const montantNum = Number(montant);
     if (!montantNum || montantNum <= 0) { ApiResponse.badRequest(res, 'Montant invalide'); return; }
 
@@ -100,16 +110,18 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
 
     const sum = await prisma.depense.aggregate({ _sum: { montant: true }, where: { dotationId: req.params.id, statut: { not: 'ANNULEE' } } });
     const montantUtilise = Number(sum._sum?.montant || 0);
-    if (montantNum < montantUtilise) {
-      ApiResponse.badRequest(res, `Le montant ne peut pas être inférieur au montant déjà utilisé (${montantUtilise})`); return;
+    const brouillons = await prisma.justificatifDotation.aggregate({ _sum: { montant: true }, where: { dotationId: req.params.id, statut: 'BROUILLON' } });
+    const montantBrouillon = Number(brouillons._sum?.montant || 0);
+    if (montantNum < montantUtilise + montantBrouillon) {
+      ApiResponse.badRequest(res, `Le montant ne peut pas être inférieur aux dépenses déjà saisies (${montantUtilise + montantBrouillon})`); return;
     }
 
     const dotation = await prisma.dotation.update({
       where: { id: req.params.id },
-      data: { montant: montantNum, motif, agentId },
+      data: { montant: montantNum, motif, ...(agentId && { agentId }), ...(dateDotation && { dateDotation: new Date(dateDotation) }) },
       include: { agent: { select: { id: true, nom: true, prenom: true } } },
     });
-    ApiResponse.success(res, { ...dotation, montantUtilise, montantRestant: montantNum - montantUtilise }, 'Dotation modifiée');
+    ApiResponse.success(res, { ...dotation, montantUtilise, montantRestant: montantNum - montantUtilise, soumise: false, modifiable: true }, 'Dotation modifiée');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 

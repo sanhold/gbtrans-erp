@@ -62,7 +62,7 @@ export default function DotationPage() {
 
   const openEdit = (d: any) => {
     setEditing(d);
-    setForm({ montant: String(d.montant), motif: d.motif || '', agentId: d.agentId, dateDotation: '' });
+    setForm({ montant: String(d.montant), motif: d.motif || '', agentId: d.agentId, dateDotation: String(d.dateDotation).slice(0, 10) });
     setShowModal(true);
   };
 
@@ -70,7 +70,7 @@ export default function DotationPage() {
     e.preventDefault();
     try {
       if (editing) {
-        await financeApi.dotations.update(editing.id, { montant: Number(form.montant), motif: form.motif || undefined, agentId: form.agentId });
+        await financeApi.dotations.update(editing.id, { montant: Number(form.montant), motif: form.motif || undefined, agentId: form.agentId, dateDotation: form.dateDotation || undefined });
         toast.success('Dotation modifiée');
       } else {
         await financeApi.dotations.create({ montant: Number(form.montant), motif: form.motif || undefined, agentId: form.agentId, dateDotation: form.dateDotation || undefined });
@@ -271,8 +271,8 @@ export default function DotationPage() {
                 <tr key={d.id} className="table-row">
                   <td className="table-cell !px-1.5" data-label="Actions">
                     <div className="flex gap-1.5 items-center flex-wrap">
-                      {d.statut === 'VALIDE' && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
-                      {d.statut === 'VALIDE' && <button onClick={() => handleAnnuler(d)} className="text-[10px] text-red-600 hover:underline">Supprimer</button>}
+                      {d.modifiable && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
+                      {d.statut === 'VALIDE' && !d.soumise && <button onClick={() => handleAnnuler(d)} className="text-[10px] text-red-600 hover:underline">Supprimer</button>}
                       <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 1</button>
                       <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
                     </div>
@@ -303,7 +303,7 @@ export default function DotationPage() {
                 {editing && <p className="text-xs text-gray-500 font-mono">{editing.numero}</p>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="label">Montant *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
-                  {!editing && <div><label className="label">Date</label><input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" /></div>}
+                  {<div><label className="label">Date</label><input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" /></div>}
                 </div>
                 {editing && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
