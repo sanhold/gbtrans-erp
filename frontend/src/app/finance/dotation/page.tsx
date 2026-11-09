@@ -1,9 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, Montant, Progression, StatutPastille } from '@/components/tables/cellules';
+import EmptyState from '@/components/ui/EmptyState';
 import PickerField from '@/components/ui/PickerField';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
@@ -112,6 +115,41 @@ export default function DotationPage() {
     acc[key].totalRestant += Number(d.montantRestant);
     return acc;
   }, {});
+
+  const statutDotation = (d: any): { libelle: string; ton: 'info' | 'warning' | 'success' | 'gray' } =>
+    d.statut === 'SOLDEE' ? { libelle: 'Soldée', ton: 'success' }
+    : d.statut === 'ANNULEE' ? { libelle: 'Annulée', ton: 'gray' }
+    : d.soumise ? { libelle: 'Soumise', ton: 'warning' } : { libelle: 'En cours', ton: 'info' };
+
+  const bouton = 'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50';
+  const actionsLigne = (d: any) => (
+    <>
+      {d.modifiable && <button type="button" onClick={() => openEdit(d)} className={`${bouton} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}>Modifier</button>}
+      {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} className={`${bouton} border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}>Supprimer</button>}
+      <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="Reçu de dotation (PDF)">Fiche 1</button>
+      <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="État d'utilisation (PDF)">Fiche 2</button>
+    </>
+  );
+
+  const iconBtn = 'inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500';
+  const actionsTableau = (d: any) => (
+    <>
+      {d.modifiable && <button type="button" onClick={() => openEdit(d)} title="Modifier la dotation" aria-label="Modifier la dotation" className={`${iconBtn} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 112.828 2.828L11.828 15.83a2 2 0 01-.89.514L7 17l.657-3.94A2 2 0 018.172 12.2z" /></svg></button>}
+      {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} title="Supprimer la dotation" aria-label="Supprimer la dotation" className={`${iconBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" /></svg></button>}
+      <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} title="Fiche 1 : reçu de dotation (PDF)" aria-label="Fiche 1, reçu de dotation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
+      <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} title="Fiche 2 : état d'utilisation (PDF)" aria-label="Fiche 2, état d'utilisation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4" /></svg></button>
+    </>
+  );
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'numero', libelle: 'Dotation', rendu: d => <DoubleLigne mono haut={d.numero} bas={`${new Date(d.dateDotation).toLocaleDateString('fr-FR')}${d.motif ? ' · ' + d.motif : ''}`} />, texte: d => d.numero },
+    { cle: 'agent', libelle: 'Agent', rendu: d => <Tiers nom={d.agent ? `${d.agent.prenom} ${d.agent.nom}` : null} />, texte: d => (d.agent ? `${d.agent.prenom} ${d.agent.nom}` : '') },
+    { cle: 'montant', libelle: 'Montant', align: 'right', rendu: d => <Montant valeur={d.montant} />, texte: d => String(d.montant) },
+    { cle: 'utilise', libelle: 'Utilisé', align: 'right', rendu: d => <Montant valeur={d.montantUtilise} ton="negatif" />, texte: d => String(d.montantUtilise) },
+    { cle: 'restant', libelle: 'Restant', align: 'right', rendu: d => <Montant valeur={d.montantRestant} ton="positif" />, texte: d => String(d.montantRestant) },
+    { cle: 'avancement', libelle: 'Utilisation', masquerSous: '2xl', rendu: d => <Progression fait={Number(d.montantUtilise)} total={Number(d.montant)} titre={`${fmt(d.montantUtilise)} F utilisés sur ${fmt(d.montant)} F`} /> },
+    { cle: 'statut', libelle: 'Statut', rendu: d => { const st = statutDotation(d); return <StatutPastille libelle={st.libelle} ton={st.ton} />; }, texte: d => statutDotation(d).libelle },
+  ];
 
   const handlePrintFiche1 = async (d: any) => {
     setPrinting(d.id + '-1');
@@ -256,56 +294,56 @@ export default function DotationPage() {
           </label>
         </form>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '21%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '8%' }} />
-              </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate"></th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dotation</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Utilisé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Agent</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Motif</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={9} />
-              : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune dotation enregistrée</td></tr>
-              : rows.map(d => (
-                <tr key={d.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <div className="flex gap-2 items-center flex-wrap">
-                      {d.modifiable && <button onClick={() => openEdit(d)} className="inline-flex items-center rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200">Modifier</button>}
-                      {d.statut === 'VALIDE' && !d.soumise && <button onClick={() => handleAnnuler(d)} className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300">Supprimer</button>}
-                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200" title="Reçu de dotation (PDF)">Fiche 1</button>
-                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200" title="État d'utilisation (PDF)">Fiche 2</button>
+        {/* Ordinateur : tableau de bureau */}
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={rows}
+            cleLigne={(d) => d.id}
+            chargement={loading}
+            nomExport="dotations"
+            actionsToujoursVisibles
+            actions={actionsTableau}
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />}
+            vide={<EmptyState titre="Aucune dotation" description="Créez une dotation pour remettre des fonds à un agent." />}
+          />
+        </div>
+
+        {/* Téléphone et tablette : une carte par dotation */}
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1].map(i => <div key={i} className="card !p-0 animate-pulse h-36" />)
+          ) : rows.length === 0 ? (
+            <div className="card"><EmptyState titre="Aucune dotation" description="Créez une dotation pour remettre des fonds à un agent." /></div>
+          ) : rows.map(d => {
+            const st = statutDotation(d);
+            return (
+              <div key={d.id} className="card !p-0 overflow-hidden">
+                <div className="flex items-start justify-between gap-2 px-4 pt-3">
+                  <div className="min-w-0">
+                    <div className="font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">{d.numero}</div>
+                    <div className="text-xs text-gray-500 truncate">{d.agent ? `${d.agent.prenom} ${d.agent.nom}` : '—'} · {new Date(d.dateDotation).toLocaleDateString('fr-FR')}</div>
+                  </div>
+                  <StatutPastille libelle={st.libelle} ton={st.ton} />
+                </div>
+                {d.motif && <p className="px-4 pt-1 text-xs text-gray-500 line-clamp-2">{d.motif}</p>}
+                <div className="mt-3 grid grid-cols-3 gap-px bg-gray-200 dark:bg-surface-700 text-center">
+                  {[
+                    { l: 'Montant', v: d.montant, c: '' },
+                    { l: 'Utilisé', v: d.montantUtilise, c: 'text-red-600' },
+                    { l: 'Restant', v: d.montantRestant, c: 'text-green-600' },
+                  ].map(k => (
+                    <div key={k.l} className="bg-white dark:bg-surface-800 py-2">
+                      <div className="text-[10px] uppercase text-gray-500">{k.l}</div>
+                      <div className={`font-bold font-mono text-[13px] ${k.c}`}>{fmt(k.v)}</div>
                     </div>
-                  </td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' || d.statut === 'SOLDEE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : d.statut === 'SOLDEE' ? 'Soldée' : 'Annulée'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 px-4 py-3">{actionsLigne(d)}</div>
+              </div>
+            );
+          })}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} /></div>
         </div>
 
         <Modal
