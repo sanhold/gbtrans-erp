@@ -18,7 +18,7 @@ export function SkeletonTable({ rows = 8, cols = 6 }: { rows?: number; cols?: nu
 
 export function SkeletonCards({ count = 4, className = '' }: { count?: number; className?: string }) {
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 ${className}`} aria-busy="true" aria-label="Chargement">
+    <div className={`grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 ${className}`} aria-busy="true" aria-label="Chargement">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="bg-white dark:bg-surface-800 border border-gray-300 dark:border-surface-700 rounded-sm p-3.5">
           <Skeleton className="h-3 w-24 mb-3" />
