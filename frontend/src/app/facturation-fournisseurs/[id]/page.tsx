@@ -252,7 +252,7 @@ export default function FactureFournisseurDetailPage() {
             </div>
             <form onSubmit={handleAddLigne} className="p-6 space-y-4">
               <div><label className="label">Désignation *</label><input type="text" value={ligneForm.designation} onChange={e => setLigneForm({ ...ligneForm, designation: e.target.value })} className="input-field" required /></div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div><label className="label">Quantité</label><input type="number" step="0.001" value={ligneForm.quantite} onChange={e => setLigneForm({ ...ligneForm, quantite: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Prix unitaire *</label><input type="number" value={ligneForm.prixUnitaire} onChange={e => setLigneForm({ ...ligneForm, prixUnitaire: e.target.value })} className="input-field" required /></div>
                 <div><label className="label">Taux TVA %</label><input type="number" value={ligneForm.tauxTVA} onChange={e => setLigneForm({ ...ligneForm, tauxTVA: e.target.value })} className="input-field" /></div>

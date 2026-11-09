@@ -286,7 +286,7 @@ export default function CoursesPage() {
               </div>
               <div><label className="label">Montant facturable (FCFA)</label><input type="number" value={facturation.montantFacturable} onChange={e => setFacturation({ ...facturation, montantFacturable: e.target.value })} className="input-field" /></div>
               <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Dépenses du voyage</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div><label className="label !text-xs">Carburant</label><input type="number" value={facturation.fraisCarburant} onChange={e => setFacturation({ ...facturation, fraisCarburant: e.target.value })} className="input-field !text-sm" /></div>
                 <div><label className="label !text-xs">Péage</label><input type="number" value={facturation.fraisPeage} onChange={e => setFacturation({ ...facturation, fraisPeage: e.target.value })} className="input-field !text-sm" /></div>
                 <div><label className="label !text-xs">Autres</label><input type="number" value={facturation.autresFrais} onChange={e => setFacturation({ ...facturation, autresFrais: e.target.value })} className="input-field !text-sm" /></div>

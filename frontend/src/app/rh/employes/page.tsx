@@ -179,7 +179,7 @@ export default function EmployesPage() {
                 <div><label className="label">Prénom *</label><input type="text" value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} className="input-field" required /></div>
                 <div><label className="label">Nom *</label><input type="text" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="input-field" required /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="label">Département</label><input type="text" value={form.departement} onChange={e => setForm({ ...form, departement: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Type de contrat</label>
                   <select value={form.typeContrat} onChange={e => setForm({ ...form, typeContrat: e.target.value })} className="input-field">
@@ -188,7 +188,7 @@ export default function EmployesPage() {
                 </div>
                 <div><label className="label">Date d&apos;embauche *</label><input type="date" value={form.dateEmbauche} onChange={e => setForm({ ...form, dateEmbauche: e.target.value })} className="input-field" required /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="label">Situation familiale</label>
                   <select value={form.situationFamiliale} onChange={e => setForm({ ...form, situationFamiliale: e.target.value })} className="input-field">
                     {Object.entries(SITUATION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

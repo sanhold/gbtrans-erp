@@ -96,7 +96,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
               ? 'Comptabilisez les pièces en attente ou passez des écritures diverses — même plan comptable que Compta Auto'
               : 'Écritures générées et validées automatiquement depuis les factures, paiements et dépenses — même plan comptable que Compta Manuelle'}</p>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field !w-auto text-sm">
               {exercices.length === 0 && <option value="">Aucun exercice</option>}
               {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.libelle} ({ex.code}){ex.cloture ? ' — clôturé' : ''}</option>)}
@@ -331,7 +331,7 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
               <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form onSubmit={handleSave} className="p-4 space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="label">Journal *</label>
                   <select value={form.journalId} onChange={e => setForm({ ...form, journalId: e.target.value })} className="input-field" required>
                     <option value="">— Sélectionner —</option>
@@ -795,7 +795,7 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
               <div className="p-6 text-center text-sm text-gray-500">Sélectionnez d&apos;abord un exercice en haut de page.</div>
             ) : (
             <form onSubmit={handleComptabiliser} className="p-4 space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="label">Journal *</label>
                   <select value={form.journalId} onChange={e => setForm({ ...form, journalId: e.target.value })} className="input-field" required>
                     <option value="">— Sélectionner —</option>

@@ -228,7 +228,7 @@ export default function DevisTransportPage() {
                       <input type="text" value={l.origine} onChange={e => majLigne(i, 'origine', e.target.value)} className="input-field !text-sm" placeholder="Origine *" />
                       <input type="text" value={l.destination} onChange={e => majLigne(i, 'destination', e.target.value)} className="input-field !text-sm" placeholder="Destination *" />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <input type="text" value={l.designationMarchandise} onChange={e => majLigne(i, 'designationMarchandise', e.target.value)} className="input-field !text-sm" placeholder="Marchandise" />
                       <input type="date" value={l.dateDepartPrevue} onChange={e => majLigne(i, 'dateDepartPrevue', e.target.value)} className="input-field !text-sm" />
                       <input type="number" value={l.montantEstime} onChange={e => majLigne(i, 'montantEstime', e.target.value)} className="input-field !text-sm" placeholder="Montant estimé *" />

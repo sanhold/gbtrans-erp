@@ -24,9 +24,9 @@ export default function StatistiquesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Statistiques</h1><p className="text-sm text-gray-500">Tableaux de bord analytiques</p></div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <select className="input-field w-auto text-sm"><option>2026</option><option>2025</option><option>2024</option></select>
             <button className="btn-secondary"><svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Excel</button>
             <button className="btn-secondary"><svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>PDF</button>
