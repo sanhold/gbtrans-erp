@@ -6,12 +6,12 @@ import { usePathname } from 'next/navigation';
 /**
  * Style "e-CNPS" appliqué à tous les tableaux `.table-container` sans toucher chaque page :
  *  - barre « Exporter en Excel » au-dessus du tableau ;
- *  - ligne de filtres sous l'en-tête (filtre les lignes affichées).
+ *  - une seule recherche (filtre les lignes affichées sur tout leur contenu), à la place des filtres par colonne.
  * Un tableau peut s'exclure avec l'attribut `data-no-enhance`.
  */
 
 const BAR = 'data-te-bar';
-const FILTERS = 'data-te-filters';
+const SEARCH = 'data-te-search';
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const cellText = (el: Element) => (el.textContent || '').replace(/\s+/g, ' ').trim();
@@ -32,15 +32,11 @@ function dataRows(table: HTMLTableElement): HTMLTableRowElement[] {
 }
 
 function applyFilters(table: HTMLTableElement) {
-  const filterRow = table.querySelector(`tr[${FILTERS}]`);
-  if (!filterRow) return;
-  const values = Array.from(filterRow.querySelectorAll('input')).map((i) => ({
-    idx: Number(i.dataset.col),
-    v: norm(i.value.trim()),
-  })).filter((f) => f.v);
+  const input = table.closest('.table-container')?.querySelector<HTMLInputElement>(`input[${SEARCH}]`);
+  const v = norm((input?.value || '').trim());
   let visibles = 0;
   dataRows(table).forEach((row) => {
-    const ok = values.every((f) => norm(cellText(row.cells[f.idx] || row)).includes(f.v));
+    const ok = !v || norm(cellText(row)).includes(v);
     row.style.display = ok ? '' : 'none';
     if (ok) visibles++;
   });
@@ -79,7 +75,7 @@ function enhance(container: HTMLElement, titre: string) {
   if (!container.querySelector(`:scope > [${BAR}]`)) {
     const bar = document.createElement('div');
     bar.setAttribute(BAR, '');
-    bar.className = 'te-bar flex items-center justify-between px-5 py-3 bg-white dark:bg-surface-800 border-b border-gray-100 dark:border-surface-700';
+    bar.className = 'te-bar flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white dark:bg-surface-800 border-b border-gray-100 dark:border-surface-700';
     const compteur = document.createElement('span');
     compteur.setAttribute('data-te-count', '');
     compteur.className = 'text-sm text-gray-500 dark:text-gray-400';
@@ -88,40 +84,21 @@ function enhance(container: HTMLElement, titre: string) {
     btn.innerHTML = '<svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg><span>Exporter</span>';
     btn.className = 'inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-surface-800 dark:text-gray-200 dark:border-surface-600 dark:hover:bg-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500';
     btn.addEventListener('click', () => exportExcel(table, titre));
+    const recherche = document.createElement('input');
+    recherche.type = 'search';
+    recherche.setAttribute(SEARCH, '');
+    recherche.setAttribute('aria-label', 'Filtrer les lignes affichées');
+    recherche.placeholder = 'Filtrer les lignes affichées…';
+    recherche.className = 'order-last sm:order-none w-full sm:w-72 h-8 px-3 text-[13px] text-gray-800 bg-gray-50 border border-gray-200 rounded-lg placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:bg-surface-900/40 dark:text-gray-100 dark:border-surface-600';
+    recherche.addEventListener('input', () => applyFilters(table));
     bar.appendChild(compteur);
+    bar.appendChild(recherche);
     bar.appendChild(btn);
     container.insertBefore(bar, container.firstChild);
   }
 
-  const thead = table.tHead!;
-  let filterRow = thead.querySelector<HTMLTableRowElement>(`tr[${FILTERS}]`);
-  if (filterRow && filterRow.cells.length !== heads.length) {
-    filterRow.remove();
-    filterRow = null;
-  }
-  if (!filterRow) {
-    filterRow = document.createElement('tr');
-    filterRow.setAttribute(FILTERS, '');
-    heads.forEach((h, i) => {
-      const th = document.createElement('th');
-      th.className = 'te-filter px-2 py-2 bg-white dark:bg-surface-800 border-b border-gray-200 dark:border-surface-700 first:pl-4';
-      if (!isActionColumn(cellText(h))) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.size = 1;
-        input.style.width = '100%';
-        input.style.minWidth = '2.5rem';
-        input.dataset.col = String(i);
-        input.setAttribute('aria-label', `Filtrer ${cellText(h)}`);
-        input.placeholder = 'Filtrer';
-        input.className = 'w-full min-w-0 px-2 py-1 text-xs font-normal normal-case tracking-normal text-gray-800 bg-gray-50 border border-gray-200 rounded-md placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:bg-surface-900/40 dark:text-gray-100 dark:border-surface-600';
-        input.addEventListener('input', () => applyFilters(table));
-        th.appendChild(input);
-      }
-      filterRow!.appendChild(th);
-    });
-    thead.appendChild(filterRow);
-  }
+  // Nettoyage : d'anciennes lignes de filtres par colonne ne doivent plus subsister.
+  table.tHead?.querySelectorAll('tr[data-te-filters]').forEach((r) => r.remove());
   applyFilters(table);
 }
 
