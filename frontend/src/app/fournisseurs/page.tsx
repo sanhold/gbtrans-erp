@@ -1,9 +1,14 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, StatutPastille } from '@/components/tables/cellules';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import Modal from '@/components/ui/Modal';
 import api from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -41,7 +46,19 @@ export default function FournisseursPage() {
   useEffect(() => { load(); }, [page, limit]);
 
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const statut = (f: any): { libelle: string; ton: 'success' | 'gray' } => f.actif ? { libelle: 'Actif', ton: 'success' } : { libelle: 'Inactif', ton: 'gray' };
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'fournisseur', libelle: 'Fournisseur', rendu: f => <Tiers nom={f.raisonSociale} detail={<span className="font-mono">{f.code}</span>} />, texte: f => f.raisonSociale },
+    { cle: 'type', libelle: 'Type', rendu: f => <StatutPastille libelle={typeFournisseurLabels[f.type] || f.type} ton="info" />, texte: f => typeFournisseurLabels[f.type] || f.type },
+    { cle: 'contact', libelle: 'Contact', rendu: f => <DoubleLigne haut={f.telephone || '—'} bas={f.email} />, texte: f => `${f.telephone || ''} ${f.email || ''}`.trim() },
+    { cle: 'ville', libelle: 'Ville', masquerSous: 'xl', rendu: f => f.ville || '—', texte: f => f.ville || '' },
+    { cle: 'statut', libelle: 'Statut', rendu: f => { const st = statut(f); return <StatutPastille libelle={st.libelle} ton={st.ton} />; }, texte: f => statut(f).libelle },
+  ];
+
+  const vide = <EmptyState titre="Aucun fournisseur" description="Créez votre premier fournisseur." action={<button type="button" onClick={() => setShowModal(true)} className="btn-primary">Nouveau fournisseur</button>} />;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,81 +72,83 @@ export default function FournisseursPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(); }} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Fournisseurs</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">{total} fournisseur(s)</p>
-            </div>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-64 flex-shrink-0" placeholder="Rechercher..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Rechercher</button>
-            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouveau Fournisseur
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Fournisseurs"
+          sousTitre={`${total} fournisseur(s)`}
+          actions={
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              <span className="sm:hidden">Nouveau</span><span className="hidden sm:inline">Nouveau fournisseur</span>
             </button>
-          </form>
+          }
+        />
+
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(); }} className="card !p-3 sm:!p-4">
+          <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-end">
+            <div>
+              <label className="label">Recherche</label>
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field" placeholder="Nom, code, téléphone..." />
+            </div>
+            <button type="submit" className="btn-primary">Rechercher</button>
+          </div>
+        </form>
+
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={fournisseurs}
+            cleLigne={(f) => f.id}
+            chargement={loading}
+            nomExport="fournisseurs"
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />}
+            vide={vide}
+          />
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '19%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Raison Sociale</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Type</th><th className="table-header !text-[10px] !px-1.5 truncate">Téléphone</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Email</th><th className="table-header !text-[10px] !px-1.5 truncate">Ville</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={7} />
-              ) : fournisseurs.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun fournisseur. Créez votre premier fournisseur.</td></tr>
-              ) : fournisseurs.map((f) => (
-                <tr key={f.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{f.code}</td>
-                  <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Raison Sociale" title={f.raisonSociale}>{f.raisonSociale}</td>
-                  <td className="table-cell !px-1.5" data-label="Type"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{typeFournisseurLabels[f.type] || f.type}</span></td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Téléphone">{f.telephone || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Email" title={f.email || undefined}>{f.email || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Ville">{f.ville || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut">{f.actif ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Actif</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Inactif</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1, 2].map(i => <div key={i} className="card !p-0 animate-pulse h-24" />)
+          ) : fournisseurs.length === 0 ? (
+            <div className="card">{vide}</div>
+          ) : fournisseurs.map((f) => {
+            const st = statut(f);
+            return (
+              <div key={f.id} className="card !px-4 !py-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <Tiers nom={f.raisonSociale} detail={<span className="font-mono">{f.code}</span>} />
+                  <StatutPastille libelle={st.libelle} ton={st.ton} />
+                </div>
+                <div className="text-xs text-gray-500 truncate">{f.telephone || '—'}{f.email ? ` · ${f.email}` : ''}</div>
+                <div className="text-xs text-gray-500">{typeFournisseurLabels[f.type] || f.type}{f.ville ? ` · ${f.ville}` : ''}</div>
+              </div>
+            );
+          })}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">Nouveau Fournisseur</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-            </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <div><label className="label">Raison Sociale *</label><input type="text" value={form.raisonSociale} onChange={(e) => setForm({...form, raisonSociale: e.target.value})} className="input-field" required /></div>
-              <div><label className="label">Type</label><select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})} className="input-field">{Object.entries(typeFournisseurLabels).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="label">Téléphone</label><input type="text" value={form.telephone} onChange={(e) => setForm({...form, telephone: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="input-field" /></div>
-              </div>
-              <div><label className="label">Adresse</label><input type="text" value={form.adresse} onChange={(e) => setForm({...form, adresse: e.target.value})} className="input-field" /></div>
-              <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Créer</button></div>
-            </form>
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Nouveau fournisseur"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-fournisseur" className="btn-primary">Créer</button>
+          </>
+        }
+      >
+        <form id="form-fournisseur" onSubmit={handleCreate} className="space-y-4">
+          <div><label className="label">Raison sociale *</label><input type="text" value={form.raisonSociale} onChange={(e) => setForm({ ...form, raisonSociale: e.target.value })} className="input-field" required /></div>
+          <div><label className="label">Type</label><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="input-field">{Object.entries(typeFournisseurLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label className="label">Téléphone</label><input type="tel" value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
           </div>
-        </div>
-      )}
+          <div><label className="label">Adresse</label><input type="text" value={form.adresse} onChange={(e) => setForm({ ...form, adresse: e.target.value })} className="input-field" /></div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }

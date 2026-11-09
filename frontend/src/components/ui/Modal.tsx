@@ -14,6 +14,9 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
+// Pile des fenêtres ouvertes : Échap ne ferme que la plus récente (ex : le catalogue ouvert depuis un formulaire).
+const pile: object[] = [];
+
 const LARGEURS = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-4xl' };
 
 /**
@@ -32,15 +35,19 @@ export default function Modal({ open, onClose, title, description, children, foo
   useEffect(() => {
     if (!open) return;
     precedent.current = document.activeElement as HTMLElement | null;
+    const moi = {};
+    pile.push(moi);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     panneau.current?.focus();
 
     const surTouche = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') fermer.current();
+      if (e.key === 'Escape' && pile[pile.length - 1] === moi) fermer.current();
     };
     document.addEventListener('keydown', surTouche);
     return () => {
+      const i = pile.indexOf(moi);
+      if (i >= 0) pile.splice(i, 1);
       document.removeEventListener('keydown', surTouche);
       document.body.style.overflow = overflow;
       precedent.current?.focus?.();

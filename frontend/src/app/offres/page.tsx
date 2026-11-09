@@ -1,10 +1,16 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import BoutonIcone, { IconeSupprimer } from '@/components/tables/BoutonIcone';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import Modal from '@/components/ui/Modal';
 import PickerField from '@/components/ui/PickerField';
 import { offresApi, clientsApi, dossiersApi, catalogueApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -104,184 +110,181 @@ export default function OffresPage() {
     catch (e: any) { toast.error(e.response?.data?.message || 'Erreur lors de la suppression'); }
   };
 
+  const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString('fr-FR') : '—');
+  const supprimable = (o: any) => o.statut !== 'TRANSFORMEE';
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'offre', libelle: 'Offre', rendu: o => <DoubleLigne mono haut={o.numero} bas={`${fmtDate(o.dateOffre)} · valide jusqu'au ${fmtDate(o.dateValidite)}`} />, texte: o => o.numero },
+    { cle: 'client', libelle: 'Client', rendu: o => <Tiers nom={o.client?.raisonSociale} detail={o.objet} />, texte: o => o.client?.raisonSociale || '' },
+    { cle: 'ttc', libelle: 'Montant TTC', align: 'right', rendu: o => <Montant valeur={o.montantTTC} />, texte: o => String(o.montantTTC) },
+    { cle: 'statut', libelle: 'Statut', rendu: o => <StatutPastille libelle={statutLabels[o.statut] || o.statut} ton={tonDepuisBadge(statutColors[o.statut])} />, texte: o => statutLabels[o.statut] || o.statut },
+  ];
+
+  const vide = <EmptyState titre="Aucune offre commerciale" description="Créez votre première offre." action={<button type="button" onClick={() => setShowModal(true)} className="btn-primary">Nouvelle offre</button>} />;
+
+  const majLigne = (i: number, champ: string, valeur: string) => setLignes(lignes.map((x, j) => (j === i ? { ...x, [champ]: valeur } : x)));
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Offres Commerciales</h1><p className="text-sm text-gray-500">{total} offre(s) — créez et suivez vos offres commerciales</p></div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Offre
-          </button>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Offres commerciales"
+          sousTitre={`${total} offre(s) — créez et suivez vos offres commerciales`}
+          sousTitreMasqueMobile
+          actions={
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              <span className="sm:hidden">Nouvelle</span><span className="hidden sm:inline">Nouvelle offre</span>
+            </button>
+          }
+        />
+
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={offres}
+            cleLigne={(o) => o.id}
+            onClicLigne={(o) => router.push(`/offres/${o.id}`)}
+            chargement={loading}
+            nomExport="offres"
+            actionsToujoursVisibles
+            actions={(o) => (supprimable(o) ? <BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleDelete(o)}><IconeSupprimer /></BoutonIcone> : null)}
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />}
+            vide={vide}
+          />
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '12%' }} />
-              </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N°</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Objet</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant TTC</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Validité</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={8} />
-              : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune offre commerciale. Créez votre première offre.</td></tr>
-              : offres.map(o => (
-                <tr key={o.id} className="table-row cursor-pointer" onClick={() => router.push(`/offres/${o.id}`)}>
-                  <td className="table-cell !px-1" data-label="Actions">
-                    {!['TRANSFORMEE'].includes(o.statut) && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(o); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                        <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
-                    )}
-                  </td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={o.numero}>{o.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={o.client?.raisonSociale}>{o.client?.raisonSociale}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={o.objet}>{o.objet}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Montant TTC">{fmt(o.montantTTC)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Validité">{new Date(o.dateValidite).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[o.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[o.statut] || o.statut}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1, 2].map(i => <div key={i} className="card !p-0 animate-pulse h-24" />)
+          ) : offres.length === 0 ? (
+            <div className="card">{vide}</div>
+          ) : offres.map(o => (
+            <div key={o.id} className="card !p-0 overflow-hidden">
+              <button type="button" onClick={() => router.push(`/offres/${o.id}`)} className="w-full text-left px-4 pt-3 pb-2 flex flex-col gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">{o.numero}</span>
+                  <StatutPastille libelle={statutLabels[o.statut] || o.statut} ton={tonDepuisBadge(statutColors[o.statut])} />
+                </span>
+                <span className="flex items-center justify-between gap-2 text-[13px]">
+                  <span className="text-gray-800 dark:text-gray-100 truncate">{o.client?.raisonSociale || '—'}</span>
+                  <span className="font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">{fmt(o.montantTTC)} F</span>
+                </span>
+                <span className="text-xs text-gray-500 truncate">{o.objet}</span>
+                <span className="text-[11px] text-gray-400">{fmtDate(o.dateOffre)} · valide jusqu&apos;au {fmtDate(o.dateValidite)}</span>
+              </button>
+              {supprimable(o) && <div className="flex justify-end px-4 pb-3"><BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleDelete(o)}><IconeSupprimer /></BoutonIcone></div>}
+            </div>
+          ))}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} /></div>
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nouvelle Offre Commerciale</h2>
+      <Modal
+        open={showModal}
+        onClose={() => { setShowModal(false); resetForm(); }}
+        title="Nouvelle offre commerciale"
+        size="lg"
+        footer={
+          <>
+            <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-offre" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Création...' : "Créer l'offre"}</button>
+          </>
+        }
+      >
+        <form id="form-offre" onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Client *</label>
+              <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Sélectionner --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." required />
+            </div>
+            <div>
+              <label className="label">Dossier lié</label>
+              <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Client *</label>
-                  <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Sélectionner --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." required />
-                </div>
-                <div>
-                  <label className="label">Dossier lié</label>
-                  <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
-                </div>
+          <div>
+            <label className="label">Objet *</label>
+            <input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" placeholder="Offre de services de transit et dédouanement" required />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Date de validité</label>
+              <input type="date" value={form.dateValidite} onChange={e => setForm({ ...form, dateValidite: e.target.value })} className="input-field" />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Description</label>
+            <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input-field" rows={2} />
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label className="label !mb-0">Lignes de prestations</label>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setShowCatalogue(true)} className="text-xs font-medium text-emerald-600 hover:underline flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Depuis le catalogue
+                </button>
+                <button type="button" onClick={() => setLignes([...lignes, ligneVide()])} className="text-xs font-medium text-primary-600 hover:underline">+ Ligne libre</button>
               </div>
-
-              <div>
-                <label className="label">Objet *</label>
-                <input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" placeholder="Offre de services de transit et dédouanement" required />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Date de validité</label>
-                  <input type="date" value={form.dateValidite} onChange={e => setForm({ ...form, dateValidite: e.target.value })} className="input-field" />
-                </div>
-              </div>
-
-              <div>
-                <label className="label">Description</label>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input-field" rows={2} />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="label !mb-0">Lignes de prestations</label>
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setShowCatalogue(true)} className="text-xs text-emerald-600 hover:underline flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      Choisir depuis le catalogue
+            </div>
+            <div className="space-y-2">
+              {lignes.map((l, i) => (
+                <div key={i} className="rounded-lg border border-gray-200 dark:border-surface-700 p-2.5 grid grid-cols-[1fr_1fr_auto] sm:grid-cols-[1fr_5rem_8rem_auto] gap-2 items-center">
+                  <input type="text" value={l.designation} onChange={e => majLigne(i, 'designation', e.target.value)} className="input-field col-span-3 sm:col-span-1" placeholder="Désignation" aria-label="Désignation" />
+                  <input type="number" value={l.quantite} onChange={e => majLigne(i, 'quantite', e.target.value)} className="input-field" placeholder="Qté" aria-label="Quantité" min="0" step="0.01" />
+                  <input type="number" value={l.prixUnitaire} onChange={e => majLigne(i, 'prixUnitaire', e.target.value)} className="input-field" placeholder="Prix unitaire" aria-label="Prix unitaire" min="0" />
+                  {lignes.length > 1 ? (
+                    <button type="button" onClick={() => setLignes(lignes.filter((_, j) => j !== i))} aria-label="Retirer la ligne" className="p-1.5 text-red-500 hover:bg-red-50 rounded">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
-                    <button type="button" onClick={() => setLignes([...lignes, ligneVide()])} className="text-xs text-primary-600 hover:underline">+ Ligne libre</button>
-                  </div>
+                  ) : <span />}
                 </div>
-                <div className="space-y-2">
-                  {lignes.map((l, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input type="text" value={l.designation} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, designation: e.target.value } : x))} className="input-field flex-1" placeholder="Désignation" />
-                      <input type="number" value={l.quantite} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, quantite: e.target.value } : x))} className="input-field w-20" placeholder="Qté" min="0" step="0.01" />
-                      <input type="number" value={l.prixUnitaire} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, prixUnitaire: e.target.value } : x))} className="input-field w-32" placeholder="Prix unitaire" min="0" />
-                      {lignes.length > 1 && (
-                        <button type="button" onClick={() => setLignes(lignes.filter((_, j) => j !== i))} className="p-1.5 text-red-500 hover:bg-red-50 rounded">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end gap-6 mt-3 text-sm">
-                  <span className="text-gray-500">Total HT : <span className="font-mono font-medium text-gray-900 dark:text-white">{fmt(totalHT)} XOF</span></span>
-                  <span className="text-gray-500">TVA : <span className="font-mono font-medium text-gray-900 dark:text-white">{fmt(totalTVA)} XOF</span></span>
-                  <span className="text-gray-500">Total TTC : <span className="font-mono font-bold text-primary-600">{fmt(totalHT + totalTVA)} XOF</span></span>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="btn-secondary">Annuler</button>
-                <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Création...' : 'Créer l\'offre'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showCatalogue && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCatalogue(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <h3 className="font-bold text-lg">Catalogue des Prestations</h3>
-              <button type="button" onClick={() => setShowCatalogue(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+              ))}
             </div>
-            <div className="px-4 pt-3 space-y-2">
-              <input type="text" value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher une prestation..." className="input-field text-sm" autoFocus />
-              <div className="flex gap-1 flex-wrap">
-                <button type="button" onClick={() => setCatalogueCat('')} className={`px-3 py-1 rounded-full text-xs font-medium ${!catalogueCat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Toutes</button>
-                {catalogueCategories.map(cat => (
-                  <button key={cat} type="button" onClick={() => setCatalogueCat(catalogueCat === cat ? '' : cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${catalogueCat === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{cat}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
-              {catalogue
-                .filter(p => !catalogueCat || p.categorie === catalogueCat)
-                .filter(p => !catalogueSearch || p.designation.toLowerCase().includes(catalogueSearch.toLowerCase()) || p.code.toLowerCase().includes(catalogueSearch.toLowerCase()))
-                .map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 dark:border-surface-600 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-surface-700 transition-all">
-                    <div>
-                      <p className="text-sm font-medium">{p.designation}</p>
-                      <p className="text-[10px] text-gray-400">{p.categorie} — {p.code}{p.montantDefaut ? ` • Défaut: ${fmt(p.montantDefaut)} F` : ''}</p>
-                    </div>
-                    <button type="button" onClick={() => addFromCatalogue(p)} className="px-3 py-1 bg-primary-500 text-white rounded text-xs font-medium hover:bg-primary-600 whitespace-nowrap">+ Ajouter</button>
-                  </div>
-                ))}
-              {catalogue.length === 0 && (
-                <div className="text-center py-6 text-gray-400 text-sm">
-                  Catalogue vide. <a href="/parametres/catalogue-prestations" target="_blank" className="text-primary-500 hover:underline">Ajoutez des prestations →</a>
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-gray-200 dark:border-surface-700 flex justify-end">
-              <button type="button" onClick={() => setShowCatalogue(false)} className="btn-primary">Fermer</button>
+            <div className="mt-3 grid grid-cols-3 gap-px rounded-xl overflow-hidden border border-gray-200 dark:border-surface-700 bg-gray-200 dark:bg-surface-700 text-center">
+              <div className="bg-white dark:bg-surface-800 py-2"><div className="text-[10px] uppercase text-gray-500">Total HT</div><div className="font-mono text-[13px] font-semibold text-gray-900 dark:text-white">{fmt(totalHT)}</div></div>
+              <div className="bg-white dark:bg-surface-800 py-2"><div className="text-[10px] uppercase text-gray-500">TVA</div><div className="font-mono text-[13px] font-semibold text-gray-900 dark:text-white">{fmt(totalTVA)}</div></div>
+              <div className="bg-primary-50 dark:bg-primary-500/15 py-2"><div className="text-[10px] uppercase text-gray-500">Total TTC</div><div className="font-mono text-[13px] font-bold text-primary-700 dark:text-primary-200">{fmt(totalHT + totalTVA)}</div></div>
             </div>
           </div>
+        </form>
+      </Modal>
+
+      <Modal open={showCatalogue} onClose={() => setShowCatalogue(false)} title="Catalogue des prestations" size="lg" footer={<button type="button" onClick={() => setShowCatalogue(false)} className="btn-primary">Fermer</button>}>
+        <div className="space-y-3">
+          <input type="text" value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher une prestation..." className="input-field text-sm" />
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <button type="button" onClick={() => setCatalogueCat('')} className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium ${!catalogueCat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Toutes</button>
+            {catalogueCategories.map(cat => (
+              <button key={cat} type="button" onClick={() => setCatalogueCat(catalogueCat === cat ? '' : cat)} className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium ${catalogueCat === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{cat}</button>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            {catalogue
+              .filter(p => !catalogueCat || p.categorie === catalogueCat)
+              .filter(p => !catalogueSearch || p.designation.toLowerCase().includes(catalogueSearch.toLowerCase()) || p.code.toLowerCase().includes(catalogueSearch.toLowerCase()))
+              .map(p => (
+                <div key={p.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-gray-100 dark:border-surface-600 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-surface-700 transition-all">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{p.designation}</p>
+                    <p className="text-[11px] text-gray-400">{p.categorie} — {p.code}{p.montantDefaut ? ` • Défaut : ${fmt(p.montantDefaut)} F` : ''}</p>
+                  </div>
+                  <button type="button" onClick={() => addFromCatalogue(p)} className="px-3 py-1.5 bg-primary-500 text-white rounded text-xs font-medium hover:bg-primary-600 whitespace-nowrap">+ Ajouter</button>
+                </div>
+              ))}
+            {catalogue.length === 0 && (
+              <div className="text-center py-6 text-gray-400 text-sm">
+                Catalogue vide. <a href="/parametres/catalogue-prestations" target="_blank" className="text-primary-500 hover:underline">Ajoutez des prestations →</a>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </Modal>
     </AppLayout>
   );
 }
