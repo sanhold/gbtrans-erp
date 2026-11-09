@@ -454,3 +454,65 @@ input[type='number'] {
    cell-normal  -> cellule ordinaire même en dernière colonne (sinon traitée comme barre d'actions)
    row-actions  -> barre d'actions rangée en bas de la carte, quelle que soit sa colonne
    col-opt      -> colonne masquée dans la carte mobile */
+
+/* Fenêtres maison (overlay « fixed inset-0 … items-center ») : sur téléphone elles s'ouvrent en feuille collée en bas de
+   l'écran, pleine largeur, avec les boutons d'action toujours atteignables — comme la fenêtre commune (Modal). */
+@media (max-width: 639px) {
+  .fixed.inset-0.z-50.items-center.justify-center {
+    align-items: flex-end;
+    padding: 0 !important;
+  }
+
+  .fixed.inset-0.z-50.items-center.justify-center > :is(div, form):not(.absolute) {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: slideUp 0.22s ease-out;
+  }
+
+  /* Barre de boutons en bas du formulaire : collée au bas de la feuille. */
+  .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin-top: 0.5rem;
+    padding-bottom: 0.75rem;
+    background: #fff;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) > button {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* Annuler à gauche, valider à droite, quel que soit l'ordre d'origine. */
+  .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) > button[type='button'] {
+    order: 1;
+  }
+
+  .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) > button[type='submit'] {
+    order: 2;
+  }
+
+  .dark .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) {
+    background: theme('colors.surface.800');
+  }
+}

@@ -11,6 +11,7 @@ import PickerField from '@/components/ui/PickerField';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
 import DotationTabs from '@/components/finance/DotationTabs';
+import FiltresDepliables from '@/components/ui/FiltresDepliables';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -265,18 +266,20 @@ export default function DotationPage() {
         <PageHeader
           titre="Dotations"
           sousTitre="Remises de fonds aux agents, justifiées ensuite par leurs dépenses."
+          sousTitreMasqueMobile
           actions={
             <>
-              <button onClick={openHistorique} className="btn-secondary">Historique</button>
-              <button onClick={openCreate} className="btn-primary">
+              <button onClick={openHistorique} className="btn-secondary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">Historique</button>
+              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
                 <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Nouvelle dotation
+                <span className="sm:hidden">Nouvelle</span><span className="hidden sm:inline">Nouvelle dotation</span>
               </button>
             </>
           }
         />
 
-        <form onSubmit={e => { e.preventDefault(); setPage(1); load(); }} className="card !p-3 sm:!p-4">
+        <FiltresDepliables actifs={(filterNumero ? 1 : 0) + (filterAgentId ? 1 : 0)}>
+        <form onSubmit={e => { e.preventDefault(); setPage(1); load(); }}>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
             <div>
               <label className="label">N° de dotation</label>
@@ -293,6 +296,7 @@ export default function DotationPage() {
             Ajouter la signature sur les fiches imprimées
           </label>
         </form>
+        </FiltresDepliables>
 
         {/* Ordinateur : tableau de bureau */}
         <div className="hidden lg:block">

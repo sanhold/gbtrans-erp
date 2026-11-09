@@ -131,7 +131,7 @@ export default function DashboardHomePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4 mb-4">
             <KpiCard
               label={`Dossiers ouverts en ${year}`}
               value={`${stats?.totalDossiers ?? 0}`}
