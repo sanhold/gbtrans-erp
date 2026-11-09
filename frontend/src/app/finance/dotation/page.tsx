@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
 import Modal from '@/components/ui/Modal';
+import PageHeader from '@/components/ui/PageHeader';
 import DotationTabs from '@/components/finance/DotationTabs';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
@@ -223,38 +224,50 @@ export default function DotationPage() {
     <AppLayout>
       <div className="space-y-6">
         <DotationTabs />
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Dotation</h1>
-            <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field !py-1.5 text-xs !w-32 flex-shrink-0" placeholder="N° Dotation..." />
-            <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="!py-1.5 text-xs w-36 flex-shrink-0" />
-            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <label className={`flex items-center gap-1.5 text-[10.5px] text-gray-600 dark:text-gray-300 flex-shrink-0 whitespace-nowrap ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
-              <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300" />
-              Signature sur fiches
-            </label>
-            <div className="flex gap-2 flex-shrink-0 ml-auto">
-              <button onClick={openHistorique} className="btn-secondary !px-3 !py-1.5 text-xs">Historique</button>
-              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs">
-                <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Nouvelle Dotation
+        <PageHeader
+          titre="Dotations"
+          sousTitre="Remises de fonds aux agents, justifiées ensuite par leurs dépenses."
+          actions={
+            <>
+              <button onClick={openHistorique} className="btn-secondary">Historique</button>
+              <button onClick={openCreate} className="btn-primary">
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Nouvelle dotation
               </button>
+            </>
+          }
+        />
+
+        <form onSubmit={e => { e.preventDefault(); setPage(1); load(); }} className="card !p-3 sm:!p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+            <div>
+              <label className="label">N° de dotation</label>
+              <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field" placeholder="DOT/2026/..." />
             </div>
+            <div>
+              <label className="label">Agent</label>
+              <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." />
+            </div>
+            <button type="submit" className="btn-primary w-full sm:w-auto">Afficher</button>
           </div>
-        </div>
+          <label className={`mt-3 inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+            <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300" />
+            Ajouter la signature sur les fiches imprimées
+          </label>
+        </form>
 
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '13%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
               <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '8%' }} />
               </colgroup>
             <thead><tr>
               <th className="table-header !text-[10px] !px-1.5 truncate"></th>
@@ -273,11 +286,11 @@ export default function DotationPage() {
               : rows.map(d => (
                 <tr key={d.id} className="table-row">
                   <td className="table-cell !px-1.5" data-label="Actions">
-                    <div className="flex gap-1.5 items-center flex-wrap">
-                      {d.modifiable && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
-                      {d.statut === 'VALIDE' && !d.soumise && <button onClick={() => handleAnnuler(d)} className="text-[10px] text-red-600 hover:underline">Supprimer</button>}
-                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 1</button>
-                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      {d.modifiable && <button onClick={() => openEdit(d)} className="inline-flex items-center rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200">Modifier</button>}
+                      {d.statut === 'VALIDE' && !d.soumise && <button onClick={() => handleAnnuler(d)} className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300">Supprimer</button>}
+                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200" title="Reçu de dotation (PDF)">Fiche 1</button>
+                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200" title="État d'utilisation (PDF)">Fiche 2</button>
                     </div>
                   </td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
