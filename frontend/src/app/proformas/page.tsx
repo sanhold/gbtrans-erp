@@ -1,11 +1,16 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import BoutonIcone, { IconeModifier, IconeSupprimer, IconeTelecharger } from '@/components/tables/BoutonIcone';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
 import api from '@/lib/api';
 import { downloadPDF } from '@/lib/generatePDF';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -16,6 +21,10 @@ const statutColors: Record<string, string> = {
   ACCEPTEE: 'badge-success', TRANSFORMEE: 'badge-success', EXPIREE: 'badge-danger', ANNULEE: 'badge-danger',
 };
 
+const statutLibelle: Record<string, string> = {
+  BROUILLON: 'Brouillon', VALIDEE: 'Validée', ENVOYEE: 'Envoyée', ACCEPTEE: 'Acceptée', TRANSFORMEE: 'Transformée', EXPIREE: 'Expirée', ANNULEE: 'Annulée',
+};
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR');
 const fmt = (n: any) => n ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function ProformasPage() {
@@ -70,80 +79,76 @@ export default function ProformasPage() {
     } catch { toast.error('Erreur téléchargement'); }
   };
 
+  const actions = (p: any) => (
+    <>
+      <BoutonIcone titre="Télécharger le PDF" onClick={() => handleDownload(p.id)}><IconeTelecharger /></BoutonIcone>
+      {p.statut === 'BROUILLON' && <BoutonIcone titre="Modifier" ton="primaire" onClick={() => router.push(`/proformas/${p.id}/edit`)}><IconeModifier /></BoutonIcone>}
+      {p.statut === 'BROUILLON' && <BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleDelete(p)}><IconeSupprimer /></BoutonIcone>}
+    </>
+  );
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'numero', libelle: 'Proforma', rendu: p => <DoubleLigne mono haut={p.numero} bas={`${fmtDate(p.dateProforma)}${p.titre ? ' · ' + p.titre : ''}`} />, texte: p => p.numero },
+    { cle: 'client', libelle: 'Client', rendu: p => <Tiers nom={p.client?.raisonSociale} detail={p.dossier ? `Dossier ${p.dossier.numeroPhysique || p.dossier.numero}` : undefined} />, texte: p => p.client?.raisonSociale || '' },
+    { cle: 'ht', libelle: 'Total HT', align: 'right', masquerSous: '2xl', rendu: p => <Montant valeur={p.montantHT} />, texte: p => String(p.montantHT) },
+    { cle: 'tva', libelle: 'TVA', align: 'right', masquerSous: '2xl', rendu: p => <Montant valeur={p.montantTVA} />, texte: p => String(p.montantTVA) },
+    { cle: 'ttc', libelle: 'Total TTC', align: 'right', rendu: p => <Montant valeur={p.montantTTC} />, texte: p => String(p.montantTTC) },
+    { cle: 'statut', libelle: 'Statut', rendu: p => <StatutPastille libelle={statutLibelle[p.statut] || p.statut} ton={tonDepuisBadge(statutColors[p.statut])} />, texte: p => statutLibelle[p.statut] || p.statut },
+  ];
+
+  const vide = <EmptyState titre="Aucune proforma" description="Créez votre première proforma." action={<Link href="/proformas/nouveau" className="btn-primary">Nouvelle proforma</Link>} />;
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Proformas</h1><p className="text-sm text-gray-500">{total} proforma(s)</p></div>
-          <Link href="/proformas/nouveau" className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Proforma
-          </Link>
+      <div className="space-y-4">
+        <PageHeader
+          titre="Proformas"
+          sousTitre={`${total} proforma(s)`}
+          actions={
+            <Link href="/proformas/nouveau" className="btn-primary">
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouvelle proforma
+            </Link>
+          }
+        />
+
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={proformas}
+            cleLigne={(p) => p.id}
+            onClicLigne={(p) => router.push(`/proformas/${p.id}`)}
+            chargement={loading}
+            nomExport="proformas"
+            actionsToujoursVisibles
+            actions={actions}
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />}
+            vide={vide}
+          />
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '8%' }} />
-                <col style={{ width: '8%' }} />
-            </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Proforma</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Titre</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total HT</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={10} />
-              : proformas.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
-              : proformas.map(p => (
-                <tr key={p.id} className="table-row cursor-pointer" onClick={() => router.push(`/proformas/${p.id}`)}>
-                  <td className="table-cell !px-1" data-label="Actions">
-                    <div className="flex items-center gap-0.5">
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(p.id); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Télécharger PDF">
-                        <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                      </button>
-                      {p.statut === 'BROUILLON' && (
-                        <button onClick={(e) => { e.stopPropagation(); router.push(`/proformas/${p.id}/edit`); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        </button>
-                      )}
-                      {p.statut === 'BROUILLON' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(p); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Proforma" title={p.numero}>{p.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale}>{p.client?.raisonSociale}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numeroPhysique || p.dossier?.numero || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(p.montantTTC)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.dateProforma).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1, 2].map(i => <div key={i} className="card !p-0 animate-pulse h-24" />)
+          ) : proformas.length === 0 ? (
+            <div className="card">{vide}</div>
+          ) : proformas.map(p => (
+            <div key={p.id} className="card !p-0 overflow-hidden">
+              <button type="button" onClick={() => router.push(`/proformas/${p.id}`)} className="w-full text-left px-4 pt-3 pb-2 flex flex-col gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">{p.numero}</span>
+                  <StatutPastille libelle={statutLibelle[p.statut] || p.statut} ton={tonDepuisBadge(statutColors[p.statut])} />
+                </span>
+                <span className="flex items-center justify-between gap-2 text-[13px]">
+                  <span className="text-gray-800 dark:text-gray-100 truncate">{p.client?.raisonSociale || '—'}</span>
+                  <span className="font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">{fmt(p.montantTTC)} F</span>
+                </span>
+                <span className="text-xs text-gray-500 truncate">{fmtDate(p.dateProforma)}{p.titre ? ` · ${p.titre}` : ''}{p.dossier ? ` · ${p.dossier.numeroPhysique || p.dossier.numero}` : ''}</span>
+              </button>
+              <div className="flex items-center justify-end gap-2 px-4 pb-3">{actions(p)}</div>
+            </div>
+          ))}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} /></div>
         </div>
       </div>
     </AppLayout>
