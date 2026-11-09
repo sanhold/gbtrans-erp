@@ -70,6 +70,16 @@ describe('Dotation : saisie par l\'agent, soumission, validation par la trésore
     expect(d.montantRestant).toBe(50000);
   });
 
+  it('permet de modifier la dotation tant qu\'elle n\'est pas soumise', async () => {
+    const liste = await api().get(`${FIN}/dotations`).set(authHeader(A.token));
+    expect(liste.body.data.find((x: any) => x.id === dotationId).modifiable).toBe(true);
+    // Le montant doit couvrir les dépenses déjà saisies en brouillon (50 000).
+    expect((await api().put(`${FIN}/dotations/${dotationId}`).set(authHeader(A.token)).send({ montant: 40000, motif: 'x' })).status).toBe(400);
+    const ok = await api().put(`${FIN}/dotations/${dotationId}`).set(authHeader(A.token)).send({ montant: 100000, motif: 'Frais de port modifié' });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.motif).toBe('Frais de port modifié');
+  });
+
   it('refuse la soumission sans dotation, et sans dépense en brouillon sur une autre dotation', async () => {
     expect((await api().post(`${FIN}/justificatifs/soumettre`).set(authHeader(A.token)).send({})).status).toBe(400);
   });
@@ -83,6 +93,15 @@ describe('Dotation : saisie par l\'agent, soumission, validation par la trésore
     expect(file.body.data.every((j: any) => j.statut === 'EN_ATTENTE')).toBe(true);
     // Une seconde soumission n'a plus rien à envoyer.
     expect((await api().post(`${FIN}/justificatifs/soumettre`).set(authHeader(A.token)).send({ dotationId })).status).toBe(400);
+  });
+
+  it('ne permet plus de modifier ni d\'annuler la dotation une fois soumise', async () => {
+    const liste = await api().get(`${FIN}/dotations`).set(authHeader(A.token));
+    const d = liste.body.data.find((x: any) => x.id === dotationId);
+    expect(d.soumise).toBe(true);
+    expect(d.modifiable).toBe(false);
+    const res = await api().put(`${FIN}/dotations/${dotationId}`).set(authHeader(A.token)).send({ montant: 120000 });
+    expect(res.status).toBe(400);
   });
 
   it('ne permet plus de supprimer une dépense déjà soumise', async () => {
