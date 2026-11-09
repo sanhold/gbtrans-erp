@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PageHeader from '@/components/ui/PageHeader';
+import DotationTabs from '@/components/finance/DotationTabs';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 import { financeApi } from '@/lib/api';
@@ -36,6 +37,7 @@ export default function DotationsAValiderPage() {
   return (
     <AppLayout>
       <div className="space-y-3 sm:space-y-4">
+        <DotationTabs />
         <PageHeader
           titre="Dotations à valider"
           sousTitre="Ouvrez une dotation pour vérifier les dépenses saisies, cocher celles à retenir et choisir les comptes de trésorerie."

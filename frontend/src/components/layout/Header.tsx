@@ -41,7 +41,7 @@ const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/finance/comptes-bancaires', name: 'Comptes Bancaires' },
   { prefix: '/finance/comptes-tiers', name: 'Comptes Tiers' },
   { prefix: '/finance/caisses', name: 'Caisses' },
-  { prefix: '/finance/dotation', name: 'Dotation' },
+  { prefix: '/finance/dotation', name: 'Dotations' },
   { prefix: '/finance/justificatifs', name: 'Dotations à valider' },
   { prefix: '/mes-dotations', name: 'Mes dotations' },
   { prefix: '/finance/depenses', name: 'Dépenses' },

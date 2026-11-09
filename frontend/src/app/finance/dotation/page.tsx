@@ -5,6 +5,8 @@ import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
+import Modal from '@/components/ui/Modal';
+import DotationTabs from '@/components/finance/DotationTabs';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -220,6 +222,7 @@ export default function DotationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        <DotationTabs />
         <div className="card !p-3 overflow-x-auto">
           <div className="flex flex-nowrap items-center gap-2 min-w-max">
             <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Dotation</h1>
@@ -292,43 +295,48 @@ export default function DotationPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
         </div>
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">{editing ? 'Modifier la Dotation' : 'Fiche Dotation'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+        <Modal
+          open={showModal}
+          onClose={() => setShowModal(false)}
+          title={editing ? 'Modifier la dotation' : 'Nouvelle dotation'}
+          description={editing ? editing.numero : 'Remise de fonds à un agent, qu\'il justifiera ensuite par ses dépenses.'}
+          footer={
+            <>
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+              <button type="submit" form="form-dotation" className="btn-primary">{editing ? 'Enregistrer' : 'Créer la dotation'}</button>
+            </>
+          }
+        >
+          <form id="form-dotation" onSubmit={handleSubmit} className="space-y-4">
+            {editing && (
+              <div className="grid grid-cols-2 gap-px rounded-xl overflow-hidden border border-gray-200 dark:border-surface-700 bg-gray-200 dark:bg-surface-700 text-center">
+                <div className="bg-gray-50 dark:bg-surface-800 py-2.5"><div className="text-[10px] uppercase text-gray-500">Utilisé</div><div className="font-bold font-mono text-red-600">{fmt(editing.montantUtilise)} F</div></div>
+                <div className="bg-gray-50 dark:bg-surface-800 py-2.5"><div className="text-[10px] uppercase text-gray-500">Restant</div><div className="font-bold font-mono text-green-600">{fmt(editing.montantRestant)} F</div></div>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {editing && <p className="text-xs text-gray-500 font-mono">{editing.numero}</p>}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Montant *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
-                  {<div><label className="label">Date</label><input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" /></div>}
-                </div>
-                {editing && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="label text-gray-400">Montant Utilisé</label><input type="text" value={fmt(editing.montantUtilise)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-400" /></div>
-                    <div><label className="label text-gray-400">Montant Restant</label><input type="text" value={fmt(editing.montantRestant)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-400" /></div>
-                  </div>
-                )}
-                <div><label className="label">Agent *</label>
-                  <PickerField value={form.agentId} onChange={id => setForm({ ...form, agentId: id })} options={agentOptions} placeholder="Sélectionner un agent..." title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." required />
-                </div>
-                <div><label className="label">Motif</label><textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Valider</button></div>
-              </form>
+            )}
+            <div>
+              <label className="label">Agent *</label>
+              <PickerField value={form.agentId} onChange={id => setForm({ ...form, agentId: id })} options={agentOptions} placeholder="Sélectionner un agent..." title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." required />
             </div>
-          </div>
-        )}
-
-        {showHistorique && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-                <h3 className="font-bold text-lg">Historique des Dotations par Agent</h3>
-                <button onClick={() => setShowHistorique(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Montant (F CFA) *</label>
+                <input type="text" inputMode="numeric" required className="input-field" placeholder="0" value={form.montant ? fmt(form.montant) : ''} onChange={e => setForm({ ...form, montant: e.target.value.replace(/\D/g, '') })} />
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
+              <div>
+                <label className="label">Date</label>
+                <input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" />
+              </div>
+            </div>
+            <div>
+              <label className="label">Motif</label>
+              <textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} placeholder="Ex : frais de mission, débours portuaires..." />
+            </div>
+          </form>
+        </Modal>
+
+        <Modal open={showHistorique} onClose={() => setShowHistorique(false)} title="Historique par agent" description="Total des dotations attribuées, utilisées et restantes pour chaque agent." size="lg">
+          <div className="overflow-x-auto">
                 {loadingHistorique ? <p className="text-center text-gray-500 py-8">Chargement...</p> : (
                   <table className="w-full text-sm">
                     <thead><tr><th className="table-header">Agent</th><th className="table-header text-right">Nb. Dotations</th><th className="table-header text-right">Total Montant</th><th className="table-header text-right">Total Utilisé</th><th className="table-header text-right">Total Restant</th></tr></thead>
@@ -347,9 +355,7 @@ export default function DotationPage() {
                   </table>
                 )}
               </div>
-            </div>
-          </div>
-        )}
+        </Modal>
       </div>
     </AppLayout>
   );

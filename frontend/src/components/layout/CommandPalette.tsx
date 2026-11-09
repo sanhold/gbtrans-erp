@@ -62,9 +62,13 @@ export default function CommandPalette() {
     clients.forEach((c) => out.push({ cle: `c${c.id}`, groupe: 'Clients', titre: c.raisonSociale, href: `/clients?search=${encodeURIComponent(c.raisonSociale)}`, emoji: '👤' }));
     actionsRapides.filter((a) => !terme || sans(a.nom).includes(terme)).forEach((a) => out.push({ cle: `a${a.id}`, groupe: 'Actions', titre: a.nom, href: a.href, emoji: '＋' }));
     navGroups.forEach((g) => g.items.forEach((i) => {
-      if (!peutAcceder(i.href, user, hasPermission, i.activite)) return;
+      if (!peutAcceder(i.href, user, hasPermission, i.activite) && !i.repli) return;
       if (terme && !sans(i.name).includes(terme) && !sans(g.title).includes(terme)) return;
       out.push({ cle: `p${i.href}`, groupe: 'Pages', titre: i.name, detail: g.title, href: i.href, emoji: '↗' });
+      (i.sous || []).forEach((x) => {
+        if (!peutAcceder(x.href, user, hasPermission) || (terme && !sans(x.name).includes(terme))) return;
+        out.push({ cle: `p${x.href}`, groupe: 'Pages', titre: x.name, detail: i.name, href: x.href, emoji: '↗' });
+      });
     }));
     return out.slice(0, 25);
   }, [q, dossiers, clients, actionsRapides, user, hasPermission]);
