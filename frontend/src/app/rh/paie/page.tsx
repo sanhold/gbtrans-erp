@@ -7,6 +7,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { rhApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import Sheet from '@/components/ui/Sheet';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import EmptyRow from '@/components/tables/EmptyRow';
 
 const MOIS_LABELS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const STATUT_COLORS: Record<string, string> = { BROUILLON: 'badge-gray', VALIDE: 'badge-info', PAYE: 'badge-success' };
@@ -28,6 +32,7 @@ export default function PaiePage() {
   const [bulletins, setBulletins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const confirmer = useConfirm();
   const [selected, setSelected] = useState<any>(null);
   const [showPayer, setShowPayer] = useState(false);
   const [payerForm, setPayerForm] = useState({ modePaiement: 'VIREMENT', datePaiement: new Date().toISOString().slice(0, 10) });
@@ -42,7 +47,7 @@ export default function PaiePage() {
   useEffect(() => { load(); }, [mois, annee]);
 
   const handleGenerer = async () => {
-    if (!confirm(`Générer les bulletins de paie pour ${MOIS_LABELS[mois - 1]} ${annee} ? Les employés déjà traités pour cette période seront ignorés.`)) return;
+    if (!(await confirmer({ titre: `Générer les bulletins de ${MOIS_LABELS[mois - 1]} ${annee} ?`, message: 'Les employés déjà traités pour cette période seront ignorés.', confirmer: 'Générer' }))) return;
     setGenerating(true);
     try {
       const res = await rhApi.bulletins.generer(mois, annee);
@@ -78,7 +83,7 @@ export default function PaiePage() {
   };
 
   const handleSupprimer = async (id: string) => {
-    if (!confirm('Supprimer ce bulletin (brouillon) ?')) return;
+    if (!(await confirmer({ titre: 'Supprimer ce bulletin ?', message: 'Seul le brouillon est supprimé.', danger: true, confirmer: 'Supprimer' }))) return;
     try { await rhApi.bulletins.delete(id); toast.success('Bulletin supprimé'); setSelected(null); load(); }
     catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
@@ -92,76 +97,60 @@ export default function PaiePage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Paie</h1>
-            <select value={mois} onChange={e => setMois(parseInt(e.target.value))} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
-              {MOIS_LABELS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-            <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
-              {[annee - 1, annee, annee + 1].map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <button onClick={handleGenerer} disabled={generating} className="btn-primary !px-3 !py-1.5 text-xs disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
-              {generating ? 'Génération...' : `Générer les bulletins de ${MOIS_LABELS[mois - 1]}`}
-            </button>
-            <Link href="/rh/employes" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">Employés</Link>
-          </div>
-          <p className="text-[10px] text-gray-400 italic mt-1.5">
-            Barème CNPS/ITS indicatif — à faire vérifier par un expert-comptable
-          </p>
+        <PageHeader title="Paie" actions={<Link href="/rh/employes" className="btn-secondary">Employés</Link>} />
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={mois} onChange={e => setMois(parseInt(e.target.value))} aria-label="Mois" className="input-field !w-auto flex-1 sm:flex-none">
+            {MOIS_LABELS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+          </select>
+          <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} aria-label="Année" className="input-field !w-auto flex-1 sm:flex-none">
+            {[annee - 1, annee, annee + 1].map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <button type="button" onClick={handleGenerer} disabled={generating} className="btn-primary disabled:opacity-50 w-full sm:w-auto">
+            {generating ? 'Génération...' : `Générer les bulletins de ${MOIS_LABELS[mois - 1]}`}
+          </button>
         </div>
+        <p className="text-xs text-gray-600 dark:text-gray-400 italic">Barème CNPS/ITS indicatif — à faire vérifier par un expert-comptable</p>
 
         {bulletins.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Masse brute</p><p className="text-sm font-bold">{money(totaux.brut)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">CNPS (salarié+patronal)</p><p className="text-sm font-bold text-amber-600">{money(totaux.cnps)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">ITS retenu</p><p className="text-sm font-bold text-amber-600">{money(totaux.its)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Coût total employeur</p><p className="text-sm font-bold text-primary-700">{money(totaux.coutTotal)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase">Masse brute</p><p className="text-sm font-bold">{money(totaux.brut)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase">CNPS (salarié+patronal)</p><p className="text-sm font-bold text-amber-600">{money(totaux.cnps)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase">ITS retenu</p><p className="text-sm font-bold text-amber-600">{money(totaux.its)} F</p></div>
+            <div className="stat-card !p-3"><p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase">Coût total employeur</p><p className="text-sm font-bold text-primary-700">{money(totaux.coutTotal)} F</p></div>
           </div>
         )}
 
         <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '8%' }} />
-              </colgroup>
+          <table className="w-full">
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Bulletin</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Employé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Brut</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">CNPS</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">ITS</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Net à payer</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+              <th className="table-header">Actions</th>
+              <th className="table-header">N° Bulletin</th>
+              <th className="table-header">Employé</th>
+              <th className="table-header">Poste</th>
+              <th className="table-header text-right">Brut</th>
+              <th className="table-header text-right">CNPS</th>
+              <th className="table-header text-right">ITS</th>
+              <th className="table-header text-right">Net à payer</th>
+              <th className="table-header">Statut</th>
             </tr></thead>
             <tbody>
               {loading ? (
                 <SkeletonRows cols={9} />
               ) : bulletins.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucun bulletin pour cette période. Cliquez sur &quot;Générer&quot;.</td></tr>
+                <EmptyRow colSpan={9} message="Aucun bulletin pour cette période." ctaLabel={`Générer les bulletins de ${MOIS_LABELS[mois - 1]}`} onCta={handleGenerer} />
               ) : bulletins.map(b => (
                 <tr key={b.id} className="table-row cursor-pointer" onClick={() => openDetail(b.id)}>
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-[10.5px] text-primary-500 hover:underline">Voir</button>
+                  <td className="table-cell" data-label="Actions">
+                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-sm font-medium text-primary-600 hover:underline px-2 py-1.5">Voir</button>
                   </td>
-                  <td className="table-cell font-mono font-medium text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Bulletin">{b.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={b.employe?.poste}>{b.employe?.poste}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Brut">{money(b.salaireBrut)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="CNPS">{money(b.cnpsSalarie)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="ITS">{money(b.itsSalarie)}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Net à payer">{money(b.salaireNet)}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{b.statut}</span></td>
+                  <td className="table-cell font-mono font-medium text-primary-600" data-label="N° Bulletin">{b.numero}</td>
+                  <td className="table-cell" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
+                  <td className="table-cell col-opt" data-label="Poste" title={b.employe?.poste}>{b.employe?.poste}</td>
+                  <td className="table-cell text-right font-mono" data-label="Brut">{money(b.salaireBrut)}</td>
+                  <td className="table-cell text-right font-mono text-amber-600" data-label="CNPS">{money(b.cnpsSalarie)}</td>
+                  <td className="table-cell text-right font-mono text-amber-600" data-label="ITS">{money(b.itsSalarie)}</td>
+                  <td className="table-cell text-right font-mono font-bold" data-label="Net à payer">{money(b.salaireNet)}</td>
+                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'} `}>{b.statut}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -169,88 +158,77 @@ export default function PaiePage() {
         </div>
       </div>
 
-      {/* Modal détail bulletin */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <div>
-                <h3 className="font-bold text-lg">Bulletin {selected.numero}</h3>
-                <p className="text-xs text-gray-500">{MOIS_LABELS[selected.periodeMois - 1]} {selected.periodeAnnee}</p>
+      {/* Détail bulletin */}
+      <Sheet
+        open={!!selected} onClose={() => setSelected(null)} size="lg"
+        title={selected ? `Bulletin ${selected.numero}` : 'Bulletin'}
+        description={selected ? `${MOIS_LABELS[selected.periodeMois - 1]} ${selected.periodeAnnee}` : undefined}
+      >
+        {selected && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-bold text-gray-900 dark:text-white">{selected.employe?.prenom} {selected.employe?.nom}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{selected.employe?.poste} — Matricule {selected.employe?.matricule}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+              <span className={`badge ${STATUT_COLORS[selected.statut] || 'badge-gray'}`}>{selected.statut}</span>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-gray-900 dark:text-white">{selected.employe?.prenom} {selected.employe?.nom}</p>
-                  <p className="text-xs text-gray-500">{selected.employe?.poste} — Matricule {selected.employe?.matricule}</p>
-                </div>
-                <span className={`badge ${STATUT_COLORS[selected.statut] || 'badge-gray'}`}>{selected.statut}</span>
-              </div>
 
-              <table className="w-full text-sm border border-gray-100 dark:border-surface-700 rounded-lg overflow-hidden">
-                <tbody>
-                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Salaire de base</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.salaireBase)}</td></tr>
-                  {Number(selected.primes) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Primes</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.primes)}</td></tr>}
-                  {Number(selected.indemnites) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Indemnités</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.indemnites)}</td></tr>}
-                  <tr className="border-b border-gray-100 dark:border-surface-700 font-bold bg-gray-50 dark:bg-surface-700/40"><td className="px-3 py-1.5">Salaire brut</td><td className="px-3 py-1.5 text-right font-mono">{money(selected.salaireBrut)}</td></tr>
-                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">CNPS salarié (6,3%)</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.cnpsSalarie)}</td></tr>
-                  <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">ITS</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.itsSalarie)}</td></tr>
-                  {Number(selected.autresRetenues) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Autres retenues</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.autresRetenues)}</td></tr>}
-                  {Number(selected.avance) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-1.5 text-gray-500">Avance sur salaire</td><td className="px-3 py-1.5 text-right font-mono text-red-600">-{money(selected.avance)}</td></tr>}
-                  <tr><td colSpan={2} className="p-0">
-                    <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white flex justify-between px-3 py-2.5 font-extrabold">
-                      <span>NET À PAYER</span><span className="font-mono">{money(selected.salaireNet)} XOF</span>
-                    </div>
-                  </td></tr>
-                </tbody>
-              </table>
+            <table className="w-full text-sm border border-gray-100 dark:border-surface-700 rounded-lg overflow-hidden">
+              <tbody>
+                <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">Salaire de base</td><td className="px-3 py-2 text-right font-mono">{money(selected.salaireBase)}</td></tr>
+                {Number(selected.primes) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">Primes</td><td className="px-3 py-2 text-right font-mono">{money(selected.primes)}</td></tr>}
+                {Number(selected.indemnites) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">Indemnités</td><td className="px-3 py-2 text-right font-mono">{money(selected.indemnites)}</td></tr>}
+                <tr className="border-b border-gray-100 dark:border-surface-700 font-bold bg-gray-50 dark:bg-surface-700/40"><td className="px-3 py-2">Salaire brut</td><td className="px-3 py-2 text-right font-mono">{money(selected.salaireBrut)}</td></tr>
+                <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">CNPS salarié (6,3%)</td><td className="px-3 py-2 text-right font-mono text-red-600">-{money(selected.cnpsSalarie)}</td></tr>
+                <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">ITS</td><td className="px-3 py-2 text-right font-mono text-red-600">-{money(selected.itsSalarie)}</td></tr>
+                {Number(selected.autresRetenues) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">Autres retenues</td><td className="px-3 py-2 text-right font-mono text-red-600">-{money(selected.autresRetenues)}</td></tr>}
+                {Number(selected.avance) > 0 && <tr className="border-b border-gray-100 dark:border-surface-700"><td className="px-3 py-2 text-gray-600 dark:text-gray-400">Avance sur salaire</td><td className="px-3 py-2 text-right font-mono text-red-600">-{money(selected.avance)}</td></tr>}
+                <tr><td colSpan={2} className="p-0">
+                  <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white flex justify-between px-3 py-2.5 font-extrabold">
+                    <span>NET À PAYER</span><span className="font-mono">{money(selected.salaireNet)} XOF</span>
+                  </div>
+                </td></tr>
+              </tbody>
+            </table>
 
-              <div className="text-xs text-gray-400 flex justify-between">
-                <span>CNPS patronal : {money(selected.cnpsPatronal)} F</span>
-                <span>Coût total employeur : {money(selected.coutTotalEmployeur)} F</span>
-              </div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap justify-between gap-x-4">
+              <span>CNPS patronal : {money(selected.cnpsPatronal)} F</span>
+              <span>Coût total employeur : {money(selected.coutTotalEmployeur)} F</span>
+            </div>
 
-              {selected.statut === 'PAYE' && (
-                <p className="text-xs text-green-600">Payé le {new Date(selected.datePaiement).toLocaleDateString('fr-FR')} — {MODE_PAIEMENT_LABELS[selected.modePaiement] || selected.modePaiement}</p>
-              )}
+            {selected.statut === 'PAYE' && (
+              <p className="text-sm text-green-700 dark:text-green-400">Payé le {new Date(selected.datePaiement).toLocaleDateString('fr-FR')} — {MODE_PAIEMENT_LABELS[selected.modePaiement] || selected.modePaiement}</p>
+            )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-surface-700">
-                {selected.statut === 'BROUILLON' && <button onClick={() => handleSupprimer(selected.id)} className="btn-secondary !text-red-600 text-sm mr-auto">Supprimer</button>}
-                {selected.statut === 'BROUILLON' && <button onClick={() => handleValider(selected.id)} className="btn-primary text-sm">Valider</button>}
-                {selected.statut === 'VALIDE' && <button onClick={() => setShowPayer(true)} className="btn-primary text-sm">Marquer payé</button>}
-                <button onClick={() => window.print()} className="btn-secondary text-sm">Imprimer</button>
-              </div>
+            <div className="sticky bottom-0 -mx-4 -mb-4 px-4 py-3 flex flex-wrap justify-end gap-2 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700">
+              {selected.statut === 'BROUILLON' && <button type="button" onClick={() => handleSupprimer(selected.id)} className="btn-secondary !text-red-600 sm:mr-auto">Supprimer</button>}
+              {selected.statut === 'BROUILLON' && <button type="button" onClick={() => handleValider(selected.id)} className="btn-primary">Valider</button>}
+              {selected.statut === 'VALIDE' && <button type="button" onClick={() => setShowPayer(true)} className="btn-primary">Marquer payé</button>}
+              <button type="button" onClick={() => window.print()} className="btn-secondary">Imprimer</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Sheet>
 
-      {/* Modal paiement */}
-      {showPayer && selected && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <h3 className="font-bold text-lg">Marquer payé</h3>
-              <button onClick={() => setShowPayer(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+      {/* Paiement */}
+      <Sheet open={showPayer && !!selected} onClose={() => setShowPayer(false)} size="sm" title="Marquer payé" zIndexClass="z-[70]">
+        {selected && (
+          <form onSubmit={handlePayer} className="space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Net à payer : <span className="font-mono font-bold text-gray-900 dark:text-white">{money(selected.salaireNet)} XOF</span></p>
+            <div><label className="label">Mode de paiement</label>
+              <select value={payerForm.modePaiement} onChange={e => setPayerForm({ ...payerForm, modePaiement: e.target.value })} className="input-field">
+                {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
             </div>
-            <form onSubmit={handlePayer} className="p-4 space-y-3">
-              <p className="text-sm text-gray-500">Net à payer : <span className="font-mono font-bold text-gray-900 dark:text-white">{money(selected.salaireNet)} XOF</span></p>
-              <div><label className="label">Mode de paiement</label>
-                <select value={payerForm.modePaiement} onChange={e => setPayerForm({ ...payerForm, modePaiement: e.target.value })} className="input-field">
-                  {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div><label className="label">Date de paiement</label><input type="date" value={payerForm.datePaiement} onChange={e => setPayerForm({ ...payerForm, datePaiement: e.target.value })} className="input-field" /></div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-surface-700">
-                <button type="button" onClick={() => setShowPayer(false)} className="btn-secondary text-sm">Annuler</button>
-                <button type="submit" className="btn-primary text-sm">Confirmer le paiement</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div><label className="label">Date de paiement</label><input type="date" value={payerForm.datePaiement} onChange={e => setPayerForm({ ...payerForm, datePaiement: e.target.value })} className="input-field" /></div>
+            <div className="sticky bottom-0 -mx-4 -mb-4 px-4 py-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700">
+              <button type="button" onClick={() => setShowPayer(false)} className="btn-secondary">Annuler</button>
+              <button type="submit" className="btn-primary">Confirmer le paiement</button>
+            </div>
+          </form>
+        )}
+      </Sheet>
     </AppLayout>
   );
 }

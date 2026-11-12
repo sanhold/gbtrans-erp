@@ -7,6 +7,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import { authApi, utilisateursApi } from '@/lib/api';
 import { resetSocieteBranding } from '@/lib/generatePDF';
 import { useAuthStore } from '@/stores/authStore';
+import PageHeader from '@/components/ui/PageHeader';
+import TextField from '@/components/forms/TextField';
 
 export default function MonComptePage() {
   const router = useRouter();
@@ -17,10 +19,13 @@ export default function MonComptePage() {
   const [nouveau, setNouveau] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [erreurConfirmation, setErreurConfirmation] = useState('');
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErreurConfirmation('');
     if (nouveau !== confirmation) {
+      setErreurConfirmation('Le nouveau mot de passe et sa confirmation ne correspondent pas');
       toast.error('Le nouveau mot de passe et sa confirmation ne correspondent pas');
       return;
     }
@@ -116,19 +121,16 @@ export default function MonComptePage() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-3xl">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mon compte</h1>
-          <p className="text-sm text-gray-500">Gérez votre mot de passe et la sécurité de votre compte</p>
-        </div>
+        <PageHeader title="Mon compte" subtitle="Gérez votre mot de passe et la sécurité de votre compte" className="!mb-0" />
 
         {/* Signature et cachet personnels */}
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Ma signature et mon cachet</h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Ils s&apos;affichent sur les documents (proforma, facture, AT, dotation) que vous générez, quand l&apos;option « Afficher la signature » est cochée.
           </p>
           {!canSignature ? (
-            <p className="text-sm text-amber-600">Votre profil n&apos;a pas le droit « Signature sur les documents » (DOCUMENTS:SIGNATURE). Demandez-le à un administrateur.</p>
+            <p className="text-sm text-amber-700 dark:text-amber-400">Votre profil n&apos;a pas le droit « Signature sur les documents » (DOCUMENTS:SIGNATURE). Demandez-le à un administrateur.</p>
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -139,21 +141,21 @@ export default function MonComptePage() {
                   <div key={titre}>
                     <div className="label">{titre}</div>
                     <div className="h-24 w-full border border-dashed border-gray-300 dark:border-surface-600 rounded-sm flex items-center justify-center bg-gray-50 dark:bg-surface-700 mb-2">
-                      {valeur ? <img src={valeur} alt={titre} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-gray-400">Aucun</span>}
+                      {valeur ? <img src={valeur} alt={titre} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-gray-600 dark:text-gray-400">Aucun</span>}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <label className="btn-secondary cursor-pointer">
                         Choisir une image
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e => { lireImage(e.target.files?.[0], set); e.target.value = ''; }} />
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={e => { lireImage(e.target.files?.[0], set); e.target.value = ''; }} />
                       </label>
-                      {valeur && <button type="button" onClick={() => set(null)} className="text-xs text-red-500 hover:underline">Supprimer</button>}
+                      {valeur && <button type="button" onClick={() => set(null)} className="min-h-[44px] px-2 text-sm font-medium text-red-600 hover:underline">Supprimer</button>}
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-3">PNG, JPG ou WebP, 2 Mo maximum. Un fond transparent (PNG) donne le meilleur rendu.</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">PNG, JPG ou WebP, 2 Mo maximum. Un fond transparent (PNG) donne le meilleur rendu.</p>
               <div className="flex justify-end mt-4">
-                <button type="button" onClick={handleSaveImages} disabled={savingImages} className="btn-primary">{savingImages ? 'Enregistrement...' : 'Enregistrer'}</button>
+                <button type="button" onClick={handleSaveImages} disabled={savingImages} className="btn-primary w-full sm:w-auto">{savingImages ? 'Enregistrement...' : 'Enregistrer'}</button>
               </div>
             </>
           )}
@@ -162,50 +164,30 @@ export default function MonComptePage() {
         {/* Changer le mot de passe */}
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Changer mon mot de passe</h3>
-          <p className="text-xs text-gray-500 mb-4">
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
             Après la modification, toutes vos sessions actives seront fermées et vous devrez vous reconnecter.
           </p>
           <form onSubmit={handleChangePassword} className="space-y-4">
-            <div>
-              <label className="label">Ancien mot de passe</label>
-              <input
-                type="password"
-                value={ancien}
-                onChange={(e) => setAncien(e.target.value)}
-                className="input-field"
-                placeholder="Votre mot de passe actuel"
-                required
+            <TextField
+              label="Ancien mot de passe" type="password" autoComplete="current-password" value={ancien}
+              onChange={setAncien} placeholder="Votre mot de passe actuel" required
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
+                label="Nouveau mot de passe" type="password" autoComplete="new-password" value={nouveau}
+                onChange={(v) => { setNouveau(v); setErreurConfirmation(''); }} placeholder="Nouveau mot de passe" required
+              />
+              <TextField
+                label="Confirmation" type="password" autoComplete="new-password" value={confirmation}
+                onChange={(v) => { setConfirmation(v); setErreurConfirmation(''); }} placeholder="Confirmez le nouveau mot de passe"
+                error={erreurConfirmation} required
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Nouveau mot de passe</label>
-                <input
-                  type="password"
-                  value={nouveau}
-                  onChange={(e) => setNouveau(e.target.value)}
-                  className="input-field"
-                  placeholder="Nouveau mot de passe"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">Confirmation</label>
-                <input
-                  type="password"
-                  value={confirmation}
-                  onChange={(e) => setConfirmation(e.target.value)}
-                  className="input-field"
-                  placeholder="Confirmez le nouveau mot de passe"
-                  required
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Minimum 8 caractères, avec au moins une majuscule, une minuscule, un chiffre et un caractère spécial.
             </p>
             <div className="flex justify-end">
-              <button type="submit" disabled={savingPassword} className="btn-primary disabled:opacity-50">
+              <button type="submit" disabled={savingPassword} className="btn-primary w-full sm:w-auto disabled:opacity-50">
                 {savingPassword ? 'Enregistrement...' : 'Changer le mot de passe'}
               </button>
             </div>
@@ -215,13 +197,13 @@ export default function MonComptePage() {
         {/* Double authentification */}
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Double authentification (2FA)</h3>
-          <p className="text-xs text-gray-500 mb-4">
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
             Ajoutez une couche de sécurité supplémentaire : un code à usage unique vous sera demandé à chaque connexion.
           </p>
 
           {doubleAuth ? (
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/40">
-              <svg className="w-6 h-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <svg aria-hidden="true" className="w-6 h-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
@@ -237,7 +219,7 @@ export default function MonComptePage() {
                 type="button"
                 onClick={handleStartSetup2FA}
                 disabled={settingUp2FA}
-                className="btn-primary disabled:opacity-50"
+                className="btn-primary w-full sm:w-auto disabled:opacity-50"
               >
                 {settingUp2FA ? 'Préparation...' : 'Activer la double authentification'}
               </button>
@@ -255,17 +237,20 @@ export default function MonComptePage() {
 
               <div className="flex flex-col items-center gap-2 py-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrCodeUrl} alt="QR code de double authentification" className="w-44 h-44 rounded-lg border border-gray-200 dark:border-surface-700" />
-                <p className="text-xs text-gray-500 text-center max-w-xs">
+                <img src={qrCodeUrl} alt="QR code de double authentification" className="w-48 h-48 max-w-full rounded-lg border border-gray-200 dark:border-surface-700" />
+                <p className="text-xs text-gray-600 dark:text-gray-400 text-center max-w-xs">
                   Scannez ce QR code, puis entrez le code à 6 chiffres affiché par votre application.
                 </p>
               </div>
 
               <form onSubmit={handleConfirm2FA} className="space-y-3 max-w-xs mx-auto">
                 <div>
-                  <label className="label text-center">Code de vérification</label>
+                  <label htmlFor="code2fa" className="label text-center">Code de vérification</label>
                   <input
+                    id="code2fa"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     value={code2FA}
                     onChange={(e) => setCode2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="input-field text-center text-2xl tracking-[0.5em] font-mono"

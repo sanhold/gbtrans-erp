@@ -5,6 +5,10 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { catalogueApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import FormSheet from '@/components/forms/FormSheet';
 
 const CATEGORIES = [
   'DOUANE', 'DOUANE & COMPAGNIE', 'DEBOURS DOUANE', 'DEBOURS DOUANE & COMPAGNIE', 'DOUANE ELIBU-NOE-E',
@@ -59,6 +63,7 @@ export default function CataloguePrestationsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const confirmer = useConfirm();
   const [customCategorie, setCustomCategorie] = useState('');
   const [codeTouched, setCodeTouched] = useState(false);
 
@@ -129,7 +134,7 @@ export default function CataloguePrestationsPage() {
   };
 
   const handleDelete = async (p: any) => {
-    if (!confirm(`Supprimer définitivement "${p.designation}" du catalogue ?`)) return;
+    if (!(await confirmer({ titre: 'Supprimer cette prestation ?', message: `« ${p.designation} » sera supprimée définitivement du catalogue.`, danger: true, confirmer: 'Supprimer' }))) return;
     try { await catalogueApi.delete(p.id); toast.success('Prestation supprimée'); load(); }
     catch (e: any) { toast.error(e.response?.data?.message || 'Erreur (peut-être déjà utilisée dans des documents)'); }
   };
@@ -145,43 +150,39 @@ export default function CataloguePrestationsPage() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <Link href="/parametres" className="text-sm text-primary-600 hover:underline mb-2 inline-block">← Paramètres</Link>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Catalogue des Prestations</h1>
-              <p className="text-sm text-gray-500">{prestations.length} prestation(s) — utilisées lors de la création de proformas, offres et factures</p>
-            </div>
-            <button onClick={openCreate} className="btn-primary">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouvelle Prestation
-            </button>
-          </div>
+          <Link href="/parametres" className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← Paramètres</Link>
+          <PageHeader
+            title="Catalogue des Prestations"
+            subtitle={`${prestations.length} prestation(s) — utilisées lors de la création de proformas, offres et factures`}
+            className="!mb-0"
+            actions={<button type="button" onClick={openCreate} className="btn-primary hidden lg:inline-flex">+ Nouvelle Prestation</button>}
+          />
         </div>
 
         <div className="card !p-4 flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[220px]">
-            <label className="label">Recherche</label>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field" placeholder="Code, désignation..." />
+            <label htmlFor="cat-search" className="label">Recherche</label>
+            <input id="cat-search" type="search" inputMode="search" value={search} onChange={e => setSearch(e.target.value)} className="input-field" placeholder="Code, désignation..." />
           </div>
-          <div className="flex gap-1 flex-wrap">
-            <button onClick={() => setCategorieFiltre('')} className={`px-3 py-1.5 rounded-full text-xs font-medium ${!categorieFiltre ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-surface-700 dark:text-gray-300'}`}>Toutes</button>
+          <div className="flex gap-2 overflow-x-auto sm:flex-wrap -mx-1 px-1 pb-1 w-full [scrollbar-width:none]" role="group" aria-label="Filtrer par catégorie">
+            <button type="button" aria-pressed={!categorieFiltre} onClick={() => setCategorieFiltre('')} className={`flex-shrink-0 min-h-[40px] px-3.5 rounded-full text-xs font-medium ${!categorieFiltre ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-surface-700 dark:text-gray-300'}`}>Toutes</button>
             {allCategories.map(cat => (
-              <button key={cat} onClick={() => setCategorieFiltre(categorieFiltre === cat ? '' : cat)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categorieFiltre === cat ? (CAT_COLORS[cat] || 'bg-gray-100 text-gray-700') + ' ring-2 ring-offset-1 ring-primary-300' : (CAT_COLORS[cat] || 'bg-gray-100 text-gray-700') + ' opacity-60 hover:opacity-100'}`}>{cat}</button>
+              <button key={cat} type="button" aria-pressed={categorieFiltre === cat} onClick={() => setCategorieFiltre(categorieFiltre === cat ? '' : cat)} className={`flex-shrink-0 min-h-[40px] px-3.5 rounded-full text-xs font-medium transition-colors ${categorieFiltre === cat ? (CAT_COLORS[cat] || 'bg-gray-100 text-gray-700') + ' ring-2 ring-offset-1 ring-primary-300' : (CAT_COLORS[cat] || 'bg-gray-100 text-gray-700') + ' opacity-60 hover:opacity-100'}`}>{cat}</button>
             ))}
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</div>
+          <div className="text-center py-12 text-gray-600"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />Chargement...</div>
         ) : filtres.length === 0 ? (
-          <div className="card text-center py-12 text-gray-500">Aucune prestation dans le catalogue. Créez la première.</div>
+          <div className="card text-center py-12 text-gray-600 dark:text-gray-400"><p>Aucune prestation dans le catalogue.</p><button type="button" onClick={openCreate} className="btn-primary mt-3">Créer la première prestation</button></div>
         ) : (
           <div className="space-y-6">
             {Object.entries(parCategorie).map(([cat, items]) => (
               <div key={cat} className="card !p-0 overflow-hidden">
                 <div className="p-4 border-b border-gray-200 dark:border-surface-700 flex items-center gap-2">
                   <span className={`badge ${CAT_COLORS[cat] || 'badge-gray'}`}>{cat}</span>
-                  <span className="text-xs text-gray-400">{items.length} prestation(s)</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{items.length} prestation(s)</span>
                 </div>
                 <div className="table-container !shadow-none !border-0">
                   <table className="w-full">
@@ -191,11 +192,11 @@ export default function CataloguePrestationsPage() {
                         <tr key={p.id} className="table-row">
                           <td className="table-cell" data-label="Actions">
                             <div className="flex gap-1">
-                              <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                              <button type="button" onClick={() => openEdit(p)} className="w-11 h-11 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier" aria-label={`Modifier ${p.designation}`}>
+                                <svg aria-hidden="true" className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                               </button>
-                              <button onClick={() => handleDelete(p)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                                <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              <button type="button" onClick={() => handleDelete(p)} className="w-11 h-11 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer" aria-label={`Supprimer ${p.designation}`}>
+                                <svg aria-hidden="true" className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                               </button>
                             </div>
                           </td>
@@ -204,7 +205,7 @@ export default function CataloguePrestationsPage() {
                           <td className="table-cell text-right font-mono" data-label="Montant">{p.montantDefaut != null ? `${fmt(p.montantDefaut)} XOF` : '-'}</td>
                           <td className="table-cell text-xs" data-label="TVA">{p.estTVA ? `${fmt(p.tauxTVA)}%` : 'Exonéré'}</td>
                           <td className="table-cell" data-label="Statut">
-                            <button onClick={() => toggleActif(p)} className={`badge ${p.actif ? 'badge-success' : 'badge-gray'} cursor-pointer`}>{p.actif ? 'Actif' : 'Inactif'}</button>
+                            <button type="button" onClick={() => toggleActif(p)} aria-label={`${p.actif ? 'Désactiver' : 'Activer'} ${p.designation}`} className={`badge min-h-[32px] ${p.actif ? 'badge-success' : 'badge-gray'} cursor-pointer`}>{p.actif ? 'Actif' : 'Inactif'}</button>
                           </td>
                         </tr>
                       ))}
@@ -217,61 +218,53 @@ export default function CataloguePrestationsPage() {
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{editing ? 'Modifier la prestation' : 'Nouvelle Prestation'}</h2>
+      <FAB label="Nouvelle prestation" onClick={openCreate} />
 
-              <div>
-                <label className="label">Catégorie *</label>
-                {form.categorie === '__new__' ? (
-                  <div className="flex gap-2">
-                    <input type="text" autoFocus value={customCategorie} onChange={e => { const v = e.target.value.toUpperCase(); setCustomCategorie(v); if (!editing && !codeTouched) setForm(prev => ({ ...prev, code: suggestCode(prestations, v) })); }} className="input-field" placeholder="NOM DE LA NOUVELLE CATEGORIE" />
-                    <button type="button" onClick={() => { setFormCategorie(allCategories[0]); setCustomCategorie(''); }} className="btn-secondary text-sm px-3 whitespace-nowrap">Annuler</button>
-                  </div>
-                ) : (
-                  <select value={form.categorie} onChange={e => setFormCategorie(e.target.value)} className="input-field">
-                    {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                    <option value="__new__">+ Nouvelle catégorie…</option>
-                  </select>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Code * {!editing && <span className="text-gray-400 font-normal">(généré, modifiable)</span>}</label>
-                  <input type="text" value={form.code} onChange={e => { setCodeTouched(true); setForm({ ...form, code: e.target.value.toUpperCase() }); }} className="input-field font-mono" placeholder="TRA-DED" required />
-                </div>
-                <div>
-                  <label className="label">Montant par défaut</label>
-                  <input type="number" value={form.montantDefaut} onChange={e => setForm({ ...form, montantDefaut: e.target.value })} className="input-field" min="0" />
-                </div>
-              </div>
-              <div>
-                <label className="label">Désignation *</label>
-                <input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required />
-              </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={form.estTVA} onChange={e => setForm({ ...form, estTVA: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-primary-500" />
-                  <span className="text-sm">Soumis à TVA</span>
-                </label>
-                {form.estTVA && (
-                  <div className="flex items-center gap-2">
-                    <input type="number" value={form.tauxTVA} onChange={e => setForm({ ...form, tauxTVA: e.target.value })} className="input-field !w-20" min="0" max="100" />
-                    <span className="text-sm text-gray-500">%</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Ajouter au catalogue'}</button>
-              </div>
-            </form>
+      <FormSheet
+        open={showModal} onClose={() => setShowModal(false)} size="md" onSubmit={handleSave} saving={saving}
+        title={editing ? 'Modifier la prestation' : 'Nouvelle Prestation'} submitLabel={editing ? 'Modifier' : 'Ajouter au catalogue'}
+      >
+        <div>
+          <label htmlFor="cat-categorie" className="label">Catégorie *</label>
+          {form.categorie === '__new__' ? (
+            <div className="flex gap-2">
+              <input id="cat-categorie" type="text" autoFocus value={customCategorie} onChange={e => { const v = e.target.value.toUpperCase(); setCustomCategorie(v); if (!editing && !codeTouched) setForm(prev => ({ ...prev, code: suggestCode(prestations, v) })); }} className="input-field" placeholder="NOM DE LA NOUVELLE CATEGORIE" />
+              <button type="button" onClick={() => { setFormCategorie(allCategories[0]); setCustomCategorie(''); }} className="btn-secondary whitespace-nowrap">Annuler</button>
+            </div>
+          ) : (
+            <select id="cat-categorie" value={form.categorie} onChange={e => setFormCategorie(e.target.value)} className="input-field">
+              {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="__new__">+ Nouvelle catégorie…</option>
+            </select>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="cat-code" className="label">Code * {!editing && <span className="text-gray-600 dark:text-gray-400 font-normal">(généré, modifiable)</span>}</label>
+            <input id="cat-code" type="text" autoCapitalize="characters" value={form.code} onChange={e => { setCodeTouched(true); setForm({ ...form, code: e.target.value.toUpperCase() }); }} className="input-field font-mono" placeholder="TRA-DED" required />
+          </div>
+          <div>
+            <label htmlFor="cat-montant" className="label">Montant par défaut</label>
+            <input id="cat-montant" type="number" inputMode="numeric" value={form.montantDefaut} onChange={e => setForm({ ...form, montantDefaut: e.target.value })} className="input-field" min="0" />
           </div>
         </div>
-      )}
+        <div>
+          <label htmlFor="cat-designation" className="label">Désignation *</label>
+          <input id="cat-designation" type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required />
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
+            <input type="checkbox" checked={form.estTVA} onChange={e => setForm({ ...form, estTVA: e.target.checked })} className="w-5 h-5 rounded border-gray-300 text-primary-500" />
+            <span className="text-sm">Soumis à TVA</span>
+          </label>
+          {form.estTVA && (
+            <div className="flex items-center gap-2">
+              <input type="number" inputMode="decimal" aria-label="Taux de TVA (%)" value={form.tauxTVA} onChange={e => setForm({ ...form, tauxTVA: e.target.value })} className="input-field !w-24" min="0" max="100" />
+              <span className="text-sm text-gray-600 dark:text-gray-400">%</span>
+            </div>
+          )}
+        </div>
+      </FormSheet>
     </AppLayout>
   );
 }

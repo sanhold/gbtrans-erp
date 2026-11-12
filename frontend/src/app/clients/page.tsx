@@ -7,6 +7,17 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { clientsApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import Sheet from '@/components/ui/Sheet';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+
+const EMPTY_FORM = {
+  raisonSociale: '', sigle: '', type: 'ENTREPRISE', ncc: '', rccm: '',
+  adresse: '', ville: 'Abidjan', pays: 'Côte d\'Ivoire',
+  telephone: '', mobile: '', email: '', conditionPaiement: 30,
+};
+
+const legendCls = 'text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -16,12 +27,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-
-  const [form, setForm] = useState({
-    raisonSociale: '', sigle: '', type: 'ENTREPRISE', ncc: '', rccm: '',
-    adresse: '', ville: 'Abidjan', pays: 'Côte d\'Ivoire',
-    telephone: '', mobile: '', email: '', conditionPaiement: 30,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const loadClients = async () => {
     setLoading(true);
@@ -52,7 +58,7 @@ export default function ClientsPage() {
       await clientsApi.create(form);
       toast.success('Client créé avec succès');
       setShowModal(false);
-      setForm({ raisonSociale: '', sigle: '', type: 'ENTREPRISE', ncc: '', rccm: '', adresse: '', ville: 'Abidjan', pays: 'Côte d\'Ivoire', telephone: '', mobile: '', email: '', conditionPaiement: 30 });
+      setForm(EMPTY_FORM);
       loadClients();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erreur lors de la création');
@@ -63,71 +69,62 @@ export default function ClientsPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Clients</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">{total} client(s)</p>
-            </div>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-64 flex-shrink-0" placeholder="Rechercher par nom, code, NCC, email..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Rechercher</button>
-            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouveau Client
+      <div className="space-y-4">
+        <PageHeader
+          title="Clients"
+          subtitle={`${total} client(s)`}
+          actions={
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary hidden lg:inline-flex">
+              <svg aria-hidden="true" className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouveau client
             </button>
-          </form>
-        </div>
+          }
+        />
+        <form onSubmit={handleSearch} className="card !p-3 flex flex-col sm:flex-row gap-2">
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field flex-1" placeholder="Rechercher par nom, code, NCC, email..." aria-label="Rechercher un client" />
+          <button type="submit" className="btn-primary">Rechercher</button>
+        </form>
 
         <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '17%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
-            </colgroup>
+          <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Code</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Raison Sociale</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Type</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">NCC</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Téléphone</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Email</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Ville</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-center">Dossiers</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-center">Factures</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
+                <th className="table-header">Code</th>
+                <th className="table-header">Raison Sociale</th>
+                <th className="table-header">Type</th>
+                <th className="table-header">NCC</th>
+                <th className="table-header">Téléphone</th>
+                <th className="table-header">Email</th>
+                <th className="table-header">Ville</th>
+                <th className="table-header text-center">Dossiers</th>
+                <th className="table-header text-center">Factures</th>
+                <th className="table-header">Statut</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <SkeletonRows cols={10} />
               ) : clients.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucun client trouvé. Créez votre premier client.</td></tr>
+                <tr><td colSpan={10} className="text-center py-12 text-gray-600">
+                  <p className="mb-3">{search ? 'Aucun client ne correspond à votre recherche.' : 'Aucun client pour le moment.'}</p>
+                  <button type="button" onClick={() => setShowModal(true)} className="btn-primary">Créer un client</button>
+                </td></tr>
               ) : (
                 clients.map((c) => (
                   <tr key={c.id} className="table-row">
-                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
-                    <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Raison Sociale" title={c.raisonSociale}>{c.raisonSociale}</td>
-                    <td className="table-cell !px-1.5" data-label="Type"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{c.type}</span></td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="NCC">{c.ncc || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Téléphone">{c.telephone || c.mobile || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Email" title={c.email || undefined}>{c.email || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Ville">{c.ville || '-'}</td>
-                    <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Dossiers">{c._count?.dossiers || 0}</td>
-                    <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Factures">{c._count?.factures || 0}</td>
-                    <td className="table-cell !px-1.5" data-label="Statut">
-                      {c.bloque ? <span className="badge badge-danger !text-[10px] !px-1.5 !py-0">Bloqué</span>
-                        : c.actif ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Actif</span>
-                        : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Inactif</span>}
+                    <td className="table-cell font-medium text-primary-600" data-label="Code">{c.code}</td>
+                    <td className="table-cell font-medium" data-label="Raison Sociale" title={c.raisonSociale}>{c.raisonSociale}</td>
+                    <td className="table-cell" data-label="Type"><span className="badge badge-info">{c.type}</span></td>
+                    <td className="table-cell col-opt font-mono" data-label="NCC">{c.ncc || '-'}</td>
+                    <td className="table-cell" data-label="Téléphone">{c.telephone || c.mobile || '-'}</td>
+                    <td className="table-cell col-opt" data-label="Email" title={c.email || undefined}>{c.email || '-'}</td>
+                    <td className="table-cell col-opt" data-label="Ville">{c.ville || '-'}</td>
+                    <td className="table-cell col-opt text-center" data-label="Dossiers">{c._count?.dossiers || 0}</td>
+                    <td className="table-cell col-opt text-center" data-label="Factures">{c._count?.factures || 0}</td>
+                    <td className="table-cell" data-label="Statut">
+                      {c.bloque ? <span className="badge badge-danger">Bloqué</span>
+                        : c.actif ? <span className="badge badge-success">Actif</span>
+                        : <span className="badge badge-gray">Inactif</span>}
                     </td>
                   </tr>
                 ))
@@ -138,39 +135,40 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      {/* Modal Nouveau Client */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Nouveau Client</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
-                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+      <Sheet open={showModal} onClose={() => setShowModal(false)} title="Nouveau client" size="2xl" fullScreen>
+        <form onSubmit={handleCreate} className="space-y-5">
+          <fieldset>
+            <legend className={legendCls}>Identité</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2"><label className="label">Raison Sociale *</label><input type="text" value={form.raisonSociale} onChange={(e) => setForm({...form, raisonSociale: e.target.value})} className="input-field" required /></div>
+              <div><label className="label">Sigle</label><input type="text" value={form.sigle} onChange={(e) => setForm({...form, sigle: e.target.value})} className="input-field" /></div>
+              <div><label className="label">Type</label><select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})} className="input-field"><option value="ENTREPRISE">Entreprise</option><option value="PARTICULIER">Particulier</option><option value="ADMINISTRATION">Administration</option><option value="ONG">ONG</option><option value="DIPLOMATIQUE">Diplomatique</option></select></div>
+              <div><label className="label">NCC</label><input type="text" value={form.ncc} onChange={(e) => setForm({...form, ncc: e.target.value})} className="input-field" /></div>
+              <div><label className="label">RCCM</label><input type="text" value={form.rccm} onChange={(e) => setForm({...form, rccm: e.target.value})} className="input-field" /></div>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-2"><label className="label">Raison Sociale *</label><input type="text" value={form.raisonSociale} onChange={(e) => setForm({...form, raisonSociale: e.target.value})} className="input-field" required /></div>
-                <div><label className="label">Sigle</label><input type="text" value={form.sigle} onChange={(e) => setForm({...form, sigle: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Type</label><select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})} className="input-field"><option value="ENTREPRISE">Entreprise</option><option value="PARTICULIER">Particulier</option><option value="ADMINISTRATION">Administration</option><option value="ONG">ONG</option><option value="DIPLOMATIQUE">Diplomatique</option></select></div>
-                <div><label className="label">NCC</label><input type="text" value={form.ncc} onChange={(e) => setForm({...form, ncc: e.target.value})} className="input-field" /></div>
-                <div><label className="label">RCCM</label><input type="text" value={form.rccm} onChange={(e) => setForm({...form, rccm: e.target.value})} className="input-field" /></div>
-                <div className="col-span-2"><label className="label">Adresse</label><input type="text" value={form.adresse} onChange={(e) => setForm({...form, adresse: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Ville</label><input type="text" value={form.ville} onChange={(e) => setForm({...form, ville: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Pays</label><input type="text" value={form.pays} onChange={(e) => setForm({...form, pays: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Téléphone</label><input type="text" value={form.telephone} onChange={(e) => setForm({...form, telephone: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Mobile</label><input type="text" value={form.mobile} onChange={(e) => setForm({...form, mobile: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="input-field" /></div>
-                <div><label className="label">Délai paiement (jours)</label><input type="number" value={form.conditionPaiement} onChange={(e) => setForm({...form, conditionPaiement: parseInt(e.target.value)})} className="input-field" /></div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-surface-700">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                <button type="submit" className="btn-primary">Créer le client</button>
-              </div>
-            </form>
+          </fieldset>
+          <fieldset>
+            <legend className={legendCls}>Coordonnées</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2"><label className="label">Adresse</label><input type="text" value={form.adresse} onChange={(e) => setForm({...form, adresse: e.target.value})} className="input-field" /></div>
+              <div><label className="label">Ville</label><input type="text" value={form.ville} onChange={(e) => setForm({...form, ville: e.target.value})} className="input-field" /></div>
+              <div><label className="label">Pays</label><input type="text" value={form.pays} onChange={(e) => setForm({...form, pays: e.target.value})} className="input-field" /></div>
+              <div><label className="label">Téléphone</label><input type="tel" inputMode="tel" value={form.telephone} onChange={(e) => setForm({...form, telephone: e.target.value})} className="input-field" /></div>
+              <div><label className="label">Mobile</label><input type="tel" inputMode="tel" value={form.mobile} onChange={(e) => setForm({...form, mobile: e.target.value})} className="input-field" /></div>
+              <div className="sm:col-span-2"><label className="label">Email</label><input type="email" inputMode="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="input-field" /></div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend className={legendCls}>Facturation</legend>
+            <div><label className="label">Délai paiement (jours)</label><input type="number" inputMode="numeric" value={form.conditionPaiement} onChange={(e) => setForm({...form, conditionPaiement: parseInt(e.target.value)})} className="input-field" /></div>
+          </fieldset>
+          <div className="sticky bottom-0 -mx-4 -mb-4 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary w-full sm:w-auto">Annuler</button>
+            <button type="submit" className="btn-primary w-full sm:w-auto">Créer le client</button>
           </div>
-        </div>
-      )}
+        </form>
+      </Sheet>
+      <FAB label="Nouveau client" onClick={() => setShowModal(true)} />
     </AppLayout>
   );
 }

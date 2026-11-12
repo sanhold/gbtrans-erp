@@ -6,18 +6,17 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { coursesApi, vehiculesApi, chauffeursApi, clientsApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import EmptyRow from '@/components/tables/EmptyRow';
+import CourseCard, { STATUT_LABEL, STATUT_BADGE, fmtMontant } from '@/components/transport/CourseCard';
+import CourseFormSheet, { COURSE_FORM_VIDE as FORM_VIDE } from '@/components/transport/CourseFormSheet';
+import FacturationCourseSheet, { type FacturationState } from '@/components/transport/FacturationCourseSheet';
 
-const STATUT_LABEL: Record<string, string> = { PLANIFIEE: 'Planifiée', EN_COURS: 'En cours', TERMINEE: 'Terminée', ANNULEE: 'Annulée' };
-const STATUT_BADGE: Record<string, string> = { PLANIFIEE: 'badge-info', EN_COURS: 'badge-warning', TERMINEE: 'badge-success', ANNULEE: 'badge-danger' };
 const STATUTS = Object.keys(STATUT_LABEL);
 
-const FORM_VIDE = {
-  vehiculeId: '', chauffeurId: '', clientId: '', montantFacturable: '', origine: '', destination: '', designationMarchandise: '',
-  poidsChargeKg: '', distanceKm: '', dateDepartPrevue: '', dateArriveePrevue: '', observations: '',
-};
-
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-const fmtMontant = (n: any) => n != null ? `${new Intl.NumberFormat('fr-FR').format(Number(n))} FCFA` : '-';
 
 export default function CoursesPage() {
   const [data, setData] = useState<any[]>([]);
@@ -32,9 +31,10 @@ export default function CoursesPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<any>(FORM_VIDE);
   const [saving, setSaving] = useState(false);
+  const confirmer = useConfirm();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
-  const [facturation, setFacturation] = useState<{ id: string; clientId: string; montantFacturable: string; fraisCarburant: string; fraisPeage: string; autresFrais: string } | null>(null);
+  const [facturation, setFacturation] = useState<FacturationState | null>(null);
   const [facturantSelection, setFacturantSelection] = useState(false);
 
   const load = async () => {
@@ -81,7 +81,7 @@ export default function CoursesPage() {
   };
 
   const supprimer = async (id: string) => {
-    if (!confirm('Supprimer cette course ?')) return;
+    if (!(await confirmer({ titre: 'Supprimer cette course ?', message: 'Cette action est irréversible.', danger: true, confirmer: 'Supprimer' }))) return;
     try { await coursesApi.delete(id); toast.success('Course supprimée'); load(); }
     catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
@@ -101,6 +101,8 @@ export default function CoursesPage() {
       load();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
+
+  const ouvrirFacturation = (c: any) => setFacturation({ id: c.id, clientId: c.clientId || '', montantFacturable: c.montantFacturable || '', fraisCarburant: c.fraisCarburant || '', fraisPeage: c.fraisPeage || '', autresFrais: c.autresFrais || '' });
 
   const depensesCourse = (c: any) => Number(c.fraisCarburant || 0) + Number(c.fraisPeage || 0) + Number(c.autresFrais || 0);
   const resultatCourse = (c: any) => c.montantFacturable != null ? Number(c.montantFacturable) - depensesCourse(c) : null;
@@ -127,29 +129,46 @@ export default function CoursesPage() {
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
-            <p className="text-sm text-gray-500">{total} course(s)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <select value={statutFiltre} onChange={e => { setPage(1); setStatutFiltre(e.target.value); }} className="input-field !w-48 text-sm">
-              <option value="">Tous les statuts</option>
-              {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
-            </select>
-            {selection.length > 0 && (
-              <button onClick={facturerSelection} disabled={!selectionValide || facturantSelection} title={!selectionValide ? 'Les courses sélectionnées doivent être du même client' : undefined} className="btn-secondary !text-sm !text-accent-600 disabled:opacity-50">
-                {facturantSelection ? 'Facturation...' : `Facturer la sélection (${selection.length})`}
-              </button>
-            )}
-            <button onClick={ouvrirCreation} className="btn-primary text-sm">+ Nouvelle course</button>
-          </div>
+        <PageHeader
+          title="Courses"
+          subtitle={`${total} course(s)`}
+          actions={<button type="button" onClick={ouvrirCreation} className="btn-primary hidden lg:inline-flex">+ Nouvelle course</button>}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={statutFiltre} onChange={e => { setPage(1); setStatutFiltre(e.target.value); }} aria-label="Filtrer par statut" className="input-field flex-1 min-w-[160px] sm:flex-none sm:!w-48">
+            <option value="">Tous les statuts</option>
+            {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
+          </select>
+          {selection.length > 0 && (
+            <button type="button" onClick={facturerSelection} disabled={!selectionValide || facturantSelection} title={!selectionValide ? 'Les courses sélectionnées doivent être du même client' : undefined} className="btn-secondary !text-accent-600 disabled:opacity-50">
+              {facturantSelection ? 'Facturation...' : `Facturer la sélection (${selection.length})`}
+            </button>
+          )}
         </div>
 
-        <div className="table-container">
+        {/* Mobile : cartes terrain */}
+        <div className="md:hidden space-y-3" aria-busy={loading}>
+          {loading ? (
+            <p className="text-center py-8 text-gray-600">Chargement...</p>
+          ) : data.length === 0 ? (
+            <div className="text-center py-10 text-gray-600">
+              <p>Aucune course</p>
+              <button type="button" onClick={ouvrirCreation} className="btn-primary mt-3">Créer une course</button>
+            </div>
+          ) : data.map(c => (
+            <CourseCard
+              key={c.id} course={c} busy={busyId === c.id} facturable={facturable(c)} selected={selection.includes(c.id)} resultat={resultatCourse(c)}
+              onToggleSelect={() => toggleSelection(c.id)} onStatut={(st) => changerStatut(c.id, st)} onSupprimer={() => supprimer(c.id)}
+              onFacturation={() => ouvrirFacturation(c)}
+            />
+          ))}
+        </div>
+
+        <div className="table-container hidden md:block">
           <table className="w-full">
             <thead><tr>
-              <th className="table-header w-8"></th>
+              <th className="table-header">Actions</th>
+              <th className="table-header w-8"><span className="sr-only">Sélection</span></th>
               <th className="table-header">N°</th>
               <th className="table-header">Véhicule</th>
               <th className="table-header">Chauffeur</th>
@@ -159,17 +178,24 @@ export default function CoursesPage() {
               <th className="table-header">Statut</th>
               <th className="table-header text-right">Résultat</th>
               <th className="table-header">Facturation</th>
-              <th className="table-header">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? (
                 <SkeletonRows cols={11} />
               ) : data.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune course</td></tr>
+                <EmptyRow colSpan={11} message="Aucune course" ctaLabel="Créer une course" onCta={ouvrirCreation} />
               ) : data.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell">
-                    {facturable(c) && <input type="checkbox" checked={selection.includes(c.id)} onChange={() => toggleSelection(c.id)} className="w-4 h-4 rounded" />}
+                  <td className="table-cell" data-label="Actions">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {c.statut === 'PLANIFIEE' && <button onClick={() => changerStatut(c.id, 'EN_COURS')} disabled={busyId === c.id} className="text-xs text-primary-600 hover:underline disabled:opacity-50">Démarrer</button>}
+                      {c.statut === 'EN_COURS' && <button onClick={() => changerStatut(c.id, 'TERMINEE')} disabled={busyId === c.id} className="text-xs text-accent-600 hover:underline disabled:opacity-50">Terminer</button>}
+                      {(c.statut === 'PLANIFIEE' || c.statut === 'EN_COURS') && <button onClick={() => changerStatut(c.id, 'ANNULEE')} disabled={busyId === c.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Annuler</button>}
+                      {c.statut === 'PLANIFIEE' && <button onClick={() => supprimer(c.id)} className="text-xs text-gray-500 hover:underline">Supprimer</button>}
+                    </div>
+                  </td>
+                  <td className="table-cell" data-label="Sélection">
+                    {facturable(c) && <input type="checkbox" checked={selection.includes(c.id)} onChange={() => toggleSelection(c.id)} className="w-4 h-4 rounded" aria-label={`Sélectionner ${c.numero}`} />}
                   </td>
                   <td className="table-cell font-mono text-xs text-primary-600" data-label="N°">{c.numero}</td>
                   <td className="table-cell text-xs" data-label="Véhicule">{c.vehicule?.immatriculation}</td>
@@ -185,18 +211,10 @@ export default function CoursesPage() {
                     {c.facture ? (
                       <Link href={`/facturation/${c.facture.id}`} className="text-xs text-primary-600 hover:underline font-mono">{c.facture.numero}</Link>
                     ) : c.statut === 'TERMINEE' ? (
-                      <button onClick={() => setFacturation({ id: c.id, clientId: c.clientId || '', montantFacturable: c.montantFacturable || '', fraisCarburant: c.fraisCarburant || '', fraisPeage: c.fraisPeage || '', autresFrais: c.autresFrais || '' })} className="text-xs text-amber-600 hover:underline">
+                      <button onClick={() => ouvrirFacturation(c)} className="text-xs text-amber-600 hover:underline">
                         {c.clientId && c.montantFacturable ? 'Modifier' : 'À renseigner'}
                       </button>
-                    ) : <span className="text-xs text-gray-400">-</span>}
-                  </td>
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {c.statut === 'PLANIFIEE' && <button onClick={() => changerStatut(c.id, 'EN_COURS')} disabled={busyId === c.id} className="text-xs text-primary-600 hover:underline disabled:opacity-50">Démarrer</button>}
-                      {c.statut === 'EN_COURS' && <button onClick={() => changerStatut(c.id, 'TERMINEE')} disabled={busyId === c.id} className="text-xs text-accent-600 hover:underline disabled:opacity-50">Terminer</button>}
-                      {(c.statut === 'PLANIFIEE' || c.statut === 'EN_COURS') && <button onClick={() => changerStatut(c.id, 'ANNULEE')} disabled={busyId === c.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Annuler</button>}
-                      {c.statut === 'PLANIFIEE' && <button onClick={() => supprimer(c.id)} className="text-xs text-gray-500 hover:underline">Supprimer</button>}
-                    </div>
+                    ) : <span className="text-xs text-gray-500">-</span>}
                   </td>
                 </tr>
               ))}
@@ -206,105 +224,20 @@ export default function CoursesPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Précédent</button>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Suivant</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary disabled:opacity-40">Précédent</button>
+            <span className="text-sm text-gray-600">Page {page} / {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary disabled:opacity-40">Suivant</button>
           </div>
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">Nouvelle course</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Véhicule *</label>
-                  <select value={form.vehiculeId} onChange={e => setForm({ ...form, vehiculeId: e.target.value })} className="input-field" required>
-                    <option value="">Sélectionner...</option>
-                    {vehicules.map(v => <option key={v.id} value={v.id}>{v.immatriculation} {v.marque ? `(${v.marque})` : ''}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Chauffeur *</label>
-                  <select value={form.chauffeurId} onChange={e => setForm({ ...form, chauffeurId: e.target.value })} className="input-field" required>
-                    <option value="">Sélectionner...</option>
-                    {chauffeurs.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Origine *</label><input type="text" value={form.origine} onChange={e => setForm({ ...form, origine: e.target.value })} className="input-field" required /></div>
-                <div><label className="label">Destination *</label><input type="text" value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} className="input-field" required /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Client à facturer</label>
-                  <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="input-field">
-                    <option value="">— Aucun pour l&apos;instant —</option>
-                    {clients.map((cl: any) => <option key={cl.id} value={cl.id}>{cl.raisonSociale}</option>)}
-                  </select>
-                </div>
-                <div><label className="label">Montant facturable (FCFA)</label><input type="number" value={form.montantFacturable} onChange={e => setForm({ ...form, montantFacturable: e.target.value })} className="input-field" /></div>
-              </div>
-              <div><label className="label">Marchandise</label><input type="text" value={form.designationMarchandise} onChange={e => setForm({ ...form, designationMarchandise: e.target.value })} className="input-field" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Poids (kg)</label><input type="number" value={form.poidsChargeKg} onChange={e => setForm({ ...form, poidsChargeKg: e.target.value })} className="input-field" /></div>
-                <div><label className="label">Distance (km)</label><input type="number" value={form.distanceKm} onChange={e => setForm({ ...form, distanceKm: e.target.value })} className="input-field" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Départ prévu</label><input type="datetime-local" value={form.dateDepartPrevue} onChange={e => setForm({ ...form, dateDepartPrevue: e.target.value })} className="input-field" /></div>
-                <div><label className="label">Arrivée prévue</label><input type="datetime-local" value={form.dateArriveePrevue} onChange={e => setForm({ ...form, dateArriveePrevue: e.target.value })} className="input-field" /></div>
-              </div>
-              <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-surface-700">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Création...' : 'Créer'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <FAB label="Nouvelle course" onClick={ouvrirCreation} />
 
-      {facturation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
-            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">Facturation & dépenses</h2>
-              <button onClick={() => setFacturation(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="label">Client à facturer</label>
-                <select value={facturation.clientId} onChange={e => setFacturation({ ...facturation, clientId: e.target.value })} className="input-field">
-                  <option value="">— Sélectionner —</option>
-                  {clients.map((cl: any) => <option key={cl.id} value={cl.id}>{cl.raisonSociale}</option>)}
-                </select>
-              </div>
-              <div><label className="label">Montant facturable (FCFA)</label><input type="number" value={facturation.montantFacturable} onChange={e => setFacturation({ ...facturation, montantFacturable: e.target.value })} className="input-field" /></div>
-              <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Dépenses du voyage</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div><label className="label !text-xs">Carburant</label><input type="number" value={facturation.fraisCarburant} onChange={e => setFacturation({ ...facturation, fraisCarburant: e.target.value })} className="input-field !text-sm" /></div>
-                <div><label className="label !text-xs">Péage</label><input type="number" value={facturation.fraisPeage} onChange={e => setFacturation({ ...facturation, fraisPeage: e.target.value })} className="input-field !text-sm" /></div>
-                <div><label className="label !text-xs">Autres</label><input type="number" value={facturation.autresFrais} onChange={e => setFacturation({ ...facturation, autresFrais: e.target.value })} className="input-field !text-sm" /></div>
-              </div>
-              <p className="text-right text-sm font-semibold">
-                Résultat du voyage : <span className={(Number(facturation.montantFacturable || 0) - Number(facturation.fraisCarburant || 0) - Number(facturation.fraisPeage || 0) - Number(facturation.autresFrais || 0)) >= 0 ? 'text-accent-600' : 'text-red-600'}>
-                  {fmtMontant(Number(facturation.montantFacturable || 0) - Number(facturation.fraisCarburant || 0) - Number(facturation.fraisPeage || 0) - Number(facturation.autresFrais || 0))}
-                </span>
-              </p>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setFacturation(null)} className="btn-secondary">Annuler</button>
-                <button type="button" onClick={enregistrerFacturation} className="btn-primary">Enregistrer</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CourseFormSheet
+        open={showModal} onClose={() => setShowModal(false)} form={form} setForm={setForm} onSubmit={handleSubmit} saving={saving}
+        vehicules={vehicules} chauffeurs={chauffeurs} clients={clients}
+      />
+      <FacturationCourseSheet value={facturation} onChange={setFacturation} onClose={() => setFacturation(null)} onSave={enregistrerFacturation} clients={clients} />
     </AppLayout>
   );
 }
