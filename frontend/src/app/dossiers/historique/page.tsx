@@ -7,6 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
+import PageHeader from '@/components/ui/PageHeader';
 import { statutColors, statutLabels, STATUTS_DOSSIER } from '@/lib/dossierStatut';
 const natureLabels: Record<string, string> = {
   IMPORT: 'Import', EXPORT: 'Export', TRANSIT: 'Transit', REEXPORT: 'Réexport', CABOTAGE: 'Cabotage', TRANSBORDEMENT: 'Transbordement',
@@ -33,6 +34,7 @@ export default function DossiersHistoriquePage() {
   const [filterStatut, setFilterStatut] = useState('');
   const [search, setSearch] = useState('');
 
+  const [showFilters, setShowFilters] = useState(false);
   const [appliedFiltres, setAppliedFiltres] = useState({ dateDebut: debutAnnee, dateFin: finAujourdhui, nature: '', statut: '', search: '' });
 
   const load = () => {
@@ -78,87 +80,87 @@ export default function DossiersHistoriquePage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <Link href="/dossiers" className="text-[10px] text-primary-600 hover:underline block">← Dossiers</Link>
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Historique</h1>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {presets.map(p => (
-                <button key={p.label} type="button" onClick={() => { const [d, f] = p.get(); applyPreset(d, f); }} className="btn-secondary !py-1.5 !px-2 !text-[10.5px]">
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Du" />
-            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Au" />
-            <select value={filterNature} onChange={e => setFilterNature(e.target.value)} className="input-field !py-1.5 text-xs w-28 flex-shrink-0">
+      <div className="space-y-4">
+        <PageHeader
+          title="Historique des dossiers"
+          subtitle="Dossiers sur la période sélectionnée"
+          actions={<Link href="/dossiers" className="btn-secondary">Retour aux dossiers</Link>}
+        />
+
+        <form onSubmit={handleSearch} className="card !p-3 space-y-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input type="search" value={search} onChange={e => setSearch(e.target.value)} className="input-field flex-1" placeholder="N° dossier, BL, client..." aria-label="Rechercher un dossier" />
+            <button type="button" onClick={() => setShowFilters(v => !v)} aria-expanded={showFilters} className="btn-secondary lg:hidden">
+              Filtres{[filterNature, filterStatut].filter(Boolean).length ? ` (${[filterNature, filterStatut].filter(Boolean).length})` : ''}
+            </button>
+            <button type="submit" className="btn-primary">Afficher</button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {presets.map(p => (
+              <button key={p.label} type="button" onClick={() => { const [d, f] = p.get(); applyPreset(d, f); }} className="btn-secondary whitespace-nowrap flex-shrink-0">
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className={`grid grid-cols-2 lg:grid-cols-4 gap-2 ${showFilters ? '' : 'max-lg:hidden'}`}>
+            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field" title="Du" aria-label="Période : du" />
+            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field" title="Au" aria-label="Période : au" />
+            <select value={filterNature} onChange={e => setFilterNature(e.target.value)} className="input-field" aria-label="Nature">
               <option value="">Nature</option>
               {Object.entries(natureLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)} className="input-field !py-1.5 text-xs w-28 flex-shrink-0">
+            <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)} className="input-field" aria-label="Statut">
               <option value="">Statut</option>
               {STATUTS_DOSSIER.map((k) => <option key={k} value={k}>{statutLabels[k]}</option>)}
             </select>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-40 flex-shrink-0" placeholder="N° dossier, BL, client..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-          </form>
-        </div>
+          </div>
+        </form>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="card !p-4">
-            <p className="text-xs text-gray-500">Dossiers sur la période</p>
+            <p className="text-xs text-gray-600">Dossiers sur la période</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{total}</p>
           </div>
           <div className="card !p-4 sm:col-span-2">
-            <p className="text-xs text-gray-500">Valeur CAF cumulée (page affichée)</p>
+            <p className="text-xs text-gray-600">Valeur CAF cumulée (page affichée)</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{fmt(valeurTotale)} XOF</p>
           </div>
         </div>
 
         <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-            </colgroup>
+          <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° Physique</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Nature</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Valeur CAF</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Créé le</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Clôturé le</th>
+                <th className="table-header">N° Dossier</th>
+                <th className="table-header">N° Physique</th>
+                <th className="table-header">Client</th>
+                <th className="table-header">Nature</th>
+                <th className="table-header">Statut</th>
+                <th className="table-header text-right">Valeur CAF</th>
+                <th className="table-header">Créé le</th>
+                <th className="table-header">Clôturé le</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <SkeletonRows cols={8} />
               ) : dossiers.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun dossier sur cette période</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-gray-600">
+                  <p className="mb-3">Aucun dossier sur cette période.</p>
+                  <button type="button" onClick={() => applyPreset('', '')} className="btn-secondary">Afficher tous les dossiers</button>
+                </td></tr>
               ) : dossiers.map(d => (
                 <tr key={d.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={d.numero}>
+                  <td className="table-cell font-medium text-primary-600" data-label="N° Dossier" title={d.numero}>
                     <Link href={`/dossiers/${d.id}`} className="hover:underline">{d.numeroPhysique || d.numero}</Link>
                   </td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Physique">{d.numeroPhysique || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={d.client?.raisonSociale || undefined}>{d.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Nature"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{natureLabels[d.nature] || d.nature}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[d.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[d.statut] || d.statut}</span></td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Valeur CAF">{d.valeurCAF ? fmt(d.valeurCAF) : '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date création">{fmtDate(d.dateCreation)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date clôture">{fmtDate(d.dateCloture)}</td>
+                  <td className="table-cell font-mono col-opt" data-label="N° Physique">{d.numeroPhysique || '-'}</td>
+                  <td className="table-cell" data-label="Client" title={d.client?.raisonSociale || undefined}>{d.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell" data-label="Nature"><span className="badge badge-info">{natureLabels[d.nature] || d.nature}</span></td>
+                  <td className="table-cell" data-label="Statut"><span className={`badge ${statutColors[d.statut] || 'badge-gray'}`}>{statutLabels[d.statut] || d.statut}</span></td>
+                  <td className="table-cell text-right font-mono" data-label="Valeur CAF">{d.valeurCAF ? fmt(d.valeurCAF) : '-'}</td>
+                  <td className="table-cell" data-label="Créé le">{fmtDate(d.dateCreation)}</td>
+                  <td className="table-cell" data-label="Clôturé le">{fmtDate(d.dateCloture)}</td>
                 </tr>
               ))}
             </tbody>
