@@ -248,14 +248,14 @@ export default function EtatFacturationDossierPage() {
                 {loadingDetail ? <p className="text-center text-gray-500 py-8">Chargement...</p> : (
                   <>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
-                      <span className="font-semibold">{detail.dossier?.client?.raisonSociale}</span> — <span className="badge badge-info">{detail.dossier?.statut}</span>
+                      <span className="font-semibold">{detail?.dossier?.client?.raisonSociale}</span> — <span className="badge badge-info">{detail?.dossier?.statut}</span>
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Factures ({detail.factures?.length || 0})</h4>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Factures ({detail?.factures?.length || 0})</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header text-right">TTC</th><th className="table-header text-right">Payé</th><th className="table-header text-right">Reste</th><th className="table-header">Statut</th></tr></thead>
-                        <tbody>{(detail.factures || []).length === 0 ? <tr><td colSpan={6} className="text-center py-6 text-gray-500">Aucune facture liée</td></tr> : detail.factures.map((f: any) => (
+                        <tbody>{(detail?.factures || []).length === 0 ? <tr><td colSpan={6} className="text-center py-6 text-gray-500">Aucune facture liée</td></tr> : detail?.factures.map((f: any) => (
                           <tr key={f.id} className="table-row">
                             <td className="table-cell" data-label="N°">{f.numero}</td>
                             <td className="table-cell text-xs" data-label="Date">{f.dateFacture ? new Date(f.dateFacture).toLocaleDateString('fr-FR') : '-'}</td>
@@ -269,10 +269,10 @@ export default function EtatFacturationDossierPage() {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Dépenses ({detail.depenses?.length || 0})</h4>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Dépenses ({detail?.depenses?.length || 0})</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Catégorie</th><th className="table-header">Désignation</th><th className="table-header text-right">Montant</th></tr></thead>
-                        <tbody>{(detail.depenses || []).length === 0 ? <tr><td colSpan={5} className="text-center py-6 text-gray-500">Aucune dépense liée</td></tr> : detail.depenses.map((d: any) => (
+                        <tbody>{(detail?.depenses || []).length === 0 ? <tr><td colSpan={5} className="text-center py-6 text-gray-500">Aucune dépense liée</td></tr> : detail?.depenses.map((d: any) => (
                           <tr key={d.id} className="table-row">
                             <td className="table-cell" data-label="N°">{d.numero}</td>
                             <td className="table-cell text-xs" data-label="Date">{d.dateDepense ? new Date(d.dateDepense).toLocaleDateString('fr-FR') : '-'}</td>
@@ -285,10 +285,10 @@ export default function EtatFacturationDossierPage() {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Paiements ({detail.paiements?.length || 0})</h4>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Paiements ({detail?.paiements?.length || 0})</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Facture</th><th className="table-header text-right">Montant</th></tr></thead>
-                        <tbody>{(detail.paiements || []).length === 0 ? <tr><td colSpan={4} className="text-center py-6 text-gray-500">Aucun paiement enregistré</td></tr> : detail.paiements.map((p: any, i: number) => (
+                        <tbody>{(detail?.paiements || []).length === 0 ? <tr><td colSpan={4} className="text-center py-6 text-gray-500">Aucun paiement enregistré</td></tr> : detail?.paiements.map((p: any, i: number) => (
                           <tr key={p.id || i} className="table-row">
                             <td className="table-cell" data-label="N°">{p.paiement?.numero || '-'}</td>
                             <td className="table-cell text-xs" data-label="Date">{p.paiement?.datePaiement ? new Date(p.paiement.datePaiement).toLocaleDateString('fr-FR') : '-'}</td>

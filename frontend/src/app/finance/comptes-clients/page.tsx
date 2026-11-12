@@ -89,7 +89,7 @@ export default function ComptesClientsPage() {
                       <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Factures</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header text-right">TTC</th><th className="table-header text-right">Payé</th><th className="table-header text-right">Reste</th><th className="table-header">Statut</th></tr></thead>
-                        <tbody>{(detail.factures || []).map((f: any) => (
+                        <tbody>{(detail?.factures || []).map((f: any) => (
                           <tr key={f.id} className="table-row">
                             <td className="table-cell" data-label="N°">{f.numero}</td>
                             <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
@@ -105,7 +105,7 @@ export default function ComptesClientsPage() {
                       <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Paiements</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Facture(s)</th><th className="table-header text-right">Montant</th></tr></thead>
-                        <tbody>{(detail.paiements || []).map((p: any) => (
+                        <tbody>{(detail?.paiements || []).map((p: any) => (
                           <tr key={p.id} className="table-row">
                             <td className="table-cell" data-label="N°">{p.numero}</td>
                             <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
