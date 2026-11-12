@@ -67,7 +67,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error: any) {
       set({ isLoading: false });
       throw new Error(
-        error.response?.data?.message || 'Identifiants incorrects'
+        error.response?.data?.message ||
+          (error.response ? 'Identifiants incorrects' : 'Serveur injoignable. Vérifiez que le backend est démarré, puis réessayez.')
       );
     }
   },

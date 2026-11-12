@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Sheet from './Sheet';
 
 export interface RowAction {
   label: string;
@@ -54,6 +55,15 @@ export default function RowActionsMenu({ state, onClose }: { state: RowMenuState
   const ref = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<RowAction | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // Mobile : le menu devient une bottom sheet (cibles tactiles larges) au lieu d'un popover positionné.
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const upd = () => setMobile(mq.matches);
+    upd();
+    mq.addEventListener('change', upd);
+    return () => mq.removeEventListener('change', upd);
+  }, []);
 
   useEffect(() => {
     if (!state) { setPos(null); return; }
@@ -66,7 +76,7 @@ export default function RowActionsMenu({ state, onClose }: { state: RowMenuState
   }, [state]);
 
   useEffect(() => {
-    if (!state) return;
+    if (!state || mobile) return;
     const close = () => onClose();
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('scroll', close, true);
@@ -77,7 +87,7 @@ export default function RowActionsMenu({ state, onClose }: { state: RowMenuState
       window.removeEventListener('resize', close);
       window.removeEventListener('keydown', onKey);
     };
-  }, [state, onClose]);
+  }, [state, onClose, mobile]);
 
   const run = (a: RowAction) => {
     if (a.confirm) { setPending(a); onClose(); return; }
@@ -87,7 +97,33 @@ export default function RowActionsMenu({ state, onClose }: { state: RowMenuState
 
   return (
     <>
-      {state && (
+      {state && mobile && (
+        <Sheet open onClose={onClose} size="sm" zIndexClass="z-[70]" ariaLabel="Actions">
+          <div className="px-4 pb-3 pt-1 bg-primary-600 text-white space-y-0.5 text-sm flex-shrink-0 -mt-1">
+            {state.infos.map((i) => (
+              <div key={i.label} className="flex gap-2">
+                <span className="text-white/65 w-16 flex-shrink-0">{i.label}</span>
+                <span className="font-semibold truncate">{i.value || '-'}</span>
+              </div>
+            ))}
+          </div>
+          <ul className="py-1 overflow-y-auto">
+            {state.actions.filter((a) => !a.hidden).map((a) => (
+              <li key={a.label}>
+                <button
+                  type="button"
+                  onClick={() => run(a)}
+                  className={`w-full text-left px-5 min-h-[52px] text-[15px] font-medium active:bg-gray-100 dark:active:bg-surface-700 ${a.tone || 'text-gray-800 dark:text-gray-100'}`}
+                >
+                  {a.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Sheet>
+      )}
+
+      {state && !mobile && (
         <div className="fixed inset-0 z-[70]" onClick={onClose}>
           <div
             ref={ref}
@@ -121,8 +157,8 @@ export default function RowActionsMenu({ state, onClose }: { state: RowMenuState
       )}
 
       {pending && (
-        <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setPending(null)}>
-          <div className="bg-white dark:bg-surface-800 rounded-sm shadow-lg w-full max-w-sm border border-gray-300 dark:border-surface-700" onClick={(e) => e.stopPropagation()}>
+        <Sheet open onClose={() => setPending(null)} size="sm" zIndexClass="z-[75]" ariaLabel="Confirmation">
+          <div className="overflow-y-auto">
             <div className="px-4 py-2.5 bg-primary-600 text-white text-sm font-bold">Confirmation</div>
             <p className="px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{pending.confirm}</p>
             <div className="px-4 pb-4 flex justify-end gap-2">
@@ -136,7 +172,7 @@ export default function RowActionsMenu({ state, onClose }: { state: RowMenuState
               </button>
             </div>
           </div>
-        </div>
+        </Sheet>
       )}
     </>
   );

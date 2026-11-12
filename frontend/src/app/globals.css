@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Police de base 17px (au lieu de 16px) : tout ce qui est en rem (text-sm, text-base...) grossit d'environ 6 % */
+  html {
+    font-size: 106.25%;
+  }
+
   :root {
     --color-primary: #0078D4;
     --color-primary-dark: #005A9E;
@@ -23,7 +28,7 @@
   }
 
   body {
-    @apply bg-canvas text-gray-800 dark:bg-surface-900 dark:text-surface-50 font-sans antialiased;
+    @apply bg-canvas text-gray-900 dark:bg-surface-900 dark:text-surface-50 font-sans antialiased;
     font-feature-settings: 'tnum' 1, 'cv05' 1;
   }
 
@@ -77,7 +82,7 @@
   }
 
   .label {
-    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+    @apply block text-sm font-medium text-gray-900 dark:text-gray-200 mb-1;
   }
 
   .stat-card {
@@ -94,24 +99,24 @@
   }
 
   .table-header {
-    @apply px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider
-           bg-gray-50 border-0 border-b border-gray-200 whitespace-nowrap
-           dark:bg-surface-800 dark:text-gray-300 dark:border-surface-700;
+    @apply px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider
+           bg-gray-100 border-0 border-b-2 border-gray-300 whitespace-nowrap
+           dark:bg-surface-700 dark:text-gray-100 dark:border-surface-300;
     letter-spacing: 0.05em;
   }
 
   .table-cell {
-    @apply px-3 py-2.5 text-[13px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap
+    @apply px-3 py-3 text-sm text-gray-900 border-0 border-b border-gray-200 whitespace-nowrap
            dark:text-gray-200 dark:border-surface-700;
     letter-spacing: 0.01em;
   }
 
   .table-row {
-    @apply hover:bg-primary-50/60 dark:hover:bg-white/[.04] transition-colors;
+    @apply hover:bg-primary-50 dark:hover:bg-white/[.05] transition-colors;
   }
 
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold;
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
   }
 
   .badge-success { @apply bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300; }
@@ -155,8 +160,16 @@
     min-height: 44px;
   }
 
-  /* Tableaux -> vraies cartes d'appli mobile : titre en haut, infos en grille 2 colonnes,
-     actions en pleine largeur en bas. Plus de defilement horizontal, plus de liste a rallonge. */
+  /* Tableaux -> vraies cartes d'appli mobile : bandeau titre, infos en grille 2 colonnes,
+     barre d'actions pleine largeur en bas. Plus de défilement horizontal, plus de liste à rallonge.
+     Le conteneur devient transparent : les cartes flottent directement sur le fond de l'appli. */
+  .table-container {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
   .table-container table,
   .table-container tbody {
     display: block;
@@ -167,21 +180,29 @@
     display: none;
   }
 
+  .table-container .te-bar {
+    background: transparent;
+    border: 0;
+    padding: 0 0 0.5rem;
+  }
+
   .table-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 0.625rem;
-    margin: 0 0.5rem 0.625rem;
+    border-radius: 0.75rem;
+    margin: 0 0 0.625rem;
     overflow: hidden;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   }
 
   .dark .table-row {
+    background: theme('colors.surface.800');
     border-color: theme('colors.surface.700');
   }
 
-  /* Colonnes jugees secondaires sur petit ecran (cf. className="col-opt" sur le <td>) :
+  /* Colonnes jugées secondaires sur petit écran (cf. className="col-opt" sur le <td>) :
      restent dans le tableau desktop, disparaissent uniquement de la carte mobile. */
   .col-opt {
     display: none !important;
@@ -195,25 +216,39 @@
     gap: 0.15rem;
     width: 100%;
     min-width: 0;
-    padding: 0.45rem 0.75rem;
+    padding: 0.5rem 0.75rem;
     border: none !important;
-    border-bottom: 1px solid #f0f0f0;
-    border-right: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0 !important;
+    border-right: 1px solid #f0f0f0 !important;
     white-space: normal;
     text-align: left;
   }
 
   .dark .table-cell {
-    border-color: theme('colors.surface.700');
+    border-color: theme('colors.surface.700') !important;
   }
 
-  .table-cell:nth-child(2n) {
-    border-right: none;
+  /* Colonne de droite de la grille : pas de filet vertical.
+     Titre en premier -> cellules 3,5,... à droite ; colonne "Actions" en premier -> cellules 4,6,... */
+  .table-row > .table-cell:nth-child(2n + 1) {
+    border-right: none !important;
+  }
+
+  .table-row > .table-cell[data-label='Actions']:first-child ~ .table-cell:nth-child(2n) {
+    border-right: none !important;
+  }
+
+  .table-row > .table-cell[data-label='Actions']:first-child ~ .table-cell:nth-child(2n + 1) {
+    border-right: 1px solid #f0f0f0 !important;
+  }
+
+  .dark .table-row > .table-cell[data-label='Actions']:first-child ~ .table-cell:nth-child(2n + 1) {
+    border-right-color: theme('colors.surface.700') !important;
   }
 
   .table-cell::before {
     content: attr(data-label);
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -225,46 +260,63 @@
     max-width: 100%;
   }
 
-  /* 1ere colonne = identifiant de la ligne : bandeau titre en pleine largeur, mis en avant */
-  .table-row > .table-cell:first-child:not(:only-child) {
+  /* Identifiant de la ligne (1re colonne, ou 2e si la colonne Actions est en tête) : bandeau titre pleine largeur */
+  .table-row > .table-cell:first-child:not(:only-child):not([data-label='Actions']),
+  .table-row > .table-cell[data-label='Actions']:first-child + .table-cell:not(:last-child) {
     grid-column: 1 / -1;
-    border-right: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0.6rem 0.75rem 0.5rem;
-    background: rgba(0, 0, 0, 0.015);
-  }
-
-  .dark .table-row > .table-cell:first-child:not(:only-child) {
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom-color: theme('colors.surface.700');
-  }
-
-  .table-row > .table-cell:first-child:not(:only-child) > *,
-  .table-row > .table-cell:first-child:not(:only-child) {
+    border-right: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    padding: 0.65rem 0.75rem 0.5rem;
+    background: rgba(0, 0, 0, 0.02);
     font-size: 13.5px !important;
     font-weight: 700;
   }
 
-  /* Derniere colonne = actions : barre pleine largeur, boutons centres, pas d'etiquette */
-  .table-row > .table-cell:last-child:not(:only-child) {
+  .dark .table-row > .table-cell:first-child:not(:only-child):not([data-label='Actions']),
+  .dark .table-row > .table-cell[data-label='Actions']:first-child + .table-cell:not(:last-child) {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom-color: theme('colors.surface.700') !important;
+  }
+
+  .table-row > .table-cell:first-child:not(:only-child):not([data-label='Actions']) > *,
+  .table-row > .table-cell[data-label='Actions']:first-child + .table-cell:not(:last-child) > * {
+    font-size: 13.5px !important;
+    font-weight: 700;
+  }
+
+  /* Cellule "Actions" (en tête ou en queue dans le DOM) : barre pleine largeur placée en bas de la carte */
+  .table-row > .table-cell[data-label='Actions']:not(:only-child),
+  .table-row > .table-cell:last-child:not(:only-child):not(:first-child):not([data-label]) {
     grid-column: 1 / -1;
+    order: 100;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    border-bottom: none;
+    gap: 0.5rem;
+    border-right: none !important;
+    border-bottom: none !important;
     padding: 0.5rem 0.75rem;
-    background: rgba(0, 0, 0, 0.015);
+    background: rgba(0, 0, 0, 0.02);
   }
 
-  .dark .table-row > .table-cell:last-child:not(:only-child) {
-    background: rgba(255, 255, 255, 0.02);
+  .dark .table-row > .table-cell[data-label='Actions']:not(:only-child),
+  .dark .table-row > .table-cell:last-child:not(:only-child):not(:first-child):not([data-label]) {
+    background: rgba(255, 255, 255, 0.03);
   }
 
-  .table-row > .table-cell:last-child:not(:only-child)::before {
+  .table-row > .table-cell[data-label='Actions']::before {
     content: none;
   }
 
-  /* Lignes "Chargement..." / "Aucune donnée" : une seule cellule centree, pas d'etiquette */
+  /* Boutons d'action de carte : cibles tactiles confortables */
+  .table-row > .table-cell[data-label='Actions'] :is(button, a) {
+    min-height: 40px;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Lignes "Chargement..." / "Aucune donnée" : une seule cellule centrée, pas d'étiquette */
   .table-cell:only-child {
     display: block;
     grid-column: 1 / -1;
@@ -369,5 +421,213 @@ input[type='number'] {
   .table-container table.table-strict .table-header.truncate {
     white-space: normal;
     line-height: 1.2;
+  }
+}
+
+/* Lisibilité : les tailles fixes très petites des pages sont relevées globalement (plancher ~12 px). */
+.text-\[9px\] { font-size: 11px; }
+.text-\[10px\] { font-size: 12px; }
+.text-\[10\.5px\] { font-size: 12px; }
+.text-\[11px\] { font-size: 12.5px; }
+.text-\[12px\] { font-size: 13px; }
+.text-\[12\.5px\] { font-size: 13.5px; }
+
+/* ==========================================================================
+   Socle application native (mobile) / bureau dense
+   ========================================================================== */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --bottom-nav-h: 60px; /* hauteur utile de la barre d'onglets (hors safe-area) */
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Pas de délai de 300 ms ni de zoom au double-tap sur les éléments interactifs */
+a, button, input, select, textarea, label, summary, [role='button'], .table-row {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  overscroll-behavior-y: contain;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Réserve la place de la barre d'onglets (mobile / tablette) ; le FAB se pose au-dessus */
+.app-main {
+  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 1.25rem);
+}
+
+.fab {
+  bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 1rem);
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    padding-bottom: 1.25rem;
+  }
+
+  .fab {
+    bottom: 1.5rem;
+  }
+}
+
+/* Éléments de navigation : pas de sélection de texte accidentelle au toucher / glissé */
+.no-select-nav,
+.no-select-nav * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.no-select-nav input {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+nav a,
+nav button,
+.sidebar-item,
+[role='tablist'],
+[role='tab'] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Retour visuel au toucher : légère réduction + fond (boutons et lignes tactiles) */
+.btn-primary:active,
+.btn-secondary:active,
+.btn-danger:active,
+.btn-success:active,
+.pill-btn:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary:active {
+  background-color: theme('colors.gray.200');
+}
+
+.btn-primary:active {
+  background-color: theme('colors.primary.700');
+}
+
+.table-row:active,
+.sidebar-item:active {
+  background-color: theme('colors.primary.50');
+}
+
+.dark .table-row:active,
+.dark .sidebar-item:active,
+.dark .btn-secondary:active {
+  background-color: theme('colors.surface.700');
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-success {
+  transition-property: color, background-color, border-color, transform, box-shadow;
+}
+
+/* Focus visible partout (clavier) : contour net ; les éléments qui définissent déjà leur propre anneau gardent le leur */
+:focus-visible {
+  outline: 2px solid theme('colors.primary.500');
+  outline-offset: 2px;
+}
+
+.dark :focus-visible {
+  outline-color: theme('colors.primary.300');
+}
+
+/* Transition de page douce (fade + léger glissé), l'AppLayout est remonté à chaque navigation */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: page-enter 200ms ease-out backwards;
+}
+
+/* Feuilles (Sheet) : montée depuis le bas sur mobile, fondu + zoom léger sur bureau */
+@keyframes sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes sheet-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.sheet-backdrop {
+  animation: sheet-fade 180ms ease-out;
+  overscroll-behavior: contain;
+}
+
+.sheet-panel {
+  animation: sheet-up 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 768px) {
+  .sheet-panel {
+    animation: sheet-pop 180ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .sheet-backdrop,
+  .sheet-panel {
+    animation: none;
+  }
+
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-danger:active,
+  .btn-success:active,
+  .pill-btn:active {
+    transform: none;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Barres de défilement masquées sur mobile / tablette (le défilement tactile reste actif) */
+@media (max-width: 1023px) {
+  * {
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
   }
 }

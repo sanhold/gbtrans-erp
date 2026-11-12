@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Sheet from './Sheet';
 
 export interface PickerOption {
   id: string;
@@ -54,11 +55,11 @@ export default function PickerField({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 animate-fade-in p-4" onClick={close}>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <Sheet open onClose={close} size="md" zIndexClass="z-[70]" ariaLabel={title} className="h-[80dvh]">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
               <h3 className="font-bold text-base">{title}</h3>
-              <button type="button" onClick={close} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
+              <button type="button" onClick={close} aria-label="Fermer" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -93,7 +94,7 @@ export default function PickerField({
               ))}
             </div>
           </div>
-        </div>
+        </Sheet>
       )}
     </>
   );

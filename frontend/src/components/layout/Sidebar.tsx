@@ -1,120 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/stores/authStore';
-import { dashboardApi } from '@/lib/api';
-import { useCachedFetch, TTL } from '@/lib/cache';
-import { getRequiredModule } from '@/lib/permissions';
+import { useNav, SETTINGS_ICON } from './navConfig';
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: string;
-  badgeKey?: 'dossiers' | 'courriers';
-  activite?: 'TRANSIT' | 'TRANSPORT';
-}
+const COLLAPSE_KEY = 'gbtrans.sidebar.collapsed';
 
-interface NavGroup {
-  title: string;
-  items: NavItem[];
-}
-
-const navGroups: NavGroup[] = [
-  {
-    title: 'Général',
-    items: [
-      { name: 'Accueil', href: '/dashboard', icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
-    ],
-  },
-  {
-    title: 'Opérations',
-    items: [
-      { name: 'Dossiers', href: '/dossiers', icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', badgeKey: 'dossiers', activite: 'TRANSIT' },
-      { name: 'Suivi des dossiers', href: '/dossiers/suivi', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4', activite: 'TRANSIT' },
-      { name: 'Gestion AT', href: '/at', icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', activite: 'TRANSIT' },
-      { name: 'Gestion Caution', href: '/cautions', icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z', activite: 'TRANSIT' },
-      { name: 'Courrier', href: '/courriers', icon: 'M2 7l10 6 10-6M2 4h20v16H2z', badgeKey: 'courriers' },
-      { name: 'Archives numériques', href: '/archives', icon: 'M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4' },
-    ],
-  },
-  {
-    title: 'Transport',
-    items: [
-      { name: 'Devis', href: '/transport/devis', icon: 'M9 12h6m-6 4h6m-7 5h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2.5L13 3H9.5L8.5 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z', activite: 'TRANSPORT' },
-      { name: 'Véhicules', href: '/transport/vehicules', icon: 'M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13M5 13h14v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-5z', activite: 'TRANSPORT' },
-      { name: 'Chauffeurs', href: '/transport/chauffeurs', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6', activite: 'TRANSPORT' },
-      { name: 'Courses', href: '/transport/courses', icon: 'M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7', activite: 'TRANSPORT' },
-      { name: 'Maintenance', href: '/transport/maintenance', icon: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z', activite: 'TRANSPORT' },
-      { name: 'Statistiques', href: '/transport/statistiques', icon: 'M3 3v18h18M7 14l4-4 3 3 5-6', activite: 'TRANSPORT' },
-    ],
-  },
-  {
-    title: 'Commercial',
-    items: [
-      { name: 'Offres', href: '/offres', icon: 'M6 4h12v16l-6-3-6 3z' },
-      { name: 'Proforma', href: '/proformas', icon: 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM14 2v5h5M8 13h8M8 17h5' },
-      { name: 'Facturation', href: '/facturation', icon: 'M9 14l6-6M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z' },
-      { name: 'Facturation Fournisseur', href: '/facturation-fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
-      { name: 'Clients', href: '/clients', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
-      { name: 'Prospects', href: '/prospects', icon: 'M18 9v6m3-3h-6M7 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20c0-3.5 3-5 6-5s6 1.5 6 5' },
-      { name: 'Fournisseurs', href: '/fournisseurs', icon: 'M9 8a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-5 7-5s7 1.5 7 5M18 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm-1 6c3 .4 5 1.8 5 5' },
-    ],
-  },
-  {
-    title: 'Finance',
-    items: [
-      { name: 'Comptes', href: '/finance', icon: 'M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2.2-5 1.3-5 3.6 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
-      { name: 'Transactions', href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5' },
-      { name: 'Dotation', href: '/finance/dotation', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22' },
-      { name: 'Justificatifs dotation', href: '/finance/justificatifs', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { name: 'Mes dotations', href: '/mes-dotations', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
-      { name: 'État Facturation Dossier', href: '/finance/etat-facturation-dossier', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
-      { name: 'Statistique', href: '/statistiques', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z' },
-    ],
-  },
-  {
-    title: 'Comptabilité',
-    items: [
-      { name: 'Plan comptable', href: '/comptabilite/plan-comptable', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
-    ],
-  },
-  {
-    title: 'RH & Paie',
-    items: [
-      { name: 'Employés', href: '/rh/employes', icon: 'M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6' },
-      { name: 'Paie', href: '/rh/paie', icon: 'M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6' },
-    ],
-  },
-];
-
-interface SidebarProps {
-  open?: boolean;
-  onClose?: () => void;
-}
-
-export default function Sidebar({ open = false, onClose = () => {} }: SidebarProps) {
-  const pathname = usePathname();
+/** Menu latéral du bureau (>=1024px) ; repliable en icônes seules, préférence mémorisée. Le mobile utilise BottomNav. */
+export default function Sidebar() {
   const router = useRouter();
-  const { user, logout, hasPermission } = useAuthStore();
-  const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
+  const { logout } = useAuthStore();
+  const { groups, isItemActive, badges, canSettings } = useNav();
+  // Sidebar n'est rendue qu'après le chargement du profil (côté client) : lecture directe sans risque d'hydratation.
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try { return window.localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; }
+  });
 
-  const isItemActive = (href: string) => {
-    if (pathname === href) return true;
-    if (!pathname?.startsWith(href + '/')) return false;
-    // un autre élément du menu, plus spécifique, correspond-il mieux ?
-    return !navGroups.some((g) => g.items.some((i) => i.href.length > href.length && (pathname === i.href || pathname.startsWith(i.href + '/'))));
+  const toggle = () => {
+    setCollapsed((v) => {
+      try { window.localStorage.setItem(COLLAPSE_KEY, v ? '0' : '1'); } catch { /* stockage indisponible */ }
+      return !v;
+    });
   };
-
-  const { data: badgeStats } = useCachedFetch(`dashboard:stats:${new Date().getFullYear()}`, () => dashboardApi.stats(new Date().getFullYear()), TTL.normal);
-  useEffect(() => {
-    const d = badgeStats?.data?.data;
-    if (d) setBadges({ dossiers: d.totalDossiers, courriers: d.totalCourriers });
-  }, [badgeStats]);
 
   const handleLogout = async () => {
     await logout();
@@ -122,104 +33,105 @@ export default function Sidebar({ open = false, onClose = () => {} }: SidebarPro
   };
 
   const linkCls = (active: boolean) => clsx(
-    'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+    'relative flex items-center rounded-lg text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 min-h-[38px]',
+    collapsed ? 'justify-center mx-2 px-0' : 'gap-3 mx-3 px-3',
     active
-      ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-white font-semibold'
-      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
+      ? 'bg-primary-50 dark:bg-primary-500/20 text-gray-950 dark:text-white font-bold shadow-[inset_3px_0_0_theme(colors.primary.600)]'
+      : 'text-gray-950 font-medium dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-surface-700 dark:hover:text-white'
   );
-  const titleCls = 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500';
+  const titleCls = 'px-6 pt-4 pb-1.5 text-xs font-bold uppercase tracking-[0.08em] text-gray-600 dark:text-gray-400';
   const Icon = ({ d, active }: { d: string; active: boolean }) => (
-    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600 dark:text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600 dark:text-white' : 'text-gray-700 dark:text-gray-400')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d={d} />
     </svg>
   );
 
   return (
-    <>
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden animate-fade-in"
-          onClick={onClose}
-          aria-hidden="true"
-        />
+    <aside
+      className={clsx(
+        'hidden lg:flex flex-shrink-0 sticky top-14 h-[calc(100dvh-56px)] flex-col overflow-y-auto',
+        'bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200',
+        'transition-[width] duration-200 ease-out select-none',
+        collapsed ? 'w-[68px]' : 'w-[250px] xl:w-[260px]'
       )}
-      <aside
-        className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-[250px] xl:w-[260px] flex-shrink-0 bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
-          'transform transition-transform duration-200 ease-out',
-          'lg:static lg:z-auto lg:translate-x-0 lg:sticky lg:top-14 lg:h-[calc(100vh-56px)]',
-          open ? 'translate-x-0' : '-translate-x-full'
-        )}
-      >
-        {/* Fermeture (mobile) */}
-        <div className="lg:hidden flex items-center justify-between px-4 h-14 bg-primary-600 text-white flex-shrink-0">
-          <span className="font-display font-extrabold text-[17px]">GBTrans</span>
-          <button onClick={onClose} aria-label="Fermer le menu" className="w-11 h-11 rounded-md hover:bg-white/10 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" title="Fermer le menu">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-      {/* Navigation */}
+      data-collapsed={collapsed}
+    >
       <nav aria-label="Navigation principale" className="flex-1 pb-2">
-        {navGroups.map((group) => {
-          const visibleItems = group.items.filter((item) => {
-            if (item.activite === 'TRANSIT' && user?.societe?.activiteTransit === false) return false;
-            if (item.activite === 'TRANSPORT' && user?.societe?.activiteTransport !== true) return false;
-            const requiredModule = getRequiredModule(item.href);
-            return !requiredModule || hasPermission(`${requiredModule}:LIRE`);
-          });
-          if (visibleItems.length === 0) return null;
-
-          return (
+        {groups.map((group, gi) => (
           <div key={group.title}>
-            <div className={titleCls}>{group.title}</div>
-            {visibleItems.map((item) => {
+            {collapsed
+              ? (gi > 0 && <div className="mx-4 my-2 border-t border-gray-200 dark:border-surface-700" aria-hidden="true" />)
+              : <div className={titleCls}>{group.title}</div>}
+            {group.items.map((item) => {
               const isActive = isItemActive(item.href);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={onClose}
+                  title={collapsed ? item.name : undefined}
+                  aria-label={collapsed ? item.name : undefined}
                   aria-current={isActive ? 'page' : undefined}
                   className={linkCls(isActive)}
                 >
                   <Icon d={item.icon} active={isActive} />
-                  <span className="truncate">{item.name}</span>
-                  {!!badge && (
-                    <span className="ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                      {badge}
-                    </span>
-                  )}
+                  {!collapsed && <span className="truncate">{item.name}</span>}
+                  {!!badge && (collapsed
+                    ? <span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-amber-500" aria-hidden="true" />
+                    : (
+                      <span className="ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                        {badge}
+                      </span>
+                    ))}
                 </Link>
               );
             })}
           </div>
-          );
-        })}
+        ))}
       </nav>
 
-      {/* Footer */}
       <div className="mt-auto pb-3 border-t border-gray-200 dark:border-surface-700">
-        {hasPermission('PARAMETRES:LIRE') && (
+        {canSettings && (
           <>
-            <div className={titleCls}>Configuration</div>
-            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} className={linkCls(isItemActive('/parametres'))}>
-              <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" active={isItemActive('/parametres')} />
-              Paramètres
+            {!collapsed && <div className={titleCls}>Configuration</div>}
+            <Link
+              href="/parametres"
+              title={collapsed ? 'Paramètres' : undefined}
+              aria-label={collapsed ? 'Paramètres' : undefined}
+              aria-current={isItemActive('/parametres') ? 'page' : undefined}
+              className={clsx(linkCls(isItemActive('/parametres')), collapsed && 'mt-2')}
+            >
+              <Icon d={SETTINGS_ICON} active={isItemActive('/parametres')} />
+              {!collapsed && 'Paramètres'}
             </Link>
           </>
         )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+          title={collapsed ? 'Déconnexion' : undefined}
+          aria-label="Déconnexion"
+          className={clsx(
+            'flex items-center rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 min-h-[38px]',
+            collapsed ? 'justify-center mx-2 w-[calc(100%-1rem)]' : 'gap-3 mx-3 px-3 w-[calc(100%-1.5rem)]'
+          )}
         >
-          <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-          Déconnexion
+          <svg aria-hidden="true" className="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+          {!collapsed && 'Déconnexion'}
+        </button>
+        <button
+          onClick={toggle}
+          aria-pressed={collapsed}
+          aria-label={collapsed ? 'Déplier le menu' : 'Replier le menu'}
+          title={collapsed ? 'Déplier le menu' : 'Replier le menu'}
+          className={clsx(
+            'mt-1 flex items-center rounded-lg text-[13px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 min-h-[38px]',
+            collapsed ? 'justify-center mx-2 w-[calc(100%-1rem)]' : 'gap-3 mx-3 px-3 w-[calc(100%-1.5rem)]'
+          )}
+        >
+          <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0 transition-transform', collapsed && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" /></svg>
+          {!collapsed && 'Replier le menu'}
         </button>
       </div>
-      </aside>
-    </>
+    </aside>
   );
 }
