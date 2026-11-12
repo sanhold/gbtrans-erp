@@ -161,7 +161,6 @@ function catIcon(path: string, color: string = BRAND.primary): string {
   return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;">${path}</svg>`;
 }
 
-const CI_FLAG = `<span style="display:inline-block;width:18px;height:11px;vertical-align:middle;margin-left:5px;box-shadow:0 0 0 1px ${BRAND.line};"><span style="display:inline-block;width:33.33%;height:11px;background:#f77f00;"></span><span style="display:inline-block;width:33.33%;height:11px;background:#fff;"></span><span style="display:inline-block;width:33.33%;height:11px;background:#009e60;"></span></span>`;
 
 function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): string {
   const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
@@ -202,7 +201,7 @@ function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteB
     ['Téléphone', data.clientTelephone],
     ['Email', data.clientEmail],
     ['N° Contribuable', data.clientNcc],
-    ['Pays', data.clientPays ? `${data.clientPays}${data.clientPays.toLowerCase().includes('ivoire') ? CI_FLAG : ''}` : undefined],
+    ['Pays', data.clientPays || undefined],
   ].filter(([, v]) => v);
 
   const brand = brandIdentity(branding);
@@ -363,7 +362,7 @@ export function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?:
     ['Téléphone', data.clientTelephone],
     ['Email', data.clientEmail],
     ['N° Contribuable', data.clientNcc],
-    ['Pays', data.clientPays ? `${data.clientPays}${data.clientPays.toLowerCase().includes('ivoire') ? CI_FLAG : ''}` : undefined],
+    ['Pays', data.clientPays || undefined],
   ].filter(([, v]) => v);
 
   return `
