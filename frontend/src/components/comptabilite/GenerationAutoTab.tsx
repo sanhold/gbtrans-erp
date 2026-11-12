@@ -61,32 +61,32 @@ Compta Auto génère et <strong>valide directement</strong> les écritures dans 
         <h2 className="text-sm font-bold text-gray-900 dark:text-white">Générer les écritures{exercice ? ` — ${exercice.libelle}` : ''}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Date de début</label>
-            <input type="date" value={dateDebut} min={exercice ? jour(exercice.dateDebut) : undefined} max={exercice ? jour(exercice.dateFin) : undefined} onChange={e => setDateDebut(e.target.value)} className="input-field text-sm" />
+            <label className="label">Date de début</label>
+            <input type="date" value={dateDebut} min={exercice ? jour(exercice.dateDebut) : undefined} max={exercice ? jour(exercice.dateFin) : undefined} onChange={e => setDateDebut(e.target.value)} className="input-field" />
           </div>
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Date de fin</label>
-            <input type="date" value={dateFin} min={exercice ? jour(exercice.dateDebut) : undefined} max={exercice ? jour(exercice.dateFin) : undefined} onChange={e => setDateFin(e.target.value)} className="input-field text-sm" />
+            <label className="label">Date de fin</label>
+            <input type="date" value={dateFin} min={exercice ? jour(exercice.dateDebut) : undefined} max={exercice ? jour(exercice.dateFin) : undefined} onChange={e => setDateFin(e.target.value)} className="input-field" />
           </div>
         </div>
         <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Types de documents à comptabiliser</label>
+          <label className="label">Types de documents à comptabiliser</label>
           <div className="flex flex-wrap gap-3">
             {SOURCES.map(s => (
-              <label key={s.id} className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" checked={sources.includes(s.id)} onChange={() => toggleSource(s.id)} />
+              <label key={s.id} className="flex items-center gap-2 min-h-[44px] md:min-h-0 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" className="w-5 h-5 md:w-4 md:h-4" checked={sources.includes(s.id)} onChange={() => toggleSource(s.id)} />
                 {s.label}
               </label>
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-surface-700">
+        <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-surface-700">
           {dernier !== null ? (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-600 dark:text-gray-300">
               Dernière génération : {dernier.generees} écriture(s) créée(s){dernier.ignorees > 0 ? `, ${dernier.ignorees} ignorée(s)` : ''}{dernier.restantes > 0 ? ` — ${dernier.restantes} restante(s) : relancez la génération` : ''}.
             </p>
           ) : <span />}
-          <button onClick={handleGenerer} disabled={generating || !exercice} className="btn-primary text-sm disabled:opacity-50">
+          <button onClick={handleGenerer} disabled={generating || !exercice} className="btn-primary min-h-[44px] md:min-h-0 w-full md:w-auto disabled:opacity-50">
             {generating ? 'Génération...' : 'Générer les écritures'}
           </button>
         </div>
@@ -101,7 +101,7 @@ Compta Auto génère et <strong>valide directement</strong> les écritures dans 
               {REGLES.map(r => (
                 <tr key={r.source} className="table-row">
                   <td className="table-cell font-medium" data-label="Document source">{r.source}</td>
-                  <td className="table-cell" data-label="Journal"><span className="badge badge-gray !text-[10px]">{r.journal}</span></td>
+                  <td className="table-cell" data-label="Journal"><span className="badge badge-gray !text-xs">{r.journal}</span></td>
                   <td className="table-cell !whitespace-normal" data-label="Débit">{r.debit}</td>
                   <td className="table-cell !whitespace-normal" data-label="Crédit">{r.credit}</td>
                 </tr>

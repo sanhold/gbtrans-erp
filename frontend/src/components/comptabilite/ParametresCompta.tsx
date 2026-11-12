@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
 import ExercicesPanel from './ExercicesPanel';
 import PlanComptablePanel from './PlanComptablePanel';
 import JournauxPanel from './JournauxPanel';
@@ -19,22 +20,21 @@ export default function ParametresCompta() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href="/comptabilite/compta-auto" className="text-[11px] text-primary-600 hover:underline">Compta Auto</Link>
-            <span className="text-[11px] text-gray-300">·</span>
-            <Link href="/compta-reel" className="text-[11px] text-primary-600 hover:underline">Compta Manuelle</Link>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Plan comptable</h1>
-          <p className="text-sm text-gray-500">Créez le plan, les journaux et les exercices ; verrouillez les comptes sensibles. Utilisés par Compta Auto et Compta Manuelle.</p>
+        <div className="flex items-center gap-1 flex-wrap">
+          <Link href="/comptabilite/compta-auto" className="inline-flex items-center min-h-[44px] px-1 text-sm text-primary-600 hover:underline">Compta Auto</Link>
+          <span aria-hidden="true" className="text-gray-500">·</span>
+          <Link href="/compta-reel" className="inline-flex items-center min-h-[44px] px-1 text-sm text-primary-600 hover:underline">Compta Manuelle</Link>
         </div>
+        <PageHeader className="!mb-0" title="Plan comptable" subtitle="Créez le plan, les journaux et les exercices ; verrouillez les comptes sensibles. Utilisés par Compta Auto et Compta Manuelle." />
 
-        <div className="flex gap-1 border-b border-gray-200 dark:border-surface-700">
+        <div role="tablist" className="flex gap-1 border-b border-gray-200 dark:border-surface-700 overflow-x-auto">
           {ONGLETS.map(o => (
             <button
               key={o.id}
+              role="tab"
+              aria-selected={onglet === o.id}
               onClick={() => setOnglet(o.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${onglet === o.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+              className={`px-4 py-3 md:py-2 whitespace-nowrap text-sm font-medium border-b-2 -mb-px transition-colors ${onglet === o.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-600 hover:text-gray-800 dark:hover:text-gray-200'}`}
             >
               {o.label}
             </button>

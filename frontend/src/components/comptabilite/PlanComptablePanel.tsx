@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
 import ImporterSyscohadaModal from './ImporterSyscohadaModal';
 import toast from 'react-hot-toast';
+import Sheet from '@/components/ui/Sheet';
+import SheetActions from '@/components/forms/SheetActions';
+import FAB from '@/components/ui/FAB';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 const TYPES_COMPTE = ['BILAN', 'GESTION', 'HORS_BILAN'];
 const NATURES_COMPTE = ['ACTIF', 'PASSIF', 'CHARGE', 'PRODUIT'];
@@ -25,6 +29,7 @@ function compteVide() {
 }
 
 export default function PlanComptablePanel({ lectureSeule = false }: { lectureSeule?: boolean }) {
+  const confirmer = useConfirm();
   const [comptes, setComptes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -62,7 +67,8 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
     setShowForm(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!form.numero.trim() || !form.libelle.trim()) { toast.error('Numéro et libellé sont requis'); return; }
     setSaving(true);
     try {
@@ -87,7 +93,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
 
   const handleDelete = async (c: any) => {
     if (c.verrouille) { toast.error('Ce compte est verrouillé : déverrouillez-le avant de le supprimer.'); return; }
-    if (!confirm(`Supprimer le compte ${c.numero} — ${c.libelle} ?`)) return;
+    if (!(await confirmer({ titre: `Supprimer le compte ${c.numero} ?`, message: c.libelle, confirmer: 'Supprimer', danger: true }))) return;
     try {
       await comptabiliteApi.supprimerCompte(c.id);
       toast.success('Compte supprimé');
@@ -118,12 +124,12 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">Plan comptable</h2>
-              <p className="text-sm text-gray-500">{comptes.length} compte(s) {lectureSeule ? '· lecture seule ici — à gérer depuis Plan comptable' : '· partagé par Compta Auto et Compta Manuelle'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{comptes.length} compte(s) {lectureSeule ? '· lecture seule ici — à gérer depuis Plan comptable' : '· partagé par Compta Auto et Compta Manuelle'}</p>
             </div>
             {!lectureSeule && (
-              <div className="flex gap-2">
-                <button onClick={() => setShowImport(true)} className="btn-secondary text-sm">Importer le plan SYSCOHADA</button>
-                <button onClick={openCreate} className="btn-primary text-sm">+ Nouveau compte</button>
+              <div className="flex gap-2 max-md:w-full">
+                <button onClick={() => setShowImport(true)} className="btn-secondary text-sm min-h-[44px] md:min-h-0 max-md:flex-1">Importer le plan SYSCOHADA</button>
+                <button onClick={openCreate} className="btn-primary text-sm hidden lg:inline-flex">Nouveau compte</button>
               </div>
             )}
           </div>
@@ -137,11 +143,11 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
 
         <div className="card !p-3 space-y-2">
           <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="N° ou libellé..." className="input-field !py-1.5 text-xs w-48 flex-shrink-0" />
+            <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="N° ou libellé..." className="input-field md:!py-1.5 md:text-xs w-full md:w-56" aria-label="Rechercher un compte" />
           </div>
           <div className="flex flex-wrap gap-1.5">
             {CLASSES.map(c => (
-              <button key={c.id} onClick={() => setClasse(c.id)} className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${classe === c.id ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600'}`}>
+              <button key={c.id} onClick={() => setClasse(c.id)} className={`px-3 py-2 md:px-2.5 md:py-1 rounded-md text-xs font-medium transition-colors ${classe === c.id ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600'}`}>
                 {c.label}
               </button>
             ))}
@@ -174,43 +180,43 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
               {loading ? (
                 <SkeletonRows cols={8} />
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun compte</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun compte{!lectureSeule && !search && !classe ? <><br /><button type="button" onClick={openCreate} className="btn-primary mt-3">Nouveau compte</button></> : null}</td></tr>
               ) : filtered.map(c => (
                 <tr key={c.id} className="table-row">
                   <td className="table-cell !px-1" data-label="Actions">
                     {!lectureSeule && (
-                      <div className="flex gap-0.5">
-                        <button onClick={() => handleToggleVerrou(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title={c.verrouille ? 'Déverrouiller' : 'Verrouiller'}>
+                      <div className="flex gap-1">
+                        <button onClick={() => handleToggleVerrou(c)} className="w-11 h-11 md:w-7 md:h-7 inline-flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-surface-700" title={c.verrouille ? 'Déverrouiller' : 'Verrouiller'} aria-label={`${c.verrouille ? 'Déverrouiller' : 'Verrouiller'} le compte ${c.numero}`}>
                           {c.verrouille ? (
-                            <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0M6 11h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1z" /></svg>
+                            <svg aria-hidden="true" className="w-5 h-5 md:w-4 md:h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0M6 11h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1z" /></svg>
                           ) : (
-                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6-6h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1zm2-4a4 4 0 118 0v4H8V7z" /></svg>
+                            <svg aria-hidden="true" className="w-5 h-5 md:w-4 md:h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6-6h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1zm2-4a4 4 0 118 0v4H8V7z" /></svg>
                           )}
                         </button>
-                        <button onClick={() => openEdit(c)} disabled={c.verrouille} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 disabled:opacity-30" title="Modifier">
-                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <button onClick={() => openEdit(c)} disabled={c.verrouille} className="w-11 h-11 md:w-7 md:h-7 inline-flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-surface-700 disabled:opacity-30" title="Modifier" aria-label={`Modifier le compte ${c.numero}`}>
+                          <svg aria-hidden="true" className="w-5 h-5 md:w-4 md:h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
-                        <button onClick={() => handleDelete(c)} disabled={c.verrouille} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 disabled:opacity-30" title="Supprimer">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onClick={() => handleDelete(c)} disabled={c.verrouille} className="w-11 h-11 md:w-7 md:h-7 inline-flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-surface-700 disabled:opacity-30" title="Supprimer" aria-label={`Supprimer le compte ${c.numero}`}>
+                          <svg aria-hidden="true" className="w-5 h-5 md:w-4 md:h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       </div>
                     )}
                   </td>
                   <td className="table-cell font-mono font-semibold !px-1.5 !text-[11px]" data-label="Numéro">
                     <span className="inline-flex items-center gap-1">
-                      {c.verrouille && <svg className="w-3 h-3 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 116 0v3H9z" /></svg>}
+                      {c.verrouille && <svg role="img" aria-label="Compte verrouillé" className="w-3 h-3 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 116 0v3H9z" /></svg>}
                       {c.numero}
                     </span>
                   </td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] text-center" data-label="Classe">{c.classe}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Type">{c.type}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[11px] text-center" data-label="Classe">{c.classe}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[10.5px] truncate" data-label="Type">{c.type}</td>
                   <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Nature">{c.nature}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Sens">{c.sens}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[10.5px] truncate" data-label="Sens">{c.sens}</td>
                   <td className="table-cell !px-1.5" data-label="Statut">
                     {lectureSeule
-                      ? <span className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</span>
-                      : <button onClick={() => handleToggleActif(c)} className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</button>}
+                      ? <span className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px] max-md:!text-xs max-md:!px-3 max-md:!py-2`} aria-label={`${c.actif ? 'Désactiver' : 'Activer'} le compte ${c.numero}`}>{c.actif ? 'Actif' : 'Inactif'}</span>
+                      : <button onClick={() => handleToggleActif(c)} className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px] max-md:!text-xs max-md:!px-3 max-md:!py-2`} aria-label={`${c.actif ? 'Désactiver' : 'Activer'} le compte ${c.numero}`}>{c.actif ? 'Actif' : 'Inactif'}</button>}
                   </td>
                 </tr>
               ))}
@@ -219,69 +225,57 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
         </div>
       </div>
 
-      {showForm && !lectureSeule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in" onClick={() => setShowForm(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-surface-700">
-              <h3 className="font-bold text-lg">{editing ? 'Modifier le compte' : 'Nouveau compte'}</h3>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+      <Sheet open={showForm && !lectureSeule} onClose={() => setShowForm(false)} size="lg" title={editing ? 'Modifier le compte' : 'Nouveau compte'}>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Numéro *</label>
+              <input type="text" inputMode="numeric" value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} disabled={!!editing} className="input-field disabled:opacity-60" placeholder="4111" required />
             </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Numéro *</label>
-                <input type="text" value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} disabled={!!editing} className="input-field text-sm disabled:opacity-60" placeholder="4111" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Classe *</label>
-                <select value={form.classe} onChange={e => setForm({ ...form, classe: e.target.value })} className="input-field text-sm">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(c => <option key={c} value={c}>Classe {c}</option>)}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Libellé *</label>
-                <input type="text" value={form.libelle} onChange={e => setForm({ ...form, libelle: e.target.value })} className="input-field text-sm" placeholder="Clients - Ventes de biens ou services" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Type *</label>
-                <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="input-field text-sm">
-                  {TYPES_COMPTE.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Nature *</label>
-                <select value={form.nature} onChange={e => setForm({ ...form, nature: e.target.value })} className="input-field text-sm">
-                  {NATURES_COMPTE.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Sens *</label>
-                <select value={form.sens} onChange={e => setForm({ ...form, sens: e.target.value })} className="input-field text-sm">
-                  {SENS_COMPTE.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Compte parent</label>
-                <input type="text" value={form.parent} onChange={e => setForm({ ...form, parent: e.target.value })} className="input-field text-sm" placeholder="Optionnel" />
-              </div>
-              <div className="col-span-2 flex items-center gap-4 pt-1">
-                <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                  <input type="checkbox" checked={form.collectif} onChange={e => setForm({ ...form, collectif: e.target.checked })} /> Collectif
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                  <input type="checkbox" checked={form.lettrable} onChange={e => setForm({ ...form, lettrable: e.target.checked })} /> Lettrable
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                  <input type="checkbox" checked={form.rapprochable} onChange={e => setForm({ ...form, rapprochable: e.target.checked })} /> Rapprochable
-                </label>
-              </div>
+            <div>
+              <label className="label">Classe *</label>
+              <select value={form.classe} onChange={e => setForm({ ...form, classe: e.target.value })} className="input-field">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(c => <option key={c} value={c}>Classe {c}</option>)}
+              </select>
             </div>
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-100 dark:border-surface-700">
-              <button onClick={() => setShowForm(false)} className="btn-secondary">Annuler</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
+            <div className="sm:col-span-2">
+              <label className="label">Libellé *</label>
+              <input type="text" value={form.libelle} onChange={e => setForm({ ...form, libelle: e.target.value })} className="input-field" placeholder="Clients - Ventes de biens ou services" required />
+            </div>
+            <div>
+              <label className="label">Type *</label>
+              <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="input-field">
+                {TYPES_COMPTE.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Nature *</label>
+              <select value={form.nature} onChange={e => setForm({ ...form, nature: e.target.value })} className="input-field">
+                {NATURES_COMPTE.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Sens *</label>
+              <select value={form.sens} onChange={e => setForm({ ...form, sens: e.target.value })} className="input-field">
+                {SENS_COMPTE.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Compte parent</label>
+              <input type="text" inputMode="numeric" value={form.parent} onChange={e => setForm({ ...form, parent: e.target.value })} className="input-field" placeholder="Optionnel" />
             </div>
           </div>
-        </div>
-      )}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            {([['collectif', 'Collectif'], ['lettrable', 'Lettrable'], ['rapprochable', 'Rapprochable']] as const).map(([k, lab]) => (
+              <label key={k} className="flex items-center gap-2 min-h-[44px] text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" className="w-5 h-5" checked={form[k]} onChange={e => setForm({ ...form, [k]: e.target.checked })} /> {lab}
+              </label>
+            ))}
+          </div>
+          <SheetActions onCancel={() => setShowForm(false)} loading={saving} />
+        </form>
+      </Sheet>
+      {!lectureSeule && <FAB label="Nouveau compte" onClick={openCreate} />}
 
       {showImport && <ImporterSyscohadaModal onClose={() => setShowImport(false)} onImported={load} />}
     </>

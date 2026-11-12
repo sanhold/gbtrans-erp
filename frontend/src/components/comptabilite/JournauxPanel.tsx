@@ -4,10 +4,12 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 const TYPES_JOURNAL = ['ACHAT', 'VENTE', 'BANQUE', 'CAISSE', 'OD', 'SITUATION', 'TRESORERIE'];
 
 export default function JournauxPanel() {
+  const confirmer = useConfirm();
   const [journaux, setJournaux] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,7 @@ export default function JournauxPanel() {
   };
 
   const handleSupprimerJournal = async (id: string) => {
-    if (!confirm('Supprimer ce journal ?')) return;
+    if (!(await confirmer({ titre: 'Supprimer ce journal ?', message: 'Cette action est définitive.', confirmer: 'Supprimer', danger: true }))) return;
     try {
       await comptabiliteApi.supprimerJournal(id);
       toast.success('Journal supprimé');
@@ -56,38 +58,38 @@ export default function JournauxPanel() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Journaux</h2>
-        <p className="text-sm text-gray-500">Un seul jeu de journaux (Achats, Ventes, Banque, Caisse, OD...), utilisé à la fois par Compta Auto et Compta Manuelle.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">Un seul jeu de journaux (Achats, Ventes, Banque, Caisse, OD...), utilisé à la fois par Compta Auto et Compta Manuelle.</p>
       </div>
 
       <div className="card !p-4 space-y-3">
         <h2 className="text-sm font-bold text-gray-900 dark:text-white">Nouveau journal</h2>
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Code *</label>
-            <input type="text" value={journalForm.code} onChange={e => setJournalForm({ ...journalForm, code: e.target.value.toUpperCase() })} className="input-field !py-1.5 text-sm" placeholder="AC" maxLength={10} />
+            <label className="label">Code *</label>
+            <input type="text" value={journalForm.code} onChange={e => setJournalForm({ ...journalForm, code: e.target.value.toUpperCase() })} className="input-field" placeholder="AC" maxLength={10} />
           </div>
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Libellé *</label>
-            <input type="text" value={journalForm.libelle} onChange={e => setJournalForm({ ...journalForm, libelle: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="Journal des achats" />
+            <label className="label">Libellé *</label>
+            <input type="text" value={journalForm.libelle} onChange={e => setJournalForm({ ...journalForm, libelle: e.target.value })} className="input-field" placeholder="Journal des achats" />
           </div>
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Type *</label>
-            <select value={journalForm.type} onChange={e => setJournalForm({ ...journalForm, type: e.target.value })} className="input-field !py-1.5 text-sm">
+            <label className="label">Type *</label>
+            <select value={journalForm.type} onChange={e => setJournalForm({ ...journalForm, type: e.target.value })} className="input-field">
               {TYPES_JOURNAL.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Compte contrepartie</label>
-            <input type="text" value={journalForm.compteContrepartie} onChange={e => setJournalForm({ ...journalForm, compteContrepartie: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="Optionnel" />
+            <label className="label">Compte contrepartie</label>
+            <input type="text" value={journalForm.compteContrepartie} onChange={e => setJournalForm({ ...journalForm, compteContrepartie: e.target.value })} className="input-field" placeholder="Optionnel" />
           </div>
-          <button onClick={handleCreerJournal} disabled={savingJournal} className="btn-primary text-sm disabled:opacity-50">{savingJournal ? 'Création...' : '+ Créer'}</button>
+          <button onClick={handleCreerJournal} disabled={savingJournal} className="btn-primary min-h-[44px] disabled:opacity-50">{savingJournal ? 'Création...' : 'Créer'}</button>
         </div>
       </div>
 
       <div className="table-container">
         <table className="w-full">
           <thead><tr>
-            <th className="table-header"></th>
+            <th className="table-header">Actions</th>
             <th className="table-header">Code</th>
             <th className="table-header">Libellé</th>
             <th className="table-header">Type</th>
@@ -98,19 +100,19 @@ export default function JournauxPanel() {
             {loading ? (
               <SkeletonRows cols={6} />
             ) : journaux.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun journal. Créez-en un ci-dessus.</td></tr>
+              <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun journal. Créez-en un avec le formulaire ci-dessus.</td></tr>
             ) : journaux.map(j => (
               <tr key={j.id} className="table-row">
-                <td className="table-cell text-right" data-label="Actions">
-                  <button onClick={() => handleSupprimerJournal(j.id)} className="text-gray-300 hover:text-red-500" title="Supprimer">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <td className="table-cell md:text-right" data-label="Actions">
+                  <button onClick={() => handleSupprimerJournal(j.id)} className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50" title="Supprimer" aria-label={`Supprimer le journal ${j.code}`}>
+                    <svg aria-hidden="true" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </td>
                 <td className="table-cell font-mono font-semibold text-primary-600" data-label="Code">{j.code}</td>
                 <td className="table-cell" data-label="Libellé">{j.libelle}</td>
-                <td className="table-cell text-xs text-gray-500" data-label="Type">{j.type}</td>
-                <td className="table-cell text-xs text-gray-500" data-label="Contrepartie">{j.compteContrepartie || '-'}</td>
-                <td className="table-cell" data-label="Statut"><button onClick={() => handleToggleActifJournal(j)} className={`badge ${j.actif ? 'badge-success' : 'badge-gray'}`}>{j.actif ? 'Actif' : 'Inactif'}</button></td>
+                <td className="table-cell text-xs text-gray-600 dark:text-gray-300" data-label="Type">{j.type}</td>
+                <td className="table-cell col-opt text-xs text-gray-600 dark:text-gray-300" data-label="Contrepartie">{j.compteContrepartie || '-'}</td>
+                <td className="table-cell" data-label="Statut"><button onClick={() => handleToggleActifJournal(j)} aria-label={`${j.actif ? 'Désactiver' : 'Activer'} le journal ${j.code}`} className={`badge ${j.actif ? 'badge-success' : 'badge-gray'}`}>{j.actif ? 'Actif' : 'Inactif'}</button></td>
               </tr>
             ))}
           </tbody>
