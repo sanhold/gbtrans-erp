@@ -7,6 +7,9 @@ import api, { financeApi } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+import Sheet from '@/components/ui/Sheet';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
@@ -73,21 +76,22 @@ export default function FacturationFournisseursPage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Facturation Fournisseur</h1>
-            <p className="text-sm text-gray-500">{total} facture(s) fournisseur</p>
-          </div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Facture Fournisseur
-          </button>
-        </div>
+        <PageHeader
+          title="Facturation Fournisseur"
+          subtitle={`${total} facture(s) fournisseur`}
+          actions={
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary hidden lg:inline-flex">
+              <svg aria-hidden="true" className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouvelle Facture Fournisseur
+            </button>
+          }
+        />
+        <FAB label="Nouvelle facture fournisseur" onClick={() => setShowModal(true)} />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total facturé</p><p className="text-sm font-bold">{fmt(totaux.ttc)} F</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total payé</p><p className="text-sm font-bold text-green-600">{fmt(totaux.paye)} F</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Reste à payer</p><p className="text-sm font-bold text-red-600">{fmt(totaux.reste)} F</p></div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-600 uppercase">Total facturé</p><p className="text-sm font-bold">{fmt(totaux.ttc)} F</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-600 uppercase">Total payé</p><p className="text-sm font-bold text-green-600">{fmt(totaux.paye)} F</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-600 uppercase">Reste à payer</p><p className="text-sm font-bold text-red-600">{fmt(totaux.reste)} F</p></div>
         </div>
 
         <div className="table-container">
@@ -110,14 +114,17 @@ export default function FacturationFournisseursPage() {
             </tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={8} />
-              : factures.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune facture fournisseur</td></tr>
+              : factures.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">
+                  <p>Aucune facture fournisseur</p>
+                  <button type="button" onClick={() => setShowModal(true)} className="btn-primary mt-3">+ Nouvelle facture fournisseur</button>
+                </td></tr>
               : factures.map(f => (
                 <tr key={f.id} className="table-row cursor-pointer" onClick={() => openDetail(f.id)}>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Fournisseur" title={f.fournisseur?.raisonSociale}>{f.fournisseur?.raisonSociale}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numeroPhysique || f.dossier?.numero || '-'}</td>
+                  <td className="table-cell col-opt font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numeroPhysique || f.dossier?.numero || '-'}</td>
                   <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
+                  <td className="table-cell col-opt text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
                   <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste">{fmt(f.resteAPayer)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Échéance">{new Date(f.dateEcheance).toLocaleDateString('fr-FR')}</td>
@@ -128,28 +135,23 @@ export default function FacturationFournisseursPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
         </div>
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">Nouvelle Facture Fournisseur</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleCreate} className="p-6 space-y-4">
-                <div><label className="label">Fournisseur *</label>
-                  <PickerField value={form.fournisseurId} onChange={id => setForm({ ...form, fournisseurId: id })} options={fournisseurOptions} placeholder="Sélectionner..." title="Sélectionner un fournisseur" searchPlaceholder="Raison sociale..." required />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Échéance *</label><input type="date" value={form.dateEcheance} onChange={e => setForm({ ...form, dateEcheance: e.target.value })} className="input-field" required /></div>
-                  <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
-                </div>
-                <div><label className="label">Objet</label><input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" /></div>
-                <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Créer</button></div>
-              </form>
+        <Sheet open={showModal} onClose={() => setShowModal(false)} title="Nouvelle Facture Fournisseur" size="lg">
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div><label className="label">Fournisseur *</label>
+              <PickerField value={form.fournisseurId} onChange={id => setForm({ ...form, fournisseurId: id })} options={fournisseurOptions} placeholder="Sélectionner..." title="Sélectionner un fournisseur" searchPlaceholder="Raison sociale..." required />
             </div>
-          </div>
-        )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label className="label">Échéance *</label><input type="date" value={form.dateEcheance} onChange={e => setForm({ ...form, dateEcheance: e.target.value })} className="input-field" required /></div>
+              <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
+            </div>
+            <div><label className="label">Objet</label><input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
+            <div className="sticky -bottom-4 -mb-4 -mx-4 mt-4 px-4 py-3 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+              <button type="submit" className="btn-primary">Créer</button>
+            </div>
+          </form>
+        </Sheet>
       </div>
     </AppLayout>
   );

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
+import Sheet from '@/components/ui/Sheet';
+import StickyActionBar, { StickyActionSpacer } from '@/components/facturation/StickyActionBar';
 import { financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -51,6 +53,7 @@ export default function FactureFournisseurDetailPage() {
 
   const isBrouillon = facture.statut === 'BROUILLON';
   const lignes = facture.lignes || [];
+  const canPayer = facture.statut !== 'ANNULEE' && facture.statut !== 'PAYEE' && Number(facture.resteAPayer) > 0;
 
   const handleAddLigne = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +102,7 @@ export default function FactureFournisseurDetailPage() {
 
   const handlePayer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (Number(paiementForm.montant) > Number(facture.resteAPayer)) { toast.error('Le montant dépasse le reste à payer'); return; }
     const compte = parseCompteValue(paiementForm.compte);
     setPaying(true);
     try {
@@ -122,39 +126,38 @@ export default function FactureFournisseurDetailPage() {
     <AppLayout>
       <div className="space-y-4">
         {/* Header */}
-        <div className="bg-primary-700 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/facturation-fournisseurs')} className="p-2 rounded-lg hover:bg-primary-600 text-white">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            </button>
-            <div>
-              <h1 className="text-lg font-bold text-white">Facture Fournisseur</h1>
-              <p className="text-primary-100 text-xs">{facture.numero} — {facture.statut}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {isBrouillon && (
-              <button onClick={handleValider} disabled={validating} className="px-4 py-2 bg-white text-primary-700 rounded-lg font-semibold text-sm hover:bg-primary-50 disabled:opacity-50 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                {validating ? 'Validation...' : 'Valider'}
-              </button>
-            )}
-            {facture.statut !== 'ANNULEE' && facture.statut !== 'PAYEE' && Number(facture.resteAPayer) > 0 && (
-              <button onClick={openPaiementModal} className="px-4 py-2 bg-white text-primary-700 rounded-lg font-semibold text-sm hover:bg-primary-50">
-                Enregistrer un paiement
-              </button>
-            )}
+        <div className="bg-primary-700 rounded-lg p-3 flex items-center gap-3">
+          <button type="button" onClick={() => router.push('/facturation-fournisseurs')} aria-label="Retour aux factures fournisseur" className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-lg hover:bg-primary-600 text-white">
+            <svg aria-hidden="true" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-white">Facture Fournisseur</h1>
+            <p className="text-primary-100 text-xs truncate">{facture.numero} — {facture.statut}</p>
           </div>
         </div>
 
+        {/* Actions principales (barre collante sur mobile) */}
+        {(isBrouillon || canPayer) && (
+          <StickyActionBar>
+            {isBrouillon && (
+              <button type="button" onClick={handleValider} disabled={validating} className="btn-success disabled:opacity-50">
+                {validating ? 'Validation...' : 'Valider'}
+              </button>
+            )}
+            {canPayer && (
+              <button type="button" onClick={openPaiementModal} className="btn-primary">Enregistrer un paiement</button>
+            )}
+          </StickyActionBar>
+        )}
+
         {/* Infos */}
         <div className="card grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-          <div><span className="text-gray-500 text-xs block">Fournisseur</span><span className="font-bold">{facture.fournisseur?.raisonSociale}</span></div>
-          <div><span className="text-gray-500 text-xs block">Dossier</span><span className="font-mono">{facture.dossier?.numeroPhysique || facture.dossier?.numero || '-'}</span></div>
-          <div><span className="text-gray-500 text-xs block">Date facture</span><span>{new Date(facture.dateFacture).toLocaleDateString('fr-FR')}</span></div>
-          <div><span className="text-gray-500 text-xs block">Échéance</span><span>{new Date(facture.dateEcheance).toLocaleDateString('fr-FR')}</span></div>
-          <div><span className="text-gray-500 text-xs block">Référence</span><span>{facture.reference || '-'}</span></div>
-          <div><span className="text-gray-500 text-xs block">Objet</span><span>{facture.objet || '-'}</span></div>
+          <div><span className="text-gray-600 dark:text-gray-400 text-xs block">Fournisseur</span><span className="font-bold">{facture.fournisseur?.raisonSociale}</span></div>
+          <div><span className="text-gray-600 dark:text-gray-400 text-xs block">Dossier</span><span className="font-mono">{facture.dossier?.numeroPhysique || facture.dossier?.numero || '-'}</span></div>
+          <div><span className="text-gray-600 dark:text-gray-400 text-xs block">Date facture</span><span>{new Date(facture.dateFacture).toLocaleDateString('fr-FR')}</span></div>
+          <div><span className="text-gray-600 dark:text-gray-400 text-xs block">Échéance</span><span>{new Date(facture.dateEcheance).toLocaleDateString('fr-FR')}</span></div>
+          <div><span className="text-gray-600 dark:text-gray-400 text-xs block">Référence</span><span>{facture.reference || '-'}</span></div>
+          <div><span className="text-gray-600 dark:text-gray-400 text-xs block">Objet</span><span>{facture.objet || '-'}</span></div>
         </div>
 
         {/* Lignes */}
@@ -162,7 +165,7 @@ export default function FactureFournisseurDetailPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">Lignes</h3>
             {isBrouillon && (
-              <button onClick={() => setShowLigne(true)} className="btn-secondary text-xs">+ Ajouter une ligne</button>
+              <button type="button" onClick={() => setShowLigne(true)} className="btn-secondary text-xs">+ Ajouter une ligne</button>
             )}
           </div>
           <div className="table-container">
@@ -174,20 +177,23 @@ export default function FactureFournisseurDetailPage() {
                 <th className="table-header text-right">Montant HT</th><th className="table-header text-right">Montant TVA</th>
               </tr></thead>
               <tbody>
-                {lignes.length === 0 ? <tr><td colSpan={isBrouillon ? 7 : 6} className="text-center py-8 text-gray-500">Aucune ligne. {isBrouillon ? 'Ajoutez-en une.' : ''}</td></tr>
+                {lignes.length === 0 ? <tr><td colSpan={isBrouillon ? 7 : 6} className="text-center py-8 text-gray-500">
+                  <p>Aucune ligne. {isBrouillon ? 'Ajoutez-en une.' : ''}</p>
+                  {isBrouillon && <button type="button" onClick={() => setShowLigne(true)} className="btn-primary mt-3">+ Ajouter une ligne</button>}
+                </td></tr>
                 : lignes.map((l: any) => (
                   <tr key={l.id} className="table-row">
                     {isBrouillon && (
                       <td className="table-cell" data-label="Actions">
-                        <button onClick={() => handleDeleteLigne(l.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
+                        <button type="button" onClick={() => handleDeleteLigne(l.id)} aria-label={`Supprimer la ligne ${l.designation}`} className="text-xs text-red-600 hover:underline max-md:btn-secondary max-md:!text-red-600">Supprimer</button>
                       </td>
                     )}
                     <td className="table-cell" data-label="Désignation">{l.designation}</td>
                     <td className="table-cell text-right font-mono" data-label="Quantité">{Number(l.quantite)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Prix unitaire">{fmt(l.prixUnitaire)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Taux TVA">{Number(l.tauxTVA)}%</td>
+                    <td className="table-cell col-opt text-right font-mono" data-label="Prix unitaire">{fmt(l.prixUnitaire)}</td>
+                    <td className="table-cell col-opt text-right font-mono" data-label="Taux TVA">{Number(l.tauxTVA)}%</td>
                     <td className="table-cell text-right font-mono" data-label="Montant HT">{fmt(l.montantHT)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant TVA">{fmt(l.montantTVA)}</td>
+                    <td className="table-cell col-opt text-right font-mono" data-label="Montant TVA">{fmt(l.montantTVA)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -196,8 +202,8 @@ export default function FactureFournisseurDetailPage() {
 
           <div className="flex justify-end mt-4">
             <div className="w-full max-w-xs space-y-1 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Total HT</span><span className="font-mono">{fmt(facture.montantHT)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Total TVA</span><span className="font-mono">{fmt(facture.montantTVA)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Total HT</span><span className="font-mono">{fmt(facture.montantHT)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Total TVA</span><span className="font-mono">{fmt(facture.montantTVA)}</span></div>
               <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total TTC</span><span className="font-mono">{fmt(facture.montantTTC)}</span></div>
               <div className="flex justify-between text-green-600"><span>Payé</span><span className="font-mono">{fmt(facture.montantPaye)}</span></div>
               <div className="flex justify-between font-bold text-red-600"><span>Reste à payer</span><span className="font-mono">{fmt(facture.resteAPayer)}</span></div>
@@ -209,7 +215,7 @@ export default function FactureFournisseurDetailPage() {
         <div className="card">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-3">Historique des paiements</h3>
           {(facture.paiements || []).length === 0 ? (
-            <p className="text-sm text-gray-500">Aucun paiement enregistré pour cette facture</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Aucun paiement enregistré pour cette facture</p>
           ) : (
             <div className="table-container">
               <table className="w-full text-sm">
@@ -228,10 +234,10 @@ export default function FactureFournisseurDetailPage() {
                         <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
                         <td className="table-cell font-medium text-primary-600" data-label="N° Transaction">{p.numero}</td>
                         <td className="table-cell" data-label="Mode">{MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement}</td>
-                        <td className="table-cell" data-label="Compte financier">{p.caisse?.libelle || p.compteBancaire?.libelle || p.compteTiers?.libelle || '-'}</td>
+                        <td className="table-cell col-opt" data-label="Compte financier">{p.caisse?.libelle || p.compteBancaire?.libelle || p.compteTiers?.libelle || '-'}</td>
                         <td className="table-cell text-right font-mono" data-label="Montant">{fmt(aff.montant)}</td>
-                        <td className="table-cell" data-label="Utilisateur">{p.createur ? `${p.createur.nom} ${p.createur.prenom}` : '-'}</td>
-                        <td className="table-cell text-xs" data-label="Observations">{p.observations || '-'}</td>
+                        <td className="table-cell col-opt" data-label="Utilisateur">{p.createur ? `${p.createur.nom} ${p.createur.prenom}` : '-'}</td>
+                        <td className="table-cell col-opt text-xs" data-label="Observations">{p.observations || '-'}</td>
                       </tr>
                     );
                   })}
@@ -240,59 +246,50 @@ export default function FactureFournisseurDetailPage() {
             </div>
           )}
         </div>
+        <StickyActionSpacer />
       </div>
 
-      {/* Modal Ajouter Ligne */}
-      {showLigne && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">Ajouter une ligne</h2>
-              <button onClick={() => setShowLigne(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-            </div>
-            <form onSubmit={handleAddLigne} className="p-6 space-y-4">
-              <div><label className="label">Désignation *</label><input type="text" value={ligneForm.designation} onChange={e => setLigneForm({ ...ligneForm, designation: e.target.value })} className="input-field" required /></div>
-              <div className="grid grid-cols-3 gap-4">
-                <div><label className="label">Quantité</label><input type="number" step="0.001" value={ligneForm.quantite} onChange={e => setLigneForm({ ...ligneForm, quantite: e.target.value })} className="input-field" /></div>
-                <div><label className="label">Prix unitaire *</label><input type="number" value={ligneForm.prixUnitaire} onChange={e => setLigneForm({ ...ligneForm, prixUnitaire: e.target.value })} className="input-field" required /></div>
-                <div><label className="label">Taux TVA %</label><input type="number" value={ligneForm.tauxTVA} onChange={e => setLigneForm({ ...ligneForm, tauxTVA: e.target.value })} className="input-field" /></div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowLigne(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Ajouter</button></div>
-            </form>
+      {/* Ajouter une ligne */}
+      <Sheet open={showLigne} onClose={() => setShowLigne(false)} title="Ajouter une ligne" size="lg">
+        <form onSubmit={handleAddLigne} className="space-y-4">
+          <div><label className="label">Désignation *</label><input type="text" value={ligneForm.designation} onChange={e => setLigneForm({ ...ligneForm, designation: e.target.value })} className="input-field" required /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div><label className="label">Quantité</label><input type="text" inputMode="decimal" value={ligneForm.quantite} onChange={e => setLigneForm({ ...ligneForm, quantite: e.target.value.replace(',', '.') })} className="input-field" /></div>
+            <div><label className="label">Prix unitaire *</label><input type="text" inputMode="decimal" value={ligneForm.prixUnitaire} onChange={e => setLigneForm({ ...ligneForm, prixUnitaire: e.target.value.replace(',', '.') })} className="input-field" required /></div>
+            <div><label className="label">Taux TVA %</label><input type="text" inputMode="decimal" value={ligneForm.tauxTVA} onChange={e => setLigneForm({ ...ligneForm, tauxTVA: e.target.value.replace(',', '.') })} className="input-field" /></div>
           </div>
-        </div>
-      )}
+          <div className="sticky -bottom-4 -mb-4 -mx-4 mt-4 px-4 py-3 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button type="button" onClick={() => setShowLigne(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" className="btn-primary">Ajouter</button>
+          </div>
+        </form>
+      </Sheet>
 
-      {/* Modal Paiement */}
-      {showPaiement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">Enregistrer un paiement</h2>
-              <button onClick={() => setShowPaiement(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-            </div>
-            <form onSubmit={handlePayer} className="p-6 space-y-4">
-              <p className="text-xs text-gray-500">Reste à payer : <span className="font-mono font-semibold text-gray-900 dark:text-white">{fmt(facture.resteAPayer)} XOF</span></p>
-              <div><label className="label">Montant *</label><input type="number" value={paiementForm.montant} onChange={e => setPaiementForm({ ...paiementForm, montant: e.target.value })} className="input-field" max={Number(facture.resteAPayer)} required /></div>
-              <div><label className="label">Mode de paiement</label>
-                <select value={paiementForm.modePaiement} onChange={e => setPaiementForm({ ...paiementForm, modePaiement: e.target.value })} className="input-field">
-                  {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div><label className="label">Compte à débiter *</label>
-                <PickerField value={paiementForm.compte} onChange={id => setPaiementForm({ ...paiementForm, compte: id })} options={comptesOptions.map(o => ({ id: o.value, label: o.label }))} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
-              </div>
-              {(paiementForm.modePaiement === 'CHEQUE' || paiementForm.modePaiement === 'VIREMENT') && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Référence</label><input type="text" value={paiementForm.reference} onChange={e => setPaiementForm({ ...paiementForm, reference: e.target.value })} className="input-field" /></div>
-                  <div><label className="label">Banque</label><input type="text" value={paiementForm.banque} onChange={e => setPaiementForm({ ...paiementForm, banque: e.target.value })} className="input-field" /></div>
-                </div>
-              )}
-              <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowPaiement(false)} className="btn-secondary">Annuler</button><button type="submit" disabled={paying} className="btn-primary disabled:opacity-50">{paying ? 'Enregistrement...' : 'Enregistrer'}</button></div>
-            </form>
+      {/* Paiement */}
+      <Sheet open={showPaiement} onClose={() => setShowPaiement(false)} title="Enregistrer un paiement" size="lg">
+        <form onSubmit={handlePayer} className="space-y-4">
+          <p className="text-xs text-gray-600 dark:text-gray-400">Reste à payer : <span className="font-mono font-semibold text-gray-900 dark:text-white">{fmt(facture.resteAPayer)} XOF</span></p>
+          <div><label className="label">Montant *</label><input type="text" inputMode="decimal" value={paiementForm.montant} onChange={e => setPaiementForm({ ...paiementForm, montant: e.target.value.replace(',', '.') })} className="input-field" pattern="[0-9]+([.][0-9]+)?" title="Montant en chiffres" required /></div>
+          <div><label className="label">Mode de paiement</label>
+            <select value={paiementForm.modePaiement} onChange={e => setPaiementForm({ ...paiementForm, modePaiement: e.target.value })} className="input-field">
+              {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
           </div>
-        </div>
-      )}
+          <div><label className="label">Compte à débiter *</label>
+            <PickerField value={paiementForm.compte} onChange={id => setPaiementForm({ ...paiementForm, compte: id })} options={comptesOptions.map(o => ({ id: o.value, label: o.label }))} placeholder="Sélectionner..." title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." required />
+          </div>
+          {(paiementForm.modePaiement === 'CHEQUE' || paiementForm.modePaiement === 'VIREMENT') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label className="label">Référence</label><input type="text" value={paiementForm.reference} onChange={e => setPaiementForm({ ...paiementForm, reference: e.target.value })} className="input-field" /></div>
+              <div><label className="label">Banque</label><input type="text" value={paiementForm.banque} onChange={e => setPaiementForm({ ...paiementForm, banque: e.target.value })} className="input-field" /></div>
+            </div>
+          )}
+          <div className="sticky -bottom-4 -mb-4 -mx-4 mt-4 px-4 py-3 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button type="button" onClick={() => setShowPaiement(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={paying} className="btn-primary disabled:opacity-50">{paying ? 'Enregistrement...' : 'Enregistrer'}</button>
+          </div>
+        </form>
+      </Sheet>
     </AppLayout>
   );
 }

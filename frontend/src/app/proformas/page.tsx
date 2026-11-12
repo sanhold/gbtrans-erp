@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import PaginationControls from '@/components/tables/PaginationControls';
 import api from '@/lib/api';
 import { downloadPDF } from '@/lib/generatePDF';
@@ -20,6 +23,7 @@ const fmt = (n: any) => n ? new Intl.NumberFormat('fr-FR', { maximumFractionDigi
 
 export default function ProformasPage() {
   const router = useRouter();
+  const confirmer = useConfirm();
   const [proformas, setProformas] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -41,7 +45,7 @@ export default function ProformasPage() {
       toast.error('Seule une proforma en brouillon peut être supprimée');
       return;
     }
-    if (!confirm(`Supprimer définitivement la proforma ${p.numero} ?`)) return;
+    if (!(await confirmer({ titre: 'Supprimer la proforma ?', message: `Supprimer définitivement la proforma ${p.numero} ?`, confirmer: 'Supprimer', danger: true }))) return;
     try {
       await api.delete(`/proformas/${p.id}`);
       toast.success('Proforma supprimée');
@@ -73,13 +77,17 @@ export default function ProformasPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Proformas</h1><p className="text-sm text-gray-500">{total} proforma(s)</p></div>
-          <Link href="/proformas/nouveau" className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Proforma
-          </Link>
-        </div>
+        <PageHeader
+          title="Proformas"
+          subtitle={`${total} proforma(s)`}
+          actions={
+            <Link href="/proformas/nouveau" className="btn-primary hidden lg:inline-flex">
+              <svg aria-hidden="true" className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouvelle Proforma
+            </Link>
+          }
+        />
+        <FAB label="Nouvelle proforma" href="/proformas/nouveau" />
 
         <div className="table-container">
           <table className="w-full table-fixed">
@@ -110,22 +118,25 @@ export default function ProformasPage() {
             </tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={10} />
-              : proformas.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucune proforma. Créez votre première proforma.</td></tr>
+              : proformas.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">
+                  <p>Aucune proforma. Créez votre première proforma.</p>
+                  <Link href="/proformas/nouveau" className="btn-primary mt-3 inline-flex">+ Nouvelle proforma</Link>
+                </td></tr>
               : proformas.map(p => (
                 <tr key={p.id} className="table-row cursor-pointer" onClick={() => router.push(`/proformas/${p.id}`)}>
                   <td className="table-cell !px-1" data-label="Actions">
                     <div className="flex items-center gap-0.5">
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(p.id); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Télécharger PDF">
-                        <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      <button onClick={(e) => { e.stopPropagation(); handleDownload(p.id); }} className="p-0.5 max-md:p-2.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Télécharger PDF" aria-label="Télécharger le PDF">
+                        <svg aria-hidden="true" className="w-3.5 h-3.5 max-md:w-5 max-md:h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                       </button>
                       {p.statut === 'BROUILLON' && (
-                        <button onClick={(e) => { e.stopPropagation(); router.push(`/proformas/${p.id}/edit`); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); router.push(`/proformas/${p.id}/edit`); }} className="p-0.5 max-md:p-2.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier" aria-label="Modifier la proforma">
+                          <svg aria-hidden="true" className="w-3.5 h-3.5 max-md:w-5 max-md:h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                       )}
                       {p.statut === 'BROUILLON' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(p); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(p); }} className="p-0.5 max-md:p-2.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer" aria-label="Supprimer la proforma">
+                          <svg aria-hidden="true" className="w-3.5 h-3.5 max-md:w-5 max-md:h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       )}
                     </div>
@@ -133,9 +144,9 @@ export default function ProformasPage() {
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Proforma" title={p.numero}>{p.numero}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale}>{p.client?.raisonSociale}</td>
                   <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{p.dossier?.numeroPhysique || p.dossier?.numero || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[11px] truncate" data-label="Titre" title={p.titre || undefined}>{p.titre || '-'}</td>
+                  <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total HT">{fmt(p.montantHT)}</td>
+                  <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TVA">{fmt(p.montantTVA)}</td>
                   <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(p.montantTTC)}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.dateProforma).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut}</span></td>

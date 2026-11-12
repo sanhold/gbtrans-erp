@@ -6,6 +6,10 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+import Sheet from '@/components/ui/Sheet';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { offresApi, clientsApi, dossiersApi, catalogueApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -25,6 +29,7 @@ const ligneVide = () => ({ designation: '', quantite: '1', unite: 'FORFAIT', pri
 
 export default function OffresPage() {
   const router = useRouter();
+  const confirmer = useConfirm();
   const [offres, setOffres] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -99,7 +104,7 @@ export default function OffresPage() {
 
   const handleDelete = async (o: any) => {
     if (o.proformaId) { toast.error('Impossible de supprimer : déjà transformée en proforma'); return; }
-    if (!confirm(`Supprimer définitivement l'offre ${o.numero} ?`)) return;
+    if (!(await confirmer({ titre: 'Supprimer l\'offre ?', message: `Supprimer définitivement l'offre ${o.numero} ?`, confirmer: 'Supprimer', danger: true }))) return;
     try { await offresApi.delete(o.id); toast.success('Offre supprimée'); load(); }
     catch (e: any) { toast.error(e.response?.data?.message || 'Erreur lors de la suppression'); }
   };
@@ -107,13 +112,17 @@ export default function OffresPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Offres Commerciales</h1><p className="text-sm text-gray-500">{total} offre(s) — créez et suivez vos offres commerciales</p></div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Offre
-          </button>
-        </div>
+        <PageHeader
+          title="Offres Commerciales"
+          subtitle={`${total} offre(s) — créez et suivez vos offres commerciales`}
+          actions={
+            <button type="button" onClick={() => setShowModal(true)} className="btn-primary hidden lg:inline-flex">
+              <svg aria-hidden="true" className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouvelle Offre
+            </button>
+          }
+        />
+        <FAB label="Nouvelle offre" onClick={() => setShowModal(true)} />
 
         <div className="table-container">
           <table className="w-full table-fixed">
@@ -139,21 +148,24 @@ export default function OffresPage() {
             </tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={8} />
-              : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune offre commerciale. Créez votre première offre.</td></tr>
+              : offres.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">
+                  <p>Aucune offre commerciale. Créez votre première offre.</p>
+                  <button type="button" onClick={() => setShowModal(true)} className="btn-primary mt-3">+ Nouvelle offre</button>
+                </td></tr>
               : offres.map(o => (
                 <tr key={o.id} className="table-row cursor-pointer" onClick={() => router.push(`/offres/${o.id}`)}>
                   <td className="table-cell !px-1" data-label="Actions">
                     {!['TRANSFORMEE'].includes(o.statut) && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(o); }} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                        <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(o); }} className="p-0.5 max-md:p-2.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer" aria-label={`Supprimer l'offre ${o.numero}`}>
+                        <svg aria-hidden="true" className="w-3.5 h-3.5 max-md:w-5 max-md:h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     )}
                   </td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={o.numero}>{o.numero}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={o.client?.raisonSociale}>{o.client?.raisonSociale}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={o.objet}>{o.objet}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[11px] truncate" data-label="Objet" title={o.objet}>{o.objet}</td>
                   <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Montant TTC">{fmt(o.montantTTC)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell col-opt !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(o.dateOffre).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Validité">{new Date(o.dateValidite).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[o.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[o.statut] || o.statut}</span></td>
                 </tr>
@@ -164,124 +176,119 @@ export default function OffresPage() {
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nouvelle Offre Commerciale</h2>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Client *</label>
-                  <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Sélectionner --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." required />
-                </div>
-                <div>
-                  <label className="label">Dossier lié</label>
-                  <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
-                </div>
-              </div>
-
+      <Sheet open={showModal} onClose={() => { setShowModal(false); resetForm(); }} title="Nouvelle Offre Commerciale" size="2xl" fullScreen>
+        <form onSubmit={handleCreate} className="space-y-4">
+          <section className="space-y-4" aria-label="Informations">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="label">Objet *</label>
-                <input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" placeholder="Offre de services de transit et dédouanement" required />
+                <label className="label">Client *</label>
+                <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Sélectionner --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." required />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Date de validité</label>
-                  <input type="date" value={form.dateValidite} onChange={e => setForm({ ...form, dateValidite: e.target.value })} className="input-field" />
-                </div>
-              </div>
-
               <div>
-                <label className="label">Description</label>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input-field" rows={2} />
+                <label className="label">Dossier lié</label>
+                <PickerField value={form.dossierId} onChange={id => setForm({ ...form, dossierId: id })} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
               </div>
+            </div>
 
+            <div>
+              <label className="label">Objet *</label>
+              <input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" placeholder="Offre de services de transit et dédouanement" required />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="label !mb-0">Lignes de prestations</label>
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setShowCatalogue(true)} className="text-xs text-emerald-600 hover:underline flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      Choisir depuis le catalogue
+                <label className="label">Date de validité</label>
+                <input type="date" value={form.dateValidite} onChange={e => setForm({ ...form, dateValidite: e.target.value })} className="input-field" />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Description</label>
+              <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input-field" rows={2} />
+            </div>
+          </section>
+
+          <section aria-label="Lignes de prestations">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h3 className="label !mb-0">Lignes de prestations</h3>
+              <div className="flex items-center gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
+                <button type="button" onClick={() => setShowCatalogue(true)} className="btn-secondary text-xs gap-1">
+                  <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Catalogue
+                </button>
+                <button type="button" onClick={() => setLignes([...lignes, ligneVide()])} className="btn-secondary text-xs">+ Ligne libre</button>
+              </div>
+            </div>
+            <ul className="space-y-3">
+              {lignes.map((l, i) => (
+                <li key={i} className="flex flex-wrap sm:flex-nowrap gap-2 items-end rounded-lg border border-gray-200 dark:border-surface-700 p-2 sm:border-0 sm:p-0">
+                  <label className="basis-full sm:basis-auto sm:flex-1 min-w-0">
+                    <span className="sm:sr-only text-[11px] font-semibold uppercase text-gray-600 dark:text-gray-400">Désignation</span>
+                    <input type="text" value={l.designation} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, designation: e.target.value } : x))} className="input-field" placeholder="Désignation" />
+                  </label>
+                  <label className="w-24">
+                    <span className="sm:sr-only text-[11px] font-semibold uppercase text-gray-600 dark:text-gray-400">Qté</span>
+                    <input type="text" inputMode="decimal" value={l.quantite} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, quantite: e.target.value.replace(',', '.') } : x))} className="input-field" placeholder="Qté" />
+                  </label>
+                  <label className="flex-1 sm:flex-none sm:w-36 min-w-0">
+                    <span className="sm:sr-only text-[11px] font-semibold uppercase text-gray-600 dark:text-gray-400">Prix unitaire</span>
+                    <input type="text" inputMode="decimal" value={l.prixUnitaire} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, prixUnitaire: e.target.value.replace(',', '.') } : x))} className="input-field" placeholder="Prix unitaire" />
+                  </label>
+                  {lignes.length > 1 && (
+                    <button type="button" onClick={() => setLignes(lignes.filter((_, j) => j !== i))} aria-label={`Supprimer la ligne ${i + 1}`} className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-red-600 border border-red-200 sm:border-0 hover:bg-red-50 rounded-lg">
+                      <svg aria-hidden="true" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
-                    <button type="button" onClick={() => setLignes([...lignes, ligneVide()])} className="text-xs text-primary-600 hover:underline">+ Ligne libre</button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {lignes.map((l, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input type="text" value={l.designation} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, designation: e.target.value } : x))} className="input-field flex-1" placeholder="Désignation" />
-                      <input type="number" value={l.quantite} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, quantite: e.target.value } : x))} className="input-field w-20" placeholder="Qté" min="0" step="0.01" />
-                      <input type="number" value={l.prixUnitaire} onChange={e => setLignes(lignes.map((x, j) => j === i ? { ...x, prixUnitaire: e.target.value } : x))} className="input-field w-32" placeholder="Prix unitaire" min="0" />
-                      {lignes.length > 1 && (
-                        <button type="button" onClick={() => setLignes(lignes.filter((_, j) => j !== i))} className="p-1.5 text-red-500 hover:bg-red-50 rounded">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end gap-6 mt-3 text-sm">
-                  <span className="text-gray-500">Total HT : <span className="font-mono font-medium text-gray-900 dark:text-white">{fmt(totalHT)} XOF</span></span>
-                  <span className="text-gray-500">TVA : <span className="font-mono font-medium text-gray-900 dark:text-white">{fmt(totalTVA)} XOF</span></span>
-                  <span className="text-gray-500">Total TTC : <span className="font-mono font-bold text-primary-600">{fmt(totalHT + totalTVA)} XOF</span></span>
-                </div>
-              </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap justify-end gap-x-6 gap-y-1 mt-3 text-sm">
+              <span className="text-gray-600 dark:text-gray-400">Total HT : <span className="font-mono font-medium text-gray-900 dark:text-white">{fmt(totalHT)} XOF</span></span>
+              <span className="text-gray-600 dark:text-gray-400">TVA : <span className="font-mono font-medium text-gray-900 dark:text-white">{fmt(totalTVA)} XOF</span></span>
+              <span className="text-gray-600 dark:text-gray-400">Total TTC : <span className="font-mono font-bold text-primary-600">{fmt(totalHT + totalTVA)} XOF</span></span>
+            </div>
+          </section>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="btn-secondary">Annuler</button>
-                <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Création...' : 'Créer l\'offre'}</button>
-              </div>
-            </form>
+          <div className="sticky -bottom-4 -mb-4 -mx-4 mt-4 px-4 py-3 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Création...' : 'Créer l\'offre'}</button>
+          </div>
+        </form>
+      </Sheet>
+
+      <Sheet open={showCatalogue} onClose={() => setShowCatalogue(false)} title="Catalogue des Prestations" size="2xl" fullScreen zIndexClass="z-[65]">
+        <div className="sticky -top-4 -mt-4 pt-4 pb-3 -mx-4 px-4 z-10 bg-white dark:bg-surface-800 space-y-2">
+          <input type="search" data-autofocus value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher une prestation..." aria-label="Rechercher une prestation" className="input-field" />
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <button type="button" onClick={() => setCatalogueCat('')} className={`flex-shrink-0 min-h-[36px] px-3 rounded-full text-xs font-medium ${!catalogueCat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Toutes</button>
+            {catalogueCategories.map(cat => (
+              <button key={cat} type="button" onClick={() => setCatalogueCat(catalogueCat === cat ? '' : cat)} className={`flex-shrink-0 min-h-[36px] px-3 rounded-full text-xs font-medium whitespace-nowrap ${catalogueCat === cat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{cat}</button>
+            ))}
           </div>
         </div>
-      )}
-
-      {showCatalogue && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCatalogue(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-              <h3 className="font-bold text-lg">Catalogue des Prestations</h3>
-              <button type="button" onClick={() => setShowCatalogue(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="px-4 pt-3 space-y-2">
-              <input type="text" value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Rechercher une prestation..." className="input-field text-sm" autoFocus />
-              <div className="flex gap-1 flex-wrap">
-                <button type="button" onClick={() => setCatalogueCat('')} className={`px-3 py-1 rounded-full text-xs font-medium ${!catalogueCat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Toutes</button>
-                {catalogueCategories.map(cat => (
-                  <button key={cat} type="button" onClick={() => setCatalogueCat(catalogueCat === cat ? '' : cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${catalogueCat === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{cat}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
-              {catalogue
-                .filter(p => !catalogueCat || p.categorie === catalogueCat)
-                .filter(p => !catalogueSearch || p.designation.toLowerCase().includes(catalogueSearch.toLowerCase()) || p.code.toLowerCase().includes(catalogueSearch.toLowerCase()))
-                .map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 dark:border-surface-600 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-surface-700 transition-all">
-                    <div>
-                      <p className="text-sm font-medium">{p.designation}</p>
-                      <p className="text-[10px] text-gray-400">{p.categorie} — {p.code}{p.montantDefaut ? ` • Défaut: ${fmt(p.montantDefaut)} F` : ''}</p>
-                    </div>
-                    <button type="button" onClick={() => addFromCatalogue(p)} className="px-3 py-1 bg-primary-500 text-white rounded text-xs font-medium hover:bg-primary-600 whitespace-nowrap">+ Ajouter</button>
-                  </div>
-                ))}
-              {catalogue.length === 0 && (
-                <div className="text-center py-6 text-gray-400 text-sm">
-                  Catalogue vide. <a href="/parametres/catalogue-prestations" target="_blank" className="text-primary-500 hover:underline">Ajoutez des prestations →</a>
+        <div className="space-y-1.5">
+          {catalogue
+            .filter(p => !catalogueCat || p.categorie === catalogueCat)
+            .filter(p => !catalogueSearch || p.designation.toLowerCase().includes(catalogueSearch.toLowerCase()) || p.code.toLowerCase().includes(catalogueSearch.toLowerCase()))
+            .map(p => (
+              <div key={p.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-gray-200 dark:border-surface-600 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-surface-700 transition-all">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{p.designation}</p>
+                  <p className="text-xs text-gray-500">{p.categorie} — {p.code}{p.montantDefaut ? ` • Défaut: ${fmt(p.montantDefaut)} F` : ''}</p>
                 </div>
-              )}
+                <button type="button" onClick={() => addFromCatalogue(p)} aria-label={`Ajouter ${p.designation}`} className="min-h-[44px] px-4 flex-shrink-0 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 whitespace-nowrap">+ Ajouter</button>
+              </div>
+            ))}
+          {catalogue.length === 0 && (
+            <div className="text-center py-6 text-gray-600 text-sm">
+              Catalogue vide. <a href="/parametres/catalogue-prestations" target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">Ajoutez des prestations →</a>
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-surface-700 flex justify-end">
-              <button type="button" onClick={() => setShowCatalogue(false)} className="btn-primary">Fermer</button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+        <div className="sticky -bottom-4 -mb-4 -mx-4 mt-4 px-4 py-3 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={() => setShowCatalogue(false)} className="btn-primary w-full sm:w-auto sm:ml-auto">Fermer</button>
+        </div>
+      </Sheet>
     </AppLayout>
   );
 }

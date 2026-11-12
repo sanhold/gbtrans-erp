@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
 import PaginationControls from '@/components/tables/PaginationControls';
 import api, { facturesApi } from '@/lib/api';
 import { downloadPDF } from '@/lib/generatePDF';
@@ -97,31 +99,30 @@ export default function FacturationPage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Facturation</h1>
-            <p className="text-sm text-gray-500">{total} facture(s) — {proformasAttente.length} proforma(s) en attente</p>
-          </div>
-          <Link href="/facturation/nouveau" className="btn-primary">+ Nouvelle facture</Link>
-        </div>
+        <PageHeader
+          title="Facturation"
+          subtitle={`${total} facture(s) — ${proformasAttente.length} proforma(s) en attente`}
+          actions={<Link href="/facturation/nouveau" className="btn-primary hidden lg:inline-flex">+ Nouvelle facture</Link>}
+        />
+        <FAB label="Nouvelle facture" href="/facturation/nouveau" />
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg></div><div><p className="text-[10px] text-gray-500 uppercase">Facturé</p><p className="text-sm font-bold">{fmt(Number(stats.totalFacture))} F</p></div></div>
-            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center"><svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-[10px] text-gray-500 uppercase">Encaissé</p><p className="text-sm font-bold text-green-600">{fmt(Number(stats.totalEncaisse))} F</p></div></div>
-            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center"><svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-[10px] text-gray-500 uppercase">Impayé</p><p className="text-sm font-bold text-red-600">{fmt(Number(stats.totalImpaye))} F</p></div></div>
-            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center"><svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-[10px] text-gray-500 uppercase">En attente</p><p className="text-sm font-bold text-amber-600">{proformasAttente.length} proformas</p></div></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg></div><div><p className="text-[10px] text-gray-600 uppercase">Facturé</p><p className="text-sm font-bold">{fmt(Number(stats.totalFacture))} F</p></div></div>
+            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center"><svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-[10px] text-gray-600 uppercase">Encaissé</p><p className="text-sm font-bold text-green-600">{fmt(Number(stats.totalEncaisse))} F</p></div></div>
+            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center"><svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-[10px] text-gray-600 uppercase">Impayé</p><p className="text-sm font-bold text-red-600">{fmt(Number(stats.totalImpaye))} F</p></div></div>
+            <div className="stat-card !p-4"><div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center"><svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-[10px] text-gray-600 uppercase">En attente</p><p className="text-sm font-bold text-amber-600">{proformasAttente.length} proformas</p></div></div>
           </div>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit">
-          <button onClick={() => setTab('factures')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === 'factures' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
+        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-full sm:w-fit overflow-x-auto" role="tablist">
+          <button role="tab" aria-selected={tab === 'factures'} onClick={() => setTab('factures')} className={`flex-1 sm:flex-none min-h-[40px] whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === 'factures' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-700 dark:text-gray-300'}`}>
             Factures ({total})
           </button>
-          <button onClick={() => setTab('attente')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === 'attente' ? 'bg-white dark:bg-surface-800 shadow text-amber-600' : 'text-gray-600'}`}>
-            En attente de facturation ({proformasAttente.length})
+          <button role="tab" aria-selected={tab === 'attente'} onClick={() => setTab('attente')} className={`flex-1 sm:flex-none min-h-[40px] whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md transition-all ${tab === 'attente' ? 'bg-white dark:bg-surface-800 shadow text-amber-600' : 'text-gray-700 dark:text-gray-300'}`}>
+            <span className="sm:hidden">En attente</span><span className="hidden sm:inline">En attente de facturation</span> ({proformasAttente.length})
           </button>
         </div>
 
@@ -161,26 +162,29 @@ export default function FacturationPage() {
               </tr></thead>
               <tbody>
                 {loading ? <SkeletonRows cols={11} />
-                : factures.length === 0 ? <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune facture</td></tr>
+                : factures.length === 0 ? <tr><td colSpan={11} className="text-center py-12 text-gray-500">
+                    <p>Aucune facture pour le moment.</p>
+                    <Link href="/facturation/nouveau" className="btn-primary mt-3 inline-flex">+ Créer une facture</Link>
+                  </td></tr>
                 : factures.map(f => (
                   <tr key={f.id} className="table-row cursor-pointer" onClick={() => openFactureDetail(f.id)}>
                     <td className="table-cell !px-1" data-label="Actions">
                       <div className="flex gap-0.5">
-                        <button onClick={(e) => { e.stopPropagation(); openFactureDetail(f.id); }} className="p-0.5 rounded hover:bg-gray-100" title="Voir">
-                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); openFactureDetail(f.id); }} className="p-0.5 max-md:p-2.5 rounded hover:bg-gray-100" title="Voir" aria-label="Voir la facture">
+                          <svg aria-hidden="true" className="w-3.5 h-3.5 max-md:w-5 max-md:h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDownloadFacturePDF(f.id); }} className="p-0.5 rounded hover:bg-gray-100" title="Télécharger PDF">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); handleDownloadFacturePDF(f.id); }} className="p-0.5 max-md:p-2.5 rounded hover:bg-gray-100" title="Télécharger PDF" aria-label="Télécharger le PDF">
+                          <svg aria-hidden="true" className="w-3.5 h-3.5 max-md:w-5 max-md:h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
                       </div>
                     </td>
                     <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
-                    <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="N° normalisé" title={f.numeroNormalise}>{f.numeroNormalise || '-'}</td>
+                    <td className="table-cell col-opt !px-1.5 !text-[10.5px] truncate" data-label="N° normalisé" title={f.numeroNormalise}>{f.numeroNormalise || '-'}</td>
                     <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={f.client?.raisonSociale}>{f.client?.raisonSociale}</td>
                     <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numeroPhysique || f.dossier?.numero || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate text-center" data-label="Proforma">{f.proformaSourceId ? '✓' : '-'}</td>
+                    <td className="table-cell col-opt font-mono !text-[10.5px] !px-1.5 truncate text-center" data-label="Proforma">{f.proformaSourceId ? '✓' : '-'}</td>
                     <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
-                    <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
+                    <td className="table-cell col-opt text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
                     <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste">{fmt(f.resteAPayer)}</td>
                     <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
                     <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
@@ -198,9 +202,9 @@ export default function FacturationPage() {
             {proformasAttente.length === 0 ? (
               <div className="card text-center py-8 text-gray-500">Aucune proforma en attente de facturation. Validez une proforma pour qu&apos;elle apparaisse ici.</div>
             ) : proformasAttente.map(p => (
-              <div key={p.id} className="card !p-4 flex items-center justify-between hover:shadow-elevated transition-shadow">
+              <div key={p.id} className="card !p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-elevated transition-shadow">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
                     <span className="font-bold font-mono text-primary-600">{p.numero}</span>
                     <span className="badge badge-warning">En attente</span>
                     {p.dossier && <span className="text-xs text-gray-500">Dossier: {p.dossier.numeroPhysique || p.dossier.numero}</span>}
@@ -209,8 +213,8 @@ export default function FacturationPage() {
                   {p.titre && <p className="text-xs text-gray-500 mt-0.5">{p.titre}</p>}
                   <p className="text-sm font-bold mt-1">{fmt(Number(p.montantTTC))} F CFA — {p.lignes?.length || 0} ligne(s)</p>
                 </div>
-                <div className="flex gap-2">
-                  <Link href={`/proformas/${p.id}`} className="btn-secondary text-xs">Voir</Link>
+                <div className="flex gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+                  <Link href={`/proformas/${p.id}`} className="btn-secondary text-xs justify-center">Voir</Link>
                   <button onClick={() => handleTransformer(p.id)} disabled={transforming === p.id} className="btn-primary text-xs disabled:opacity-50">
                     {transforming === p.id ? 'Transformation...' : 'Facturer'}
                   </button>
