@@ -9,6 +9,9 @@ import { dossiersApi, clientsApi, facturesApi } from '@/lib/api';
 import { fmt, STATUTS_DOSSIER } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import Sheet from '@/components/ui/Sheet';
+import PageHeader from '@/components/ui/PageHeader';
+import FiltersToggle from '@/components/forms/FiltersToggle';
 
 export default function EtatFacturationDossierPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -181,21 +184,20 @@ export default function EtatFacturationDossierPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">État Facturation Dossier</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">Cliquez une ligne pour le détail</p>
+        <PageHeader title="État facturation dossier" subtitle="Touchez une ligne pour le détail" />
+        <FiltersToggle count={(statut ? 1 : 0) + (clientId ? 1 : 0)}>
+          <div className="card !p-3">
+            <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2">
+              <input type="number" inputMode="numeric" value={annee} onChange={e => setAnnee(e.target.value)} className="input-field md:!w-24" title="Année" aria-label="Année" />
+              <select value={statut} onChange={e => setStatut(e.target.value)} aria-label="Statut" className="input-field md:!w-auto">
+                <option value="">Tous statuts</option>
+                {STATUTS_DOSSIER.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous clients" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="md:w-48" />
+              <button onClick={load} className="btn-secondary min-h-[44px] md:min-h-0">Afficher</button>
             </div>
-            <input type="number" value={annee} onChange={e => setAnnee(e.target.value)} className="input-field !py-1.5 text-xs !w-20 flex-shrink-0" title="Année" />
-            <select value={statut} onChange={e => setStatut(e.target.value)} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
-              <option value="">Tous statuts</option>
-              {STATUTS_DOSSIER.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous clients" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!py-1.5 text-xs w-40 flex-shrink-0" />
-            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
           </div>
-        </div>
+        </FiltersToggle>
 
         <div className="table-container">
           <table className="w-full table-fixed">
@@ -226,13 +228,13 @@ export default function EtatFacturationDossierPage() {
                   <tr key={r.id} className="table-row cursor-pointer" onClick={() => openDetail(r.id)}>
                     <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={r.numero}>{r.numero}</td>
                     <td className="table-cell !px-1.5" data-label="Statut"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{r.statut}</span></td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Proforma">{fmt(r.montantProforma)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant TVA">{fmt(r.montantTVA)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Prestation">{fmt(r.montantPrestation)}</td>
+                    <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Proforma">{fmt(r.montantProforma)}</td>
+                    <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant TVA">{fmt(r.montantTVA)}</td>
+                    <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Prestation">{fmt(r.montantPrestation)}</td>
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Payé">{fmt(r.montantPaye)}</td>
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Restant">{fmt(r.montantRestant)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Dépensé">{fmt(r.montantDepense)}</td>
-                    <td className="table-cell !px-1.5" data-label="Facturation">{facture ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Facturé</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Non facturé</span>}</td>
+                    <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Dépensé">{fmt(r.montantDepense)}</td>
+                    <td className="table-cell col-opt !px-1.5" data-label="Facturation">{facture ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Facturé</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Non facturé</span>}</td>
                   </tr>
                 );
               })}
@@ -241,19 +243,8 @@ export default function EtatFacturationDossierPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
         </div>
 
-        {detail && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-                <h3 className="font-bold text-lg">Dossier — {detail.dossier?.numeroPhysique || detail.dossier?.numero || ''}</h3>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleDownloadPdf} disabled={downloading || loadingDetail} className="btn-primary text-xs disabled:opacity-50">
-                    {downloading ? 'Génération...' : 'Télécharger l’état PDF'}
-                  </button>
-                  <button onClick={() => setDetail(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        <Sheet open={!!detail} onClose={() => setDetail(null)} title={`Dossier — ${detail?.dossier?.numeroPhysique || detail?.dossier?.numero || ''}`} size="3xl">
+              <div className="space-y-5">
                 {loadingDetail ? <p className="text-center text-gray-500 py-8">Chargement...</p> : (
                   <>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
@@ -261,7 +252,7 @@ export default function EtatFacturationDossierPage() {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Factures ({detail.factures?.length || 0})</h4>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Factures ({detail.factures?.length || 0})</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header text-right">TTC</th><th className="table-header text-right">Payé</th><th className="table-header text-right">Reste</th><th className="table-header">Statut</th></tr></thead>
                         <tbody>{(detail.factures || []).length === 0 ? <tr><td colSpan={6} className="text-center py-6 text-gray-500">Aucune facture liée</td></tr> : detail.factures.map((f: any) => (
@@ -278,7 +269,7 @@ export default function EtatFacturationDossierPage() {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Dépenses ({detail.depenses?.length || 0})</h4>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Dépenses ({detail.depenses?.length || 0})</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Catégorie</th><th className="table-header">Désignation</th><th className="table-header text-right">Montant</th></tr></thead>
                         <tbody>{(detail.depenses || []).length === 0 ? <tr><td colSpan={5} className="text-center py-6 text-gray-500">Aucune dépense liée</td></tr> : detail.depenses.map((d: any) => (
@@ -294,7 +285,7 @@ export default function EtatFacturationDossierPage() {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Paiements ({detail.paiements?.length || 0})</h4>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Paiements ({detail.paiements?.length || 0})</h4>
                       <table className="w-full text-sm">
                         <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Facture</th><th className="table-header text-right">Montant</th></tr></thead>
                         <tbody>{(detail.paiements || []).length === 0 ? <tr><td colSpan={4} className="text-center py-6 text-gray-500">Aucun paiement enregistré</td></tr> : detail.paiements.map((p: any, i: number) => (
@@ -310,9 +301,13 @@ export default function EtatFacturationDossierPage() {
                   </>
                 )}
               </div>
-            </div>
-          </div>
-        )}
+              <div className="sticky bottom-0 -mx-4 -mb-4 mt-4 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button type="button" onClick={() => setDetail(null)} className="btn-secondary min-h-[44px] w-full sm:w-auto">Fermer</button>
+                <button type="button" onClick={handleDownloadPdf} disabled={downloading || loadingDetail} className="btn-primary min-h-[44px] w-full sm:w-auto disabled:opacity-50">
+                  {downloading ? 'Génération...' : 'Télécharger l’état PDF'}
+                </button>
+              </div>
+        </Sheet>
       </div>
     </AppLayout>
   );

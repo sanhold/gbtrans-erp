@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import ComptesBancairesManager from '@/components/finance/ComptesBancairesManager';
 import { GraphifyChart } from '@/components/charts';
 import MontantsMasques from '@/components/ui/MontantsMasques';
+import PageHeader from '@/components/ui/PageHeader';
 import type { GraphifyData } from '@/types/graphify';
 
 const MONTANT_MASQUE = '•••••••';
@@ -75,8 +76,8 @@ function AccountGrid({ items, canSeeMontants }: { items: AccountCardItem[]; canS
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map(c => (
-        <div key={c.id} onClick={c.onClick} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
-          <span className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
+        <div key={c.id} role="button" tabIndex={0} onClick={c.onClick} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.onClick(); } }} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
+          <span aria-hidden="true" className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
           <AccountIcon kind={c.kind} />
           <h3 className="font-semibold text-gray-900 dark:text-white mt-3 truncate">{c.libelle}</h3>
           <p className="text-xs text-gray-500 truncate">{c.sub}</p>
@@ -154,9 +155,8 @@ export default function ComptesPage() {
       <AppLayout>
         <div className="space-y-6">
           <div>
-            <button onClick={() => setSelectedType(null)} className="text-sm text-primary-600 hover:underline mb-2">← Tous les types de compte</button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{TYPE_LABELS[selectedType]}</h1>
-            <p className="text-sm text-gray-500">{selectedType === 'BANQUE' ? 'Gestion des comptes bancaires. Cliquez sur un compte pour voir son historique.' : 'Sélectionnez un compte pour voir ses transactions.'}</p>
+            <button onClick={() => setSelectedType(null)} className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← Tous les types de compte</button>
+            <PageHeader className="!mb-0" title={TYPE_LABELS[selectedType]} subtitle={selectedType === 'BANQUE' ? 'Gestion des comptes bancaires. Touchez un compte pour voir son historique.' : 'Sélectionnez un compte pour voir ses transactions.'} />
           </div>
           {selectedType === 'BANQUE' ? (
             <ComptesBancairesManager onSelectAccount={(id) => setSelectedAccount({ type: 'BANQUE', id })} />
@@ -174,17 +174,17 @@ export default function ComptesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptes</h1><p className="text-sm text-gray-500">Vue consolidée de la trésorerie : comptes de caisse et banque, plus les comptes tiers (clients à recevoir, fournisseurs à payer). Ouvrez un type de compte pour voir ses comptes.</p></div>
+        <PageHeader title="Comptes" subtitle="Vue consolidée de la trésorerie : comptes de caisse et banque, plus les comptes tiers (clients à recevoir, fournisseurs à payer). Ouvrez un type de compte pour voir ses comptes." />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Trésorerie disponible</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(tresorerie)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">{caissesItems.length + banquesItems.length} comptes</p></div>
-          <Link href="/finance/creances-clients" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Créances clients</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(totalCreances)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à recevoir</p></Link>
-          <Link href="/finance/dettes-fournisseurs" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Dettes fournisseurs</p><p className="text-lg font-bold text-amber-600">{canSeeMontants ? `${fmt(totalDettes)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à payer</p></Link>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Position nette</p><p className={`text-lg font-bold ${positionNette >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{canSeeMontants ? `${fmt(positionNette)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">dispo + créances − dettes</p></div>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-600 dark:text-gray-300 uppercase">Trésorerie disponible</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(tresorerie)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-500 mt-0.5">{caissesItems.length + banquesItems.length} comptes</p></div>
+          <Link href="/finance/creances-clients" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-600 dark:text-gray-300 uppercase">Créances clients</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(totalCreances)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-500 mt-0.5">à recevoir</p></Link>
+          <Link href="/finance/dettes-fournisseurs" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-600 dark:text-gray-300 uppercase">Dettes fournisseurs</p><p className="text-lg font-bold text-amber-600">{canSeeMontants ? `${fmt(totalDettes)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-500 mt-0.5">à payer</p></Link>
+          <div className="stat-card !p-4"><p className="text-[10px] text-gray-600 dark:text-gray-300 uppercase">Position nette</p><p className={`text-lg font-bold ${positionNette >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{canSeeMontants ? `${fmt(positionNette)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-500 mt-0.5">dispo + créances − dettes</p></div>
         </div>
 
         <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Types de compte</h3>
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Types de compte</h3>
           {loading ? <div className="card text-center text-gray-500 py-8">Chargement...</div> : (
             <>
               {typeTiles.some(t => t.total !== 0) && (
@@ -205,8 +205,8 @@ export default function ComptesPage() {
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {typeTiles.map(t => (
-                <div key={t.type} onClick={() => setSelectedType(t.type)} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
-                  <span className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
+                <div key={t.type} role="button" tabIndex={0} onClick={() => setSelectedType(t.type)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedType(t.type); } }} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
+                  <span aria-hidden="true" className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
                   <AccountIcon kind={TYPE_ICON[t.type]} />
                   <h3 className="font-semibold text-gray-900 dark:text-white mt-3">{TYPE_LABELS[t.type]}</h3>
                   <p className="text-xs text-gray-500">{t.count} compte{t.count > 1 ? 's' : ''}</p>
@@ -253,7 +253,7 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
   return (
     <div className="space-y-4">
       <div>
-        <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← {TYPE_LABELS[compte.type]}</button>
+        <button onClick={onBack} className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← {TYPE_LABELS[compte.type]}</button>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{c.kind === 'Banque' ? `${c.libelle} (${c.banque})` : c.libelle}</h2>
         <p className="text-sm text-gray-500">{c.kind} · Solde courant : <span className="font-bold text-gray-900 dark:text-white">{canSeeMontants ? `${fmt(c.solde)} ${c.devise}` : MONTANT_MASQUE}</span></p>
       </div>
@@ -261,10 +261,10 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
       <div className="card">
         <div className="flex items-end justify-between flex-wrap gap-3 p-4 border-b border-gray-200 dark:border-surface-700">
           <h3 className="text-sm font-semibold">Transactions du compte</h3>
-          <div className="flex items-end flex-wrap gap-3">
-            <div><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !w-auto" /></div>
-            <div><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !w-auto" /></div>
-            <button onClick={load} className="btn-primary">Afficher</button>
+          <div className="flex items-end flex-wrap gap-3 max-md:w-full">
+            <div className="max-md:flex-1"><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field md:!w-auto" /></div>
+            <div className="max-md:flex-1"><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field md:!w-auto" /></div>
+            <button onClick={load} className="btn-primary max-md:w-full min-h-[44px]">Afficher</button>
           </div>
         </div>
         <div className="table-container">
@@ -278,7 +278,7 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
                   <td className="table-cell text-xs" data-label="Date">{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell" data-label="Sens">{op.sens === 'ENTREE' ? <span className="text-green-600 font-medium">↘ Entrée</span> : <span className="text-red-600 font-medium">↗ Sortie</span>}</td>
                   <td className="table-cell" data-label="Origine">{op.libelle}</td>
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
+                  <td className="table-cell col-opt font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
                   <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{canSeeMontants ? `${op.sens === 'ENTREE' ? '+' : '-'}${fmt(op.montant)}` : MONTANT_MASQUE}</td>
                 </tr>
               ))}
@@ -315,7 +315,7 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
   return (
     <div className="space-y-4">
       <div>
-        <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← {TYPE_LABELS[type]}</button>
+        <button onClick={onBack} className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← {TYPE_LABELS[type]}</button>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{tiers?.raisonSociale}</h2>
         <p className="text-sm text-gray-500">{type === 'CLIENT' ? 'Client' : 'Fournisseur'} · Solde dû : <span className="font-bold text-red-600">{canSeeMontants ? `${fmt(resteAPayer)} XOF` : MONTANT_MASQUE}</span></p>
       </div>
@@ -331,7 +331,7 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
                 <tr key={p.id} className="table-row">
                   <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell font-mono text-xs text-primary-600" data-label="N° Transaction">{p.numero}</td>
-                  <td className="table-cell text-xs" data-label="Facture(s)">{(p.affectations || []).map((a: any) => a.facture?.numero || a.factureFournisseur?.numero).join(', ') || '-'}</td>
+                  <td className="table-cell col-opt text-xs" data-label="Facture(s)">{(p.affectations || []).map((a: any) => a.facture?.numero || a.factureFournisseur?.numero).join(', ') || '-'}</td>
                   <td className="table-cell text-right font-mono font-semibold text-green-600" data-label="Montant">{canSeeMontants ? fmt(p.montant) : MONTANT_MASQUE}</td>
                 </tr>
               ))}
@@ -352,8 +352,8 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
                 <tr key={f.id} className="table-row">
                   <td className="table-cell font-mono text-xs text-primary-600" data-label="N°">{f.numero}</td>
                   <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="TTC">{canSeeMontants ? fmt(f.montantTTC) : MONTANT_MASQUE}</td>
-                  <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{canSeeMontants ? fmt(f.montantPaye) : MONTANT_MASQUE}</td>
+                  <td className="table-cell col-opt text-right font-mono" data-label="TTC">{canSeeMontants ? fmt(f.montantTTC) : MONTANT_MASQUE}</td>
+                  <td className="table-cell col-opt text-right font-mono text-green-600" data-label="Payé">{canSeeMontants ? fmt(f.montantPaye) : MONTANT_MASQUE}</td>
                   <td className="table-cell text-right font-mono text-red-600" data-label="Reste">{canSeeMontants ? fmt(f.resteAPayer) : MONTANT_MASQUE}</td>
                   <td className="table-cell" data-label="Statut"><span className="badge badge-info">{f.statut}</span></td>
                 </tr>

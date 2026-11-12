@@ -5,6 +5,10 @@ import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
+import Sheet from '@/components/ui/Sheet';
+import FAB from '@/components/ui/FAB';
+import PageHeader from '@/components/ui/PageHeader';
+import SheetActions from '@/components/forms/SheetActions';
 import { financeApi } from '@/lib/api';
 import { fmt, mergedComptes, parseCompteValue, MODE_PAIEMENT_LABELS, CATEGORIES_DEPENSE, useComptesFinanciers } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -69,13 +73,14 @@ export default function DepensesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dépenses</h1><p className="text-sm text-gray-500">Gérez vos dépenses et sorties de caisse</p></div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Dépense
-          </button>
-        </div>
+        <PageHeader
+          title="Dépenses"
+          subtitle="Gérez vos dépenses et sorties de caisse"
+          actions={<button onClick={() => setShowModal(true)} className="btn-primary hidden lg:inline-flex">
+            <svg aria-hidden="true" className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Nouvelle dépense
+          </button>}
+        />
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
@@ -91,15 +96,15 @@ export default function DepensesPage() {
             <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Catégorie</th><th className="table-header !text-[10px] !px-1.5 truncate">Désignation</th><th className="table-header !text-[10px] !px-1.5 truncate">Compte débité</th><th className="table-header !text-[10px] !px-1.5 truncate">Dotation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={8} />
-              : depenses.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dépense enregistrée</td></tr>
+              : depenses.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dépense enregistrée<br /><button type="button" onClick={() => setShowModal(true)} className="btn-primary mt-3">Nouvelle dépense</button></td></tr>
               : depenses.map(d => (
                 <tr key={d.id} className="table-row">
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={d.numero}>{d.numero}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDepense).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Catégorie" title={d.categorie}>{d.categorie}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[11px] truncate" data-label="Catégorie" title={d.categorie}>{d.categorie}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Désignation" title={d.designation}>{d.designation}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compte débité">{d.caisse?.libelle || d.compteBancaire?.libelle || '-'}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dotation">{d.dotation?.numero || '-'}</td>
+                  <td className="table-cell col-opt font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dotation">{d.dotation?.numero || '-'}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut}</span></td>
                 </tr>
@@ -109,14 +114,8 @@ export default function DepensesPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
         </div>
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">Nouvelle Dépense</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleCreate} className="p-6 space-y-4">
+        <Sheet open={showModal} onClose={() => setShowModal(false)} title="Nouvelle dépense" size="lg">
+              <form onSubmit={handleCreate} className="space-y-4">
                 <div><label className="label">Catégorie *</label>
                   <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className="input-field">
                     {CATEGORIES_DEPENSE.map(c => <option key={c} value={c}>{c}</option>)}
@@ -124,7 +123,7 @@ export default function DepensesPage() {
                 </div>
                 <div><label className="label">Désignation *</label><input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Montant *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
+                  <div><label className="label">Montant *</label><input type="number" inputMode="decimal" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
                   <div><label className="label">Mode de paiement</label>
                     <select value={form.modePaiement} onChange={e => setForm({ ...form, modePaiement: e.target.value })} className="input-field">
                       {Object.entries(MODE_PAIEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -139,11 +138,10 @@ export default function DepensesPage() {
                 </div>
                 <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Enregistrer</button></div>
+                <SheetActions onCancel={() => setShowModal(false)} />
               </form>
-            </div>
-          </div>
-        )}
+        </Sheet>
+        <FAB label="Nouvelle dépense" onClick={() => setShowModal(true)} />
       </div>
     </AppLayout>
   );

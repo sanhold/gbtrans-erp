@@ -12,11 +12,16 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { generateATCertBlob, downloadBlob } from '@/lib/generateATPdf';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import Sheet from '@/components/ui/Sheet';
+import SheetActions from '@/components/forms/SheetActions';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
+import FiltersToggle from '@/components/forms/FiltersToggle';
+import { ProlongationSheet, ApurementSheet, HistoriqueProlongationsSheet, ETAT_LABELS } from '@/components/at/ATSheets';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 
-const ETAT_LABELS: Record<string, string> = { NON_APURE: 'Non apuré', EXPIRE: 'Expiré', APURE: 'Apuré' };
 const ETAT_BADGE: Record<string, string> = { NON_APURE: 'badge-gray', EXPIRE: 'badge-danger', APURE: 'badge-success' };
 
 const emptyForm = {
@@ -238,34 +243,33 @@ export default function ATPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="card !p-3">
-          <form onSubmit={handleSearch} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-            <div className="flex-shrink-0 mr-1 w-full sm:w-auto">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Admissions Temporaires</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">Non apurées, expirées &amp; historique</p>
-            </div>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-full sm:w-40 flex-shrink-0" placeholder="N° AT, désignation, déclarant..." />
-            <select value={etatFiltre} onChange={e => { setEtatFiltre(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs flex-1 sm:flex-initial sm:w-36 min-w-0">
-              <option value="">Non apurées + Expirées</option>
-              <option value="NON_APURE">Non apuré uniquement</option>
-              <option value="EXPIRE">Expiré uniquement</option>
-              <option value="TOUS">Toutes (y compris apurées)</option>
-            </select>
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <div className="flex items-center gap-1.5 flex-shrink-0 sm:border-x border-gray-200 dark:border-surface-700 sm:px-2">
-              <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="AT expire bientôt">⏳ {stats.expireBientot}</span>
-              <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="AT expiré">⚠ {stats.expire}</span>
-            </div>
-            <Link href="/at/historique" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Historique AT
-            </Link>
-            <button type="button" onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouvelle AT
-            </button>
-          </form>
+        <PageHeader
+          title="Admissions temporaires"
+          subtitle="Non apurées, expirées & historique"
+          secondaryActions={[{ label: 'Historique AT', href: '/at/historique' }]}
+          actions={<button type="button" onClick={openCreate} className="btn-primary hidden lg:inline-flex">
+            <svg aria-hidden="true" className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Nouvel AT
+          </button>}
+        />
+        <div className="flex flex-wrap gap-2" aria-label="Alertes">
+          <span className="badge badge-danger !text-xs md:!text-[13px] md:!text-[11px]">À échéance proche : {stats.expireBientot}</span>
+          <span className="badge badge-danger !text-xs md:!text-[13px] md:!text-[11px]">Expirées : {stats.expire}</span>
         </div>
+        <FiltersToggle count={(appliedSearch ? 1 : 0) + (etatFiltre ? 1 : 0)}>
+          <div className="card !p-3">
+            <form onSubmit={handleSearch} className="flex flex-col md:flex-row md:items-center gap-2">
+              <input type="search" value={search} onChange={e => setSearch(e.target.value)} className="input-field md:!py-1.5 md:text-xs md:w-64" placeholder="N° AT, désignation, déclarant..." aria-label="Rechercher une AT" />
+              <select value={etatFiltre} onChange={e => { setEtatFiltre(e.target.value); setPage(1); }} aria-label="État" className="input-field md:!py-1.5 md:text-xs md:w-56 min-w-0">
+                <option value="">Non apurées + Expirées</option>
+                <option value="NON_APURE">Non apuré uniquement</option>
+                <option value="EXPIRE">Expiré uniquement</option>
+                <option value="TOUS">Toutes (y compris apurées)</option>
+              </select>
+              <button type="submit" className="btn-primary min-h-[44px] md:min-h-0 md:!py-1.5 md:text-xs">Afficher</button>
+            </form>
+          </div>
+        </FiltersToggle>
 
         <div className="table-container">
           <table className="w-full table-fixed">
@@ -313,7 +317,7 @@ export default function ATPage() {
               {loading ? (
                 <SkeletonRows cols={17} />
               ) : items.length === 0 ? (
-                <tr><td colSpan={17} className="text-center py-12 text-gray-500">Aucune admission temporaire trouvée</td></tr>
+                <tr><td colSpan={17} className="text-center py-12 text-gray-500">Aucune admission temporaire trouvée<br /><button type="button" onClick={openCreate} className="btn-primary mt-3">Nouvel AT</button></td></tr>
               ) : items.map(at => {
                 const enAlerte = at.etat !== 'APURE' && at.joursRestants <= (at.alerteJours ?? 90);
                 const rowClass = at.etat === 'EXPIRE' ? 'text-red-600' : enAlerte ? 'text-amber-600' : '';
@@ -322,46 +326,39 @@ export default function ATPage() {
                     <td className="table-cell !px-1" data-label="Actions">
                       <ActionsButton onOpen={(e) => openAtMenu(e, at)} />
                     </td>
-                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° Dossier">
+                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
+                    <td className="table-cell !text-[13px] md:!text-[10.5px] !px-1.5 truncate col-opt" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
+                    <td className="table-cell font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate col-opt" data-label="N° Dossier">
                       {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numeroPhysique || at.dossiers[0].numero}</Link> : '-'}
                     </td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
-                    <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
-                    <td className="table-cell !px-1.5 !text-[11px] truncate col-opt" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate col-opt" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
-                    <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
-                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
-                    <td className="table-cell text-center !text-[10.5px] !px-1 truncate col-opt" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
-                    <td className={`table-cell text-center font-semibold !text-[10.5px] !px-1 truncate ${rowClass}`} data-label="Temps Restant">{at.joursRestants}j</td>
-                    <td className="table-cell text-right font-mono !text-[10.5px] !px-1.5 truncate col-opt" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
-                    <td className="table-cell !px-1.5" data-label="Etat"><span className={`badge ${ETAT_BADGE[at.etat]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[at.etat]}</span></td>
+                    <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
+                    <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate col-opt" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
+                    <td className="table-cell font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate col-opt" data-label="N° déclaration" title={at.declarationEntree || undefined}>{at.declarationEntree || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate col-opt" data-label="Nature" title={at.nature || undefined}>{at.nature || '-'}</td>
+                    <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate col-opt" data-label="Bureau" title={at.bureauEntree || undefined}>{at.bureauEntree || '-'}</td>
+                    <td className="table-cell !text-[13px] md:!text-[10.5px] !px-1.5 truncate col-opt" data-label="Date déclaration">{fmtDate(at.dateDeclaration)}</td>
+                    <td className="table-cell !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Échéance">{fmtDate(at.dateExpiration)}</td>
+                    <td className="table-cell text-center !text-[13px] md:!text-[10.5px] !px-1 truncate col-opt" data-label="Delais">{at.delaiMois != null ? `${at.delaiMois}m` : '-'}</td>
+                    <td className="table-cell text-center !text-[13px] md:!text-[10.5px] !px-1 truncate col-opt" data-label="Temps Alerte">{at.alerteJours != null ? `${at.alerteJours}j` : '-'}</td>
+                    <td className={`table-cell font-semibold !text-[13px] md:!text-[10.5px] !px-1 md:text-center ${rowClass}`} data-label="Temps restant">{at.etat === 'EXPIRE' ? 'Expiré' : `${at.joursRestants} j`}{at.etat !== 'APURE' && at.etat !== 'EXPIRE' && enAlerte ? <span className="md:hidden"> · échéance proche</span> : null}</td>
+                    <td className="table-cell text-right font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate col-opt" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
+                    <td className="table-cell !px-1.5" data-label="État"><span className={`badge ${ETAT_BADGE[at.etat]} !text-xs md:!text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[at.etat]}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
           <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-surface-700">
-            <span className="text-xs text-gray-500">Compteur : {total}</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300">Total : {total}</span>
           </div>
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
         </div>
 
-        {/* Modal création / édition */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">{editing ? `Modifier ${editing.numero}` : 'Nouvelle AT'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleSave} className="p-6 space-y-4">
+        <Sheet open={showModal} onClose={() => setShowModal(false)} title={editing ? `Modifier ${editing.numero}` : 'Nouvel AT'} size="3xl">
+              <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="col-span-2"><label className="label">Désignation *</label><input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required /></div>
+                  <div className="sm:col-span-2"><label className="label">Désignation *</label><input type="text" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} className="input-field" required /></div>
                   <div>
                     <label className="label">Client</label>
                     <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Aucun --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." />
@@ -376,138 +373,20 @@ export default function ATPage() {
                   <div><label className="label">Bureau</label><input type="text" value={form.bureauEntree} onChange={e => setForm({ ...form, bureauEntree: e.target.value })} className="input-field" placeholder="CIAB7" /></div>
                   <div><label className="label">Date déclaration</label><input type="date" value={form.dateDeclaration} onChange={e => setForm({ ...form, dateDeclaration: e.target.value })} className="input-field" /></div>
                   <div><label className="label">Date Échéance *</label><input type="date" value={form.dateExpiration} onChange={e => setForm({ ...form, dateExpiration: e.target.value })} className="input-field" required /></div>
-                  <div><label className="label">Délais (mois)</label><input type="number" value={form.delaiMois} onChange={e => setForm({ ...form, delaiMois: e.target.value })} className="input-field" /></div>
-                  <div><label className="label">Temps Alerte (jours)</label><input type="number" value={form.alerteJours} onChange={e => setForm({ ...form, alerteJours: e.target.value })} className="input-field" /></div>
-                  <div><label className="label">Montant Garantie</label><input type="number" value={form.montantCaution} onChange={e => setForm({ ...form, montantCaution: e.target.value })} className="input-field" /></div>
-                  <div className="col-span-2"><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
+                  <div><label className="label">Délais (mois)</label><input type="number" inputMode="decimal" value={form.delaiMois} onChange={e => setForm({ ...form, delaiMois: e.target.value })} className="input-field" /></div>
+                  <div><label className="label">Temps Alerte (jours)</label><input type="number" inputMode="decimal" value={form.alerteJours} onChange={e => setForm({ ...form, alerteJours: e.target.value })} className="input-field" /></div>
+                  <div><label className="label">Montant Garantie</label><input type="number" inputMode="decimal" value={form.montantCaution} onChange={e => setForm({ ...form, montantCaution: e.target.value })} className="input-field" /></div>
+                  <div className="sm:col-span-2"><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                  <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Créer'}</button>
-                </div>
+                <SheetActions onCancel={() => setShowModal(false)} loading={saving} submitLabel={editing ? 'Modifier' : 'Créer'} />
               </form>
-            </div>
-          </div>
-        )}
+            
+        </Sheet>
 
-        {/* Modal Fiche Prolongation */}
-        {prolongerAt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-3 bg-amber-600 text-white">
-                <h2 className="text-base font-bold">Fiche Prolongation</h2>
-                <button onClick={() => setProlongerAt(null)} className="p-1 rounded hover:bg-white/10"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleProlonger} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Date Déclaration</label><input type="text" readOnly value={fmtDate(prolongerAt.dateDeclaration)} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div><label className="label">Date Échéance actuelle</label><input type="text" readOnly value={fmtDate(prolongerAt.dateExpiration)} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div><label className="label">Nature du dossier</label><input type="text" readOnly value={prolongerAt.nature || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div><label className="label">Désignation du document</label><input type="text" readOnly value={prolongerAt.designation || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div><label className="label">Dossier</label><input type="text" readOnly value={prolongerAt.dossiers?.[0]?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div><label className="label">Etat AT</label><input type="text" readOnly value={ETAT_LABELS[prolongerAt.etat]} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div className="col-span-2"><label className="label">N° Ancien Déclaration</label><input type="text" readOnly value={prolongerAt.declarationEntree || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200 dark:border-surface-700">
-                  <div>
-                    <label className="label text-amber-600 font-semibold">Nouvelle Date Échéance *</label>
-                    <input type="date" value={prolongerForm.nouvelleDateExpiration} onChange={e => setProlongerForm({ ...prolongerForm, nouvelleDateExpiration: e.target.value })} className="input-field !bg-amber-50 dark:!bg-amber-900/20 border-amber-300" required />
-                  </div>
-                  <div>
-                    <label className="label text-amber-600 font-semibold">N° Nouveau Déclaration *</label>
-                    <input type="text" value={prolongerForm.nouveauNumeroDeclaration} onChange={e => setProlongerForm({ ...prolongerForm, nouveauNumeroDeclaration: e.target.value })} className="input-field !bg-amber-50 dark:!bg-amber-900/20 border-amber-300" required />
-                  </div>
-                </div>
-                <label className={`flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
-                  <input type="checkbox" checked={prolongerForm.afficherSignature} disabled={!canSignature} onChange={e => setProlongerForm({ ...prolongerForm, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
-                  Afficher la signature sur le certificat
-                </label>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button type="button" onClick={() => setProlongerAt(null)} className="btn-secondary">Annuler</button>
-                  <button type="submit" className="btn-primary !bg-amber-600 hover:!bg-amber-700">Valider</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Modal Fiche Apurement (fermeture définitive) */}
-        {apurerAt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-md mx-4">
-              <div className="flex items-center justify-between px-6 py-3 bg-green-600 text-white">
-                <h2 className="text-base font-bold">Fiche Apurement</h2>
-                <button onClick={() => setApurerAt(null)} className="p-1 rounded hover:bg-white/10"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleApurer} className="p-6 space-y-4">
-                <div><label className="label">Dossier</label><input type="text" readOnly value={apurerAt.dossiers?.[0]?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                <div><label className="label">Désignation</label><input type="text" readOnly value={apurerAt.designation || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                <div>
-                  <label className="label text-red-600 font-semibold">Date d&apos;apurement *</label>
-                  <input type="date" value={apurerForm.dateApurement} onChange={e => setApurerForm({ ...apurerForm, dateApurement: e.target.value })} className="input-field !bg-red-50 dark:!bg-red-900/20 border-red-300" required />
-                </div>
-                <div><label className="label">Référence apurement</label><input type="text" value={apurerForm.referenceApurement} onChange={e => setApurerForm({ ...apurerForm, referenceApurement: e.target.value })} className="input-field" /></div>
-                <label className={`flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 w-fit ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
-                  <input type="checkbox" checked={apurerForm.afficherSignature} disabled={!canSignature} onChange={e => setApurerForm({ ...apurerForm, afficherSignature: e.target.checked })} className="rounded border-gray-300" />
-                  Afficher la signature sur le certificat
-                </label>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button type="button" onClick={() => setApurerAt(null)} className="btn-secondary">Annuler</button>
-                  <button type="submit" className="btn-success">Valider</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Modal Historique des Prolongations */}
-        {historiqueAt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <div>
-                  <h2 className="text-lg font-bold">Historique des prolongations</h2>
-                  <p className="text-sm text-gray-500">{historiqueAt.numero} — {historiqueAt.designation}</p>
-                </div>
-                <button onClick={() => setHistoriqueAt(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <div className="p-6">
-                <div className="table-container !shadow-none !border-0">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="table-header">Date Prolongation</th>
-                        <th className="table-header">Ancienne Échéance</th>
-                        <th className="table-header">Nouvelle Échéance</th>
-                        <th className="table-header">Ancien N° Déclaration</th>
-                        <th className="table-header">Nouveau N° Déclaration</th>
-                        <th className="table-header text-center">Durée ajoutée</th>
-                        <th className="table-header">Utilisateur</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {historiqueLoading ? (
-                        <SkeletonRows cols={7} />
-                      ) : historiqueList.length === 0 ? (
-                        <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucune prolongation enregistrée pour cette AT</td></tr>
-                      ) : historiqueList.map(h => (
-                        <tr key={h.id} className="table-row">
-                          <td className="table-cell text-xs" data-label="Date Prolongation">{fmtDate(h.dateProlongation)}</td>
-                          <td className="table-cell text-xs" data-label="Ancienne Échéance">{fmtDate(h.ancienneDateExpiration)}</td>
-                          <td className="table-cell text-xs font-medium text-primary-600" data-label="Nouvelle Échéance">{fmtDate(h.nouvelleDateExpiration)}</td>
-                          <td className="table-cell font-mono text-xs" data-label="Ancien N° Déclaration">{h.ancienNumeroDeclaration || '-'}</td>
-                          <td className="table-cell font-mono text-xs font-medium text-primary-600" data-label="Nouveau N° Déclaration">{h.nouveauNumeroDeclaration}</td>
-                          <td className="table-cell text-center" data-label="Durée ajoutée">{h.dureeProlongationJours} Jours</td>
-                          <td className="table-cell text-xs" data-label="Utilisateur">{h.utilisateur || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <ProlongationSheet at={prolongerAt} form={prolongerForm} setForm={setProlongerForm} canSignature={canSignature} onClose={() => setProlongerAt(null)} onSubmit={handleProlonger} />
+        <ApurementSheet at={apurerAt} form={apurerForm} setForm={setApurerForm} canSignature={canSignature} onClose={() => setApurerAt(null)} onSubmit={handleApurer} />
+        <HistoriqueProlongationsSheet at={historiqueAt} list={historiqueList} loading={historiqueLoading} onClose={() => setHistoriqueAt(null)} />
+        <FAB label="Nouvel AT" onClick={openCreate} />
       </div>
     <RowActionsMenu state={rowMenu} onClose={() => setRowMenu(null)} />
     </AppLayout>

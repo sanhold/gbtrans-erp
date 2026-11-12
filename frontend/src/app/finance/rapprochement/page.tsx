@@ -9,6 +9,10 @@ import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import Sheet from '@/components/ui/Sheet';
+import SheetActions from '@/components/forms/SheetActions';
+import PageHeader from '@/components/ui/PageHeader';
+import FAB from '@/components/ui/FAB';
 
 export default function RapprochementPage() {
   const { comptes } = useComptesFinanciers();
@@ -62,16 +66,16 @@ export default function RapprochementPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rapprochement Bancaire</h1><p className="text-sm text-gray-500">Comparez le solde relevé bancaire au solde comptable</p></div>
-          <div className="flex items-center gap-3">
-            <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte, banque..." className="!w-64" />
-            <button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary disabled:opacity-50">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouveau Rapprochement
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Rapprochement bancaire"
+          subtitle="Comparez le solde relevé bancaire au solde comptable"
+          actions={<button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary hidden lg:inline-flex disabled:opacity-50">
+            <svg aria-hidden="true" className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Nouveau rapprochement
+          </button>}
+        />
+        <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte, banque..." className="md:!w-64" />
+        {compteId && <FAB label="Nouveau rapprochement" onClick={() => setShowModal(true)} />}
         <div className="table-container">
           <table className="w-full table-fixed">
             <colgroup>
@@ -83,18 +87,18 @@ export default function RapprochementPage() {
               <col style={{ width: '14%' }} />
               <col style={{ width: '14%' }} />
               </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
-              {!compteId ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sélectionnez un compte bancaire</td></tr>
+              {!compteId ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sélectionnez un compte bancaire pour afficher ses rapprochements</td></tr>
               : loading ? <SkeletonRows cols={7} />
               : rapprochements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun rapprochement en cours</td></tr>
               : paged.map(r => (
                 <tr key={r.id} className="table-row">
                   <td className="table-cell !px-1.5" data-label="Actions">
-                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-[10.5px] text-primary-600 hover:underline">Valider</button>}
+                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-xs px-2 py-2 text-primary-600 hover:underline">Valider</button>}
                   </td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date bancaire">{new Date(r.dateBancaire).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date comptable">{new Date(r.dateComptable).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell col-opt !text-[10.5px] !px-1.5 truncate" data-label="Date comptable">{new Date(r.dateComptable).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde relevé">{fmt(r.soldeReleve)}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde comptable">{fmt(r.soldeComptable)}</td>
                   <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.ecart) === 0 ? 'text-green-600' : 'text-red-600'}`} data-label="Écart">{fmt(r.ecart)}</td>
@@ -106,31 +110,24 @@ export default function RapprochementPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </div>
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">Nouveau Rapprochement</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleCreate} className="p-6 space-y-4">
+        <Sheet open={showModal} onClose={() => setShowModal(false)} title="Nouveau Rapprochement" size="lg">
+              <form onSubmit={handleCreate} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="label">Date bancaire *</label><input type="date" value={form.dateBancaire} onChange={e => setForm({ ...form, dateBancaire: e.target.value })} className="input-field" required /></div>
                   <div><label className="label">Date comptable *</label><input type="date" value={form.dateComptable} onChange={e => setForm({ ...form, dateComptable: e.target.value })} className="input-field" required /></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Solde relevé *</label><input type="number" value={form.soldeReleve} onChange={e => setForm({ ...form, soldeReleve: e.target.value })} className="input-field" required /></div>
-                  <div><label className="label">Solde comptable *</label><input type="number" value={form.soldeComptable} onChange={e => setForm({ ...form, soldeComptable: e.target.value })} className="input-field" required /></div>
+                  <div><label className="label">Solde relevé *</label><input type="number" inputMode="decimal" value={form.soldeReleve} onChange={e => setForm({ ...form, soldeReleve: e.target.value })} className="input-field" required /></div>
+                  <div><label className="label">Solde comptable *</label><input type="number" inputMode="decimal" value={form.soldeComptable} onChange={e => setForm({ ...form, soldeComptable: e.target.value })} className="input-field" required /></div>
                 </div>
                 {ecartPreview !== null && (
                   <p className={`text-sm font-semibold ${ecartPreview === 0 ? 'text-green-600' : 'text-red-600'}`}>Écart prévisionnel : {fmt(ecartPreview)}</p>
                 )}
                 <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Créer</button></div>
+                <SheetActions onCancel={() => setShowModal(false)} cancelLabel="Annuler" submitLabel="Créer" />
               </form>
-            </div>
-          </div>
-        )}
+            
+        </Sheet>
       </div>
     </AppLayout>
   );

@@ -5,6 +5,12 @@ import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import PickerField from '@/components/ui/PickerField';
+import Sheet from '@/components/ui/Sheet';
+import FAB from '@/components/ui/FAB';
+import PageHeader from '@/components/ui/PageHeader';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import SheetActions from '@/components/forms/SheetActions';
+import FiltersToggle from '@/components/forms/FiltersToggle';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -13,6 +19,7 @@ import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 export default function DotationPage() {
+  const confirmer = useConfirm();
   const { hasPermission } = useAuthStore();
   const canSignature = hasPermission('DOCUMENTS:SIGNATURE');
   const [afficherSignature, setAfficherSignature] = useState(false);
@@ -82,7 +89,7 @@ export default function DotationPage() {
   };
 
   const handleAnnuler = async (d: any) => {
-    if (!confirm(`Annuler la dotation ${d.numero} ?`)) return;
+    if (!(await confirmer({ titre: `Annuler la dotation ${d.numero} ?`, message: 'La dotation sera annulée et ne pourra plus être utilisée.', confirmer: 'Annuler la dotation', annuler: 'Retour', danger: true }))) return;
     try {
       await financeApi.dotations.annuler(d.id);
       toast.success('Dotation annulée');
@@ -220,25 +227,27 @@ export default function DotationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Dotation</h1>
-            <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field !py-1.5 text-xs !w-32 flex-shrink-0" placeholder="N° Dotation..." />
-            <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="!py-1.5 text-xs w-36 flex-shrink-0" />
-            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <label className={`flex items-center gap-1.5 text-[10.5px] text-gray-600 dark:text-gray-300 flex-shrink-0 whitespace-nowrap ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
-              <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300" />
-              Signature sur fiches
-            </label>
-            <div className="flex gap-2 flex-shrink-0 ml-auto">
-              <button onClick={openHistorique} className="btn-secondary !px-3 !py-1.5 text-xs">Historique</button>
-              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs">
-                <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Nouvelle Dotation
-              </button>
+        <PageHeader
+          title="Dotation"
+          secondaryActions={[{ label: 'Historique', onClick: openHistorique }]}
+          actions={<button onClick={openCreate} className="btn-primary hidden lg:inline-flex">
+            <svg aria-hidden="true" className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Nouvelle dotation
+          </button>}
+        />
+        <FiltersToggle count={(filterNumero ? 1 : 0) + (filterAgentId ? 1 : 0)}>
+          <div className="card !p-3">
+            <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2">
+              <input type="text" value={filterNumero} onChange={e => setFilterNumero(e.target.value)} className="input-field md:!py-1.5 text-sm md:text-xs md:!w-40" placeholder="N° Dotation..." aria-label="N° Dotation" />
+              <PickerField value={filterAgentId} onChange={setFilterAgentId} options={agentOptions} placeholder="Tous les agents" title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." className="md:!py-1.5 text-sm md:text-xs md:w-44" />
+              <button onClick={load} className="btn-secondary min-h-[44px] md:min-h-0 md:!py-1.5 text-sm md:text-xs">Afficher</button>
+              <label className={`flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 min-h-[44px] md:min-h-0 ${canSignature ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} title={!canSignature ? 'Permission requise : DOCUMENTS:SIGNATURE' : undefined}>
+                <input type="checkbox" checked={afficherSignature} disabled={!canSignature} onChange={e => setAfficherSignature(e.target.checked)} className="rounded border-gray-300 w-4 h-4" />
+                Signature sur fiches
+              </label>
             </div>
           </div>
-        </div>
+        </FiltersToggle>
 
         <div className="table-container">
           <table className="w-full table-fixed">
@@ -254,7 +263,7 @@ export default function DotationPage() {
               <col style={{ width: '9%' }} />
               </colgroup>
             <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate"></th>
+              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">N° Dotation</th>
               <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
               <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
@@ -266,24 +275,24 @@ export default function DotationPage() {
             </tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={9} />
-              : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune dotation enregistrée</td></tr>
+              : rows.length === 0 ? <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune dotation enregistrée<br /><button type="button" onClick={openCreate} className="btn-primary mt-3">Nouvelle dotation</button></td></tr>
               : rows.map(d => (
                 <tr key={d.id} className="table-row">
                   <td className="table-cell !px-1.5" data-label="Actions">
                     <div className="flex gap-1.5 items-center flex-wrap">
-                      {d.statut === 'VALIDE' && <button onClick={() => openEdit(d)} className="text-[10px] text-primary-600 hover:underline">Modifier</button>}
-                      {d.statut === 'VALIDE' && <button onClick={() => handleAnnuler(d)} className="text-[10px] text-red-600 hover:underline">Supprimer</button>}
-                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 1</button>
-                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-[10px] text-gray-500 hover:underline disabled:opacity-50">Fiche 2</button>
+                      {d.statut === 'VALIDE' && <button onClick={() => openEdit(d)} className="text-xs px-1 py-1 text-primary-600 hover:underline">Modifier</button>}
+                      {d.statut === 'VALIDE' && <button onClick={() => handleAnnuler(d)} className="text-xs px-1 py-1 text-red-600 hover:underline">Supprimer</button>}
+                      <button onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className="text-xs px-1 py-1 text-gray-600 dark:text-gray-300 hover:underline disabled:opacity-50">Fiche 1</button>
+                      <button onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className="text-xs px-1 py-1 text-gray-600 dark:text-gray-300 hover:underline disabled:opacity-50">Fiche 2</button>
                     </div>
                   </td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dotation" title={d.numero}>{d.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell col-opt !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(d.montant)}</td>
-                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
+                  <td className="table-cell col-opt text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Utilisé">{fmt(d.montantUtilise)}</td>
                   <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Restant">{fmt(d.montantRestant)}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Agent">{d.agent ? `${d.agent.nom} ${d.agent.prenom}` : '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
+                  <td className="table-cell col-opt !text-[10.5px] !px-1.5 truncate" title={d.motif} data-label="Motif">{d.motif || '-'}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${d.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{d.statut === 'VALIDE' ? 'Validée' : 'Annulée'}</span></td>
                 </tr>
               ))}
@@ -292,64 +301,47 @@ export default function DotationPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
         </div>
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">{editing ? 'Modifier la Dotation' : 'Fiche Dotation'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <Sheet open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Modifier la dotation' : 'Nouvelle dotation'} size="lg">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {editing && <p className="text-xs text-gray-500 font-mono">{editing.numero}</p>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Montant *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
+                  <div><label className="label">Montant *</label><input type="number" inputMode="decimal" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
                   {!editing && <div><label className="label">Date</label><input type="date" value={form.dateDotation} onChange={e => setForm({ ...form, dateDotation: e.target.value })} className="input-field" /></div>}
                 </div>
                 {editing && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="label text-gray-400">Montant Utilisé</label><input type="text" value={fmt(editing.montantUtilise)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-400" /></div>
-                    <div><label className="label text-gray-400">Montant Restant</label><input type="text" value={fmt(editing.montantRestant)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-400" /></div>
+                    <div><label className="label text-gray-600">Montant Utilisé</label><input type="text" value={fmt(editing.montantUtilise)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-600" /></div>
+                    <div><label className="label text-gray-600">Montant Restant</label><input type="text" value={fmt(editing.montantRestant)} disabled className="input-field bg-gray-50 dark:bg-surface-700 text-gray-600" /></div>
                   </div>
                 )}
                 <div><label className="label">Agent *</label>
                   <PickerField value={form.agentId} onChange={id => setForm({ ...form, agentId: id })} options={agentOptions} placeholder="Sélectionner un agent..." title="Sélectionner un agent" searchPlaceholder="Nom, prénom..." required />
                 </div>
                 <div><label className="label">Motif</label><textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} /></div>
-                <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button><button type="submit" className="btn-primary">Valider</button></div>
+<SheetActions onCancel={() => setShowModal(false)} submitLabel="Valider" />
               </form>
-            </div>
-          </div>
-        )}
+        </Sheet>
+        <FAB label="Nouvelle dotation" onClick={openCreate} />
 
-        {showHistorique && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-                <h3 className="font-bold text-lg">Historique des Dotations par Agent</h3>
-                <button onClick={() => setShowHistorique(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
+        <Sheet open={showHistorique} onClose={() => setShowHistorique(false)} title="Historique des dotations par agent" size="2xl">
                 {loadingHistorique ? <p className="text-center text-gray-500 py-8">Chargement...</p> : (
-                  <table className="w-full text-sm">
-                    <thead><tr><th className="table-header">Agent</th><th className="table-header text-right">Nb. Dotations</th><th className="table-header text-right">Total Montant</th><th className="table-header text-right">Total Utilisé</th><th className="table-header text-right">Total Restant</th></tr></thead>
-                    <tbody>
-                      {Object.values(historiqueParAgent).length === 0 ? <tr><td colSpan={5} className="text-center py-8 text-gray-500">Aucune dotation enregistrée</td></tr>
-                      : Object.values(historiqueParAgent).map((a: any) => (
-                        <tr key={a.nom} className="table-row">
-                          <td className="table-cell font-medium" data-label="Agent">{a.nom}</td>
-                          <td className="table-cell text-right" data-label="Nb. Dotations">{a.nb}</td>
-                          <td className="table-cell text-right font-mono" data-label="Total Montant">{fmt(a.totalMontant)}</td>
-                          <td className="table-cell text-right font-mono text-red-600" data-label="Total Utilisé">{fmt(a.totalUtilise)}</td>
-                          <td className="table-cell text-right font-mono text-green-600" data-label="Total Restant">{fmt(a.totalRestant)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+            <table className="w-full text-sm">
+              <thead><tr><th className="table-header">Agent</th><th className="table-header text-right">Nb. Dotations</th><th className="table-header text-right">Total Montant</th><th className="table-header text-right">Total Utilisé</th><th className="table-header text-right">Total Restant</th></tr></thead>
+              <tbody>
+                {Object.values(historiqueParAgent).length === 0 ? <tr><td colSpan={5} className="text-center py-8 text-gray-500">Aucune dotation enregistrée</td></tr>
+                : Object.values(historiqueParAgent).map((a: any) => (
+                  <tr key={a.nom} className="table-row">
+                    <td className="table-cell font-medium" data-label="Agent">{a.nom}</td>
+                    <td className="table-cell text-right" data-label="Nb. Dotations">{a.nb}</td>
+                    <td className="table-cell text-right font-mono" data-label="Total Montant">{fmt(a.totalMontant)}</td>
+                    <td className="table-cell text-right font-mono text-red-600" data-label="Total Utilisé">{fmt(a.totalUtilise)}</td>
+                    <td className="table-cell text-right font-mono text-green-600" data-label="Total Restant">{fmt(a.totalRestant)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Sheet>
       </div>
     </AppLayout>
   );

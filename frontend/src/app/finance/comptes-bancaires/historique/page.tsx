@@ -9,6 +9,7 @@ import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function ComptesBancairesHistoriquePage() {
   const { comptes, loading, reload } = useComptesFinanciers();
@@ -39,9 +40,8 @@ export default function ComptesBancairesHistoriquePage() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <Link href="/finance/comptes-bancaires" className="text-sm text-primary-600 hover:underline mb-2 inline-block">← Comptes Bancaires</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Historique des comptes bancaires désactivés</h1>
-          <p className="text-sm text-gray-500">Cliquez sur un compte pour consulter son historique de transactions.</p>
+          <Link href="/finance/comptes-bancaires" className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← Comptes bancaires</Link>
+          <PageHeader className="!mb-0" title="Historique des comptes bancaires désactivés" subtitle="Touchez un compte pour consulter son historique de transactions." />
         </div>
 
         <div className="table-container">
@@ -59,17 +59,17 @@ export default function ComptesBancairesHistoriquePage() {
               <col style={{ width: '18%' }} />
               <col style={{ width: '14%' }} />
             </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Banque</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th></tr></thead>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Banque</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th></tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={6} />
               : comptesDesactives.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun compte bancaire désactivé</td></tr>
               : paged.map(c => (
                 <tr key={c.id} className="table-row cursor-pointer" onClick={() => setSelectedId(c.id)}>
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); reactiver(c.id); }} className="text-[10.5px] text-primary-600 hover:underline">Réactiver</button></td>
+                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); reactiver(c.id); }} className="text-sm px-2 py-2 text-primary-600 hover:underline">Réactiver</button></td>
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Banque">{c.banque}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{fmt(c.solde)}</td>
                 </tr>
               ))}
@@ -109,20 +109,20 @@ function CompteHistoriqueDetail({ compte, onBack, onReactiver }: { compte: any; 
     <div className="space-y-4">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← Comptes désactivés</button>
+          <button onClick={onBack} className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← Comptes désactivés</button>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{compte.libelle} ({compte.banque})</h2>
           <p className="text-sm text-gray-500">Solde au moment de la désactivation : <span className="font-bold text-gray-900 dark:text-white">{fmt(compte.solde)} {compte.devise}</span> · <span className="badge badge-gray">Inactif</span></p>
         </div>
-        <button onClick={() => onReactiver(compte.id)} className="btn-primary">Réactiver ce compte</button>
+        <button onClick={() => onReactiver(compte.id)} className="btn-primary min-h-[44px] max-md:w-full">Réactiver ce compte</button>
       </div>
 
       <div className="card">
         <div className="flex items-end justify-between flex-wrap gap-3 p-4 border-b border-gray-200 dark:border-surface-700">
           <h3 className="text-sm font-semibold">Transactions du compte</h3>
-          <div className="flex items-end flex-wrap gap-3">
-            <div><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !w-auto" /></div>
-            <div><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !w-auto" /></div>
-            <button onClick={load} className="btn-primary">Afficher</button>
+          <div className="flex items-end flex-wrap gap-3 max-md:w-full">
+            <div className="max-md:flex-1"><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field md:!w-auto" /></div>
+            <div className="max-md:flex-1"><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field md:!w-auto" /></div>
+            <button onClick={load} className="btn-primary max-md:w-full min-h-[44px]">Afficher</button>
           </div>
         </div>
         <div className="table-container">
@@ -136,7 +136,7 @@ function CompteHistoriqueDetail({ compte, onBack, onReactiver }: { compte: any; 
                   <td className="table-cell text-xs" data-label="Date">{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell" data-label="Sens">{op.sens === 'ENTREE' ? <span className="text-green-600 font-medium">↘ Entrée</span> : <span className="text-red-600 font-medium">↗ Sortie</span>}</td>
                   <td className="table-cell" data-label="Origine">{op.libelle}</td>
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
+                  <td className="table-cell col-opt font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
                   <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{op.sens === 'ENTREE' ? '+' : '-'}{fmt(op.montant)}</td>
                 </tr>
               ))}

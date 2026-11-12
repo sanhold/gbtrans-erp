@@ -8,6 +8,7 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt, CREANCE_STATUTS_OUVERTS, CREANCE_STATUT_BADGE } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function DettesFournisseursPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -26,7 +27,7 @@ export default function DettesFournisseursPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dettes Fournisseurs</h1><p className="text-sm text-gray-500">Factures fournisseurs validées et non soldées</p></div>
+        <PageHeader title="Dettes Fournisseurs" subtitle="Factures fournisseurs validées et non soldées" />
 
         <div className="card !py-3 !px-4 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800 text-sm text-red-800 dark:text-red-300">
           Total des dettes fournisseurs : <span className="font-mono font-bold">{fmt(total)} XOF</span> — {rows.length} facture(s) ouverte(s)
@@ -49,18 +50,18 @@ export default function DettesFournisseursPage() {
               <col style={{ width: '13%' }} />
               <col style={{ width: '12%' }} />
             </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Fournisseur</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TTC</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
+            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th><th className="table-header !text-[10px] !px-1.5 truncate">Fournisseur</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TTC</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
             <tbody>
               {loading ? <SkeletonRows cols={8} />
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dette ouverte</td></tr>
               : paged.map(f => (
                 <tr key={f.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions"><Link href={`/facturation-fournisseurs/${f.id}`} className="btn-primary !px-2 !py-1 text-[10.5px]">Payer</Link></td>
+                  <td className="table-cell !px-1.5" data-label="Actions"><Link href={`/facturation-fournisseurs/${f.id}`} className="btn-primary !px-3 !py-1.5 text-xs">Payer</Link></td>
                   <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Fournisseur" title={f.fournisseur?.raisonSociale}>{f.fournisseur?.raisonSociale}</td>
                   <td className="table-cell font-mono text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Facture">{f.numero}</td>
                   <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Échéance">{new Date(f.dateEcheance).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
+                  <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TTC">{fmt(f.montantTTC)}</td>
+                  <td className="table-cell col-opt text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
                   <td className="table-cell text-right font-mono font-semibold text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste à payer">{fmt(f.resteAPayer)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${CREANCE_STATUT_BADGE[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
                 </tr>

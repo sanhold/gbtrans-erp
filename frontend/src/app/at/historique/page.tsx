@@ -7,6 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { atApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
+import PageHeader from '@/components/ui/PageHeader';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
@@ -39,14 +40,12 @@ export default function ATHistoriquePage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <Link href="/at" className="text-[10px] text-primary-600 hover:underline block">← Admissions Temporaires</Link>
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Historique AT</h1>
-            </div>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-56 flex-shrink-0" placeholder="N° AT, désignation, déclarant..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
+        <Link href="/at" className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline -mb-4">← Admissions temporaires</Link>
+        <PageHeader title="Historique AT" subtitle="Admissions temporaires apurées" />
+        <div className="card !p-3">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row md:items-center gap-2">
+            <input type="search" value={search} onChange={e => setSearch(e.target.value)} className="input-field md:!py-1.5 md:text-xs md:w-72" placeholder="N° AT, désignation, déclarant..." aria-label="Rechercher une AT" />
+            <button type="submit" className="btn-primary min-h-[44px] md:min-h-0 md:!py-1.5 md:text-xs">Afficher</button>
           </form>
         </div>
 
@@ -87,25 +86,25 @@ export default function ATHistoriquePage() {
                 <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune AT apurée</td></tr>
               ) : items.map(at => (
                 <tr key={at.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Dossier">
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
+                  <td className="table-cell col-opt !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
+                  <td className="table-cell col-opt font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="N° Dossier">
                     {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numeroPhysique || at.dossiers[0].numero}</Link> : '-'}
                   </td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Apurement">{fmtDate(at.dateApurement)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate text-green-600" data-label="Montant Apuré">{fmt(at.montantApure)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Réf. Apurement" title={at.referenceApurement || undefined}>{at.referenceApurement || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
+                  <td className="table-cell !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Échéance">{fmtDate(at.dateExpiration)}</td>
+                  <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[13px] md:!text-[10.5px] truncate" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
+                  <td className="table-cell !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Date Apurement">{fmtDate(at.dateApurement)}</td>
+                  <td className="table-cell col-opt text-right font-mono !px-1.5 !text-[13px] md:!text-[10.5px] truncate text-green-600" data-label="Montant Apuré">{fmt(at.montantApure)}</td>
+                  <td className="table-cell col-opt font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Réf. Apurement" title={at.referenceApurement || undefined}>{at.referenceApurement || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-surface-700">
-            <span className="text-xs text-gray-500">Compteur : {total}</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300">Total : {total}</span>
           </div>
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
         </div>

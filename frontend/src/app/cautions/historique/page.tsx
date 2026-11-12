@@ -3,6 +3,7 @@
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PageHeader from '@/components/ui/PageHeader';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { cautionsApi } from '@/lib/api';
@@ -36,9 +37,8 @@ export default function CautionsHistoriquePage() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <Link href="/cautions" className="text-sm text-primary-600 hover:underline mb-2 inline-block">← Gestion des Cautions</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Historique des Cautions</h1>
-          <p className="text-sm text-gray-500">Cautions payées</p>
+          <Link href="/cautions" className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:underline">← Gestion des cautions</Link>
+          <PageHeader className="!mb-0" title="Historique des cautions" subtitle="Cautions payées" />
         </div>
 
         <div className="table-container">
@@ -78,32 +78,29 @@ export default function CautionsHistoriquePage() {
                 <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune caution payée</td></tr>
               ) : items.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
+                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
+                  <td className="table-cell col-opt !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
+                  <td className="table-cell font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
                     {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
                   </td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate font-medium text-green-600" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
+                  <td className="table-cell col-opt font-mono !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
+                  <td className="table-cell !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
+                  <td className="table-cell col-opt text-center !px-1 !text-[13px] md:!text-[10.5px]" data-label="Qte">{c.quantite}</td>
+                  <td className="table-cell text-right font-mono !px-1.5 !text-[13px] md:!text-[10.5px] truncate" data-label="Montant">{fmt(c.montant)}</td>
+                  <td className="table-cell col-opt !px-1.5 !text-[13px] md:!text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
+                  <td className="table-cell col-opt !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
+                  <td className="table-cell !text-[13px] md:!text-[10.5px] !px-1.5 truncate font-medium text-green-700" data-label="Paiement">{fmtDate(c.datePaiement)}</td>
+                  <td className="table-cell col-opt !text-[13px] md:!text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
                 </tr>
               ))}
             </tbody>
-            {items.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-gray-300 dark:border-surface-600 font-semibold">
-                  <td className="table-cell" colSpan={6}>Somme / Compteur (page)</td>
-                  <td className="table-cell text-right font-mono">{fmt(sommeMontant)}</td>
-                  <td className="table-cell" colSpan={4}>{total} caution(s) payée(s)</td>
-                </tr>
-              </tfoot>
-            )}
           </table>
+          {items.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t-2 border-gray-300 dark:border-surface-600 text-sm font-semibold">
+              <span>Somme (page) : <span className="font-mono">{fmt(sommeMontant)} F</span></span>
+              <span>{total} caution(s) payée(s)</span>
+            </div>
+          )}
           <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
         </div>
       </div>

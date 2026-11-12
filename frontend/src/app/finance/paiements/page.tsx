@@ -8,6 +8,7 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt, MODE_PAIEMENT_LABELS } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function PaiementsPage() {
   const [paiements, setPaiements] = useState<any[]>([]);
@@ -30,7 +31,7 @@ export default function PaiementsPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Paiements</h1><p className="text-sm text-gray-500">Historique des paiements clients</p></div>
+        <PageHeader title="Paiements" subtitle="Historique des paiements clients" />
 
         <div className="card !py-3 !px-4 bg-primary-50 dark:bg-primary-900/20 border-primary-100 dark:border-primary-800 text-sm text-primary-800 dark:text-primary-300">
           Les paiements sont enregistrés depuis la fiche facture (bouton "Enregistrer un paiement"). <Link href="/facturation" className="font-semibold underline">Aller à la Facturation</Link>
@@ -53,10 +54,10 @@ export default function PaiementsPage() {
               : paiements.map(p => (
                 <tr key={p.id} className="table-row">
                   <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={p.numero}>{p.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
+                  <td className="table-cell col-opt !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
                   <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={p.client?.raisonSociale || undefined}>{p.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Mode"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement}</span></td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Facture(s)" title={(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || undefined}>{(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || '-'}</td>
+                  <td className="table-cell col-opt !px-1.5" data-label="Mode"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement}</span></td>
+                  <td className="table-cell col-opt !text-[10.5px] !px-1.5 truncate" data-label="Facture(s)" title={(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || undefined}>{(p.affectations || []).map((a: any) => a.facture?.numero).join(', ') || '-'}</td>
                   <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant">{fmt(p.montant)}</td>
                   <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${p.statut === 'VALIDE' ? 'badge-success' : 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{p.statut}</span></td>
                 </tr>
