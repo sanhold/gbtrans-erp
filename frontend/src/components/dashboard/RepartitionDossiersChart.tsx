@@ -24,7 +24,7 @@ export default function RepartitionDossiersChart({ items, height = 200 }: Repart
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center text-sm text-gray-400" style={{ height }}>
+      <div className="flex items-center justify-center text-sm text-gray-600 dark:text-gray-400" style={{ height }}>
         Aucune donnée disponible pour cette période.
       </div>
     );

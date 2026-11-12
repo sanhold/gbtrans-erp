@@ -15,7 +15,7 @@ export default function DossiersParAnneeChart({ dossiersParAnnee, anneeActive, h
 
   if (entries.length === 0) {
     return (
-      <div className="flex items-center justify-center text-sm text-gray-400" style={{ height }}>
+      <div className="flex items-center justify-center text-sm text-gray-600 dark:text-gray-400" style={{ height }}>
         Aucune donnée disponible.
       </div>
     );

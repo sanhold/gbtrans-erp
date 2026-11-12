@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
 import { platformApi } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyRow from '@/components/tables/EmptyRow';
 
 const ACTION_LABEL: Record<string, string> = {
   ABONNEMENT_MODIFIE: 'Abonnement modifié',
@@ -57,10 +59,7 @@ export default function AdminJournalPage() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Journal d&apos;activité</h1>
-          <p className="text-sm text-gray-500">{total} action(s) enregistrée(s) — traçabilité des opérations sensibles de la plateforme</p>
-        </div>
+        <PageHeader title="Journal d'activité" subtitle={`${total} action(s) enregistrée(s) — traçabilité des opérations sensibles de la plateforme`} className="!mb-0" />
 
         <div className="table-container">
           <table className="w-full">
@@ -74,13 +73,13 @@ export default function AdminJournalPage() {
               {loading ? (
                 <SkeletonRows cols={4} />
               ) : data.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-12 text-gray-500">Aucune action enregistrée</td></tr>
+                <EmptyRow colSpan={4} message="Aucune action enregistrée" />
               ) : data.map(entry => (
                 <tr key={entry.id} className="table-row">
                   <td className="table-cell text-xs" data-label="Date">{fmtDateHeure(entry.createdAt)}</td>
                   <td className="table-cell text-xs" data-label="Administrateur">{entry.adminEmail}</td>
-                  <td className="table-cell" data-label="Action"><span className={`badge ${ACTION_BADGE[entry.action] || 'badge-gray'} !text-[10px]`}>{ACTION_LABEL[entry.action] || entry.action}</span></td>
-                  <td className="table-cell text-xs text-gray-500" data-label="Détails">{detailsTexte(entry) || '-'}</td>
+                  <td className="table-cell" data-label="Action"><span className={`badge ${ACTION_BADGE[entry.action] || 'badge-gray'}`}>{ACTION_LABEL[entry.action] || entry.action}</span></td>
+                  <td className="table-cell text-xs text-gray-600 dark:text-gray-400" data-label="Détails">{detailsTexte(entry) || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -89,9 +88,9 @@ export default function AdminJournalPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Précédent</button>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Suivant</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary disabled:opacity-40">Précédent</button>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Page {page} / {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary disabled:opacity-40">Suivant</button>
           </div>
         )}
       </div>

@@ -32,14 +32,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (!ready) return <SplashLoader />;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-surface-900">
+    <div className="min-h-dvh bg-white dark:bg-surface-900">
       <TableEnhancer />
       {admin && !admin.superAdmin && (
         <div className="bg-amber-500 text-amber-950 text-center text-xs font-semibold py-1.5">
           Compte de démonstration — lecture seule, aucune modification possible
         </div>
       )}
-      <header className="bg-primary-600 text-white">
+      <header className="bg-primary-600 text-white pt-[env(safe-area-inset-top)]">
         <div className="max-w-6xl mx-auto px-5 h-[46px] flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/admin" className="font-display font-bold flex items-center gap-2">
@@ -55,12 +55,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-white/60 hidden sm:inline">{admin?.prenom} {admin?.nom}</span>
-            <button onClick={() => { platformAuth.logout(); router.push('/admin/login'); }} className="text-sm text-white/60 hover:text-white">Déconnexion</button>
+            <span className="text-sm text-white/80 hidden sm:inline">{admin?.prenom} {admin?.nom}</span>
+            <button type="button" onClick={() => { platformAuth.logout(); router.push('/admin/login'); }} className="min-h-[44px] px-2 text-sm text-white/80 hover:text-white">Déconnexion</button>
           </div>
         </div>
+        {/* Navigation mobile : défilement horizontal (la navigation bureau est masquée sous 640px) */}
+        <nav aria-label="Administration" className="sm:hidden border-t border-white/15 overflow-x-auto [scrollbar-width:none]">
+          <ul className="flex px-3 min-w-max">
+            {NAV.map(n => (
+              <li key={n.href}>
+                <Link href={n.href} aria-current={pathname === n.href ? 'page' : undefined} className={`flex items-center min-h-[44px] px-3 text-[13px] font-medium whitespace-nowrap border-b-[3px] ${pathname === n.href ? 'border-amber-500 text-white font-bold' : 'border-transparent text-white/80'}`}>
+                  {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </header>
-      <main className="max-w-6xl mx-auto px-5 py-6">{children}</main>
+      <main className="max-w-6xl mx-auto px-4 sm:px-5 py-5 sm:py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
     </div>
   );
 }

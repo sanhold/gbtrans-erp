@@ -113,7 +113,7 @@ export default function DashboardHomePage() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
         <div>
           <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Tableau de bord</h1>
-          <p className="text-[14px] text-gray-500 dark:text-gray-400">Vue d&apos;ensemble de l&apos;activité du bureau de transit</p>
+          <p className="text-[14px] text-gray-600 dark:text-gray-400">Vue d&apos;ensemble de l&apos;activité du bureau de transit</p>
         </div>
         <PeriodSwitch years={[currentYear - 1, currentYear]} value={year} onChange={setYear} />
       </div>
@@ -128,7 +128,8 @@ export default function DashboardHomePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+          <div className="flex sm:grid overflow-x-auto sm:overflow-visible snap-x snap-mandatory gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4 -mx-3 px-3 sm:mx-0 sm:px-0 pb-2 sm:pb-0 mb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list" aria-label="Indicateurs clés">
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label={`Dossiers ouverts en ${year}`}
               value={`${stats?.totalDossiers ?? 0}`}
@@ -139,12 +140,16 @@ export default function DashboardHomePage() {
                 </span>
               ) : undefined}
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label="Dossiers en cours"
               value={`${stats?.dossiersEnCours ?? 0}`}
               icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
               context="En traitement actuellement"
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label={`Chiffre d'affaires · ${moisCourant}`}
               value={caMois.value}
@@ -153,6 +158,8 @@ export default function DashboardHomePage() {
               iconClass="text-accent-600 dark:text-accent-500"
               context="Facturé sur le mois"
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label="Créances clients"
               value={creances.value}
@@ -161,30 +168,39 @@ export default function DashboardHomePage() {
               iconClass="text-red-600"
               context={<span className="font-semibold text-red-600 dark:text-red-400">{stats?.facturesImpayeesCount ?? 0} facture(s) impayée(s)</span>}
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label="Clients actifs"
               value={`${stats?.totalClients ?? 0}`}
               icon="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"
               context={`${stats?.totalFournisseurs ?? 0} fournisseur(s)`}
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label="Admissions temporaires"
               value={`${stats?.atActives ?? 0}`}
               icon="M6 2h12M6 22h12M7 2c0 5 5 6 5 10s-5 5-5 10M17 2c0 5-5 6-5 10s5 5 5 10"
               context={stats?.atExpirees ? <span className="font-semibold text-amber-600 dark:text-amber-400">{stats.atExpirees} expirée(s)</span> : 'Aucune expirée'}
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label="Cautions en cours"
               value={`${stats?.totalCautions ?? 0}`}
               icon="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"
               context="Actives"
             />
+            </div>
+            <div role="listitem" className="snap-start shrink-0 w-[74%] min-[480px]:w-[45%] sm:w-auto min-w-0">
             <KpiCard
               label="Documents archivés"
               value={`${stats?.documentsArchives ?? 0}`}
               icon="M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"
               context={<Link href="/archives" className="font-semibold text-primary-600 dark:text-primary-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded">Archiver un document →</Link>}
             />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
@@ -213,18 +229,18 @@ export default function DashboardHomePage() {
               <RepartitionDossiersChart items={repartition} height={160} />
             </SectionCard>
 
-            <SectionCard title={`Meilleurs clients — ${year}`} action={<Link href="/clients" className="text-xs text-primary-600 hover:underline font-medium">Voir tous →</Link>}>
+            <SectionCard title={`Meilleurs clients — ${year}`} action={<Link href="/clients" className="inline-flex items-center min-h-[44px] sm:min-h-0 text-xs text-primary-600 hover:underline font-medium">Voir tous →</Link>}>
               {topClients.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">Aucune facturation cette année</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-6">Aucune facturation cette année</p>
               ) : (
                 <div className="space-y-2">
                   {topClients.map((c, i) => (
-                    <div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-700 transition-colors">
+                    <div key={c.id} className="flex items-center justify-between gap-2 p-2.5 min-h-[48px] rounded-lg hover:bg-gray-50 dark:hover:bg-surface-700 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="w-6 h-6 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-[11px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                         <div className="min-w-0">
                           <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate">{c.raisonSociale}</p>
-                          <p className="text-[11px] text-gray-400">{c.nombre_dossiers} dossier(s)</p>
+                          <p className="text-[11px] text-gray-600 dark:text-gray-400">{c.nombre_dossiers} dossier(s)</p>
                         </div>
                       </div>
                       <span className="text-[12px] font-bold text-gray-900 dark:text-white flex-shrink-0">{canSeeMontants ? formatMontant(c.ca_total) : MONTANT_MASQUE}</span>

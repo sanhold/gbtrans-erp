@@ -25,7 +25,7 @@ export default function ResumeFinancierChart({ recettes, depenses, benefice, hei
 
   if (!recettes && !depenses && !benefice) {
     return (
-      <div className="flex items-center justify-center text-sm text-gray-400" style={{ height }}>
+      <div className="flex items-center justify-center text-sm text-gray-600 dark:text-gray-400" style={{ height }}>
         Aucune donnée disponible pour cette période.
       </div>
     );

@@ -34,7 +34,7 @@ export default function CAMensuelChart({ caMensuel, height = 190 }: CAMensuelCha
   const isEmpty = data.series.every(s => s.data.every(v => !v));
   if (isEmpty) {
     return (
-      <div className="flex items-center justify-center text-sm text-gray-400" style={{ height }}>
+      <div className="flex items-center justify-center text-sm text-gray-600 dark:text-gray-400" style={{ height }}>
         Aucune donnée disponible pour cette période.
       </div>
     );

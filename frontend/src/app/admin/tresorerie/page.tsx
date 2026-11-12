@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
 import { platformApi } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
 
 const fmt = (n: any) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n || 0))} FCFA`;
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
@@ -17,7 +18,7 @@ export default function AdminTresoreriePage() {
   }, []);
 
   if (loading) return <AdminShell><div className="text-center py-12"><div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div></AdminShell>;
-  if (!data) return <AdminShell><p className="text-gray-500">Aucune donnée</p></AdminShell>;
+  if (!data) return <AdminShell><p className="text-gray-600 dark:text-gray-400">Aucune donnée</p></AdminShell>;
 
   const cartes = [
     { label: 'CA total encaissé', valeur: fmt(data.caTotalEncaisse), sub: `${data.nbPaiementsReussis} paiement(s) réussi(s)`, couleur: 'text-primary-600' },
@@ -28,17 +29,14 @@ export default function AdminTresoreriePage() {
   return (
     <AdminShell>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trésorerie SaaS</h1>
-          <p className="text-sm text-gray-500">Revenus toutes sociétés clientes confondues</p>
-        </div>
+        <PageHeader title="Trésorerie SaaS" subtitle="Revenus toutes sociétés clientes confondues" className="!mb-0" />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {cartes.map(c => (
             <div key={c.label} className="card">
-              <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{c.label}</p>
               <p className={`text-2xl font-extrabold ${c.couleur}`}>{c.valeur}</p>
-              <p className="text-xs text-gray-400 mt-1">{c.sub}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{c.sub}</p>
             </div>
           ))}
         </div>
@@ -46,7 +44,7 @@ export default function AdminTresoreriePage() {
         <div className="card">
           <h3 className="font-bold text-gray-900 dark:text-white mb-3">Répartition des abonnements par formule</h3>
           {data.repartitionParPlan.length === 0 ? (
-            <p className="text-sm text-gray-500">Aucun abonnement</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Aucun abonnement</p>
           ) : (
             <div className="space-y-2">
               {data.repartitionParPlan.map((p: any) => (
@@ -62,7 +60,7 @@ export default function AdminTresoreriePage() {
         <div className="card">
           <h3 className="font-bold text-gray-900 dark:text-white mb-3">Derniers paiements réussis</h3>
           {data.paiementsRecents.length === 0 ? (
-            <p className="text-sm text-gray-500">Aucun paiement</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Aucun paiement</p>
           ) : (
             <div className="table-container !shadow-none !border-0">
               <table className="w-full">

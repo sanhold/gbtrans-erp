@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { saasApi } from '@/lib/api';
 import PlansGrid from '@/components/marketing/PlansGrid';
 import toast from 'react-hot-toast';
+import TextField from '@/components/forms/TextField';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
@@ -36,6 +37,7 @@ function InscriptionForm() {
   const [planCode, setPlanCode] = useState('');
   const [periodicite, setPeriodicite] = useState<'MENSUEL' | 'ANNUEL'>('MENSUEL');
   const [saving, setSaving] = useState(false);
+  const [erreurs, setErreurs] = useState<{ motDePasse?: string; confirmation?: string; activite?: string }>({});
 
   const [form, setForm] = useState({
     raisonSociale: '', nom: '', prenom: '', email: '', telephone: '', motDePasse: '', confirmation: '',
@@ -62,10 +64,20 @@ function InscriptionForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErreurs({});
     if (!planCode) { toast.error('Choisissez une formule'); return; }
-    if (!activiteTransit && !activiteTransport) { toast.error('Choisissez au moins une activité : Transit ou Transport'); return; }
-    if (form.motDePasse.length < 8) { toast.error('Le mot de passe doit comporter au moins 8 caractères'); return; }
-    if (form.motDePasse !== form.confirmation) { toast.error('Les mots de passe ne correspondent pas'); return; }
+    if (!activiteTransit && !activiteTransport) {
+      setErreurs({ activite: 'Choisissez au moins une activité : Transit ou Transport' });
+      toast.error('Choisissez au moins une activité : Transit ou Transport'); return;
+    }
+    if (form.motDePasse.length < 8) {
+      setErreurs({ motDePasse: 'Le mot de passe doit comporter au moins 8 caractères' });
+      toast.error('Le mot de passe doit comporter au moins 8 caractères'); return;
+    }
+    if (form.motDePasse !== form.confirmation) {
+      setErreurs({ confirmation: 'Les mots de passe ne correspondent pas' });
+      toast.error('Les mots de passe ne correspondent pas'); return;
+    }
 
     setSaving(true);
     try {
@@ -85,61 +97,70 @@ function InscriptionForm() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 py-10 px-4">
+    <div className="min-h-dvh bg-surface-50 dark:bg-surface-900 py-6 sm:py-10 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <img src="/brand/logo-icon.png" alt="GBTrans" className="w-14 h-14 rounded-2xl mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Créer votre espace GBTRANS</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Essai gratuit, sans engagement — annulable à tout moment</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">Essai gratuit, sans engagement — annulable à tout moment</p>
         </div>
 
         <div className="mb-8">
           <PlansGrid selectedCode={planCode} onSelect={setPlanCode} onPeriodiciteChange={setPeriodicite} compact />
         </div>
 
-        <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-8 max-w-2xl mx-auto">
+        <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-elevated p-5 sm:p-8 max-w-2xl mx-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">Nom de votre entreprise *</label>
-              <input type="text" value={form.raisonSociale} onChange={e => updateField('raisonSociale', e.target.value)} className="input-field" placeholder="Ex: Transit Express SARL" required />
-            </div>
+            <TextField
+              label="Nom de votre entreprise *" value={form.raisonSociale} onChange={v => updateField('raisonSociale', v)}
+              autoComplete="organization" placeholder="Ex: Transit Express SARL" required
+            />
 
-            <div>
-              <label className="label">Votre activité *</label>
-              <div className="grid grid-cols-2 gap-3">
+            <div role="group" aria-labelledby="insc-activite">
+              <p id="insc-activite" className="label">Votre activité *</p>
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                 <button
-                  type="button"
-                  onClick={() => setActiviteTransit(v => !v)}
-                  className={`rounded-xl border-2 p-3 text-left transition-colors ${activiteTransit ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}
+                  type="button" aria-pressed={activiteTransit}
+                  onClick={() => { setActiviteTransit(v => !v); setErreurs(e => ({ ...e, activite: undefined })); }}
+                  className={`min-h-[64px] rounded-xl border-2 p-3 text-left transition-colors ${activiteTransit ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}
                 >
                   <p className="font-semibold text-sm text-gray-900 dark:text-white">Transit</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Dossiers, douane, admissions temporaires, cautions</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Dossiers, douane, admissions temporaires, cautions</p>
                 </button>
                 <button
-                  type="button"
-                  onClick={() => setActiviteTransport(v => !v)}
-                  className={`rounded-xl border-2 p-3 text-left transition-colors ${activiteTransport ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}
+                  type="button" aria-pressed={activiteTransport}
+                  onClick={() => { setActiviteTransport(v => !v); setErreurs(e => ({ ...e, activite: undefined })); }}
+                  className={`min-h-[64px] rounded-xl border-2 p-3 text-left transition-colors ${activiteTransport ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}
                 >
                   <p className="font-semibold text-sm text-gray-900 dark:text-white">Transport</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Flotte de véhicules, chauffeurs, courses</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Flotte de véhicules, chauffeurs, courses</p>
                 </button>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">Vous pouvez sélectionner les deux, et ajouter l&apos;autre activité plus tard depuis vos paramètres.</p>
+              {erreurs.activite && <p role="alert" className="text-xs text-red-600 mt-1.5">{erreurs.activite}</p>}
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1.5">Vous pouvez sélectionner les deux, et ajouter l&apos;autre activité plus tard depuis vos paramètres.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Votre prénom *</label><input type="text" value={form.prenom} onChange={e => updateField('prenom', e.target.value)} className="input-field" required /></div>
-              <div><label className="label">Votre nom *</label><input type="text" value={form.nom} onChange={e => updateField('nom', e.target.value)} className="input-field" required /></div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+              <TextField label="Votre prénom *" value={form.prenom} onChange={v => updateField('prenom', v)} autoComplete="given-name" required />
+              <TextField label="Votre nom *" value={form.nom} onChange={v => updateField('nom', v)} autoComplete="family-name" required />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Email professionnel *</label><input type="email" value={form.email} onChange={e => updateField('email', e.target.value)} className="input-field" required /></div>
-              <div><label className="label">Téléphone</label><input type="tel" value={form.telephone} onChange={e => updateField('telephone', e.target.value)} className="input-field" placeholder="+225 07 00 00 00 00" /></div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+              <TextField label="Email professionnel *" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" value={form.email} onChange={v => updateField('email', v)} required />
+              <TextField label="Téléphone" type="tel" inputMode="tel" autoComplete="tel" value={form.telephone} onChange={v => updateField('telephone', v)} placeholder="+225 07 00 00 00 00" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Mot de passe *</label><input type="password" value={form.motDePasse} onChange={e => updateField('motDePasse', e.target.value)} className="input-field" required minLength={8} /></div>
-              <div><label className="label">Confirmation *</label><input type="password" value={form.confirmation} onChange={e => updateField('confirmation', e.target.value)} className="input-field" required minLength={8} /></div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+              <TextField
+                label="Mot de passe *" type="password" autoComplete="new-password" value={form.motDePasse}
+                onChange={v => { updateField('motDePasse', v); setErreurs(e => ({ ...e, motDePasse: undefined })); }}
+                hint="8 caractères minimum" error={erreurs.motDePasse} required minLength={8}
+              />
+              <TextField
+                label="Confirmation *" type="password" autoComplete="new-password" value={form.confirmation}
+                onChange={v => { updateField('confirmation', v); setErreurs(e => ({ ...e, confirmation: undefined })); }}
+                error={erreurs.confirmation} required minLength={8}
+              />
             </div>
 
             {planChoisi && (
@@ -148,12 +169,14 @@ function InscriptionForm() {
               </div>
             )}
 
-            <button type="submit" disabled={saving} className="btn-primary w-full !py-3 text-sm disabled:opacity-50">
-              {saving ? 'Création du compte...' : 'Créer mon compte gratuitement'}
-            </button>
+            <div className="max-sm:sticky max-sm:bottom-0 max-sm:-mx-5 max-sm:px-5 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:bg-white max-sm:dark:bg-surface-800 max-sm:border-t max-sm:border-gray-200 max-sm:dark:border-surface-700">
+              <button type="submit" disabled={saving} className="btn-primary w-full min-h-[48px] !py-3 text-sm disabled:opacity-50">
+                {saving ? 'Création du compte...' : 'Créer mon compte gratuitement'}
+              </button>
+            </div>
 
-            <p className="text-center text-xs text-gray-400">
-              Déjà un compte ? <a href="/auth/login" className="text-primary-600 hover:underline">Se connecter</a>
+            <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+              Déjà un compte ? <a href="/auth/login" className="inline-flex items-center min-h-[44px] text-primary-600 hover:underline">Se connecter</a>
             </p>
           </form>
         </div>

@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
 import { platformApi, platformAuth } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import FormSheet from '@/components/forms/FormSheet';
+import TextField from '@/components/forms/TextField';
 
 const ONGLETS = [
   { id: 'comptes', label: 'Comptes super-admin' },
@@ -21,17 +25,17 @@ export default function AdminConfigurationPage() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configuration</h1>
-          <p className="text-sm text-gray-500">Réglages de la plateforme SaaS</p>
-        </div>
+        <PageHeader title="Configuration" subtitle="Réglages de la plateforme SaaS" className="!mb-0" />
 
-        <div className="flex gap-1 border-b border-gray-200 dark:border-surface-700">
+        <div role="tablist" aria-label="Rubriques de configuration" className="flex gap-1 border-b border-gray-200 dark:border-surface-700 overflow-x-auto [scrollbar-width:none] -mx-3 px-3 sm:mx-0 sm:px-0">
           {ONGLETS.map(o => (
             <button
               key={o.id}
+              type="button"
+              role="tab"
+              aria-selected={onglet === o.id}
               onClick={() => setOnglet(o.id)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${onglet === o.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`flex-shrink-0 whitespace-nowrap min-h-[48px] px-4 text-sm font-medium border-b-2 -mb-px transition-colors ${onglet === o.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800'}`}
             >
               {o.label}
             </button>
@@ -54,6 +58,7 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [form, setForm] = useState({ email: '', motDePasse: '', nom: '', prenom: '', superAdmin: true });
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const confirmer = useConfirm();
 
   const load = () => {
     setLoading(true);
@@ -84,7 +89,7 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   };
 
   const supprimerAdmin = async (id: string) => {
-    if (!confirm('Supprimer définitivement ce compte administrateur ? Cette action est irréversible.')) return;
+    if (!(await confirmer({ titre: 'Supprimer ce compte administrateur ?', message: 'Suppression définitive : cette action est irréversible.', danger: true, confirmer: 'Supprimer' }))) return;
     setBusyId(id);
     try {
       await platformApi.supprimerAdmin(id);
@@ -102,31 +107,31 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <div className="table-container">
           <table className="w-full">
             <thead><tr>
+              <th className="table-header">Actions</th>
               <th className="table-header">Nom</th>
               <th className="table-header">Email</th>
               <th className="table-header">Rôle</th>
               <th className="table-header">Statut</th>
-              <th className="table-header">Actions</th>
             </tr></thead>
             <tbody>
               {admins.map(a => (
                 <tr key={a.id} className="table-row">
-                  <td className="table-cell font-medium" data-label="Nom">{a.prenom} {a.nom}</td>
-                  <td className="table-cell text-xs" data-label="Email">{a.email}</td>
-                  <td className="table-cell" data-label="Rôle"><span className={`badge ${a.superAdmin ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{a.superAdmin ? 'Super-admin' : 'Lecture seule'}</span></td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${a.actif ? 'badge-success' : 'badge-danger'} !text-[10px]`}>{a.actif ? 'Actif' : 'Désactivé'}</span></td>
                   <td className="table-cell" data-label="Actions">
                     {isSuperAdmin && (
                       <div className="flex items-center gap-3">
-                        <button onClick={() => toggleStatut(a.id)} disabled={busyId === a.id} className="text-xs text-primary-600 hover:underline disabled:opacity-50">
+                        <button type="button" onClick={() => toggleStatut(a.id)} disabled={busyId === a.id} className="text-sm font-medium text-primary-600 hover:underline px-2 py-1.5 disabled:opacity-50">
                           {a.actif ? 'Désactiver' : 'Activer'}
                         </button>
-                        <button onClick={() => supprimerAdmin(a.id)} disabled={busyId === a.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">
+                        <button type="button" onClick={() => supprimerAdmin(a.id)} disabled={busyId === a.id} className="text-sm font-medium text-red-600 hover:underline px-2 py-1.5 disabled:opacity-50">
                           Supprimer
                         </button>
                       </div>
                     )}
                   </td>
+                  <td className="table-cell font-medium" data-label="Nom">{a.prenom} {a.nom}</td>
+                  <td className="table-cell text-xs" data-label="Email">{a.email}</td>
+                  <td className="table-cell" data-label="Rôle"><span className={`badge ${a.superAdmin ? 'badge-success' : 'badge-gray'}`}>{a.superAdmin ? 'Super-admin' : 'Lecture seule'}</span></td>
+                  <td className="table-cell" data-label="Statut"><span className={`badge ${a.actif ? 'badge-success' : 'badge-danger'}`}>{a.actif ? 'Actif' : 'Désactivé'}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -135,24 +140,21 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       )}
 
       {isSuperAdmin && (
-        showForm ? (
-          <form onSubmit={handleCreate} className="card space-y-3 !p-5 max-w-md">
-            <h3 className="font-bold text-gray-900 dark:text-white">Nouveau compte administrateur</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Prénom</label><input required value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} className="input-field" /></div>
-              <div><label className="label">Nom</label><input required value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="input-field" /></div>
+        <>
+          <button type="button" onClick={() => setShowForm(true)} className="btn-secondary">+ Nouveau compte</button>
+          <FormSheet
+            open={showForm} onClose={() => setShowForm(false)} size="md" onSubmit={handleCreate} saving={saving}
+            title="Nouveau compte administrateur" submitLabel="Créer"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <TextField label="Prénom" required autoComplete="off" value={form.prenom} onChange={v => setForm({ ...form, prenom: v })} />
+              <TextField label="Nom" required autoComplete="off" value={form.nom} onChange={v => setForm({ ...form, nom: v })} />
             </div>
-            <div><label className="label">Email</label><input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
-            <div><label className="label">Mot de passe</label><input type="password" required minLength={8} value={form.motDePasse} onChange={e => setForm({ ...form, motDePasse: e.target.value })} className="input-field" /></div>
-            <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={form.superAdmin} onChange={e => setForm({ ...form, superAdmin: e.target.checked })} /> Super-admin (accès complet)</label>
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary text-sm">Annuler</button>
-              <button type="submit" disabled={saving} className="btn-primary text-sm disabled:opacity-50">{saving ? 'Création...' : 'Créer'}</button>
-            </div>
-          </form>
-        ) : (
-          <button onClick={() => setShowForm(true)} className="btn-secondary text-sm">+ Nouveau compte</button>
-        )
+            <TextField label="Email" type="email" inputMode="email" autoComplete="off" required value={form.email} onChange={v => setForm({ ...form, email: v })} />
+            <TextField label="Mot de passe" type="password" autoComplete="new-password" required minLength={8} hint="8 caractères minimum" value={form.motDePasse} onChange={v => setForm({ ...form, motDePasse: v })} />
+            <label className="flex items-center gap-3 min-h-[44px] text-sm cursor-pointer"><input type="checkbox" className="w-5 h-5 rounded" checked={form.superAdmin} onChange={e => setForm({ ...form, superAdmin: e.target.checked })} /> Super-admin (accès complet)</label>
+          </FormSheet>
+        </>
       )}
     </div>
   );
@@ -208,30 +210,30 @@ function SectionFournisseurs({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-600 dark:text-gray-400">
         Un seul fournisseur peut être actif à la fois : c&apos;est lui qui traite les paiements d&apos;abonnement de toutes les sociétés clientes.
         Les clés saisies sont chiffrées avant d&apos;être enregistrées et ne sont jamais réaffichées en clair.
       </p>
       {fournisseurs.map(f => (
         <div key={f.code} className={`card space-y-3 ${f.actif ? '!border-2 !border-primary-500' : ''}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-bold text-gray-900 dark:text-white">{f.nom}</h3>
-              {f.actif && <span className="badge badge-success !text-[10px]">Actif</span>}
-              <span className={`badge ${f.configure ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{f.configure ? 'Configuré' : 'Non configuré'}</span>
+              {f.actif && <span className="badge badge-success">Actif</span>}
+              <span className={`badge ${f.configure ? 'badge-success' : 'badge-gray'}`}>{f.configure ? 'Configuré' : 'Non configuré'}</span>
             </div>
             {isSuperAdmin && (
               f.actif ? (
-                <button onClick={() => desactiver(f.code)} disabled={busyCode === f.code} className="text-xs text-gray-500 hover:underline disabled:opacity-50">Désactiver</button>
+                <button type="button" onClick={() => desactiver(f.code)} disabled={busyCode === f.code} className="min-h-[44px] px-2 text-sm text-gray-700 dark:text-gray-300 hover:underline disabled:opacity-50">Désactiver</button>
               ) : (
-                <button onClick={() => activer(f.code)} disabled={busyCode === f.code || !f.configure} title={!f.configure ? 'Renseignez et enregistrez les identifiants requis avant de l\'activer' : undefined} className="text-xs text-primary-600 hover:underline disabled:opacity-50">Activer ce fournisseur</button>
+                <button type="button" onClick={() => activer(f.code)} disabled={busyCode === f.code || !f.configure} title={!f.configure ? 'Renseignez et enregistrez les identifiants requis avant de l\'activer' : undefined} className="min-h-[44px] px-2 text-sm font-medium text-primary-600 hover:underline disabled:opacity-50">Activer ce fournisseur</button>
               )
             )}
           </div>
 
           {f.correspondants?.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {f.correspondants.map((c: any) => <span key={c.code} className="badge badge-gray !text-[10px]">{c.label}</span>)}
+              {f.correspondants.map((c: any) => <span key={c.code} className="badge badge-gray">{c.label}</span>)}
             </div>
           )}
 
@@ -239,18 +241,20 @@ function SectionFournisseurs({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-surface-700">
               {f.champs.map((c: any) => (
                 <div key={c.cle}>
-                  <label className="label">{c.label}{c.obligatoire && ' *'}</label>
+                  <label htmlFor={`fp-${f.code}-${c.cle}`} className="label">{c.label}{c.obligatoire && ' *'}</label>
                   <input
+                    id={`fp-${f.code}-${c.cle}`}
                     type={c.secret ? 'password' : 'text'}
+                    autoComplete={c.secret ? 'new-password' : 'off'}
                     value={champVal(f.code, c.cle)}
                     onChange={e => setChampVal(f.code, c.cle, e.target.value)}
                     placeholder={c.renseigne ? '••••••••• (déjà enregistré)' : c.placeholder || ''}
-                    className="input-field text-sm"
+                    className="input-field"
                   />
                 </div>
               ))}
               <div className="sm:col-span-2 flex justify-end">
-                <button onClick={() => enregistrer(f.code)} disabled={busyCode === f.code} className="btn-secondary !text-sm disabled:opacity-50">
+                <button type="button" onClick={() => enregistrer(f.code)} disabled={busyCode === f.code} className="btn-secondary disabled:opacity-50 w-full sm:w-auto">
                   {busyCode === f.code ? 'Enregistrement...' : 'Enregistrer les identifiants'}
                 </button>
               </div>
@@ -307,17 +311,17 @@ function SectionVitrine({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <label className="label">Sous-titre</label>
         <textarea disabled={!isSuperAdmin} value={form.heroSousTitre} onChange={e => setForm({ ...form, heroSousTitre: e.target.value })} className="input-field disabled:opacity-60" rows={2} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label className="label">Titre page Tarifs</label><input disabled={!isSuperAdmin} value={form.tarifsTitre} onChange={e => setForm({ ...form, tarifsTitre: e.target.value })} className="input-field disabled:opacity-60" /></div>
         <div><label className="label">Sous-titre page Tarifs</label><input disabled={!isSuperAdmin} value={form.tarifsSousTitre} onChange={e => setForm({ ...form, tarifsSousTitre: e.target.value })} className="input-field disabled:opacity-60" /></div>
       </div>
       <div>
         <label className="label">FAQ (question puis réponse, une ligne chacune, séparées par une ligne vide entre chaque question)</label>
-        <textarea disabled={!isSuperAdmin} value={faqText} onChange={e => setFaqText(e.target.value)} className="input-field disabled:opacity-60 font-mono text-xs" rows={10} />
+        <textarea disabled={!isSuperAdmin} value={faqText} onChange={e => setFaqText(e.target.value)} className="input-field disabled:opacity-60 font-mono" rows={10} />
       </div>
       {isSuperAdmin && (
         <div className="flex justify-end">
-          <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50">{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="btn-primary w-full sm:w-auto disabled:opacity-50">{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
         </div>
       )}
     </div>
@@ -346,16 +350,16 @@ function SectionBaseDeDonnees() {
   return (
     <div className="space-y-4 max-w-2xl">
       <div className="card !p-5">
-        <p className="text-xs text-gray-500 mb-1">Taille totale de la base de données (toutes sociétés)</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Taille totale de la base de données (toutes sociétés)</p>
         <p className="text-3xl font-extrabold text-primary-600">{fmtOctetsAdmin(data.totalOctets)}</p>
-        <p className="text-[11px] text-gray-400 mt-1">Mesure exacte PostgreSQL — base unique partagée par toutes les sociétés clientes.</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Mesure exacte PostgreSQL — base unique partagée par toutes les sociétés clientes.</p>
       </div>
 
       <div className="card !p-5">
         <h3 className="font-bold text-gray-900 dark:text-white mb-1">Répartition par société</h3>
-        <p className="text-xs text-gray-500 mb-3">Estimation basée sur le poids des données des principales tables (hors index, hors fichiers joints).</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">Estimation basée sur le poids des données des principales tables (hors index, hors fichiers joints).</p>
         {!data.parSociete?.length ? (
-          <p className="text-sm text-gray-500">Aucune société</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Aucune société</p>
         ) : (
           <div className="space-y-2">
             {data.parSociete.map((s: any) => (

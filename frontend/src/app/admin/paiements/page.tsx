@@ -6,6 +6,8 @@ import AdminShell from '@/components/admin/AdminShell';
 import { platformApi } from '@/lib/platformApi';
 import { exportCSV } from '@/lib/exportCsv';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyRow from '@/components/tables/EmptyRow';
 
 const STATUT_BADGE: Record<string, string> = {
   EN_ATTENTE: 'badge-info', REUSSI: 'badge-success', ECHEC: 'badge-danger', ANNULE: 'badge-gray',
@@ -61,19 +63,16 @@ export default function AdminPaiementsPage() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Factures &amp; paiements d&apos;abonnement</h1>
-            <p className="text-sm text-gray-500">{total} paiement(s), toutes sociétés confondues</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <select value={statut} onChange={e => { setPage(1); setStatut(e.target.value); }} className="input-field !w-48 text-sm">
-              <option value="">Tous les statuts</option>
-              {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
-            </select>
-            <button onClick={exporter} disabled={exporting} className="btn-secondary !text-sm disabled:opacity-50">{exporting ? 'Export...' : 'Exporter CSV'}</button>
-          </div>
-        </div>
+        <PageHeader
+          title="Factures &amp; paiements d'abonnement"
+          subtitle={`${total} paiement(s), toutes sociétés confondues`}
+          className="!mb-0"
+          secondaryActions={[{ label: exporting ? 'Export...' : 'Exporter CSV', onClick: exporter, disabled: exporting }]}
+        />
+        <select value={statut} onChange={e => { setPage(1); setStatut(e.target.value); }} aria-label="Filtrer par statut" className="input-field sm:!w-56">
+          <option value="">Tous les statuts</option>
+          {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
+        </select>
 
         <div className="table-container">
           <table className="w-full">
@@ -90,16 +89,16 @@ export default function AdminPaiementsPage() {
               {loading ? (
                 <SkeletonRows cols={7} />
               ) : data.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun paiement</td></tr>
+                <EmptyRow colSpan={7} message="Aucun paiement" />
               ) : data.map(p => (
                 <tr key={p.id} className="table-row">
                   <td className="table-cell font-medium" data-label="Société">{p.societe?.raisonSociale}</td>
                   <td className="table-cell" data-label="Formule">{p.abonnement?.plan?.nom || '-'}</td>
                   <td className="table-cell text-right font-mono" data-label="Montant">{fmtMontant(p.montant, p.devise)}</td>
-                  <td className="table-cell text-xs" data-label="Moyen">{p.moyenPaiement || '-'}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[p.statut]} !text-[10px]`}>{STATUT_LABEL[p.statut]}</span></td>
+                  <td className="table-cell text-xs col-opt" data-label="Moyen">{p.moyenPaiement || '-'}</td>
+                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[p.statut]}`}>{STATUT_LABEL[p.statut]}</span></td>
                   <td className="table-cell text-xs" data-label="Date">{fmtDate(p.datePaiement || p.createdAt)}</td>
-                  <td className="table-cell font-mono text-[11px] text-gray-400" data-label="Référence">{p.referenceExterne || '-'}</td>
+                  <td className="table-cell font-mono text-xs text-gray-600 dark:text-gray-400 col-opt" data-label="Référence">{p.referenceExterne || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -108,9 +107,9 @@ export default function AdminPaiementsPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Précédent</button>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Suivant</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary disabled:opacity-40">Précédent</button>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Page {page} / {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary disabled:opacity-40">Suivant</button>
           </div>
         )}
       </div>

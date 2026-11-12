@@ -68,7 +68,7 @@ export default function AlertsPanel({ alertes }: { alertes: AlertesData | null }
       </div>
 
       <ul className="flex-1 overflow-y-auto max-h-[300px] lg:max-h-[340px] border-t border-gray-100 dark:border-surface-700 divide-y divide-gray-100 dark:divide-surface-700">
-        {items.length === 0 && <li className="text-sm text-gray-400 text-center py-8">Aucune alerte</li>}
+        {items.length === 0 && <li className="text-sm text-gray-600 dark:text-gray-400 text-center py-8">Aucune alerte</li>}
         {items.map((it) => (
           <li key={it.id} className="flex gap-3 px-4 sm:px-5 py-3">
             <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${TYPE_STYLE[it.type].dot}`} aria-hidden="true" />

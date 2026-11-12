@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [code2FA, setCode2FA] = useState('');
   const [tempToken, setTempToken] = useState('');
+  const [erreur, setErreur] = useState('');
 
   const comptesTest = [
     { label: 'Administrateur', email: 'admin@gbtrans.ci', color: 'bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300' },
@@ -30,23 +31,26 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErreur('');
     try {
       const result = await login(email, motDePasse);
       if (result.requiresTwoFactor) {
         setShow2FA(true);
         setTempToken(result.tempToken);
-        toast('Entrez votre code de double authentification', { icon: '🔐' });
+        toast('Entrez votre code de double authentification');
       } else {
         toast.success('Connexion réussie');
         router.push('/dashboard');
       }
     } catch (error: any) {
+      setErreur(error.message);
       toast.error(error.message);
     }
   };
 
   const handle2FA = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErreur('');
     try {
       const { authApi } = await import('@/lib/api');
       const response = await authApi.verify2FA(email, code2FA, tempToken);
@@ -58,12 +62,14 @@ export default function LoginPage() {
       toast.success('Connexion réussie');
       router.push('/dashboard');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Code invalide');
+      const msg = error.response?.data?.message || 'Code invalide';
+      setErreur(msg);
+      toast.error(msg);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-dvh flex">
       {/* Panneau gauche - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary-600 flex-col justify-center items-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -105,19 +111,19 @@ export default function LoginPage() {
       </div>
 
       {/* Panneau droit - Formulaire */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-surface-50 dark:bg-surface-900">
+      <div className="flex-1 flex items-start sm:items-center justify-center p-4 sm:p-8 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] bg-surface-50 dark:bg-surface-900">
         <div className="w-full max-w-md">
-          <div className="lg:hidden text-center mb-10">
+          <div className="lg:hidden text-center mb-6 sm:mb-10">
             <img src="/brand/logo-icon.png" alt="GBTrans" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">GBTRANS ERP</h1>
           </div>
 
-          <div className="bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-8">
+          <div className="bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-5 sm:p-8">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {show2FA ? 'Vérification 2FA' : 'Connexion'}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
                 {show2FA
                   ? 'Entrez le code de votre application d\'authentification'
                   : 'Accédez à votre espace de gestion'}
@@ -127,9 +133,16 @@ export default function LoginPage() {
             {!show2FA ? (
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label className="label">Email</label>
+                  <label htmlFor="login-email" className="label">Email</label>
                   <input
+                    id="login-email"
                     type="email"
+                    inputMode="email"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-invalid={erreur ? true : undefined}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="input-field"
@@ -139,22 +152,28 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="label">Mot de passe</label>
+                  <label htmlFor="login-password" className="label">Mot de passe</label>
                   <div className="relative">
                     <input
+                      id="login-password"
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      aria-invalid={erreur ? true : undefined}
+                      aria-describedby={erreur ? 'login-erreur' : undefined}
                       value={motDePasse}
                       onChange={(e) => setMotDePasse(e.target.value)}
-                      className="input-field pr-10"
+                      className="input-field pr-12"
                       placeholder="Votre mot de passe"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      aria-pressed={showPassword}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-gray-600 hover:text-gray-800 dark:text-gray-400"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg aria-hidden="true" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         {showPassword ? (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                         ) : (
@@ -165,23 +184,28 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500" />
+                {erreur && (
+                  <p id="login-erreur" role="alert" className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2 -mt-2">{erreur}</p>
+                )}
+
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 min-h-[44px] cursor-pointer">
+                    <input type="checkbox" className="w-5 h-5 rounded border-gray-300 text-primary-500 focus:ring-primary-500" />
                     <span className="text-sm text-gray-600 dark:text-gray-400">Se souvenir</span>
                   </label>
-                  <a href="#" className="text-sm text-primary-500 hover:text-primary-600">
+                  <a href="#" className="inline-flex items-center min-h-[44px] text-sm text-primary-600 hover:text-primary-700">
                     Mot de passe oublié ?
                   </a>
                 </div>
 
+                <div className="max-lg:sticky max-lg:bottom-0 max-lg:-mx-5 max-lg:px-5 max-lg:pt-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:bg-white max-lg:dark:bg-surface-800 max-lg:border-t max-lg:border-gray-200 max-lg:dark:border-surface-700 max-sm:rounded-b-sm">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="btn-primary w-full py-2.5 disabled:opacity-50"
+                  className="btn-primary w-full py-2.5 min-h-[48px] disabled:opacity-50"
                 >
                   {isLoading ? (
-                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <svg aria-label="Connexion en cours" role="img" className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
@@ -189,13 +213,19 @@ export default function LoginPage() {
                     'Se connecter'
                   )}
                 </button>
+                </div>
               </form>
             ) : (
               <form onSubmit={handle2FA} className="space-y-5">
                 <div>
-                  <label className="label">Code de vérification</label>
+                  <label htmlFor="login-2fa" className="label">Code de vérification</label>
                   <input
+                    id="login-2fa"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    aria-invalid={erreur ? true : undefined}
+                    aria-describedby={erreur ? 'login-erreur-2fa' : undefined}
                     value={code2FA}
                     onChange={(e) => setCode2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="input-field text-center text-2xl tracking-[0.5em] font-mono"
@@ -204,16 +234,17 @@ export default function LoginPage() {
                     required
                     autoFocus
                   />
+                  {erreur && <p id="login-erreur-2fa" role="alert" className="text-sm text-red-700 dark:text-red-400 mt-2 text-center">{erreur}</p>}
                 </div>
 
-                <button type="submit" className="btn-primary w-full py-2.5">
+                <button type="submit" className="btn-primary w-full py-2.5 min-h-[48px]">
                   Vérifier
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setShow2FA(false)}
-                  className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+                  onClick={() => { setShow2FA(false); setErreur(''); }}
+                  className="w-full min-h-[44px] text-center text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400"
                 >
                   Retour à la connexion
                 </button>
@@ -223,7 +254,7 @@ export default function LoginPage() {
 
           {!show2FA && (
             <div className="mt-6 bg-white dark:bg-surface-800 rounded-sm border border-gray-300 dark:border-surface-700 p-5">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-3">
                 Comptes de test
               </p>
               <div className="flex flex-wrap gap-2">
@@ -233,23 +264,23 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => remplirCompteTest(compte.email)}
                     title={compte.email}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${compte.color}`}
+                    className={`min-h-[44px] px-3.5 rounded-lg text-sm font-medium transition-colors ${compte.color}`}
                   >
                     {compte.label}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">
                 Cliquez sur un profil pour pré-remplir le formulaire (mot de passe: Admin@2024!)
               </p>
             </div>
           )}
 
-          <p className="text-center text-xs text-gray-400 mt-6">
+          <p className="text-center text-xs text-gray-600 dark:text-gray-400 mt-6">
             GBTRANS ERP v1.0.0 - Tous droits réservés
           </p>
           <div className="text-center mt-2">
-            <a href="/admin/login" className="text-[11px] text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500">
+            <a href="/admin/login" className="inline-flex items-center min-h-[44px] text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300">
               Administration
             </a>
           </div>

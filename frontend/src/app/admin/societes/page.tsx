@@ -7,6 +7,8 @@ import AdminShell from '@/components/admin/AdminShell';
 import { platformApi, platformAuth } from '@/lib/platformApi';
 import { exportCSV } from '@/lib/exportCsv';
 import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyRow from '@/components/tables/EmptyRow';
 
 const STATUT_BADGE: Record<string, string> = {
   ESSAI: 'badge-info', ACTIF: 'badge-success', IMPAYE: 'badge-warning',
@@ -85,21 +87,18 @@ export default function AdminSocietesPage() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sociétés clientes</h1>
-            <p className="text-sm text-gray-500">{societes.length} société(s) inscrite(s)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="input-field !w-56 text-sm" />
-            <button onClick={exporter} className="btn-secondary !text-sm">Exporter CSV</button>
-          </div>
-        </div>
+        <PageHeader
+          title="Sociétés clientes"
+          subtitle={`${societes.length} société(s) inscrite(s)`}
+          className="!mb-0"
+          secondaryActions={[{ label: 'Exporter CSV', onClick: exporter }]}
+        />
+        <input type="search" inputMode="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." aria-label="Rechercher une société" className="input-field sm:max-w-xs" />
 
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setFiltreStatut(null)} className={`badge ${!filtreStatut ? 'badge-gray !border-2 !border-gray-400' : 'badge-gray'} !text-[11px]`}>Tous : {societes.length}</button>
+        <div className="flex gap-2 overflow-x-auto sm:flex-wrap -mx-3 px-3 sm:mx-0 sm:px-0 pb-1 [scrollbar-width:none]" role="group" aria-label="Filtrer par statut">
+          <button type="button" aria-pressed={!filtreStatut} onClick={() => setFiltreStatut(null)} className={`badge flex-shrink-0 min-h-[40px] px-3 ${!filtreStatut ? 'badge-gray !border-2 !border-gray-400' : 'badge-gray'} !text-xs`}>Tous : {societes.length}</button>
           {STATUTS.map(s => (
-            <button key={s} onClick={() => setFiltreStatut(filtreStatut === s ? null : s)} className={`badge ${STATUT_BADGE[s]} !text-[11px] ${filtreStatut === s ? '!ring-2 !ring-offset-1 !ring-primary-500' : ''}`}>
+            <button key={s} type="button" aria-pressed={filtreStatut === s} onClick={() => setFiltreStatut(filtreStatut === s ? null : s)} className={`badge flex-shrink-0 min-h-[40px] px-3 ${STATUT_BADGE[s]} !text-xs ${filtreStatut === s ? '!ring-2 !ring-offset-1 !ring-primary-500' : ''}`}>
               {STATUT_LABEL[s]} : {compteurs[s] || 0}
             </button>
           ))}
@@ -108,6 +107,7 @@ export default function AdminSocietesPage() {
         <div className="table-container">
           <table className="w-full">
             <thead><tr>
+              <th className="table-header">Actions</th>
               <th className="table-header">Société</th>
               <th className="table-header">Sous-domaine</th>
               <th className="table-header">Formule</th>
@@ -116,45 +116,45 @@ export default function AdminSocietesPage() {
               <th className="table-header text-center">Utilisateurs</th>
               <th className="table-header text-center">Dossiers</th>
               <th className="table-header">Inscrite le</th>
-              <th className="table-header">Actions</th>
             </tr></thead>
             <tbody>
               {loading ? (
                 <SkeletonRows cols={9} />
               ) : filtrees.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucune société</td></tr>
+                <EmptyRow colSpan={9} message="Aucune société" />
               ) : filtrees.map(s => (
                 <tr key={s.id} className="table-row">
-                  <td className="table-cell font-medium" data-label="Société">
-                    <Link href={`/admin/societes/${s.id}`} className="text-primary-600 hover:underline">{s.raisonSociale}</Link>
-                  </td>
-                  <td className="table-cell font-mono text-xs" data-label="Sous-domaine">{s.sousDomaine ? `${s.sousDomaine}.gbtrans.app` : '-'}</td>
-                  <td className="table-cell" data-label="Formule">{s.abonnement?.plan?.nom || '-'}</td>
-                  <td className="table-cell" data-label="Statut">
-                    {s.abonnement ? <span className={`badge ${STATUT_BADGE[s.abonnement.statut]} !text-[10px]`}>{STATUT_LABEL[s.abonnement.statut]}</span> : '-'}
-                  </td>
-                  <td className="table-cell text-xs" data-label="Prochain paiement">{fmtDate(s.abonnement?.dateProchainPaiement)}</td>
-                  <td className="table-cell text-center" data-label="Utilisateurs">{s._count?.utilisateurs ?? 0}</td>
-                  <td className="table-cell text-center" data-label="Dossiers">{s._count?.dossiers ?? 0}</td>
-                  <td className="table-cell text-xs" data-label="Inscrite le">{fmtDate(s.createdAt)}</td>
                   <td className="table-cell" data-label="Actions">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {s.abonnement && (
                         <select
+                          aria-label={`Statut de l'abonnement de ${s.raisonSociale}`}
                           value={s.abonnement.statut}
                           disabled={busyId === s.id || !isSuperAdmin}
                           title={!isSuperAdmin ? 'Compte de démonstration : lecture seule' : undefined}
                           onChange={e => changerStatut(s.id, e.target.value)}
-                          className="input-field !py-1 !text-xs !w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="input-field !w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {STATUTS.map(st => <option key={st} value={st}>{STATUT_LABEL[st]}</option>)}
                         </select>
                       )}
                       {s.abonnement?.statut === 'IMPAYE' && (
-                        <button onClick={() => relancer(s.id)} disabled={busyId === s.id} className="text-xs text-amber-600 hover:underline disabled:opacity-50">Relancer</button>
+                        <button type="button" onClick={() => relancer(s.id)} disabled={busyId === s.id} className="text-sm font-medium text-amber-700 hover:underline px-2 py-1.5 disabled:opacity-50">Relancer</button>
                       )}
                     </div>
                   </td>
+                  <td className="table-cell font-medium" data-label="Société">
+                    <Link href={`/admin/societes/${s.id}`} className="text-primary-600 hover:underline">{s.raisonSociale}</Link>
+                  </td>
+                  <td className="table-cell font-mono text-xs col-opt" data-label="Sous-domaine">{s.sousDomaine ? `${s.sousDomaine}.gbtrans.app` : '-'}</td>
+                  <td className="table-cell" data-label="Formule">{s.abonnement?.plan?.nom || '-'}</td>
+                  <td className="table-cell" data-label="Statut">
+                    {s.abonnement ? <span className={`badge ${STATUT_BADGE[s.abonnement.statut]}`}>{STATUT_LABEL[s.abonnement.statut]}</span> : '-'}
+                  </td>
+                  <td className="table-cell text-xs" data-label="Prochain paiement">{fmtDate(s.abonnement?.dateProchainPaiement)}</td>
+                  <td className="table-cell text-center" data-label="Utilisateurs">{s._count?.utilisateurs ?? 0}</td>
+                  <td className="table-cell text-center" data-label="Dossiers">{s._count?.dossiers ?? 0}</td>
+                  <td className="table-cell text-xs col-opt" data-label="Inscrite le">{fmtDate(s.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
