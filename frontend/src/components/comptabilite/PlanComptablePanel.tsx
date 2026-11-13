@@ -27,7 +27,6 @@ function compteVide() {
 export default function PlanComptablePanel({ lectureSeule = false }: { lectureSeule?: boolean }) {
   const [comptes, setComptes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [classe, setClasse] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -45,11 +44,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
 
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => comptes.filter(c => {
-    if (classe && String(c.classe) !== classe) return false;
-    if (search && !c.numero.includes(search) && !c.libelle.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  }), [comptes, search, classe]);
+  const filtered = useMemo(() => comptes.filter(c => !classe || String(c.classe) === classe), [comptes, classe]);
 
   const openCreate = () => { setEditing(null); setForm(compteVide()); setShowForm(true); };
   const openEdit = (c: any) => {
@@ -113,42 +108,26 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
 
   return (
     <>
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Plan comptable</h2>
-              <p className="text-sm text-gray-500">{comptes.length} compte(s) {lectureSeule ? '· lecture seule ici — à gérer depuis Plan comptable' : '· partagé par Compta Auto et Compta Manuelle'}</p>
-            </div>
-            {!lectureSeule && (
-              <div className="flex gap-2">
-                <button onClick={() => setShowImport(true)} className="btn-secondary text-sm">Importer le plan SYSCOHADA</button>
-                <button onClick={openCreate} className="btn-primary text-sm">+ Nouveau compte</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {!lectureSeule && (
-          <div className="card !p-3 bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
-            Le plan SYSCOHADA importable ici est une base de référence courante (comptes usuels d&apos;un bureau de transit), pas la nomenclature officielle exhaustive certifiée — à compléter et valider avec votre expert-comptable. Verrouillez les comptes sensibles (411, 401, 512, 571...) pour empêcher toute modification accidentelle.
-          </div>
-        )}
-
-        <div className="card !p-3 space-y-2">
-          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="N° ou libellé..." className="input-field !py-1.5 text-xs w-48 flex-shrink-0" />
-          </div>
-          <div className="flex flex-wrap gap-1.5">
+      <div className="space-y-2">
+        {/* Une seule ligne : classes à gauche, compteur et actions à droite (explications dans la bulle « i » de la page). */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex flex-wrap gap-1 min-w-0 flex-1">
             {CLASSES.map(c => (
-              <button key={c.id} onClick={() => setClasse(c.id)} className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${classe === c.id ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600'}`}>
+              <button key={c.id} onClick={() => setClasse(c.id)} className={`px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${classe === c.id ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600'}`}>
                 {c.label}
               </button>
             ))}
           </div>
+          {lectureSeule && <span className="text-xs text-gray-400 whitespace-nowrap">Lecture seule</span>}
+          {!lectureSeule && (
+            <div className="flex gap-2">
+              <button onClick={() => setShowImport(true)} className="btn-secondary !py-1.5 text-xs" title="Importer le plan SYSCOHADA">Importer SYSCOHADA</button>
+              <button onClick={openCreate} className="btn-primary !py-1.5 text-xs">+ Nouveau compte</button>
+            </div>
+          )}
         </div>
 
-        <div className="table-container">
+        <div className="table-container table-compact">
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '18%' }} />

@@ -8,6 +8,7 @@ import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
 import GenerationAutoTab from './GenerationAutoTab';
 import PlanComptablePanel from './PlanComptablePanel';
+import InfoBulle from '@/components/ui/InfoBulle';
 import toast from 'react-hot-toast';
 
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
@@ -90,11 +91,18 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
     <AppLayout>
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
+          <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{estReel ? 'Compta Manuelle' : 'Compta Auto'}</h1>
-            <p className="text-sm text-gray-500">{estReel
-              ? 'Comptabilisez les pièces en attente ou passez des écritures diverses — même plan comptable que Compta Auto'
-              : 'Écritures générées et validées automatiquement depuis les factures, paiements et dépenses — même plan comptable que Compta Manuelle'}</p>
+            <InfoBulle titre={estReel ? 'Compta Manuelle' : 'Compta Auto'} cote="gauche" alerte={!estReel}>
+              <p>{estReel
+                ? 'Comptabilisez les pièces en attente ou passez des écritures diverses — même plan comptable que Compta Auto.'
+                : 'Écritures générées et validées automatiquement depuis les factures, paiements et dépenses — même plan comptable que Compta Manuelle.'}</p>
+              {!estReel && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-800 dark:border-amber-800 dark:bg-amber-900/10 dark:text-amber-300">
+                  Compta Auto génère et <strong>valide directement</strong> les écritures dans le grand livre partagé (même plan comptable et mêmes journaux que Compta Manuelle). Une même facture, un même paiement ou une même dépense n&apos;est jamais comptabilisé deux fois, qu&apos;il ait été saisi automatiquement ou à la main. Les règles de l&apos;onglet Génération sont un standard SYSCOHADA à faire valider par votre expert-comptable ; les comptes utilisés se règlent dans <Link href="/comptabilite/plan-comptable" className="underline font-medium">Plan comptable</Link>.
+                </p>
+              )}
+            </InfoBulle>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
             <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field !w-auto text-sm">
