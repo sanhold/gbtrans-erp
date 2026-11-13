@@ -162,22 +162,41 @@ export default function DotationPage() {
       const brand = brandIdentity(branding);
       const showSignature = canSignature && afficherSignature;
       const element = document.createElement('div');
-      element.style.cssText = "width:210mm;padding:20mm;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;";
+      element.style.cssText = "width:210mm;height:296mm;box-sizing:border-box;padding:15mm 18mm;display:flex;flex-direction:column;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;";
+      // Grille de saisie des justificatifs : les lignes se partagent toute la place restante jusqu'en bas de la page.
+      const nbLignesGrille = showSignature ? 19 : 22;
+      const celGrille = 'border:1px solid #9aa7b4;';
+      const ligneGrille = (i: number) => `<div style="display:flex;flex:1;min-height:0;">
+            <div style="${celGrille}width:9%;border-top:none;border-right:none;display:flex;align-items:center;justify-content:center;font-size:9px;color:#9aa7b4;">${i + 1}</div>
+            <div style="${celGrille}width:14%;border-top:none;border-right:none;"></div>
+            <div style="${celGrille}width:19%;border-top:none;border-right:none;"></div>
+            <div style="${celGrille}flex:1;border-top:none;border-right:none;"></div>
+            <div style="${celGrille}width:20%;border-top:none;"></div>
+          </div>`;
       element.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:12px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:12px;margin-bottom:16px;">
           <div style="display:flex;gap:10px;align-items:center;">
             ${branding?.logo ? `<img src="${branding.logo}" style="width:38px;height:38px;object-fit:contain;" />` : ''}
             <div><div style="font-weight:800;font-size:16px;color:#12314f;">${brand.nom}</div><div style="font-size:9px;color:#666;">${brand.slogan}</div></div>
           </div>
           <div style="text-align:right;"><div style="font-weight:800;font-size:14px;">REÇU DE DOTATION</div><div style="font-size:10px;color:#666;">${d.numero}</div></div>
         </div>
-        <table style="width:100%;font-size:11px;margin-bottom:24px;">
+        <table style="width:100%;font-size:11px;margin-bottom:14px;">
           <tr><td style="padding:5px 0;color:#666;width:160px;">Date</td><td style="font-weight:700;">${new Date(d.dateDotation).toLocaleDateString('fr-FR')}</td></tr>
           <tr><td style="padding:5px 0;color:#666;">Agent</td><td style="font-weight:700;">${d.agent?.nom} ${d.agent?.prenom}</td></tr>
           <tr><td style="padding:5px 0;color:#666;">Motif</td><td>${d.motif || '-'}</td></tr>
           <tr><td style="padding:5px 0;color:#666;">Montant alloué</td><td style="font-weight:800;font-size:14px;color:#12314f;">${fmt(d.montant)} XOF</td></tr>
         </table>
-        ${showSignature ? `<div style="display:flex;justify-content:space-between;margin-top:60px;">
+        <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:0;">JUSTIFICATIFS DE DÉPENSES</div>
+        <div style="display:flex;font-size:9px;font-weight:700;color:#12314f;background:#f4f7fa;">
+          <div style="${celGrille}width:9%;border-right:none;padding:4px 0;text-align:center;">N°</div>
+          <div style="${celGrille}width:14%;border-right:none;padding:4px 6px;">Date</div>
+          <div style="${celGrille}width:19%;border-right:none;padding:4px 6px;">Dossier</div>
+          <div style="${celGrille}flex:1;border-right:none;padding:4px 6px;">Désignation / N° de pièce</div>
+          <div style="${celGrille}width:20%;padding:4px 6px;text-align:right;">Montant (XOF)</div>
+        </div>
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0;margin-bottom:12px;">${Array.from({ length: nbLignesGrille }, (_, i) => ligneGrille(i)).join('')}</div>
+        ${showSignature ? `<div style="display:flex;justify-content:space-between;margin-top:6px;flex-shrink:0;">
           <div style="text-align:center;width:220px;"><div style="font-size:10px;color:#666;margin-bottom:40px;">Signature de l&apos;agent</div><div style="border-top:1px solid #333;padding-top:4px;">${d.agent?.nom} ${d.agent?.prenom}</div></div>
           <div style="text-align:center;width:220px;">
             <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '40px'};">Le Directeur / Cachet &amp; Signature</div>
@@ -186,7 +205,7 @@ export default function DotationPage() {
             <div style="border-top:1px solid #333;padding-top:4px;">${brand.nom}</div>
           </div>
         </div>` : ''}
-        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:40px;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — ${brand.nom}</div>
+        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:10px;flex-shrink:0;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — ${brand.nom}</div>
       `;
       document.body.appendChild(element);
       await html2pdf().set({ margin: 0, filename: `Dotation_${d.numero.replace(/\//g, '-')}_Recu.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save();
