@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ErrorState from '@/components/ui/ErrorState';
 import { dossiersApi, financeApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import { fmt, mergedComptes, parseCompteValue, MODE_PAIEMENT_LABELS, CATEGORIES_DEPENSE, useComptesFinanciers } from '@/lib/financeHelpers';
 import { lireFichierEnDataUrl, ouvrirPiece, PIECE_TYPES_ACCEPTES } from '@/lib/pieceJointe';
 
@@ -30,6 +31,13 @@ export default function ValiderDotationPage() {
   const [coches, setCoches] = useState<Set<string>>(new Set());
   const [compteDebit, setCompteDebit] = useState('');
   const [compteRetour, setCompteRetour] = useState('');
+  const utilisateur = useAuthStore(st => st.user);
+  const [beneficiaire, setBeneficiaire] = useState('');
+  const [beneficiaireModifie, setBeneficiaireModifie] = useState(false);
+  // Par défaut, c'est la personne qui valide qui reçoit le reliquat ; elle peut saisir un autre nom.
+  useEffect(() => {
+    if (!beneficiaireModifie && utilisateur) setBeneficiaire(`${utilisateur.prenom} ${utilisateur.nom}`.trim());
+  }, [utilisateur, beneficiaireModifie]);
   const [mode, setMode] = useState('ESPECES');
   const [confirmer, setConfirmer] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -78,7 +86,7 @@ export default function ValiderDotationPage() {
 
   const cDebit = parseCompteValue(compteDebit);
   const cRetour = parseCompteValue(compteRetour);
-  const pret = !!cDebit && (calcul.reliquat <= 0 || !!cRetour);
+  const pret = !!cDebit && (calcul.reliquat <= 0 || (!!cRetour && beneficiaire.trim().length > 0));
 
   const valider = async () => {
     if (!cDebit) return;
@@ -93,6 +101,7 @@ export default function ValiderDotationPage() {
         retour: calcul.reliquat > 0 && cRetour ? {
           caisseId: cRetour.type === 'CAISSE' ? cRetour.id : undefined,
           compteBancaireId: cRetour.type === 'BANQUE' ? cRetour.id : undefined,
+          beneficiaire: beneficiaire.trim(),
         } : undefined,
       });
       toast.success(r.data.message || 'Dotation validée');
@@ -250,6 +259,13 @@ export default function ValiderDotationPage() {
                 <div className="sm:col-span-2">
                   <label className="label">Compte sur lequel le reliquat ({fmt(calcul.reliquat)} F) est retourné *</label>
                   <PickerField value={compteRetour} onChange={setCompteRetour} options={compteOptions} placeholder="Sélectionner..." title="Compte de retour du reliquat" searchPlaceholder="Compte, caisse..." />
+                </div>
+              )}
+              {calcul.reliquat > 0 && (
+                <div className="sm:col-span-2">
+                  <label className="label">Reliquat versé à (nom de la personne qui le reçoit) *</label>
+                  <input type="text" value={beneficiaire} maxLength={200} onChange={e => { setBeneficiaire(e.target.value); setBeneficiaireModifie(true); }} className="input-field" placeholder="Nom et prénom" />
+                  <p className="mt-1 text-xs text-gray-500">Ce nom et le compte choisi figureront sur l'état d'utilisation de la dotation.</p>
                 </div>
               )}
             </div>

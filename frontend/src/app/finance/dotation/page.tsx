@@ -38,6 +38,10 @@ export default function DotationPage() {
   const [historiqueRows, setHistoriqueRows] = useState<any[]>([]);
   const [loadingHistorique, setLoadingHistorique] = useState(false);
   const [printing, setPrinting] = useState<string | null>(null);
+  // Reversement du reste d'une dotation soldée : compte crédité et bénéficiaire.
+  const [reversementDe, setReversementDe] = useState<any>(null);
+  const [beneficiaireSaisi, setBeneficiaireSaisi] = useState('');
+  const [savingBenef, setSavingBenef] = useState(false);
 
   useEffect(() => {
     financeApi.operations.agents().then(r => setAgents(r.data.data || [])).catch(() => setAgents([]));
@@ -65,6 +69,20 @@ export default function DotationPage() {
     setEditing(null);
     setForm({ montant: '', motif: '', agentId: '', dateDotation: '' });
     setShowModal(true);
+  };
+
+  const openReversement = (d: any) => { setReversementDe(d); setBeneficiaireSaisi(d.reversement?.beneficiaire || ''); };
+
+  const enregistrerBeneficiaire = async () => {
+    if (!reversementDe || !beneficiaireSaisi.trim()) return;
+    setSavingBenef(true);
+    try {
+      await financeApi.dotations.reversement(reversementDe.id, beneficiaireSaisi.trim());
+      toast.success('Bénéficiaire du reversement enregistré');
+      setReversementDe(null);
+      load();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur lors de l\'enregistrement'); }
+    finally { setSavingBenef(false); }
   };
 
   const openEdit = (d: any) => {
@@ -127,6 +145,7 @@ export default function DotationPage() {
     <>
       {d.modifiable && <button type="button" onClick={() => openEdit(d)} className={`${bouton} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}>Modifier</button>}
       {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} className={`${bouton} border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}>Supprimer</button>}
+      {d.reversement && <button type="button" onClick={() => openReversement(d)} className={`${bouton} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`} title="Reste versé : compte et bénéficiaire">Reversement</button>}
       <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="Reçu de dotation (PDF)">Fiche 1</button>
       <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="État d'utilisation (PDF)">Fiche 2</button>
     </>
@@ -137,6 +156,7 @@ export default function DotationPage() {
     <>
       {d.modifiable && <button type="button" onClick={() => openEdit(d)} title="Modifier la dotation" aria-label="Modifier la dotation" className={`${iconBtn} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 112.828 2.828L11.828 15.83a2 2 0 01-.89.514L7 17l.657-3.94A2 2 0 018.172 12.2z" /></svg></button>}
       {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} title="Supprimer la dotation" aria-label="Supprimer la dotation" className={`${iconBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" /></svg></button>}
+      {d.reversement && <button type="button" onClick={() => openReversement(d)} title="Reste versé : compte et bénéficiaire" aria-label="Reversement du reste" className={`${iconBtn} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zm7 3a3 3 0 100 6 3 3 0 000-6z" /></svg></button>}
       <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} title="Fiche 1 : reçu de dotation (PDF)" aria-label="Fiche 1, reçu de dotation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
       <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} title="Fiche 2 : état d'utilisation (PDF)" aria-label="Fiche 2, état d'utilisation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4" /></svg></button>
     </>
@@ -217,12 +237,27 @@ export default function DotationPage() {
   const handlePrintFiche2 = async (d: any) => {
     setPrinting(d.id + '-2');
     try {
-      const [depRes, html2pdf, branding] = await Promise.all([
+      const [depRes, detailRes, html2pdf, branding] = await Promise.all([
         financeApi.depenses.list({ dotationId: d.id, limit: 200 }),
+        financeApi.dotations.get(d.id).then(r => r.data.data).catch(() => d),
         import('html2pdf.js').then(m => m.default),
         getSocieteBranding(),
       ]);
       const depenses = depRes.data.data || [];
+      // Reversement du reste (compte crédité, à qui, quand) : fiche à jour de la dotation.
+      const rev = detailRes?.reversement || null;
+      const restant = Number(detailRes?.montantRestant ?? d.montantRestant) || 0;
+      const trou = '<span style="display:inline-block;min-width:150px;border-bottom:1px solid #333;height:11px;vertical-align:bottom;"></span>';
+      const libelleCompte = rev?.compte ? `${rev.compte.type === 'BANQUE' ? `${rev.compte.banque} · ` : 'Caisse · '}${rev.compte.libelle} (${rev.compte.code})` : '';
+      const blocReste = (rev || restant > 0) ? `
+        <div style="flex-shrink:0;margin-bottom:10px;border:1px solid #9aa7b4;border-radius:6px;overflow:hidden;">
+          <div style="background:#eaf0f5;padding:5px 8px;font-weight:800;font-size:11px;">${rev ? 'RESTE VERSÉ' : 'RESTE À VERSER'}</div>
+          <div style="padding:7px 10px;font-size:10px;line-height:2;">
+            <div><span style="color:#666;">Montant du reste :</span> <b>${fmt(rev ? rev.montant : restant)} XOF</b>${rev ? '' : ' <span style="color:#b4600f;">— pas encore versé</span>'}</div>
+            <div><span style="color:#666;">Versé sur le compte :</span> ${libelleCompte ? `<b>${libelleCompte}</b>` : trou}</div>
+            <div><span style="color:#666;">Versé à :</span> ${rev?.beneficiaire ? `<b>${rev.beneficiaire}</b>` : trou} &nbsp;&nbsp;&nbsp; <span style="color:#666;">Le :</span> ${rev ? `<b>${new Date(rev.date).toLocaleDateString('fr-FR')}</b>` : trou}</div>
+          </div>
+        </div>` : '';
       const brand = brandIdentity(branding);
       const showSignature = canSignature && afficherSignature;
       const element = document.createElement('div');
@@ -231,7 +266,7 @@ export default function DotationPage() {
       // il n'y en a plus quand les depenses remplissent deja la page.
       const celGrille2 = 'border:1px solid #9aa7b4;';
       const largeursGrille = ['15%', '11%', '16%', '', '14%'];
-      const resteMm = (showSignature ? 118 : 163) - 6.5 * Math.max(depenses.length, 1);
+      const resteMm = (showSignature ? 118 : 163) - 6.5 * Math.max(depenses.length, 1) - (blocReste ? 30 : 0);
       const nbLignesVides = Math.max(0, Math.floor(resteMm / 9));
       const ligneVide = `<div style="display:flex;flex:1;min-height:0;">${largeursGrille.map((w, i) => `<div style="${celGrille2}${w ? `width:${w};` : 'flex:1;'}border-top:none;${i < 4 ? 'border-right:none;' : ''}"></div>`).join('')}</div>`;
       element.innerHTML = `
@@ -269,6 +304,7 @@ export default function DotationPage() {
           </tr>`).join('') || `<tr><td colspan="5" style="padding:4px 6px 5px;${celGrille2}color:#999;">Aucune dépense imputée</td></tr>`}</tbody>
         </table>
         <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;margin-bottom:10px;border-top:1px solid #9aa7b4;">${Array.from({ length: nbLignesVides }, () => ligneVide).join('')}</div>
+        ${blocReste}
         ${showSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:6px;flex-shrink:0;">
           <div style="text-align:center;width:220px;">
             <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
@@ -415,6 +451,35 @@ export default function DotationPage() {
               <textarea value={form.motif} onChange={e => setForm({ ...form, motif: e.target.value })} className="input-field" rows={3} placeholder="Ex : frais de mission, débours portuaires..." />
             </div>
           </form>
+        </Modal>
+
+        <Modal
+          open={!!reversementDe}
+          onClose={() => setReversementDe(null)}
+          title="Reste versé"
+          description={reversementDe?.numero}
+          footer={
+            <>
+              <button type="button" onClick={() => setReversementDe(null)} className="btn-secondary">Fermer</button>
+              <button type="button" onClick={enregistrerBeneficiaire} disabled={savingBenef || !beneficiaireSaisi.trim()} className="btn-primary disabled:opacity-50">Enregistrer</button>
+            </>
+          }
+        >
+          {reversementDe?.reversement && (
+            <div className="space-y-4">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                <dt className="text-gray-500">Montant du reste</dt><dd className="font-mono font-semibold">{fmt(reversementDe.reversement.montant)} XOF</dd>
+                <dt className="text-gray-500">Versé sur le compte</dt>
+                <dd className="font-semibold">{reversementDe.reversement.compte ? `${reversementDe.reversement.compte.type === 'BANQUE' ? `${reversementDe.reversement.compte.banque} · ` : 'Caisse · '}${reversementDe.reversement.compte.libelle} (${reversementDe.reversement.compte.code})` : '—'}</dd>
+                <dt className="text-gray-500">Date</dt><dd>{new Date(reversementDe.reversement.date).toLocaleDateString('fr-FR')}</dd>
+              </dl>
+              <div>
+                <label className="label">Versé à (nom de la personne qui a reçu le reste) *</label>
+                <input type="text" value={beneficiaireSaisi} maxLength={200} onChange={e => setBeneficiaireSaisi(e.target.value)} className="input-field" placeholder="Nom et prénom" />
+                <p className="mt-1 text-xs text-gray-500">Indication portée sur l'état d'utilisation. Aucun mouvement n'est enregistré dans la caisse ou la banque.</p>
+              </div>
+            </div>
+          )}
         </Modal>
 
         <Modal open={showHistorique} onClose={() => setShowHistorique(false)} title="Historique par agent" description="Total des dotations attribuées, utilisées et restantes pour chaque agent." size="lg">

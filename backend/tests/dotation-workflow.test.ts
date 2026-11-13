@@ -206,7 +206,7 @@ describe('Validation d\'une dotation : dépenses cochées, compte débité, reli
   it('valide les dépenses cochées, rejette les autres, débite le compte et retourne le reliquat', async () => {
     const detail = await api().get(`${FINB}/justificatifs/dotation/${dotationId}`).set(authHeader(A.token));
     const par = (d: string) => detail.body.data.justificatifs.find((j: any) => j.designation === d).id;
-    const res = await valider({ justificatifIds: [par('Péage'), par('Transport')], caisseId: caisseX, retour: { caisseId: caisseY } });
+    const res = await valider({ justificatifIds: [par('Péage'), par('Transport')], caisseId: caisseX, retour: { caisseId: caisseY, beneficiaire: '  KONE Ali  ' } });
     expect(res.status).toBe(200);
     expect(res.body.data.retenues).toBe(2);
     expect(res.body.data.rejetees).toBe(1);
@@ -235,5 +235,67 @@ describe('Validation d\'une dotation : dépenses cochées, compte débité, reli
     expect(file.body.data.some((d: any) => d.id === dotationId)).toBe(true);
     const aValider = await api().get(`${FINB}/justificatifs/file`).set(authHeader(A.token));
     expect(aValider.body.data.some((d: any) => d.id === dotationId)).toBe(false);
+  });
+
+  it('expose le reversement du reste : compte crédité, montant, date et bénéficiaire (nom nettoyé)', async () => {
+    const res = await api().get(`${FINB}/dotations/${dotationId}`).set(authHeader(A.token));
+    expect(res.status).toBe(200);
+    const rev = res.body.data.reversement;
+    expect(rev.montant).toBe(50000);
+    expect(rev.beneficiaire).toBe('KONE Ali');
+    expect(rev.compte).toEqual({ type: 'CAISSE', code: 'CY', libelle: 'Caisse Y' });
+    expect(rev.date).toBeTruthy();
+    // Aussi présent dans la liste des dotations.
+    const liste = await api().get(`${FINB}/dotations?numero=${res.body.data.numero}`).set(authHeader(A.token));
+    expect(liste.body.data[0].reversement.compte.libelle).toBe('Caisse Y');
+  });
+
+  it('permet de corriger « à qui » le reste a été versé, sans toucher aux soldes', async () => {
+    const avant = Number((await prisma.caisse.findUniqueOrThrow({ where: { id: caisseY } })).solde);
+    const res = await api().patch(`${FINB}/dotations/${dotationId}/reversement`).set(authHeader(A.token)).send({ beneficiaire: 'TRAORE Awa' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.beneficiaire).toBe('TRAORE Awa');
+    expect(Number((await prisma.caisse.findUniqueOrThrow({ where: { id: caisseY } })).solde)).toBe(avant);
+    const relu = await api().get(`${FINB}/dotations/${dotationId}`).set(authHeader(A.token));
+    expect(relu.body.data.reversement.beneficiaire).toBe('TRAORE Awa');
+  });
+
+  it('refuse un bénéficiaire vide ou trop long', async () => {
+    for (const beneficiaire of ['', '   ', 'x'.repeat(201)]) {
+      const res = await api().patch(`${FINB}/dotations/${dotationId}/reversement`).set(authHeader(A.token)).send({ beneficiaire });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('refuse le bénéficiaire sur une dotation sans reversement', async () => {
+    const dot = await api().post(`${FINB}/dotations`).set(authHeader(A.token)).send({ montant: 10000, motif: 'Sans reversement', agentId: utilisateurId });
+    const res = await api().patch(`${FINB}/dotations/${dot.body.data.id}/reversement`).set(authHeader(A.token)).send({ beneficiaire: 'Personne' });
+    expect(res.status).toBe(404);
+    const lue = await api().get(`${FINB}/dotations/${dot.body.data.id}`).set(authHeader(A.token));
+    expect(lue.body.data.reversement).toBeNull();
+  });
+
+  it('isole les sociétés : une autre société ne voit ni ne modifie le reversement', async () => {
+    const B = await creerContexteSociete('Société autre reversement');
+    expect((await api().get(`${FINB}/dotations/${dotationId}`).set(authHeader(B.token))).status).toBe(404);
+    const res = await api().patch(`${FINB}/dotations/${dotationId}/reversement`).set(authHeader(B.token)).send({ beneficiaire: 'Intrus' });
+    expect(res.status).toBe(404);
+    const relu = await api().get(`${FINB}/dotations/${dotationId}`).set(authHeader(A.token));
+    expect(relu.body.data.reversement.beneficiaire).toBe('TRAORE Awa');
+  });
+
+  it('prend la personne qui valide comme bénéficiaire quand aucun nom n\'est fourni', async () => {
+    const dot = await api().post(`${FINB}/dotations`).set(authHeader(A.token)).send({ montant: 40000, motif: 'Défaut', agentId: utilisateurId });
+    const id = dot.body.data.id;
+    const j = await api().post(`${FINB}/justificatifs`).set(authHeader(A.token)).send({ dotationId: id, dossierId, montant: 10000, designation: 'Taxi', categorie: 'DIVERS' });
+    expect(j.status).toBe(201);
+    expect((await api().post(`${FINB}/justificatifs/soumettre`).set(authHeader(A.token)).send({ dotationId: id })).status).toBe(200);
+    const res = await api().post(`${FINB}/justificatifs/valider-dotation`).set(authHeader(A.token))
+      .send({ dotationId: id, modePaiement: 'ESPECES', justificatifIds: [j.body.data.id], caisseId: caisseX, retour: { caisseId: caisseY } });
+    expect(res.status).toBe(200);
+    const moi = await prisma.utilisateur.findUniqueOrThrow({ where: { email: A.email } });
+    const lue = await api().get(`${FINB}/dotations/${id}`).set(authHeader(A.token));
+    expect(lue.body.data.reversement.montant).toBe(30000);
+    expect(lue.body.data.reversement.beneficiaire).toBe(`${moi.prenom} ${moi.nom}`.trim());
   });
 });
