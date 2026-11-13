@@ -226,7 +226,14 @@ export default function DotationPage() {
       const brand = brandIdentity(branding);
       const showSignature = canSignature && afficherSignature;
       const element = document.createElement('div');
-      element.style.cssText = "width:210mm;padding:15mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;";
+      element.style.cssText = "width:210mm;min-height:296mm;box-sizing:border-box;padding:15mm;display:flex;flex-direction:column;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;";
+      // Lignes vides sous les depenses imputees, jusqu'en bas de la page (environ 9 mm chacune, elastiques) ;
+      // il n'y en a plus quand les depenses remplissent deja la page.
+      const celGrille2 = 'border:1px solid #9aa7b4;';
+      const largeursGrille = ['15%', '11%', '16%', '', '14%'];
+      const resteMm = (showSignature ? 118 : 163) - 6.5 * Math.max(depenses.length, 1);
+      const nbLignesVides = Math.max(0, Math.floor(resteMm / 9));
+      const ligneVide = `<div style="display:flex;flex:1;min-height:0;">${largeursGrille.map((w, i) => `<div style="${celGrille2}${w ? `width:${w};` : 'flex:1;'}border-top:none;${i < 4 ? 'border-right:none;' : ''}"></div>`).join('')}</div>`;
       element.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #12314f;padding-bottom:10px;margin-bottom:16px;">
           <div style="display:flex;gap:10px;align-items:center;">
@@ -245,23 +252,24 @@ export default function DotationPage() {
           <div style="flex:1;border:1px solid #eee;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#666;">RESTANT</div><div style="font-weight:800;font-size:13px;color:#15803d;">${fmt(d.montantRestant)}</div></div>
         </div>
         <div style="font-weight:800;font-size:11px;background:#eaf0f5;padding:5px 8px;margin-bottom:4px;">DÉPENSES IMPUTÉES (${depenses.length})</div>
-        <table style="width:100%;border-collapse:collapse;font-size:9.5px;">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.5px;flex-shrink:0;">
           <thead><tr>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">N°</th>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">Date</th>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">Catégorie</th>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ccc;">Désignation</th>
-            <th style="text-align:right;padding:4px 6px;border-bottom:1px solid #ccc;">Montant</th>
+            <th style="width:15%;text-align:left;padding:4px 6px;${celGrille2}background:#f4f7fa;">N°</th>
+            <th style="width:11%;text-align:left;padding:4px 6px;${celGrille2}background:#f4f7fa;">Date</th>
+            <th style="width:16%;text-align:left;padding:4px 6px;${celGrille2}background:#f4f7fa;">Catégorie</th>
+            <th style="text-align:left;padding:4px 6px;${celGrille2}background:#f4f7fa;">Désignation</th>
+            <th style="width:14%;text-align:right;padding:4px 6px;${celGrille2}background:#f4f7fa;">Montant</th>
           </tr></thead>
           <tbody>${depenses.map((dep: any) => `<tr>
-            <td style="padding:3px 6px;border-bottom:1px solid #eee;">${dep.numero}</td>
-            <td style="padding:3px 6px;border-bottom:1px solid #eee;">${new Date(dep.dateDepense).toLocaleDateString('fr-FR')}</td>
-            <td style="padding:3px 6px;border-bottom:1px solid #eee;">${dep.categorie}</td>
-            <td style="padding:3px 6px;border-bottom:1px solid #eee;">${dep.designation}</td>
-            <td style="padding:3px 6px;border-bottom:1px solid #eee;text-align:right;">${fmt(dep.montant)}</td>
-          </tr>`).join('') || '<tr><td colspan="5" style="padding:6px;color:#999;">Aucune dépense imputée</td></tr>'}</tbody>
+            <td style="padding:4px 6px 5px;${celGrille2}">${dep.numero}</td>
+            <td style="padding:4px 6px 5px;${celGrille2}">${new Date(dep.dateDepense).toLocaleDateString('fr-FR')}</td>
+            <td style="padding:4px 6px 5px;${celGrille2}">${dep.categorie}</td>
+            <td style="padding:4px 6px 5px;${celGrille2}">${dep.designation}</td>
+            <td style="padding:4px 6px 5px;${celGrille2}text-align:right;">${fmt(dep.montant)}</td>
+          </tr>`).join('') || `<tr><td colspan="5" style="padding:4px 6px 5px;${celGrille2}color:#999;">Aucune dépense imputée</td></tr>`}</tbody>
         </table>
-        ${showSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:26px;">
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;margin-bottom:10px;border-top:1px solid #9aa7b4;">${Array.from({ length: nbLignesVides }, () => ligneVide).join('')}</div>
+        ${showSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:6px;flex-shrink:0;">
           <div style="text-align:center;width:220px;">
             <div style="font-size:10px;color:#666;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
             ${branding?.signature ? `<img src="${branding.signature}" style="height:32px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
@@ -269,7 +277,7 @@ export default function DotationPage() {
             <div style="border-top:1px solid #333;padding-top:4px;">${brand.nom}</div>
           </div>
         </div>` : ''}
-        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:16px;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — ${brand.nom}</div>
+        <div style="text-align:center;font-size:8px;color:#999;border-top:1px solid #ddd;padding-top:6px;margin-top:10px;flex-shrink:0;">Document généré le ${new Date().toLocaleDateString('fr-FR')} — ${brand.nom}</div>
       `;
       document.body.appendChild(element);
       await html2pdf().set({ margin: 0, filename: `Dotation_${d.numero.replace(/\//g, '-')}_Etat.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save();
