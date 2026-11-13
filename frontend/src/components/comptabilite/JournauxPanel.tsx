@@ -13,6 +13,7 @@ export default function JournauxPanel() {
 
   const [journalForm, setJournalForm] = useState({ code: '', libelle: '', type: 'OD', compteContrepartie: '' });
   const [savingJournal, setSavingJournal] = useState(false);
+  const [showNouveau, setShowNouveau] = useState(false);
 
   const loadJournaux = () => {
     setLoading(true);
@@ -31,6 +32,7 @@ export default function JournauxPanel() {
       });
       toast.success('Journal créé');
       setJournalForm({ code: '', libelle: '', type: 'OD', compteContrepartie: '' });
+      setShowNouveau(false);
       loadJournaux();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
     finally { setSavingJournal(false); }
@@ -53,38 +55,43 @@ export default function JournauxPanel() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Journaux</h2>
-        <p className="text-sm text-gray-500">Un seul jeu de journaux (Achats, Ventes, Banque, Caisse, OD...), utilisé à la fois par Compta Auto et Compta Manuelle.</p>
+    <div className="space-y-2">
+      {/* Une ligne : compteur et bouton ; le formulaire n'apparaît qu'à la demande (explications dans la bulle « i » de la page). */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-gray-500">{journaux.length} journal(aux)</span>
+        {!showNouveau && <button onClick={() => setShowNouveau(true)} className="btn-primary !py-1.5 text-xs">+ Nouveau journal</button>}
       </div>
 
-      <div className="card !p-4 space-y-3">
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white">Nouveau journal</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
-          <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Code *</label>
-            <input type="text" value={journalForm.code} onChange={e => setJournalForm({ ...journalForm, code: e.target.value.toUpperCase() })} className="input-field !py-1.5 text-sm" placeholder="AC" maxLength={10} />
+      {showNouveau && (
+        <div className="card !p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Code *</label>
+              <input type="text" value={journalForm.code} onChange={e => setJournalForm({ ...journalForm, code: e.target.value.toUpperCase() })} className="input-field !py-1.5 text-sm" placeholder="AC" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Libellé *</label>
+              <input type="text" value={journalForm.libelle} onChange={e => setJournalForm({ ...journalForm, libelle: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="Journal des achats" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Type *</label>
+              <select value={journalForm.type} onChange={e => setJournalForm({ ...journalForm, type: e.target.value })} className="input-field !py-1.5 text-sm">
+                {TYPES_JOURNAL.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Compte contrepartie</label>
+              <input type="text" value={journalForm.compteContrepartie} onChange={e => setJournalForm({ ...journalForm, compteContrepartie: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="521" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowNouveau(false)} className="btn-secondary text-sm">Annuler</button>
+              <button onClick={handleCreerJournal} disabled={savingJournal} className="btn-primary text-sm disabled:opacity-50">{savingJournal ? 'Création...' : '+ Créer'}</button>
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Libellé *</label>
-            <input type="text" value={journalForm.libelle} onChange={e => setJournalForm({ ...journalForm, libelle: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="Journal des achats" />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Type *</label>
-            <select value={journalForm.type} onChange={e => setJournalForm({ ...journalForm, type: e.target.value })} className="input-field !py-1.5 text-sm">
-              {TYPES_JOURNAL.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase">Compte contrepartie</label>
-            <input type="text" value={journalForm.compteContrepartie} onChange={e => setJournalForm({ ...journalForm, compteContrepartie: e.target.value })} className="input-field !py-1.5 text-sm" placeholder="Optionnel" />
-          </div>
-          <button onClick={handleCreerJournal} disabled={savingJournal} className="btn-primary text-sm disabled:opacity-50">{savingJournal ? 'Création...' : '+ Créer'}</button>
         </div>
-      </div>
+      )}
 
-      <div className="table-container">
+      <div className="table-container table-compact">
         <table className="w-full">
           <thead><tr>
             <th className="table-header"></th>

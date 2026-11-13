@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { comptabiliteApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -52,11 +51,6 @@ export default function GenerationAutoTab({ exercice, onGenerated }: { exercice:
 
   return (
     <div className="space-y-4">
-      <div className="card !p-3 bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
-Compta Auto génère et <strong>valide directement</strong> les écritures dans le grand livre partagé (même plan comptable et mêmes journaux que Compta Manuelle). Une même facture, un même paiement ou une même dépense n&apos;est jamais comptabilisé deux fois, qu&apos;il ait été saisi automatiquement ou à la main. Les règles ci-dessous sont un standard SYSCOHADA à faire valider par votre expert-comptable ;
-        les comptes utilisés se règlent dans <Link href="/comptabilite/plan-comptable" className="underline font-medium">Plan comptable</Link>.
-      </div>
-
       <div className="card !p-4 space-y-3">
         <h2 className="text-sm font-bold text-gray-900 dark:text-white">Générer les écritures{exercice ? ` — ${exercice.libelle}` : ''}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

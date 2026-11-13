@@ -49,13 +49,13 @@ export default function ExercicesPanel() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Exercices comptables</h3>
-          {!showNouvel && <button onClick={() => setShowNouvel(true)} className="btn-primary text-sm">+ Nouvel exercice</button>}
+    <div className="space-y-2">
+      <div>
+        {/* Une ligne : compteur et bouton (explications dans la bulle « i » de la page). */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-xs text-gray-500">{exercices.length} exercice(s)</span>
+          {!showNouvel && <button onClick={() => setShowNouvel(true)} className="btn-primary !py-1.5 text-xs">+ Nouvel exercice</button>}
         </div>
-        <p className="text-sm text-gray-500 -mt-2 mb-4">Un seul jeu d&apos;exercices, utilisé à la fois par Compta Auto et Compta Manuelle.</p>
 
         {showNouvel && (
           <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-surface-700/30 grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
@@ -82,7 +82,7 @@ export default function ExercicesPanel() {
           </div>
         )}
 
-        <div className="table-container !shadow-none !border-0">
+        <div className="table-container table-compact">
           <table className="w-full">
             <thead><tr><th className="table-header">Actions</th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header text-right">Écritures</th><th className="table-header">Statut</th></tr></thead>
             <tbody>
