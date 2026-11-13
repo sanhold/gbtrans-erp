@@ -166,3 +166,24 @@ Règle de travail :
 
 - Quelques erreurs TypeScript préexistantes non bloquantes (`req.params: string | string[]` sur plusieurs routes Express) — n'empêchent pas l'exécution, à corriger un jour en durcissant le typage des routes.
 - `npm run dev` / `build` à la racine ne sont pas fonctionnels tant que le monorepo npm workspaces n'est pas configuré (voir section Démarrage rapide).
+
+## Déploiement du backend sur Vercel (alternative à Render)
+
+Le backend peut tourner comme fonction serverless Vercel (`backend/api/index.ts`, `backend/vercel.json`). Render reste pris en charge (`src/server.ts`) : rien n'est cassé.
+
+1. Créer un **second projet Vercel** sur ce dépôt, *Root Directory* = `backend`. Plan **Pro** requis (usage commercial, cron).
+2. Région des fonctions : `dub1` (Dublin), proche de la base Supabase `eu-west-1` (déjà fixée dans `vercel.json`).
+3. Variables d'environnement :
+
+| Variable | Valeur |
+|---|---|
+| `DATABASE_URL` | Pooler transactionnel Supabase : `postgresql://postgres.<ref>:<mdp>@aws-X-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1` |
+| `JWT_SECRET`, `ENCRYPTION_KEY`, `CORS_ORIGIN`, … | comme sur Render |
+| `CRON_SECRET` | secret aléatoire ; Vercel Cron l'envoie en `Authorization: Bearer` (sauvegardes planifiées toutes les heures) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | stockage des documents (bucket privé `documents`, nom modifiable par `SUPABASE_STORAGE_BUCKET`) — **obligatoire**, le disque Vercel est éphémère |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | limitation des tentatives de connexion partagée entre instances (recommandé ; sinon mémoire par instance) |
+
+4. Les migrations Prisma ne s'exécutent pas au build Vercel (le pooler ne le permet pas) : les appliquer avec `prisma migrate deploy` via la connexion directe/session.
+5. Pointer `NEXT_PUBLIC_API_URL` du frontend vers l'URL du nouveau projet backend (`…/api/v1`).
+
+Sur Vercel, les journaux vont à la console, et les caches mémoire (session, tableaux de bord) sont désactivés car non partageables entre instances.

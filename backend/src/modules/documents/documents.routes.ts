@@ -1,6 +1,5 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { authenticate, authorize, requireSociete } from '../../middleware/auth';
@@ -8,6 +7,7 @@ import { AuthRequest } from '../../types';
 import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { Prisma } from '@prisma/client';
+import { enregistrerFichier, lireFichier } from '../../utils/stockage';
 
 const router = Router();
 
@@ -35,7 +35,6 @@ const upload = multer({
   },
 });
 
-const UPLOAD_ROOT = path.join(__dirname, '../../../uploads');
 
 router.use(authenticate, requireSociete);
 
@@ -94,12 +93,12 @@ router.get('/:id/fichier', authorize('ARCHIVES:LIRE'), async (req: AuthRequest, 
     const doc = await prisma.document.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!doc) { ApiResponse.notFound(res, 'Document introuvable'); return; }
 
-    const cheminAbsolu = path.join(UPLOAD_ROOT, doc.chemin);
-    if (!cheminAbsolu.startsWith(UPLOAD_ROOT) || !fs.existsSync(cheminAbsolu)) {
-      ApiResponse.notFound(res, 'Fichier introuvable'); return;
-    }
+    const contenu = await lireFichier(doc.chemin);
+    if (!contenu) { ApiResponse.notFound(res, 'Fichier introuvable'); return; }
 
-    res.download(cheminAbsolu, doc.nomOriginal);
+    res.setHeader('Content-Type', doc.typeMime || 'application/octet-stream');
+    res.attachment(doc.nomOriginal);
+    res.send(contenu);
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
 
@@ -134,9 +133,7 @@ router.post('/', authorize('ARCHIVES:CREER'), upload.single('file'), async (req:
     const extension = (path.extname(req.file.originalname) || '.bin').replace('.', '');
     const nom = `${crypto.randomUUID()}.${extension}`;
     const relativeDir = path.join('documents', societeId);
-    const absoluteDir = path.join(UPLOAD_ROOT, relativeDir);
-    fs.mkdirSync(absoluteDir, { recursive: true });
-    fs.writeFileSync(path.join(absoluteDir, nom), req.file.buffer);
+    await enregistrerFichier(path.join(relativeDir, nom).replace(/\\/g, '/'), req.file.buffer, req.file.mimetype);
 
     const doc = await prisma.document.create({
       data: {

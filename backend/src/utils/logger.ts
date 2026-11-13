@@ -15,16 +15,7 @@ const logFormat = winston.format.combine(
   })
 );
 
-export const logger = winston.createLogger({
-  level: config.log.level,
-  format: logFormat,
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        logFormat
-      ),
-    }),
+const transportsFichiers = () => [
     new winston.transports.File({
       filename: path.join(logDir, 'error.log'),
       level: 'error',
@@ -42,5 +33,22 @@ export const logger = winston.createLogger({
       maxsize: 10 * 1024 * 1024,
       maxFiles: 30,
     }),
+];
+
+export const logger = winston.createLogger({
+  level: config.log.level,
+  format: logFormat,
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        logFormat
+      ),
+    }),
   ],
 });
+
+// Sur Vercel le disque est en lecture seule : journaux sur la console uniquement.
+if (!process.env.VERCEL) {
+  transportsFichiers().forEach((t) => logger.add(t));
+}
