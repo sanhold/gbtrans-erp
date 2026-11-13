@@ -248,7 +248,7 @@ export default function DecisionsTab({ onChange }: { onChange?: () => void }) {
         {action?.decision === 'FACTURE_NORMALISEE' && (
           <div className="space-y-2">
             <label htmlFor="decision-fne" className="text-xs font-bold text-gray-500 uppercase">Numéro FNE (DGI)</label>
-            <input id="decision-fne" value={saisie} onChange={e => setSaisie(e.target.value)} className="input-field" placeholder="Facultatif, modifiable ensuite" maxLength={100} autoFocus />
+            <input id="decision-fne" value={saisie} onChange={e => setSaisie(e.target.value)} className="input-field" placeholder="Facultatif, modifiable ensuite" maxLength={50} autoFocus />
             <p className="text-xs text-gray-500">Le même numéro est appliqué aux factures sélectionnées. Elles seront ajoutées aux pièces à comptabiliser.</p>
           </div>
         )}
@@ -272,7 +272,7 @@ export default function DecisionsTab({ onChange }: { onChange?: () => void }) {
           <button onClick={enregistrerFne} disabled={enCours} className="btn-primary text-sm disabled:opacity-50">Enregistrer</button>
         </>}
       >
-        <input aria-label="Numéro FNE" value={edition?.numeroFne ?? ''} onChange={e => setEdition(ed => ed && { ...ed, numeroFne: e.target.value })} className="input-field" maxLength={100} autoFocus />
+        <input aria-label="Numéro FNE" value={edition?.numeroFne ?? ''} onChange={e => setEdition(ed => ed && { ...ed, numeroFne: e.target.value })} className="input-field" maxLength={50} autoFocus />
       </Modal>
     </div>
   );

@@ -17,6 +17,12 @@ const MODULES = [
     couleur: 'bg-accent-50 text-accent-600 dark:bg-accent-900/20',
   },
   {
+    titre: 'Facture FNE Comptabilité',
+    desc: 'File de décision : chaque transaction devient facture normalisée (numéro FNE), comptabilité réelle, ou part à la corbeille.',
+    href: '/comptabilite/facture-fne',
+    couleur: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20',
+  },
+  {
     titre: 'Compta Manuelle',
     desc: 'Comptabilisez les pièces en attente ou passez des écritures diverses — même plan comptable.',
     href: '/compta-reel',
@@ -32,7 +38,7 @@ export default function ComptabiliteHubPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptabilité</h1>
           <p className="text-sm text-gray-500">Un plan comptable unique, deux façons de l&apos;alimenter : automatiquement depuis les opérations, ou manuellement.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {MODULES.map(m => (
             <Link key={m.titre} href={m.href} className="card space-y-3 hover:shadow-elevated transition-all">
               <div className={`inline-flex px-3 py-1 rounded-lg text-sm font-bold ${m.couleur}`}>{m.titre}</div>

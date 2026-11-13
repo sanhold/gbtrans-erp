@@ -7,7 +7,6 @@ import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
 import GenerationAutoTab from './GenerationAutoTab';
-import DecisionsTab from './DecisionsTab';
 import PlanComptablePanel from './PlanComptablePanel';
 import InfoBulle from '@/components/ui/InfoBulle';
 import toast from 'react-hot-toast';
@@ -21,7 +20,7 @@ const emptyExerciceForm = { code: '', libelle: '', dateDebut: '', dateFin: '' };
 export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' }) {
   const estReel = source === 'REEL';
   const origine: 'AUTO' | 'MANUEL' = estReel ? 'MANUEL' : 'AUTO';
-  const [tab, setTab] = useState<'generation' | 'decisions' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan' | 'plan'>(estReel ? 'decisions' : 'generation');
+  const [tab, setTab] = useState<'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan' | 'plan'>(estReel ? 'ecritures' : 'generation');
   const [exercices, setExercices] = useState<any[]>([]);
   const [exerciceId, setExerciceId] = useState('');
   const [comptes, setComptes] = useState<any[]>([]);
@@ -117,7 +116,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
 
         <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
           {[
-            ...(estReel ? [{ id: 'decisions', label: 'À décider' }] : [{ id: 'generation', label: 'Génération' }]),
+            ...(estReel ? [] : [{ id: 'generation', label: 'Génération' }]),
             { id: 'ecritures', label: estReel ? 'Journal manuel' : 'Journal automatique' },
             ...(estReel ? [{ id: 'attente', label: 'Pièces à comptabiliser' }, { id: 'rejetees', label: 'Pièces rejetées' }] : []),
             { id: 'grand-livre', label: 'Grand Livre' },
@@ -133,7 +132,6 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
 
         {/* Les pièces à comptabiliser ne dépendent pas d'un exercice : Compta Auto peut en
             déposer avant même qu'un exercice ne soit ouvert. */}
-        {estReel && tab === 'decisions' && <DecisionsTab />}
         {estReel && tab === 'attente' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="EN_ATTENTE" />}
         {estReel && tab === 'rejetees' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="REJETEE" />}
 

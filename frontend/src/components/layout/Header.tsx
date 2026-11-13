@@ -52,6 +52,7 @@ const MODULE_NAMES: { prefix: string; name: string }[] = [
   { prefix: '/transactions', name: 'Transactions' },
   { prefix: '/comptabilite/plan-comptable', name: 'Plan comptable' },
   { prefix: '/comptabilite/compta-auto', name: 'Compta Auto' },
+  { prefix: '/comptabilite/facture-fne', name: 'Facture FNE Comptabilité' },
   { prefix: '/comptabilite', name: 'Comptabilité' },
   { prefix: '/compta-reel', name: 'Compta Manuelle' },
   { prefix: '/statistiques', name: 'Statistique' },
