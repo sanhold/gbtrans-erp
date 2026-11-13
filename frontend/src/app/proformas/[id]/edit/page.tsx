@@ -426,9 +426,6 @@ export default function ModifierProformaPage() {
                 {proforma.client?.pays && (
                   <div className="pf-meta-v">
                     {proforma.client.pays}
-                    {proforma.client.pays.toLowerCase().includes('ivoire') && (
-                      <span className="pf-ci-flag"><span /><span /><span /></span>
-                    )}
                   </div>
                 )}
                 <div className="pf-meta-v pf-meta-dim">Offre valable 30 jours à compter de la date d&apos;émission.</div>
@@ -692,10 +689,6 @@ export default function ModifierProformaPage() {
         .pf-meta-v { font-size:12px; padding:1px 0; }
         .pf-meta-strong { font-weight:700; }
         .pf-meta-dim { color:#8b93ad; font-size:9.5px; margin-top:4px; }
-        .pf-ci-flag { display:inline-flex; margin-left:6px; vertical-align:middle; box-shadow:0 0 0 1px var(--pf-line); border-radius:1px; overflow:hidden; }
-        .pf-ci-flag span:nth-child(1) { width:8px; height:10px; background:#f77f00; }
-        .pf-ci-flag span:nth-child(2) { width:8px; height:10px; background:#fff; }
-        .pf-ci-flag span:nth-child(3) { width:8px; height:10px; background:#009e60; }
 
         .pf-fob-block { flex:1.2; border:1px solid var(--pf-line); padding:6px 9px; }
         .pf-fob-table { width:100%; font-size:10px; color:var(--pf-ink-soft); border-collapse:collapse; }

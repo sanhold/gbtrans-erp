@@ -29,13 +29,6 @@ const MODE_PAIEMENT_LABELS: Record<string, string> = {
   MOBILE_MONEY: 'Mobile Money', ORANGE_MONEY: 'Orange Money', MTN_MONEY: 'MTN Money',
   WAVE: 'Wave', MOOV_MONEY: 'Moov Money', CARTE_BANCAIRE: 'Carte bancaire', COMPENSATION: 'Compensation',
 };
-const CI_FLAG = (
-  <span className="inline-flex ml-1.5 align-middle shadow-[0_0_0_1px_#dbe2e8] rounded-[1px] overflow-hidden">
-    <span className="w-2 h-2.5 bg-[#f77f00]" />
-    <span className="w-2 h-2.5 bg-white" />
-    <span className="w-2 h-2.5 bg-[#009e60]" />
-  </span>
-);
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FactureDetailPage() {
@@ -285,8 +278,6 @@ export default function FactureDetailPage() {
     ['Pays', facture.client?.pays, false],
   ].filter(([, v]) => v);
 
-  const isPaysCI = (facture.client?.pays || '').toLowerCase().includes('ivoire');
-
   let globalIndex = 0;
 
   return (
@@ -411,7 +402,7 @@ export default function FactureDetailPage() {
                       <tr key={label as string}>
                         <td className="px-3 py-1 text-gray-500 dark:text-gray-400 w-[34%]">{label}</td>
                         <td className="px-3 py-1 font-semibold text-gray-900 dark:text-white">
-                          {value}{label === 'Pays' && isPaysCI ? CI_FLAG : null}
+                          {value}
                         </td>
                       </tr>
                     ))}

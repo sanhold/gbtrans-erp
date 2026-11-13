@@ -422,9 +422,6 @@ function NouvelleProformaForm() {
                     {selectedClient.pays && (
                       <div className="pf-meta-v">
                         {selectedClient.pays}
-                        {selectedClient.pays.toLowerCase().includes('ivoire') && (
-                          <span className="pf-ci-flag"><span /><span /><span /></span>
-                        )}
                       </div>
                     )}
                   </>
@@ -691,10 +688,6 @@ function NouvelleProformaForm() {
         .pf-meta-strong { font-weight:700; }
         .pf-meta-dim { color:#8b93ad; font-size:9.5px; margin-top:4px; }
         .pf-meta-placeholder { color:#b6b0a0; font-style:italic; }
-        .pf-ci-flag { display:inline-flex; margin-left:6px; vertical-align:middle; box-shadow:0 0 0 1px var(--pf-line); border-radius:1px; overflow:hidden; }
-        .pf-ci-flag span:nth-child(1) { width:8px; height:10px; background:#f77f00; }
-        .pf-ci-flag span:nth-child(2) { width:8px; height:10px; background:#fff; }
-        .pf-ci-flag span:nth-child(3) { width:8px; height:10px; background:#009e60; }
 
         .pf-fob-block { flex:1.2; border:1px solid var(--pf-line); padding:6px 9px; }
         .pf-fob-table { width:100%; font-size:10px; color:var(--pf-ink-soft); border-collapse:collapse; }
