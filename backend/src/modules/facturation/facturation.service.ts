@@ -32,7 +32,7 @@ export class FacturationService {
       const dossier = await prisma.dossier.findFirst({ where: { id: data.dossierId, societeId } });
       if (!dossier) throw new Error('Dossier introuvable');
       if (STATUTS_DOSSIER_FERME.includes(dossier.statut)) {
-        throw new Error(`Impossible de créer une facture : le dossier ${dossier.numero} est ${dossier.statut.toLowerCase()}`);
+        throw new Error(`Impossible de créer une facture : le dossier ${dossier.numeroPhysique || dossier.numero} est ${dossier.statut.toLowerCase()}`);
       }
     }
 

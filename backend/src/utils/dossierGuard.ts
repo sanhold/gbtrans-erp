@@ -11,7 +11,7 @@ export async function assertDossierOuvert(dossierId: string | string[], societeI
   const dossier = await prisma.dossier.findFirst({ where: { id, societeId } });
   if (!dossier) throw new Error('Dossier introuvable');
   if (dossierEstFerme(dossier.statut)) {
-    throw new Error(`Impossible d'ajouter ou de modifier des informations : le dossier ${dossier.numero} est ${dossier.statut.toLowerCase()}`);
+    throw new Error(`Impossible d'ajouter ou de modifier des informations : le dossier ${dossier.numeroPhysique || dossier.numero} est ${dossier.statut.toLowerCase()}`);
   }
   return dossier;
 }

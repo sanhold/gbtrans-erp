@@ -404,7 +404,7 @@ export default function ATPage() {
                   <div><label className="label">Date Échéance actuelle</label><input type="text" readOnly value={fmtDate(prolongerAt.dateExpiration)} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                   <div><label className="label">Nature du dossier</label><input type="text" readOnly value={prolongerAt.nature || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                   <div><label className="label">Désignation du document</label><input type="text" readOnly value={prolongerAt.designation || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                  <div><label className="label">Dossier</label><input type="text" readOnly value={prolongerAt.dossiers?.[0]?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
+                  <div><label className="label">Dossier</label><input type="text" readOnly value={prolongerAt.dossiers?.[0]?.numeroPhysique || prolongerAt.dossiers?.[0]?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                   <div><label className="label">Etat AT</label><input type="text" readOnly value={ETAT_LABELS[prolongerAt.etat]} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                   <div className="col-span-2"><label className="label">N° Ancien Déclaration</label><input type="text" readOnly value={prolongerAt.declarationEntree || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                 </div>
@@ -440,7 +440,7 @@ export default function ATPage() {
                 <button onClick={() => setApurerAt(null)} className="p-1 rounded hover:bg-white/10"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
               <form onSubmit={handleApurer} className="p-6 space-y-4">
-                <div><label className="label">Dossier</label><input type="text" readOnly value={apurerAt.dossiers?.[0]?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
+                <div><label className="label">Dossier</label><input type="text" readOnly value={apurerAt.dossiers?.[0]?.numeroPhysique || apurerAt.dossiers?.[0]?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                 <div><label className="label">Désignation</label><input type="text" readOnly value={apurerAt.designation || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
                 <div>
                   <label className="label text-red-600 font-semibold">Date d&apos;apurement *</label>

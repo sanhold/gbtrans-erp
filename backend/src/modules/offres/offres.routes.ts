@@ -47,7 +47,7 @@ router.get('/:id', authorize('OFFRES:LIRE'), async (req: AuthRequest, res: Respo
       where: { id: req.params.id, client: { societeId: req.user!.societeId } },
       relationLoadStrategy: 'join', include: {
         client: true,
-        dossier: { select: { id: true, numero: true, designation: true } },
+        dossier: { select: { id: true, numero: true, numeroPhysique: true, designation: true } },
         lignes: { orderBy: { ordre: 'asc' } },
       },
     });
