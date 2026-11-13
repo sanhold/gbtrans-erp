@@ -194,7 +194,7 @@ export default function ArchivesPage() {
                   <div className="text-sm text-gray-500">Catégorie : <span className="font-medium text-primary-600">{CATEGORIE_LABELS[categorieFiltre]}</span> <button type="button" onClick={() => setCategorieFiltre('')} className="ml-1 text-primary-600 hover:underline">✕</button></div>
                 )}
                 {dossierFiltre && (
-                  <div className="text-sm text-gray-500">Dossier : <span className="font-medium text-primary-600">{dossierSelectionne?.numero}</span> <button type="button" onClick={() => setDossierFiltre('')} className="ml-1 text-primary-600 hover:underline">✕</button></div>
+                  <div className="text-sm text-gray-500">Dossier : <span className="font-medium text-primary-600">{dossierSelectionne?.numeroPhysique || dossierSelectionne?.numero}</span> <button type="button" onClick={() => setDossierFiltre('')} className="ml-1 text-primary-600 hover:underline">✕</button></div>
                 )}
                 <button type="submit" className="btn-primary">Afficher</button>
               </form>
@@ -206,7 +206,7 @@ export default function ArchivesPage() {
                   <h3 className="text-lg font-semibold">
                     Documents
                     {categorieFiltre ? ` — ${CATEGORIE_LABELS[categorieFiltre]}` : ''}
-                    {dossierFiltre ? ` — Dossier ${dossierSelectionne?.numero}` : !categorieFiltre ? ' récents' : ''}
+                    {dossierFiltre ? ` — Dossier ${dossierSelectionne?.numeroPhysique || dossierSelectionne?.numero}` : !categorieFiltre ? ' récents' : ''}
                   </h3>
                 </div>
                 <div className="table-container !shadow-none !border-0">

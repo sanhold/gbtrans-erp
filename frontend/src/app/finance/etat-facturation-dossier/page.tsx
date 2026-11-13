@@ -233,7 +233,7 @@ export default function EtatFacturationDossierPage() {
                 const facture = Number(r.montantTVA) > 0 || Number(r.montantPrestation) > 0;
                 return (
                   <tr key={r.id} className="table-row cursor-pointer" onClick={() => openDetail(r.id)}>
-                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={r.numero}>{r.numero}</td>
+                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={r.numeroPhysique || r.numero}>{r.numeroPhysique || r.numero}</td>
                     <td className="table-cell !px-1.5" data-label="Statut"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{r.statut}</span></td>
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Proforma">{fmt(r.montantProforma)}</td>
                     <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant TVA">{fmt(r.montantTVA)}</td>

@@ -329,6 +329,7 @@ export const financeApi = {
     create: (data: any) => api.post('/finance/dotations', data),
     update: (id: string, data: any) => api.put(`/finance/dotations/${id}`, data),
     annuler: (id: string) => api.patch(`/finance/dotations/${id}/annuler`),
+    reversement: (id: string, beneficiaire: string) => api.patch(`/finance/dotations/${id}/reversement`, { beneficiaire }),
   },
   justificatifs: {
     mesDotations: () => api.get('/finance/justificatifs/mes-dotations'),
