@@ -100,6 +100,8 @@ interface DocData {
   clientNcc?: string;
   clientPays?: string;
   dossierNumero?: string;
+  /** Numéro de facture normalisée (FNE) délivré par la DGI (champ « N° facture normalisée » de la facture). */
+  numeroFne?: string;
   titre?: string;
   afficherSignature?: boolean;
   fobUnitaire?: number;
@@ -166,6 +168,7 @@ function buildContentHtml(data: DocData, branding?: SocieteBranding): string {
 
   const refs: [string, string][] = [
     ["Date d'émission", data.date],
+    ...(data.numeroFne ? [['N° FNE', data.numeroFne] as [string, string]] : []),
     ...(data.dateEcheance ? [['Échéance', data.dateEcheance] as [string, string]] : []),
     ...(data.dossierNumero ? [['Réf. dossier', data.dossierNumero] as [string, string]] : []),
     ...(data.delaiJours != null ? [['Conditions', data.delaiJours > 0 ? `${data.delaiJours} jours net` : 'À réception'] as [string, string]] : []),
@@ -297,6 +300,7 @@ export function buildFactureDocData(f: any): DocData {
     clientNcc: f.client?.ncc || undefined,
     clientPays: f.client?.pays || undefined,
     dossierNumero: d?.numeroPhysique || d?.numero,
+    numeroFne: f.numeroNormalise ? String(f.numeroNormalise) : undefined,
     titre: f.titre || f.objet || undefined,
     afficherSignature: !!f.afficherSignature,
     montantHT: Number(f.montantHT),
@@ -394,6 +398,7 @@ export function buildProformaHtml(data: DocData, _qrDataUrl?: string, branding?:
     <div style="font-size:11px;color:${PAPER.gold};font-weight:700;margin-top:2px;">N° ${data.numero}</div>
     ${data.dossierNumero ? `<div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">Dossier : <strong>${data.dossierNumero}</strong></div>` : ''}
     <div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">Date : ${data.date}</div>
+    ${data.numeroFne ? `<div style="font-size:11px;color:${PAPER.inkSoft};margin-top:1px;">N° FNE : <strong>${data.numeroFne}</strong></div>` : ''}
   </div>
 </div>
 

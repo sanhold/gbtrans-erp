@@ -2,7 +2,8 @@
  * File de décision (comptabilité réelle).
  *
  * Toutes les transactions (factures, paiements, dépenses…) arrivent ici tant qu'aucune décision n'a été prise :
- *  - « Facture normalisée » (factures clients) : on enregistre le numéro FNE délivré par la DGI sur la facture ;
+ *  - « Facture normalisée » (factures clients) : on enregistre le numéro FNE délivré par la DGI dans le champ
+ *    « N° facture normalisée » de la facture (Facture.numeroNormalise, imprimé sur la facture) ;
  *  - « Comptabilité réelle » (recevable) ;
  *  → dans les deux cas, la pièce est automatiquement ajoutée aux « Pièces à comptabiliser » (EcritureEnAttente) ;
  *  - « Corbeille » : la transaction quitte la file, sans être comptabilisée. Réversible. Les pièces rejetées
@@ -96,7 +97,7 @@ async function transactionsADecider(societeId: string, types: Source[]): Promise
 }
 
 const includeDecision = {
-  facture: { select: { numero: true, type: true, dateFacture: true, montantTTC: true, client: { select: { raisonSociale: true } } } },
+  facture: { select: { numero: true, numeroNormalise: true, type: true, dateFacture: true, montantTTC: true, client: { select: { raisonSociale: true } } } },
   factureFournisseur: { select: { numero: true, dateFacture: true, montantTTC: true, fournisseur: { select: { raisonSociale: true } } } },
   paiement: { select: { numero: true, datePaiement: true, montant: true, client: { select: { raisonSociale: true } } } },
   paiementFournisseur: { select: { numero: true, datePaiement: true, montant: true, fournisseur: { select: { raisonSociale: true } } } },
@@ -113,7 +114,7 @@ function ligneDepuisDecision(d: any): Ligne {
   return {
     cle: `DECISION:${d.id}`, kind: 'DECISION', id: d.id, source: d.source, typeLibelle: LIBELLE_SOURCE[d.source as Source] ?? d.source,
     numero, tiers, libelle, montant, date,
-    decision: { id: d.id, statut: d.statut, numeroFne: d.numeroFne, motif: d.motif, decidePar: d.decidePar, date: d.updatedAt },
+    decision: { id: d.id, statut: d.statut, numeroFne: d.facture?.numeroNormalise ?? d.numeroFne, motif: d.motif, decidePar: d.decidePar, date: d.updatedAt },
   };
 }
 
@@ -193,7 +194,7 @@ router.post('/decider', authorize('COMPTABILITE:DECIDER'), async (req: AuthReque
     if (items.length > MAX_LOT) { ApiResponse.badRequest(res, `Maximum ${MAX_LOT} transactions à la fois`); return; }
     if (items.some(i => !SOURCES.includes(i.source) || typeof i.id !== 'string')) { ApiResponse.badRequest(res, 'Transaction invalide'); return; }
     if (decision === 'FACTURE_NORMALISEE' && items.some(i => i.source !== 'FACTURE')) { ApiResponse.badRequest(res, 'Seules les factures clients peuvent être mises en facture normalisée'); return; }
-    const fne = typeof numeroFne === 'string' ? numeroFne.trim().slice(0, 100) : '';
+    const fne = typeof numeroFne === 'string' ? numeroFne.trim().slice(0, 50) : '';
     const motifTexte = typeof motif === 'string' ? motif.trim().slice(0, 500) : '';
     const auteur = nomUtilisateur(req);
 
@@ -222,6 +223,10 @@ router.post('/decider', authorize('COMPTABILITE:DECIDER'), async (req: AuthReque
             data: { societeId, source: it.source, ...fk, libelle: libelle.slice(0, 500), montant, dateOperation: date, createurNom: auteur },
           });
           ecritureAttenteId = ea.id;
+        }
+        // Source unique du numéro FNE : le champ « N° facture normalisée » de la facture (imprimé sur le PDF).
+        if (decision === 'FACTURE_NORMALISEE' && fne && it.source === 'FACTURE') {
+          await tx.facture.update({ where: { id: it.id }, data: { numeroNormalise: fne } });
         }
         await tx.decisionFne.create({
           data: {
@@ -271,8 +276,11 @@ router.patch('/:id/fne', authorize('COMPTABILITE:DECIDER'), async (req: AuthRequ
     const d = await prisma.decisionFne.findFirst({ where: { id: req.params.id, societeId: req.user!.societeId } });
     if (!d) { ApiResponse.notFound(res, 'Décision introuvable'); return; }
     if (d.statut !== 'FACTURE_NORMALISEE') { ApiResponse.badRequest(res, "Cette transaction n'est pas en facture normalisée"); return; }
-    const fne = typeof req.body.numeroFne === 'string' ? req.body.numeroFne.trim().slice(0, 100) : '';
-    const maj = await prisma.decisionFne.update({ where: { id: d.id }, data: { numeroFne: fne || null } });
+    const fne = typeof req.body.numeroFne === 'string' ? req.body.numeroFne.trim().slice(0, 50) : '';
+    const maj = await prisma.$transaction(async (tx) => {
+      if (d.factureId) await tx.facture.update({ where: { id: d.factureId }, data: { numeroNormalise: fne || null } });
+      return tx.decisionFne.update({ where: { id: d.id }, data: { numeroFne: fne || null } });
+    });
     ApiResponse.success(res, maj, 'Numéro FNE enregistré');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });

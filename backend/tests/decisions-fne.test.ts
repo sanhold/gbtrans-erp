@@ -92,11 +92,21 @@ describe('File de décision (facture normalisée / comptabilité réelle / corbe
     expect(encore.body.data.traitees).toBe(0);
   });
 
+  it('le numéro FNE est écrit dans le champ « N° facture normalisée » de la facture (imprimé sur la facture)', async () => {
+    const r = await api().get(`/api/v1/factures/${factureValidee.id}`).set(authHeader(A.token));
+    expect(r.status).toBe(200);
+    expect(r.body.data.numeroNormalise).toBe('FNE-2026-0001');
+    // une facture sans décision n'a pas de numéro
+    const autre = await api().get(`/api/v1/factures/${factureBrouillon.id}`).set(authHeader(A.token));
+    expect(autre.body.data.numeroNormalise).toBeNull();
+  });
+
   it('corrige le numéro FNE d\'une facture normalisée', async () => {
     const d = await prisma.decisionFne.findFirstOrThrow({ where: { factureId: factureValidee.id } });
     const r = await api().patch(`${BASE}/${d.id}/fne`).set(authHeader(A.token)).send({ numeroFne: 'FNE-2026-0002' });
     expect(r.status).toBe(200);
     expect((await prisma.decisionFne.findUniqueOrThrow({ where: { id: d.id } })).numeroFne).toBe('FNE-2026-0002');
+    expect((await prisma.facture.findUniqueOrThrow({ where: { id: factureValidee.id } })).numeroNormalise).toBe('FNE-2026-0002');
   });
 
   it('comptabilité réelle : paiement recevable => pièce à comptabiliser, sans numéro FNE', async () => {
