@@ -90,6 +90,7 @@ model Societe {
   employes              Employe[]
   bulletinsPaie         BulletinPaie[]
   ecrituresEnAttente    EcritureEnAttente[]
+  decisionsFne    DecisionFne[]
   vehicules             Vehicule[]
   chauffeurs            Chauffeur[]
   courses               Course[]
@@ -1186,6 +1187,7 @@ model Facture {
   paiements      PaiementFacture[]
   ecritures      EcritureComptable[]
   ecrituresEnAttente EcritureEnAttente[]
+  decisionFne DecisionFne?
   coursesTransport   Course[]
 
   @@unique([societeId, numero])
@@ -1254,6 +1256,7 @@ model FactureFournisseur {
   lignes      LigneFactureFournisseur[]
   paiements   PaiementFactureFournisseur[]
   ecrituresEnAttente EcritureEnAttente[]
+  decisionFne DecisionFne?
 
   @@unique([societeId, numero])
   @@index([societeId])
@@ -1310,6 +1313,7 @@ model PaiementFournisseur {
   createur       Utilisateur?                 @relation("PaiementFournisseurCreateur", fields: [createurId], references: [id])
   affectations   PaiementFactureFournisseur[]
   ecrituresEnAttente EcritureEnAttente[]
+  decisionFne DecisionFne?
 
   @@index([societeId])
   @@index([fournisseurId])
@@ -1380,6 +1384,7 @@ model Paiement {
   affectations   PaiementFacture[]
   ecritures      EcritureComptable[]
   ecrituresEnAttente EcritureEnAttente[]
+  decisionFne DecisionFne?
 
   @@index([clientId])
   @@index([datePaiement])
@@ -1616,6 +1621,43 @@ model EcritureEnAttente {
   @@map("ecritures_en_attente")
 }
 
+enum StatutDecisionFne {
+  FACTURE_NORMALISEE
+  RECEVABLE
+  CORBEILLE
+}
+
+/// File de décision (comptabilité réelle) : toute transaction (facture, paiement, dépense…) est « à décider »
+/// tant qu'elle n'a pas de ligne ici. Facture normalisée ou recevable => une pièce « à comptabiliser » est créée
+/// automatiquement ; corbeille => la transaction quitte la file (réversible).
+model DecisionFne {
+  id                    String              @id @default(uuid())
+  societeId             String
+  source                SourceEcritureAttente
+  factureId             String?             @unique
+  factureFournisseurId  String?             @unique
+  paiementId            String?             @unique
+  paiementFournisseurId String?             @unique
+  depenseId             String?             @unique
+  statut                StatutDecisionFne
+  numeroFne             String?             @db.VarChar(100)
+  motif                 String?             @db.VarChar(500)
+  decidePar             String?             @db.VarChar(200)
+  ecritureAttenteId     String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  societe             Societe             @relation(fields: [societeId], references: [id])
+  facture             Facture?            @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  factureFournisseur  FactureFournisseur? @relation(fields: [factureFournisseurId], references: [id], onDelete: Cascade)
+  paiement            Paiement?           @relation(fields: [paiementId], references: [id], onDelete: Cascade)
+  paiementFournisseur PaiementFournisseur? @relation(fields: [paiementFournisseurId], references: [id], onDelete: Cascade)
+  depense             Depense?            @relation(fields: [depenseId], references: [id], onDelete: Cascade)
+
+  @@index([societeId, statut])
+  @@map("decisions_fne")
+}
+
 enum TypeCompte {
   BILAN
   GESTION
@@ -1811,6 +1853,7 @@ model Depense {
   compteBancaire CompteBancaire? @relation(fields: [compteBancaireId], references: [id])
   dotation       Dotation?       @relation(fields: [dotationId], references: [id])
   ecrituresEnAttente EcritureEnAttente[]
+  decisionFne DecisionFne?
 
   justificatif JustificatifDotation?
   @@index([societeId])

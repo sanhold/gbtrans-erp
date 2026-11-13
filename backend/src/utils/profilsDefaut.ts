@@ -49,6 +49,7 @@ export async function creerProfilsDefautPourSociete(tx: Tx, societeId: string) {
       { module: 'FOURNISSEURS', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'VALIDER'] } },
       { module: 'DOSSIERS', action: 'LIRE' },
       { module: 'COMPTABILITE', action: { in: ['LIRE', 'CREER', 'MODIFIER', 'SUPPRIMER', 'VALIDER', 'ARCHIVER', 'EXPORTER', 'IMPRIMER'] } },
+      { module: 'COMPTABILITE', action: 'DECIDER' },
       { module: 'FINANCE', action: 'VOIR_MONTANTS' },
       { module: 'RH', action: { in: ['LIRE', 'VOIR_MONTANTS'] } },
       { module: 'ARCHIVES', action: { in: ['LIRE', 'CREER'] } },
