@@ -5,6 +5,7 @@ import { ApiResponse } from '../../utils/apiResponse';
 import prisma from '../../config/database';
 import { genererNumero } from '../../utils/numerotation';
 import syscohadaPlanReference from '../../../prisma/data/syscohada-plan-reference.json';
+import decisionsRoutes from './decisions.routes';
 
 const router = Router();
 router.use(authenticate, requireSociete);
@@ -1021,5 +1022,8 @@ router.get('/bilan', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, re
     });
   } catch (e: any) { ApiResponse.error(res, e.message); }
 });
+
+// File de décision (facture normalisée / comptabilité réelle / corbeille)
+router.use('/decisions', decisionsRoutes);
 
 export default router;
