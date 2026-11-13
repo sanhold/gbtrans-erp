@@ -21,18 +21,18 @@ export interface NavItem {
   sous?: { name: string; href: string }[];
 }
 
-const CLE_GROUPES_REPLIES = 'gbtrans.menu.groupesReplies';
+const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesOuverts';
 const EVT_GROUPES = 'gbtrans:menu-groupes';
-function lireGroupesReplies(): string {
-  try { return window.localStorage.getItem(CLE_GROUPES_REPLIES) || '[]'; } catch { return '[]'; }
+function lireGroupesOuverts(): string {
+  try { return window.localStorage.getItem(CLE_GROUPES_OUVERTS) || '[]'; } catch { return '[]'; }
 }
 function abonnerGroupes(cb: () => void) {
   window.addEventListener('storage', cb);
   window.addEventListener(EVT_GROUPES, cb);
   return () => { window.removeEventListener('storage', cb); window.removeEventListener(EVT_GROUPES, cb); };
 }
-function ecrireGroupesReplies(liste: string[]) {
-  try { window.localStorage.setItem(CLE_GROUPES_REPLIES, JSON.stringify(liste)); } catch { /* stockage indisponible : non bloquant */ }
+function ecrireGroupesOuverts(liste: string[]) {
+  try { window.localStorage.setItem(CLE_GROUPES_OUVERTS, JSON.stringify(liste)); } catch { /* stockage indisponible : non bloquant */ }
   window.dispatchEvent(new Event(EVT_GROUPES));
 }
 
@@ -122,12 +122,12 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
-  // Groupes repliés par l'utilisateur (mémorisés). Côté serveur : tout est déplié.
-  const repliesBrut = useSyncExternalStore(abonnerGroupes, lireGroupesReplies, () => '[]');
-  const replies: string[] = (() => { try { const v = JSON.parse(repliesBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
+  // Groupes dépliés (mémorisés). Par défaut, tout le menu est plié.
+  const ouvertsBrut = useSyncExternalStore(abonnerGroupes, lireGroupesOuverts, () => '[]');
+  const ouverts: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
   const basculerGroupe = useCallback((titre: string) => {
-    const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesReplies()); return Array.isArray(v) ? v : []; } catch { return []; } })();
-    ecrireGroupesReplies(actuels.includes(titre) ? actuels.filter((t) => t !== titre) : [...actuels, titre]);
+    const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
+    ecrireGroupesOuverts(actuels.includes(titre) ? actuels.filter((t) => t !== titre) : [...actuels, titre]);
   }, []);
 
   const isItemActive = (href: string, sous?: { href: string }[]) => {
@@ -144,13 +144,13 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     if (d) setBadges({ dossiers: d.totalDossiers, courriers: d.totalCourriers });
   }, [badgeStats]);
 
-  // Quand on change de page, le groupe qui la contient se déplie.
+  // Quand on change de page, le groupe qui la contient se déplie (les autres restent pliés).
   useEffect(() => {
     const groupe = navGroups.find((g) => g.items.some((i) =>
       pathname === i.href || pathname?.startsWith(i.href + '/') || i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))));
     if (!groupe) return;
-    const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesReplies()); return Array.isArray(v) ? v : []; } catch { return []; } })();
-    if (actuels.includes(groupe.title)) ecrireGroupesReplies(actuels.filter((t) => t !== groupe.title));
+    const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
+    if (!actuels.includes(groupe.title)) ecrireGroupesOuverts([...actuels, groupe.title]);
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -210,24 +210,29 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
           if (visibleItems.length === 0) return null;
 
           // En mode réduit (icônes seules) il n'y a pas de titres : tout reste visible.
-          const replie = !collapsed && replies.includes(group.title);
+          const pliable = visibleItems.length > 1;
+          const replie = !collapsed && pliable && !ouverts.includes(group.title);
           const idListe = `menu-groupe-${group.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
 
           return (
           <div key={group.title}>
-            <button
-              type="button"
-              onClick={() => basculerGroupe(group.title)}
-              aria-expanded={!replie}
-              aria-controls={idListe}
-              className={clsx(titleCls, 'w-full flex items-center justify-between text-left hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded')}
-            >
-              <span>{group.title}</span>
-              <span className="flex items-center gap-1.5">
-                {replie && <span className="text-[10px] font-medium normal-case tracking-normal text-gray-400">{visibleItems.length}</span>}
-                <svg aria-hidden="true" className={clsx('w-3.5 h-3.5 transition-transform duration-150', replie ? '-rotate-90' : 'rotate-0')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-              </span>
-            </button>
+            {pliable ? (
+              <button
+                type="button"
+                onClick={() => basculerGroupe(group.title)}
+                aria-expanded={!replie}
+                aria-controls={idListe}
+                className={clsx(titleCls, 'w-full flex items-center justify-between text-left hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded')}
+              >
+                <span>{group.title}</span>
+                <span className="flex items-center gap-1.5">
+                  {replie && <span className="text-[10px] font-medium normal-case tracking-normal text-gray-400">{visibleItems.length}</span>}
+                  <svg aria-hidden="true" className={clsx('w-3.5 h-3.5 transition-transform duration-150', replie ? '-rotate-90' : 'rotate-0')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                </span>
+              </button>
+            ) : (
+              <div className={titleCls}>{group.title}</div>
+            )}
             <div id={idListe} hidden={replie}>
             {visibleItems.map((item) => {
               const moduleItem = getRequiredModule(item.href);
