@@ -209,7 +209,7 @@ router.post('/', authorize('PROFORMAS:CREER'), audit('PROFORMAS', 'CREER'), asyn
       const dossier = await prisma.dossier.findFirst({ where: { id: dossierId, societeId: req.user!.societeId } });
       if (!dossier) { ApiResponse.notFound(res, 'Dossier introuvable'); return; }
       if (STATUTS_DOSSIER_FERME.includes(dossier.statut)) {
-        ApiResponse.badRequest(res, `Impossible de créer une proforma : le dossier ${dossier.numero} est ${dossier.statut.toLowerCase()}`); return;
+        ApiResponse.badRequest(res, `Impossible de créer une proforma : le dossier ${dossier.numeroPhysique || dossier.numero} est ${dossier.statut.toLowerCase()}`); return;
       }
     }
 
@@ -393,7 +393,7 @@ router.post('/:id/transformer-facture', authorize('PROFORMAS:MODIFIER'), audit('
     if (proforma.dossierId) {
       const dossier = await prisma.dossier.findFirst({ where: { id: proforma.dossierId, societeId: req.user!.societeId } });
       if (dossier && STATUTS_DOSSIER_FERME.includes(dossier.statut)) {
-        ApiResponse.badRequest(res, `Impossible de créer une facture : le dossier ${dossier.numero} est ${dossier.statut.toLowerCase()}`); return;
+        ApiResponse.badRequest(res, `Impossible de créer une facture : le dossier ${dossier.numeroPhysique || dossier.numero} est ${dossier.statut.toLowerCase()}`); return;
       }
     }
 

@@ -347,13 +347,13 @@ export class DossierService {
     const [data, totalResult] = await Promise.all([
       prisma.$queryRaw<any[]>`
         WITH page AS (
-          SELECT d.id, d.numero, d.statut, d.annee, d."dateCreation"
+          SELECT d.id, d.numero, d."numeroPhysique", d.statut, d.annee, d."dateCreation"
           FROM dossiers d
           WHERE ${whereClause}
           ORDER BY d."dateCreation" DESC
           LIMIT ${limit} OFFSET ${skip}
         )
-        SELECT page.id, page.numero, page.statut, page.annee, page."dateCreation",
+        SELECT page.id, page.numero, page."numeroPhysique", page.statut, page.annee, page."dateCreation",
           COALESCE(p.montant_proforma, 0)::float AS "montantProforma",
           COALESCE(f.montant_tva, 0)::float AS "montantTVA",
           COALESCE(f.montant_prestation, 0)::float AS "montantPrestation",
