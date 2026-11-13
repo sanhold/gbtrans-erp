@@ -8,7 +8,7 @@ import { getSocieteBranding } from '@/lib/generatePDF';
 import api, { facturesApi, financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
-import { downloadPDF, printDocument, buildProformaHtml, type DocData } from '@/lib/generatePDF';
+import { downloadPDF, printDocument, buildProformaHtml, buildFactureDocData, type DocData } from '@/lib/generatePDF';
 import { useAuthStore } from '@/stores/authStore';
 
 const CAT_COLORS: Record<string, string> = {
@@ -84,39 +84,7 @@ export default function FactureDetailPage() {
     } catch { toast.error('Erreur lors de la mise à jour'); setFacture((prev: any) => prev ? { ...prev, afficherSignature: !checked } : prev); }
   };
 
-  const buildDocData = useCallback((): DocData | null => {
-    if (!facture) return null;
-    const d = facture.dossier;
-    return {
-      type: 'FACTURE',
-      modele: facture.modele,
-      numero: facture.numero,
-      date: new Date(facture.dateFacture).toLocaleDateString('fr-FR'),
-      client: facture.client?.raisonSociale || '',
-      clientAdresse: facture.client?.adresse || undefined,
-      clientTelephone: facture.client?.telephone || facture.client?.mobile || undefined,
-      clientEmail: facture.client?.email || undefined,
-      clientNcc: facture.client?.ncc || undefined,
-      clientPays: facture.client?.pays || undefined,
-      dossierNumero: d?.numeroPhysique || d?.numero,
-      titre: facture.titre,
-      afficherSignature: !!facture.afficherSignature,
-      montantHT: Number(facture.montantHT),
-      montantTVA: Number(facture.montantTVA),
-      montantTTC: Number(facture.montantTTC),
-      montantPrestation: facture.montantPrestation ? Number(facture.montantPrestation) : undefined,
-      tvaPrestation: facture.tvaPrestation ? Number(facture.tvaPrestation) : undefined,
-      acompte: Number(facture.acompte) || undefined,
-      resteAPayer: Number(facture.resteAPayer) || undefined,
-      lignes: (facture.lignes || []).map((l: any) => ({
-        categorie: l.categorie || '',
-        designation: l.designation,
-        quantite: Number(l.quantite || 1),
-        prixUnitaire: Number(l.prixUnitaire || 0),
-        montant: Number(l.prixUnitaire || 0),
-      })),
-    };
-  }, [facture]);
+  const buildDocData = useCallback((): DocData | null => (facture ? buildFactureDocData(facture) : null), [facture]);
 
 
   const isBrouillon = facture?.statut === 'BROUILLON';
