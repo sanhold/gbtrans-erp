@@ -19,9 +19,17 @@ function secretValide(fourni: unknown, attendu: string): boolean {
   return crypto.timingSafeEqual(bufferFourni, bufferAttendu);
 }
 
-router.post('/sauvegardes', async (req: Request, res: Response) => {
-  const secret = req.headers['x-cron-secret'];
-  if (!process.env.CRON_SECRET || !secretValide(secret, process.env.CRON_SECRET)) {
+/** Secret accepté dans x-cron-secret (cron externe) ou Authorization: Bearer (Vercel Cron). */
+function autorise(req: Request): boolean {
+  const attendu = process.env.CRON_SECRET;
+  if (!attendu) return false;
+  const auth = req.headers.authorization;
+  const bearer = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  return secretValide(req.headers['x-cron-secret'], attendu) || secretValide(bearer, attendu);
+}
+
+async function declencher(req: Request, res: Response) {
+  if (!autorise(req)) {
     res.status(401).json({ success: false, message: 'Non autorisé' }); return;
   }
   try {
@@ -30,6 +38,10 @@ router.post('/sauvegardes', async (req: Request, res: Response) => {
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
   }
-});
+}
+
+router.post('/sauvegardes', declencher);
+// Vercel Cron appelle en GET.
+router.get('/sauvegardes', declencher);
 
 export default router;

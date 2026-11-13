@@ -16,9 +16,13 @@ interface CacheEntry {
   cachedAt: number;
 }
 
+// Cache par instance : inadapté au serverless (déconnexion/permissions non propagées entre instances).
+const DESACTIVE = Boolean(process.env.VERCEL);
+
 const cache = new Map<string, CacheEntry>();
 
 export function getCachedUser(token: string): AuthRequest['user'] | null {
+  if (DESACTIVE) return null;
   const entry = cache.get(token);
   if (!entry) return null;
   if (Date.now() - entry.cachedAt > TTL_MS) { cache.delete(token); return null; }
@@ -27,6 +31,7 @@ export function getCachedUser(token: string): AuthRequest['user'] | null {
 }
 
 export function setCachedUser(token: string, user: AuthRequest['user'], sessionExpiresAt: Date): void {
+  if (DESACTIVE) return;
   cache.set(token, { user, sessionExpiresAt, cachedAt: Date.now() });
 }
 

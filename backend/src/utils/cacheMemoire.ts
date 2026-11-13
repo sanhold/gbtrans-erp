@@ -13,6 +13,9 @@ interface Entree {
   expireA: number;
 }
 
+// Cache par instance : désactivé sur Vercel (invalidations non propagées entre instances).
+const DESACTIVE = Boolean(process.env.VERCEL);
+
 const cache = new Map<string, Entree>();
 // Requêtes en cours : évite que 5 appels simultanés à froid recalculent 5 fois (anti "stampede").
 const enCours = new Map<string, Promise<unknown>>();
@@ -28,6 +31,7 @@ export function lireCache<T>(societeId: string, espace: string, params = ''): T 
 }
 
 export function ecrireCache<T>(societeId: string, espace: string, ttlMs: number, valeur: T, params = ''): void {
+  if (DESACTIVE) return;
   cache.set(cleComplete(societeId, espace, params), { valeur, expireA: Date.now() + ttlMs });
 }
 

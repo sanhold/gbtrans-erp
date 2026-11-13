@@ -112,6 +112,21 @@
     @apply hover:bg-primary-50/40 dark:hover:bg-white/[.04] transition-colors;
   }
 
+  /* Tableau compact : lignes et barre d'outils resserrées pour voir plus de données sans défiler. */
+  .table-container.table-compact .table-cell {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+
+  .table-container.table-compact .table-header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .table-container.table-compact .te-bar {
+    padding: 0.4rem 0.75rem;
+  }
+
   .table-container tbody tr:last-child > .table-cell {
     border-bottom: 0;
   }

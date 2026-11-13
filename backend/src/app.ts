@@ -7,12 +7,13 @@ import rateLimit from 'express-rate-limit';
 import { config } from './config';
 import { logger } from './utils/logger';
 import routes from './routes';
+import { UpstashStore, upstashDisponible } from './utils/rateLimitStore';
 
 // Création de l'application Express, séparée du démarrage du serveur HTTP (app.listen).
 // Permet de l'importer directement dans les tests (Supertest) sans ouvrir de port réel.
 const app = express();
 
-// L'application est déployée derrière le proxy Render : sans ce réglage, req.ip
+// L'application est déployée derrière un proxy (Render ou Vercel) : sans ce réglage, req.ip
 // renvoie l'IP du proxy et le rate limit (ex: /auth/login) devient global à toute
 // la plateforme au lieu d'être appliqué par IP cliente.
 app.set('trust proxy', 1);
@@ -52,6 +53,8 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10) || 20,
   message: { success: false, message: 'Trop de tentatives. Réessayez dans 15 minutes.' },
+  // Magasin partagé entre instances serverless si Upstash est configuré.
+  ...(upstashDisponible() ? { store: new UpstashStore('auth') } : {}),
 });
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/verify-2fa', authLimiter);
