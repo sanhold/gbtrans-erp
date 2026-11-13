@@ -141,28 +141,12 @@ interface DocData {
   lignes: LigneDoc[];
 }
 
-function buildQrText(data: DocData): string {
-  const label = data.type === 'PROFORMA' ? 'FACTURE PROFORMA' : 'FACTURE';
-  return [
-    'GBTRANS SARL — NCC: CI-2024-0000000',
-    `${label}: ${data.numero}`,
-    `Date: ${data.date}`,
-    `Client: ${data.client}`,
-    `Montant TTC: ${fmt(data.montantTTC)} XOF`,
-  ].join('\n');
-}
-
-export async function generateDocQrDataUrl(data: DocData): Promise<string> {
-  const QRCode = (await import('qrcode')).default;
-  return QRCode.toDataURL(buildQrText(data), { margin: 0, width: 200, color: { dark: '#16232e', light: '#00000000' } });
-}
-
 function catIcon(path: string, color: string = BRAND.primary): string {
   return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;">${path}</svg>`;
 }
 
 
-function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): string {
+function buildContentHtml(data: DocData, branding?: SocieteBranding): string {
   const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
   let tableRows = '';
   let n = 0;
@@ -227,12 +211,6 @@ function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteB
   </div>
   <div style="min-width:220px;">
     <div style="background:${BRAND.greyBg};color:${BRAND.ink};text-align:center;font-weight:800;letter-spacing:1px;font-size:14px;padding:8px;border-radius:5px;border:1px solid ${BRAND.line};">${titleLabel}</div>
-    ${qrDataUrl ? `<div style="display:flex;justify-content:flex-end;margin-top:8px;">
-      <div style="text-align:center;">
-        <img src="${qrDataUrl}" width="60" height="60" style="border:1px solid ${BRAND.line};border-radius:5px;padding:2px;background:#fff;" />
-        <div style="font-size:6.5px;color:${BRAND.slate};margin-top:2px;">Vérifier le document</div>
-      </div>
-    </div>` : ''}
   </div>
 </div>
 
@@ -439,26 +417,23 @@ ${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;ma
 </div>`;
 }
 
-function buildElement(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): HTMLDivElement {
+function buildElement(data: DocData, branding?: SocieteBranding): HTMLDivElement {
   const div = document.createElement('div');
   if (data.type === 'PROFORMA' || data.modele === 'PROFORMA') {
     div.style.cssText = `width:210mm;min-height:293mm;box-sizing:border-box;position:relative;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${PAPER.ink};background:${PAPER.paper};`;
-    div.innerHTML = buildProformaHtml(data, qrDataUrl, branding);
+    div.innerHTML = buildProformaHtml(data, undefined, branding);
     return div;
   }
   div.style.cssText = `width:210mm;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${BRAND.ink};background:white;`;
-  div.innerHTML = buildContentHtml(data, qrDataUrl, branding);
+  div.innerHTML = buildContentHtml(data, branding);
   return div;
 }
 
 export async function downloadPDF(data: DocData) {
   const html2pdf = (await import('html2pdf.js')).default;
 
-  const [qrDataUrl, branding] = await Promise.all([
-    generateDocQrDataUrl(data).catch(() => undefined),
-    getSocieteBranding(),
-  ]);
-  const element = buildElement(data, qrDataUrl, branding);
+  const branding = await getSocieteBranding();
+  const element = buildElement(data, branding);
   document.body.appendChild(element);
 
   const filename = `${data.type === 'PROFORMA' ? 'Proforma' : 'Facture'}_${data.numero.replace(/\//g, '-')}.pdf`;
@@ -478,12 +453,9 @@ export async function downloadPDF(data: DocData) {
 }
 
 export async function printDocument(data: DocData) {
-  const [qrDataUrl, branding] = await Promise.all([
-    generateDocQrDataUrl(data).catch(() => undefined),
-    getSocieteBranding(),
-  ]);
+  const branding = await getSocieteBranding();
   const isProforma = data.type === 'PROFORMA' || data.modele === 'PROFORMA';
-  const contentHtml = isProforma ? buildProformaHtml(data, qrDataUrl, branding) : buildContentHtml(data, qrDataUrl, branding);
+  const contentHtml = isProforma ? buildProformaHtml(data, undefined, branding) : buildContentHtml(data, branding);
   const label = data.type === 'PROFORMA' ? 'Proforma' : 'Facture';
 
   const html = `<!DOCTYPE html>

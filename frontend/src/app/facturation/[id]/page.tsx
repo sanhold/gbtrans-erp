@@ -8,7 +8,7 @@ import { getSocieteBranding } from '@/lib/generatePDF';
 import api, { facturesApi, financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
-import { downloadPDF, printDocument, generateDocQrDataUrl, buildProformaHtml, type DocData } from '@/lib/generatePDF';
+import { downloadPDF, printDocument, buildProformaHtml, type DocData } from '@/lib/generatePDF';
 import { useAuthStore } from '@/stores/authStore';
 
 const CAT_COLORS: Record<string, string> = {
@@ -51,7 +51,6 @@ export default function FactureDetailPage() {
   const [searchCat, setSearchCat] = useState('');
   const [selectedCat, setSelectedCat] = useState('');
   const [validating, setValidating] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState('');
   const [showPaiement, setShowPaiement] = useState(false);
   const [paying, setPaying] = useState(false);
   const [comptesOptions, setComptesOptions] = useState<{ value: string; label: string }[]>([]);
@@ -119,11 +118,6 @@ export default function FactureDetailPage() {
     };
   }, [facture]);
 
-  useEffect(() => {
-    const data = buildDocData();
-    if (!data) return;
-    generateDocQrDataUrl(data).then(setQrDataUrl).catch(() => {});
-  }, [buildDocData]);
 
   const isBrouillon = facture?.statut === 'BROUILLON';
 
@@ -350,7 +344,7 @@ export default function FactureDetailPage() {
           <div className="hidden md:block bg-white rounded-sm border border-gray-300 overflow-x-auto p-4">
             {(() => {
               const d = buildDocData();
-              return d ? <div style={{ position: 'relative', width: '210mm', maxWidth: '100%', minHeight: '293mm', boxSizing: 'border-box', padding: '10mm 12mm', margin: '0 auto', background: '#fff', color: '#16232e', fontFamily: "'Segoe UI',Arial,sans-serif", fontSize: 11 }} dangerouslySetInnerHTML={{ __html: buildProformaHtml(d, qrDataUrl, branding || undefined) }} /> : null;
+              return d ? <div style={{ position: 'relative', width: '210mm', maxWidth: '100%', minHeight: '293mm', boxSizing: 'border-box', padding: '10mm 12mm', margin: '0 auto', background: '#fff', color: '#16232e', fontFamily: "'Segoe UI',Arial,sans-serif", fontSize: 11 }} dangerouslySetInnerHTML={{ __html: buildProformaHtml(d, undefined, branding || undefined) }} /> : null;
             })()}
           </div>
         )}
@@ -371,14 +365,6 @@ export default function FactureDetailPage() {
               </div>
               <div className="w-full sm:w-auto sm:min-w-[220px] text-right">
                 <span className="inline-block w-full text-center font-display text-sm font-extrabold text-gray-900 dark:text-white bg-surface-100 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-md px-4 py-2 tracking-wide">FACTURE</span>
-                {qrDataUrl && (
-                  <div className="flex justify-end mt-2">
-                    <div className="text-center">
-                      <img src={qrDataUrl} alt="QR code de vérification" className="w-16 h-16 border border-surface-200 dark:border-surface-600 rounded-md p-0.5 bg-white" />
-                      <p className="text-[7.5px] text-gray-400 dark:text-gray-500 mt-1">Vérifier le document</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
