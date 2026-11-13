@@ -5,7 +5,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
 import { facturesApi } from '@/lib/api';
-import { downloadPDF } from '@/lib/generatePDF';
+import { downloadPDF, buildFactureDocData } from '@/lib/generatePDF';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface Props {
@@ -24,18 +24,7 @@ export async function telechargerFacturePDF(id: string) {
   try {
     const res = await facturesApi.get(id);
     const f = res.data.data;
-    downloadPDF({
-      type: 'FACTURE', numero: f.numero,
-      date: new Date(f.dateFacture).toLocaleDateString('fr-FR'),
-      client: f.client?.raisonSociale || '', dossierNumero: f.dossier?.numeroPhysique || f.dossier?.numero, titre: f.titre,
-      afficherSignature: !!f.afficherSignature,
-      montantHT: Number(f.montantHT), montantTVA: Number(f.montantTVA), montantTTC: Number(f.montantTTC),
-      montantPrestation: f.montantPrestation ? Number(f.montantPrestation) : undefined,
-      tvaPrestation: f.tvaPrestation ? Number(f.tvaPrestation) : undefined,
-      acompte: Number(f.acompte) || undefined,
-      resteAPayer: Number(f.resteAPayer) || undefined,
-      lignes: (f.lignes || []).map((l: any) => ({ categorie: l.categorie || '', designation: l.designation, montant: Number(l.prixUnitaire || 0), estTVA: l.estTVA })),
-    });
+    downloadPDF(buildFactureDocData(f));
     toast.success('PDF téléchargé');
   } catch { toast.error('Erreur téléchargement'); }
 }

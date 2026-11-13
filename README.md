@@ -141,6 +141,21 @@ Côté frontend : `frontend/.env.local` → `NEXT_PUBLIC_API_URL=http://localhos
 - Layout commun : `components/layout/Sidebar.tsx`, `Header.tsx`, `AppLayout.tsx`.
 - Mode sombre : classe `dark` togglée sur `<html>` (pas de persistance en `localStorage` actuellement).
 
+## Déploiement : test puis production
+
+| Environnement | Branche | Adresse |
+|---|---|---|
+| **Test** | `test` | https://gbtrans-git-test-sanhold-projects.vercel.app (déployée par Vercel à chaque commit sur `test`) |
+| **Production** | `master` | https://gbtrans.vercel.app (frontend, Vercel) + service `gbtrans-erp-backend` (Render) |
+
+Règle de travail :
+
+1. Les changements sont d'abord fusionnés dans **`test`** (PR vers `test`) et vérifiés sur l'adresse de test.
+2. On ne fusionne `test` dans **`master`** qu'**après validation explicite** : la fusion dans `master` déclenche le déploiement en production (Vercel et Render).
+3. La CI (build + tests) tourne sur les PR et sur les pushs vers `master` et `test`.
+
+⚠️ **Limite** : le backend (Render) et la base de données n'existent qu'une fois. Le frontend de test appelle donc le **backend de production** (voir `ORIGINE_PREVISUALISATION` dans `backend/src/app.ts`) : seuls les changements de frontend se testent avant la production, un changement de backend ou de base part directement en production à la fusion dans `master`, et les données créées pendant un test sont de vraies données. Pour tester le backend à part, il faudrait un second service Render et une base de test séparée.
+
 ## Documentation complémentaire
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture 3 couches, liste des modules

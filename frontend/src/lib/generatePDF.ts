@@ -70,37 +70,6 @@ const BRAND = {
   greyBg: '#eaeef2',
 };
 
-const CAT_ICONS: Record<string, string> = {
-  'DOUANE & COMPAGNIE': '<path d="M9 2h6l1 3h3v2H5V5h3l1-3z"/><path d="M5 9h14l-1 11H6L5 9z"/>',
-  'DOUANE': '<path d="M9 2h6l1 3h3v2H5V5h3l1-3z"/><path d="M5 9h14l-1 11H6L5 9z"/>',
-  'DEBOURS DOUANE': '<path d="M9 2h6l1 3h3v2H5V5h3l1-3z"/><path d="M5 9h14l-1 11H6L5 9z"/>',
-  'DEBOURS DOUANE & COMPAGNIE': '<path d="M9 2h6l1 3h3v2H5V5h3l1-3z"/><path d="M5 9h14l-1 11H6L5 9z"/>',
-  'DOUANE ELIBU-NOE-E': '<path d="M9 2h6l1 3h3v2H5V5h3l1-3z"/><path d="M5 9h14l-1 11H6L5 9z"/>',
-  'COMPAGNIE MARITIME': '<path d="M2 21c1.5 1 3.5 1 5 0s3.5-1 5 0 3.5 1 5 0 3.5-1 5 0"/><path d="M4 18l1-9h14l1 9"/><path d="M12 9V4h4l2 3"/>',
-  'FRAIS PORTUAIRES': '<circle cx="12" cy="6" r="2"/><path d="M12 8v9m-7 0a7 7 0 0014 0M5 13h2m10 0h2"/>',
-  'GUICHET UNIQUE': '<rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/>',
-  'GUICHET UNIQUE/IMMATRICULATION': '<rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/>',
-  'EXPORT ET FRET': '<rect x="2" y="7" width="12" height="9"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>',
-  'TRANSPORT': '<rect x="2" y="7" width="12" height="9"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>',
-  'PENALITES PORTUAIRES': '<circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16" r="0.5"/>',
-  'AUTRES FRAIS': '<path d="M20 12l-8 8-9-9V4h7l9 9z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
-  'DIVERS': '<circle cx="12" cy="12" r="9"/>',
-};
-
-const CAT_COLORS: Record<string, string> = {
-  'DOUANE': '#059669', 'DOUANE & COMPAGNIE': '#059669',
-  'DEBOURS DOUANE': '#0d9488', 'DEBOURS DOUANE & COMPAGNIE': '#0d9488',
-  'DOUANE ELIBU-NOE-E': '#65a30d',
-  'COMPAGNIE MARITIME': '#2563eb',
-  'FRAIS PORTUAIRES': '#0891b2',
-  'GUICHET UNIQUE': '#4f46e5', 'GUICHET UNIQUE/IMMATRICULATION': '#4f46e5',
-  'EXPORT ET FRET': '#7c3aed',
-  'TRANSPORT': '#9333ea',
-  'PENALITES PORTUAIRES': '#dc2626',
-  'AUTRES FRAIS': '#d97706',
-  'DIVERS': '#6b7280',
-};
-
 interface LigneDoc {
   categorie?: string;
   designation: string;
@@ -108,6 +77,8 @@ interface LigneDoc {
   prixUnitaire?: number;
   montant: number;
   estTVA?: boolean;
+  /** Taux de TVA appliqué à la ligne (0 ou absent : pas de TVA sur la ligne). */
+  tauxTVA?: number;
 }
 
 interface DocData {
@@ -116,6 +87,12 @@ interface DocData {
   modele?: string;
   numero: string;
   date: string;
+  /** Date d'échéance (facture), déjà formatée. */
+  dateEcheance?: string;
+  /** Délai de règlement en jours entre l'émission et l'échéance. */
+  delaiJours?: number;
+  /** Statut de la facture (BROUILLON, VALIDEE, PAYEE...). */
+  statut?: string;
   client: string;
   clientAdresse?: string;
   clientTelephone?: string;
@@ -141,171 +118,205 @@ interface DocData {
   lignes: LigneDoc[];
 }
 
-function buildQrText(data: DocData): string {
-  const label = data.type === 'PROFORMA' ? 'FACTURE PROFORMA' : 'FACTURE';
-  return [
-    'GBTRANS SARL — NCC: CI-2024-0000000',
-    `${label}: ${data.numero}`,
-    `Date: ${data.date}`,
-    `Client: ${data.client}`,
-    `Montant TTC: ${fmt(data.montantTTC)} XOF`,
-  ].join('\n');
-}
 
-export async function generateDocQrDataUrl(data: DocData): Promise<string> {
-  const QRCode = (await import('qrcode')).default;
-  return QRCode.toDataURL(buildQrText(data), { margin: 0, width: 200, color: { dark: '#16232e', light: '#00000000' } });
-}
+const STATUTS_FACTURE: Record<string, [string, string, string, string]> = {
+  BROUILLON: ['Brouillon', '#5b6b7a', '#eef1f4', '#d9e0e7'],
+  VALIDEE: ['Validée', '#1c7c54', '#e6f5ee', '#bfe3d0'],
+  ENVOYEE: ['Envoyée', '#1c7c54', '#e6f5ee', '#bfe3d0'],
+  PARTIELLEMENT_PAYEE: ['Partiellement payée', '#b4600f', '#fff7ef', '#f3d3b0'],
+  PAYEE: ['Payée', '#1c7c54', '#e6f5ee', '#bfe3d0'],
+  EN_RETARD: ['En retard', '#b3261e', '#fdecea', '#f5c2bd'],
+  ANNULEE: ['Annulée', '#5b6b7a', '#eef1f4', '#d9e0e7'],
+  CONTENTIEUX: ['Contentieux', '#b3261e', '#fdecea', '#f5c2bd'],
+};
 
-function catIcon(path: string, color: string = BRAND.primary): string {
-  return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;">${path}</svg>`;
-}
+const fmtQte = (n: any) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(Number(n ?? 1));
 
+function buildContentHtml(data: DocData, branding?: SocieteBranding): string {
+  const C = { navy: BRAND.primary, accent: BRAND.accent, ink: BRAND.ink, soft: '#5b6b7a', line: '#d9e0e7', tint: BRAND.bgSoft };
+  const brand = brandIdentity(branding);
+  const legalDisclaimer = branding?.mentionLegale || 'Facture définitive. Toute réclamation doit être formulée sous 8 jours.';
+  const statut = data.statut ? STATUTS_FACTURE[data.statut] : undefined;
 
-function buildContentHtml(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): string {
-  const categories = [...new Set(data.lignes.map(l => l.categorie))].filter(Boolean) as string[];
-  let tableRows = '';
+  // Groupes par catégorie, dans l'ordre d'apparition ; les lignes sans catégorie ne sont jamais perdues.
+  const ordre: string[] = [];
+  for (const l of data.lignes) { const c = l.categorie || ''; if (!ordre.includes(c)) ordre.push(c); }
   let n = 0;
-
-  for (const cat of categories) {
-    const catLignes = data.lignes.filter(l => l.categorie === cat);
-    const sousTotal = catLignes.reduce((s, l) => s + l.montant, 0);
-    const catColor = CAT_COLORS[cat] || BRAND.primary;
-    tableRows += `<tr><td colspan="5" style="background:${BRAND.greyBg};color:${catColor};font-weight:700;font-size:10px;letter-spacing:.03em;padding:5px 8px;border-top:2px solid ${catColor};border-bottom:1px solid ${BRAND.line};">${catIcon(CAT_ICONS[cat] || '<circle cx="12" cy="12" r="8"/>', catColor)}${cat}</td></tr>`;
-    for (const l of catLignes) {
+  let corps = '';
+  for (const cat of ordre) {
+    const groupe = data.lignes.filter(l => (l.categorie || '') === cat);
+    if (cat) corps += `<tr><td colspan="6" style="background:${C.tint};color:${C.navy};font-weight:800;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid ${C.line};">${cat}</td></tr>`;
+    for (const l of groupe) {
       n++;
-      tableRows += `<tr>
-        <td style="padding:4px 6px;font-size:9.5px;color:${BRAND.slate};text-align:center;border-bottom:1px solid ${BRAND.line};">${n}</td>
-        <td style="padding:4px 8px;font-size:10.5px;color:${BRAND.ink};border-bottom:1px solid ${BRAND.line};">${l.designation}</td>
-        <td style="padding:4px 6px;font-size:10.5px;text-align:center;border-bottom:1px solid ${BRAND.line};color:${BRAND.slate};">${l.quantite ?? 1}</td>
-        <td style="padding:4px 8px;font-size:10.5px;text-align:right;border-bottom:1px solid ${BRAND.line};font-family:'Courier New',monospace;color:${BRAND.slate};">${fmt(l.prixUnitaire ?? l.montant)}</td>
-        <td style="padding:4px 8px;font-size:10.5px;text-align:right;border-bottom:1px solid ${BRAND.line};font-family:'Courier New',monospace;font-weight:600;color:${BRAND.ink};">${fmt(l.montant)}</td>
+      corps += `<tr>
+        <td style="width:26px;padding:7px 8px;color:${C.soft};border-bottom:1px solid ${C.line};vertical-align:top;">${n}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid ${C.line};vertical-align:top;">${l.designation}${l.estTVA ? `<span style="display:inline-block;white-space:nowrap;margin-left:6px;font-size:7.5px;color:${C.soft};border:1px solid ${C.line};border-radius:8px;padding:1px 6px;">TVA</span>` : ''}</td>
+        <td style="width:46px;padding:7px 8px;text-align:center;border-bottom:1px solid ${C.line};vertical-align:top;">${fmtQte(l.quantite)}</td>
+        <td style="width:92px;padding:7px 8px;text-align:right;border-bottom:1px solid ${C.line};vertical-align:top;">${fmt(l.prixUnitaire ?? l.montant)}</td>
+        <td style="width:46px;padding:7px 8px;text-align:center;color:${C.soft};border-bottom:1px solid ${C.line};vertical-align:top;">${l.tauxTVA && l.tauxTVA > 0 ? `${fmtQte(l.tauxTVA)} %` : '—'}</td>
+        <td style="width:100px;padding:7px 8px;text-align:right;font-weight:700;border-bottom:1px solid ${C.line};vertical-align:top;">${fmt(l.montant)}</td>
       </tr>`;
     }
-    tableRows += `<tr><td colspan="4" style="background:${BRAND.bgSoft};text-align:right;font-size:9.5px;font-weight:800;color:${catColor};padding:5px 8px;border-bottom:2px solid ${catColor};">SOUS-TOTAL ${cat}</td>
-      <td style="background:${BRAND.bgSoft};text-align:right;font-weight:800;font-size:10.5px;font-family:'Courier New',monospace;color:${catColor};padding:5px 8px;border-bottom:2px solid ${catColor};">${fmt(sousTotal)}</td></tr>`;
+    if (cat) {
+      const sousTotal = groupe.reduce((t, l) => t + l.montant, 0);
+      corps += `<tr><td colspan="5" style="text-align:right;color:${C.soft};font-size:10px;font-weight:700;padding:6px 8px;border-bottom:1.5px solid ${C.navy};">Sous-total ${cat.toLowerCase()}</td>
+        <td style="text-align:right;color:${C.navy};font-size:10.5px;font-weight:800;padding:6px 8px;border-bottom:1.5px solid ${C.navy};">${fmt(sousTotal)}</td></tr>`;
+    }
   }
 
-  const titleLabel = data.type === 'PROFORMA' ? 'FACTURE PROFORMA' : 'FACTURE';
-  const numLabel = 'N° Facture';
+  const refs: [string, string][] = [
+    ["Date d'émission", data.date],
+    ...(data.dateEcheance ? [['Échéance', data.dateEcheance] as [string, string]] : []),
+    ...(data.dossierNumero ? [['Réf. dossier', data.dossierNumero] as [string, string]] : []),
+    ...(data.delaiJours != null ? [['Conditions', data.delaiJours > 0 ? `${data.delaiJours} jours net` : 'À réception'] as [string, string]] : []),
+  ];
 
-  const detailsRows = [
-    [numLabel, data.numero, true],
-    ['Date', data.date, false],
-    ['Réf. Dossier', data.dossierNumero, false],
-  ].filter(([, v]) => v);
-
-  const clientRows = [
-    ['Nom', data.client],
-    ['Adresse', data.clientAdresse],
-    ['Téléphone', data.clientTelephone],
-    ['Email', data.clientEmail],
-    ['N° Contribuable', data.clientNcc],
-    ['Pays', data.clientPays || undefined],
-  ].filter(([, v]) => v);
-
-  const brand = brandIdentity(branding);
-  const legalDisclaimer = branding?.mentionLegale || (data.type === 'PROFORMA'
-    ? `Facture proforma — non valable pour dédouanement. Établie sous réserve d'acceptation. Règlement par virement bancaire à l'ordre de ${brand.nom}.`
-    : 'Facture définitive. Toute réclamation doit être formulée sous 8 jours.');
+  const lbl = (t: string) => `<div style="font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:${C.accent};padding-bottom:5px;border-bottom:2px solid ${C.navy};margin-bottom:8px;">${t}</div>`;
+  const ligneTotal = (t: string, v: string) => `<div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid ${C.line};font-size:11px;"><span>${t}</span><span style="font-weight:700;">${v}</span></div>`;
+  const infosClient = [data.clientAdresse, data.clientPays, data.clientTelephone, data.clientEmail].filter(Boolean) as string[];
 
   return `
-<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-  <div style="display:flex;gap:12px;align-items:flex-start;">
+<div style="height:7px;border-radius:4px;margin-bottom:16px;background:linear-gradient(90deg,${C.navy} 0 78%,${C.accent} 78% 100%);"></div>
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;">
+  <div style="display:flex;gap:13px;align-items:center;">
     ${branding?.logo
-      ? `<img src="${branding.logo}" style="width:44px;height:44px;border-radius:11px;object-fit:contain;flex-shrink:0;background:#fff;border:1px solid ${BRAND.line};" />`
-      : `<div style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,${BRAND.primary},${BRAND.primaryDark});display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0;">GB</div>`}
+      ? `<img src="${branding.logo}" style="width:52px;height:52px;border-radius:12px;object-fit:contain;flex-shrink:0;background:#fff;border:1px solid ${C.line};" />`
+      : `<div style="width:52px;height:52px;border-radius:12px;background:${C.navy};color:#fff;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">GB</div>`}
     <div>
-      <div style="font-weight:800;font-size:18px;letter-spacing:.2px;color:${BRAND.ink};">${brand.nom}</div>
-      <div style="color:${BRAND.primary};font-weight:600;font-size:10px;margin:2px 0 6px;">${brand.slogan}</div>
-      <div style="font-size:9px;color:${BRAND.ink};line-height:1.7;">
-        <div>📍&nbsp;${brand.adresseComplete}</div>
-        <div>☎&nbsp;${brand.telephone}</div>
-        <div>✉&nbsp;${brand.email}</div>
-      </div>
+      <div style="font-weight:800;font-size:20px;color:${C.navy};letter-spacing:.01em;">${brand.nom}</div>
+      <div style="color:${C.accent};font-weight:700;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;margin-top:2px;">${brand.slogan}</div>
+      <div style="color:${C.soft};font-size:10px;margin-top:5px;line-height:1.5;">${brand.adresseComplete}<br/>${brand.telephone} · ${brand.email}</div>
     </div>
   </div>
-  <div style="min-width:220px;">
-    <div style="background:${BRAND.greyBg};color:${BRAND.ink};text-align:center;font-weight:800;letter-spacing:1px;font-size:14px;padding:8px;border-radius:5px;border:1px solid ${BRAND.line};">${titleLabel}</div>
-    ${qrDataUrl ? `<div style="display:flex;justify-content:flex-end;margin-top:8px;">
-      <div style="text-align:center;">
-        <img src="${qrDataUrl}" width="60" height="60" style="border:1px solid ${BRAND.line};border-radius:5px;padding:2px;background:#fff;" />
-        <div style="font-size:6.5px;color:${BRAND.slate};margin-top:2px;">Vérifier le document</div>
-      </div>
-    </div>` : ''}
+  <div style="text-align:right;flex-shrink:0;">
+    <div style="font-size:28px;font-weight:800;letter-spacing:.06em;color:${C.navy};line-height:1;">FACTURE</div>
+    <div style="margin-top:6px;font-size:13px;font-weight:700;color:${C.accent};letter-spacing:.04em;">N° ${data.numero}</div>
+    ${statut ? `<div style="display:inline-block;margin-top:8px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${statut[1]};background:${statut[2]};border:1px solid ${statut[3]};border-radius:20px;padding:3px 10px;">● ${statut[0]}</div>` : ''}
   </div>
 </div>
 
-<div style="display:flex;gap:10px;margin-top:11px;">
-  <div style="flex:1;border:1px solid ${BRAND.line};border-radius:6px;overflow:hidden;">
-    <div style="background:${BRAND.bgSoft};color:${BRAND.ink};font-weight:800;letter-spacing:.4px;padding:6px 10px;font-size:10px;border-bottom:1px solid ${BRAND.line};">${data.type === 'PROFORMA' ? 'DÉTAILS DE LA PROFORMA' : 'DÉTAILS DE LA FACTURE'}</div>
-    <table style="width:100%;font-size:9.5px;">
-      ${detailsRows.map(([label, value, hl]) => `<tr><td style="padding:3.5px 10px;color:${BRAND.slate};width:40%;">${label}</td><td style="padding:3.5px 10px;font-weight:600;color:${hl ? BRAND.primary : BRAND.ink};${hl ? `font-family:'Courier New',monospace;font-weight:700;` : ''}">${value}</td></tr>`).join('')}
-    </table>
+<div style="display:flex;margin-top:20px;border:1px solid ${C.line};border-radius:8px;overflow:hidden;">
+  ${refs.map(([l, v], i) => `<div style="flex:1;padding:9px 14px;background:${C.tint};${i < refs.length - 1 ? `border-right:1px solid ${C.line};` : ''}"><div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:${C.soft};font-weight:600;">${l}</div><div style="margin-top:2px;font-size:12px;font-weight:700;color:${C.navy};">${v}</div></div>`).join('')}
+</div>
+
+<div style="display:flex;gap:20px;margin-top:18px;">
+  <div style="flex:1;">
+    ${lbl('Émetteur')}
+    <div style="font-weight:800;font-size:13px;color:${C.navy};">${brand.nom}</div>
+    <div style="color:#33434f;margin-top:2px;">${brand.adresseComplete}</div>
+    <div style="color:#33434f;">${brand.telephone} · ${brand.email}</div>
+    <div style="color:${C.soft};font-size:9.5px;margin-top:4px;">RCCM ${brand.rccm} · NCC ${brand.ncc}</div>
   </div>
-  <div style="flex:1;border:1px solid ${BRAND.line};border-radius:6px;overflow:hidden;">
-    <div style="background:${BRAND.bgSoft};color:${BRAND.ink};font-weight:800;letter-spacing:.4px;padding:6px 10px;font-size:10px;border-bottom:1px solid ${BRAND.line};">CLIENT</div>
-    <table style="width:100%;font-size:9.5px;">
-      ${clientRows.map(([label, value]) => `<tr><td style="padding:3.5px 10px;color:${BRAND.slate};width:34%;">${label}</td><td style="padding:3.5px 10px;font-weight:600;color:${BRAND.ink};">${value}</td></tr>`).join('')}
-    </table>
+  <div style="flex:1;">
+    ${lbl('Facturé à')}
+    <div style="font-weight:800;font-size:13px;color:${C.navy};">${data.client}</div>
+    ${infosClient.map(t => `<div style="color:#33434f;margin-top:2px;">${t}</div>`).join('')}
+    ${data.clientNcc ? `<div style="color:${C.soft};font-size:9.5px;margin-top:4px;">N° contribuable : ${data.clientNcc}</div>` : ''}
   </div>
 </div>
 
-${data.titre ? `<div style="background:${BRAND.bgSoft};padding:8px 12px;margin-top:11px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;border-left:3px solid ${BRAND.primary};border-radius:0 6px 6px 0;color:${BRAND.ink};">${data.titre}</div>` : ''}
+${data.titre ? `<div style="margin-top:16px;padding:10px 14px;background:${C.tint};border-left:4px solid ${C.navy};border-radius:0 6px 6px 0;"><div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.12em;color:${C.soft};font-weight:600;">Objet</div><div style="font-size:12.5px;font-weight:800;color:${C.navy};margin-top:1px;text-transform:uppercase;">${data.titre}</div></div>` : ''}
 
-<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:9.5px;">
+<table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:10.5px;">
   <thead><tr>
-    <th style="background:${BRAND.greyBg};color:${BRAND.ink};padding:7px 6px;font-size:9px;text-align:center;width:28px;">N°</th>
-    <th style="background:${BRAND.greyBg};color:${BRAND.ink};padding:7px 8px;font-size:9px;text-align:left;letter-spacing:.3px;">DÉSIGNATION</th>
-    <th style="background:${BRAND.greyBg};color:${BRAND.ink};padding:7px 6px;font-size:9px;text-align:center;width:50px;">QTÉ</th>
-    <th style="background:${BRAND.greyBg};color:${BRAND.ink};padding:7px 8px;font-size:9px;text-align:right;width:110px;">PU (XOF)</th>
-    <th style="background:${BRAND.greyBg};color:${BRAND.ink};padding:7px 8px;font-size:9px;text-align:right;width:120px;">MONTANT HT</th>
+    <th style="background:${C.navy};color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px;text-align:left;">N°</th>
+    <th style="background:${C.navy};color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px;text-align:left;">Désignation</th>
+    <th style="background:${C.navy};color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px;text-align:center;">Qté</th>
+    <th style="background:${C.navy};color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px;text-align:right;">Prix unitaire</th>
+    <th style="background:${C.navy};color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px;text-align:center;">TVA</th>
+    <th style="background:${C.navy};color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px;text-align:right;">Montant HT</th>
   </tr></thead>
-  <tbody>${tableRows}</tbody>
+  <tbody>${corps}</tbody>
 </table>
 
 ${(data.fobUnitaire || data.fretUnitaire || data.valeurCAF) ? `<div style="display:flex;justify-content:flex-end;margin-top:10px;">
-  <table style="font-size:9.5px;color:${BRAND.slate};border:1px solid ${BRAND.line};border-radius:6px;background:${BRAND.bgSoft};">
-    ${data.fobUnitaire ? `<tr><td style="padding:1.5px 8px;">Fob unitaire</td><td style="padding:1.5px 8px;font-weight:700;font-family:'Courier New',monospace;">${fmt(data.fobUnitaire)}</td></tr>` : ''}
-    ${data.fretUnitaire ? `<tr><td style="padding:1.5px 8px;">Fret unitaire</td><td style="padding:1.5px 8px;font-weight:700;font-family:'Courier New',monospace;">${fmt(data.fretUnitaire)}</td></tr>` : ''}
-    ${data.assurance ? `<tr><td style="padding:1.5px 8px;">Assurance</td><td style="padding:1.5px 8px;font-weight:700;font-family:'Courier New',monospace;">${fmt(data.assurance)}</td></tr>` : ''}
-    ${data.valeurCAF ? `<tr><td style="padding:1.5px 8px;font-weight:700;">Valeur CAF</td><td style="padding:1.5px 8px;font-weight:800;font-family:'Courier New',monospace;color:${BRAND.accent};">${fmt(data.valeurCAF)}</td></tr>` : ''}
+  <table style="font-size:9.5px;color:${C.soft};border:1px solid ${C.line};border-radius:6px;background:${C.tint};">
+    ${data.fobUnitaire ? `<tr><td style="padding:1.5px 8px;">Fob unitaire</td><td style="padding:1.5px 8px;font-weight:700;">${fmt(data.fobUnitaire)}</td></tr>` : ''}
+    ${data.fretUnitaire ? `<tr><td style="padding:1.5px 8px;">Fret unitaire</td><td style="padding:1.5px 8px;font-weight:700;">${fmt(data.fretUnitaire)}</td></tr>` : ''}
+    ${data.assurance ? `<tr><td style="padding:1.5px 8px;">Assurance</td><td style="padding:1.5px 8px;font-weight:700;">${fmt(data.assurance)}</td></tr>` : ''}
+    ${data.valeurCAF ? `<tr><td style="padding:1.5px 8px;font-weight:700;">Valeur CAF</td><td style="padding:1.5px 8px;font-weight:800;color:${C.accent};">${fmt(data.valeurCAF)}</td></tr>` : ''}
   </table>
 </div>` : ''}
 
-<div style="display:flex;gap:12px;margin-top:14px;align-items:flex-start;">
-  <div style="flex:1;border:1px solid ${BRAND.line};border-radius:6px;background:${BRAND.bgSoft};padding:10px 12px;">
-    <div style="color:${BRAND.ink};font-weight:800;font-size:9.5px;letter-spacing:.4px;margin-bottom:4px;">MONTANT ARRÊTÉ À LA SOMME DE :</div>
-    <div style="font-style:italic;font-weight:700;color:${BRAND.ink};font-size:10.5px;line-height:1.5;">${montantEnLettres(data.montantTTC)}</div>
-    ${(data.acompte || data.resteAPayer) ? `<div style="display:flex;gap:16px;margin-top:8px;padding-top:8px;border-top:1px solid ${BRAND.line};">
-      <div><span style="color:${BRAND.slate};">Acompte : </span><span style="font-weight:800;font-family:'Courier New',monospace;">${fmt(data.acompte)}</span></div>
-      <div><span style="color:${BRAND.slate};">Reste à payer : </span><span style="font-weight:800;font-family:'Courier New',monospace;color:#c00;">${fmt(data.resteAPayer)}</span></div>
-    </div>` : ''}
+<div style="display:flex;gap:22px;margin-top:18px;align-items:flex-start;">
+  <div style="flex:1;">
+    <div style="border:1px solid ${C.line};border-radius:8px;padding:10px 14px;">
+      <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:${C.soft};font-weight:600;">Arrêtée la présente facture à la somme de</div>
+      <div style="margin-top:3px;font-size:11.5px;font-weight:700;color:${C.navy};font-style:italic;line-height:1.5;">${montantEnLettres(data.montantTTC)}</div>
+    </div>
+    <div style="margin-top:12px;font-size:10px;color:#33434f;line-height:1.6;">
+      <div style="font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:${C.accent};margin-bottom:3px;">Modalités de règlement</div>
+      ${data.delaiJours != null && data.delaiJours > 0 ? `Règlement à ${data.delaiJours} jours par virement, chèque ou espèces.` : 'Règlement à réception par virement, chèque ou espèces.'}<br/>
+      Indiquer le n° de facture en référence du paiement.
+    </div>
   </div>
-  <table style="width:250px;border:1px solid ${BRAND.line};border-radius:6px;overflow:hidden;font-size:10px;">
-    ${data.montantPrestation ? `<tr><td style="padding:6px 11px;color:${BRAND.slate};border-bottom:1px solid ${BRAND.line};">Montant Prestation</td><td style="padding:6px 11px;text-align:right;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid ${BRAND.line};">${fmt(data.montantPrestation)}</td></tr>` : ''}
-    ${data.tvaPrestation ? `<tr><td style="padding:6px 11px;color:${BRAND.slate};border-bottom:1px solid ${BRAND.line};">TVA/Prestation</td><td style="padding:6px 11px;text-align:right;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid ${BRAND.line};">${fmt(data.tvaPrestation)}</td></tr>` : ''}
-    <tr><td style="padding:6px 11px;color:${BRAND.slate};border-bottom:1px solid ${BRAND.line};">TOTAL HT</td><td style="padding:6px 11px;text-align:right;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid ${BRAND.line};">${fmt(data.montantHT)}</td></tr>
-    <tr><td style="padding:6px 11px;color:${BRAND.slate};border-bottom:1px solid ${BRAND.line};">TVA (18%)</td><td style="padding:6px 11px;text-align:right;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid ${BRAND.line};">${fmt(data.montantTVA)}</td></tr>
-    <tr><td colspan="2" style="padding:0;"><div style="background:linear-gradient(135deg,${BRAND.primary},${BRAND.primaryDark});color:#fff;display:flex;justify-content:space-between;padding:7px 11px;font-weight:800;font-size:12px;">
-      <span>NET À PAYER TTC</span><span style="font-family:'Courier New',monospace;">${fmt(data.montantTTC)}</span>
-    </div></td></tr>
-  </table>
+  <div style="width:262px;flex-shrink:0;">
+    ${data.montantPrestation ? ligneTotal('Montant prestation', fmt(data.montantPrestation)) : ''}
+    ${data.tvaPrestation ? ligneTotal('TVA / prestation', fmt(data.tvaPrestation)) : ''}
+    ${ligneTotal('Total HT', fmt(data.montantHT))}
+    ${ligneTotal('TVA 18 %', fmt(data.montantTVA))}
+    <div style="background:${C.navy};color:#fff;border-radius:6px;margin-top:6px;padding:10px 12px;display:flex;justify-content:space-between;font-weight:800;font-size:13px;"><span>TOTAL TTC</span><span>${fmt(data.montantTTC)} XOF</span></div>
+    ${data.acompte ? `<div style="margin-top:6px;">${ligneTotal('Acompte reçu', fmt(data.acompte))}</div>` : ''}
+    ${data.resteAPayer ? `<div style="margin-top:6px;border:1.5px solid ${C.accent};border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;font-weight:800;font-size:12px;color:#b4600f;background:#fff7ef;"><span>Reste à payer</span><span>${fmt(data.resteAPayer)} XOF</span></div>` : ''}
+  </div>
 </div>
 
-${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:26px;">
+${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;margin-top:24px;">
   <div style="text-align:center;width:220px;">
-    <div style="color:${BRAND.slate};font-size:9.5px;margin-bottom:${branding?.signature ? '4px' : '38px'};">Le Directeur / Cachet &amp; Signature</div>
+    <div style="color:${C.soft};font-size:9.5px;margin-bottom:${branding?.signature ? '4px' : '36px'};">Le Directeur — cachet &amp; signature</div>
     ${branding?.signature ? `<img src="${branding.signature}" style="height:34px;object-fit:contain;margin:0 auto;display:block;" />` : ''}
     ${branding?.cachet ? `<img src="${branding.cachet}" style="height:34px;object-fit:contain;margin:2px auto 0;display:block;" />` : ''}
-    <div style="border-top:1px solid ${BRAND.ink};padding-top:4px;font-weight:700;color:${BRAND.ink};">${brand.nom}</div>
+    <div style="border-top:1px solid ${C.ink};padding-top:4px;font-weight:700;color:${C.navy};">${brand.nom}</div>
   </div>
 </div>` : ''}
 
-<div style="text-align:center;font-size:8px;color:${BRAND.slate};border-top:1px solid ${BRAND.line};padding-top:8px;margin-top:16px;line-height:1.6;">
-  ${legalDisclaimer}<br/>
-  ${brand.nom} — ${brand.adresseComplete} — RCCM ${brand.rccm} — CC ${brand.ncc} — ${brand.email}
+<div style="margin-top:22px;padding-top:10px;border-top:2px solid ${C.navy};display:flex;justify-content:space-between;gap:20px;font-size:8.5px;color:${C.soft};line-height:1.6;">
+  <div><b style="color:${C.navy};">${brand.nom}</b> — ${brand.slogan}<br/>RCCM ${brand.rccm} · NCC ${brand.ncc}</div>
+  <div style="text-align:right;">${legalDisclaimer}</div>
 </div>`;
+}
+
+/** Données d'une facture (réponse de l'API, avec ses lignes) pour le PDF et l'impression. */
+export function buildFactureDocData(f: any): DocData {
+  const emission = new Date(f.dateFacture);
+  const echeance = f.dateEcheance ? new Date(f.dateEcheance) : null;
+  const d = f.dossier;
+  return {
+    type: 'FACTURE',
+    modele: f.modele,
+    numero: f.numero,
+    statut: f.statut,
+    date: emission.toLocaleDateString('fr-FR'),
+    dateEcheance: echeance ? echeance.toLocaleDateString('fr-FR') : undefined,
+    delaiJours: echeance ? Math.max(0, Math.round((echeance.getTime() - emission.getTime()) / 86400000)) : undefined,
+    client: f.client?.raisonSociale || '',
+    clientAdresse: f.client?.adresse || undefined,
+    clientTelephone: f.client?.telephone || f.client?.mobile || undefined,
+    clientEmail: f.client?.email || undefined,
+    clientNcc: f.client?.ncc || undefined,
+    clientPays: f.client?.pays || undefined,
+    dossierNumero: d?.numeroPhysique || d?.numero,
+    titre: f.titre || f.objet || undefined,
+    afficherSignature: !!f.afficherSignature,
+    montantHT: Number(f.montantHT),
+    montantTVA: Number(f.montantTVA),
+    montantTTC: Number(f.montantTTC),
+    montantPrestation: f.montantPrestation ? Number(f.montantPrestation) : undefined,
+    tvaPrestation: f.tvaPrestation ? Number(f.tvaPrestation) : undefined,
+    acompte: Number(f.acompte) || undefined,
+    resteAPayer: Number(f.resteAPayer) || undefined,
+    lignes: (f.lignes || []).map((l: any) => ({
+      categorie: l.categorie || '',
+      designation: l.designation,
+      quantite: Number(l.quantite || 1),
+      prixUnitaire: Number(l.prixUnitaire || 0),
+      // Montant HT de la ligne tel que calculé par le serveur (quantité × prix), cohérent avec les totaux.
+      montant: Number(l.montantHT ?? Number(l.prixUnitaire || 0) * Number(l.quantite || 1)),
+      estTVA: !!l.estTVA,
+      tauxTVA: l.tauxTVA != null ? Number(l.tauxTVA) : undefined,
+    })),
+  };
 }
 
 const PAPER = {
@@ -439,26 +450,23 @@ ${data.afficherSignature ? `<div style="display:flex;justify-content:flex-end;ma
 </div>`;
 }
 
-function buildElement(data: DocData, qrDataUrl?: string, branding?: SocieteBranding): HTMLDivElement {
+function buildElement(data: DocData, branding?: SocieteBranding): HTMLDivElement {
   const div = document.createElement('div');
   if (data.type === 'PROFORMA' || data.modele === 'PROFORMA') {
     div.style.cssText = `width:210mm;min-height:293mm;box-sizing:border-box;position:relative;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${PAPER.ink};background:${PAPER.paper};`;
-    div.innerHTML = buildProformaHtml(data, qrDataUrl, branding);
+    div.innerHTML = buildProformaHtml(data, undefined, branding);
     return div;
   }
   div.style.cssText = `width:210mm;padding:10mm 12mm;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:${BRAND.ink};background:white;`;
-  div.innerHTML = buildContentHtml(data, qrDataUrl, branding);
+  div.innerHTML = buildContentHtml(data, branding);
   return div;
 }
 
 export async function downloadPDF(data: DocData) {
   const html2pdf = (await import('html2pdf.js')).default;
 
-  const [qrDataUrl, branding] = await Promise.all([
-    generateDocQrDataUrl(data).catch(() => undefined),
-    getSocieteBranding(),
-  ]);
-  const element = buildElement(data, qrDataUrl, branding);
+  const branding = await getSocieteBranding();
+  const element = buildElement(data, branding);
   document.body.appendChild(element);
 
   const filename = `${data.type === 'PROFORMA' ? 'Proforma' : 'Facture'}_${data.numero.replace(/\//g, '-')}.pdf`;
@@ -478,12 +486,9 @@ export async function downloadPDF(data: DocData) {
 }
 
 export async function printDocument(data: DocData) {
-  const [qrDataUrl, branding] = await Promise.all([
-    generateDocQrDataUrl(data).catch(() => undefined),
-    getSocieteBranding(),
-  ]);
+  const branding = await getSocieteBranding();
   const isProforma = data.type === 'PROFORMA' || data.modele === 'PROFORMA';
-  const contentHtml = isProforma ? buildProformaHtml(data, qrDataUrl, branding) : buildContentHtml(data, qrDataUrl, branding);
+  const contentHtml = isProforma ? buildProformaHtml(data, undefined, branding) : buildContentHtml(data, branding);
   const label = data.type === 'PROFORMA' ? 'Proforma' : 'Facture';
 
   const html = `<!DOCTYPE html>

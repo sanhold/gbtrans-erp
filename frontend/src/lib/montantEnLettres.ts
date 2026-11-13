@@ -51,5 +51,5 @@ export function montantEnLettres(montant: number): string {
     result += convertirCentaines(reste);
   }
 
-  return result.trim() + ' Franc CFA';
+  return result.trim() + (n >= 2 ? ' Francs CFA' : ' Franc CFA');
 }
