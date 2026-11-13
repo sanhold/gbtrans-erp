@@ -8,5 +8,5 @@
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
-  "crons": [{ "path": "/api/v1/cron/sauvegardes", "schedule": "0 * * * *" }]
+  "crons": [{ "path": "/api/v1/cron/sauvegardes", "schedule": "0 2 * * *" }]
 }

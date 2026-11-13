@@ -171,7 +171,7 @@ Règle de travail :
 
 Le backend peut tourner comme fonction serverless Vercel (`backend/api/index.ts`, `backend/vercel.json`). Render reste pris en charge (`src/server.ts`) : rien n'est cassé.
 
-1. Créer un **second projet Vercel** sur ce dépôt, *Root Directory* = `backend`. Plan **Pro** requis (usage commercial, cron).
+1. Créer un **second projet Vercel** sur ce dépôt, *Root Directory* = `backend`. Plan Hobby possible pour tester (cron quotidien max, usage non commercial) ; **Pro** requis pour un usage commercial.
 2. Région des fonctions : `dub1` (Dublin), proche de la base Supabase `eu-west-1` (déjà fixée dans `vercel.json`).
 3. Variables d'environnement :
 
@@ -179,7 +179,7 @@ Le backend peut tourner comme fonction serverless Vercel (`backend/api/index.ts`
 |---|---|
 | `DATABASE_URL` | Pooler transactionnel Supabase : `postgresql://postgres.<ref>:<mdp>@aws-X-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1` |
 | `JWT_SECRET`, `ENCRYPTION_KEY`, `CORS_ORIGIN`, … | comme sur Render |
-| `CRON_SECRET` | secret aléatoire ; Vercel Cron l'envoie en `Authorization: Bearer` (sauvegardes planifiées toutes les heures) |
+| `CRON_SECRET` | secret aléatoire ; Vercel Cron l'envoie en `Authorization: Bearer` (sauvegardes planifiées une fois par jour à 02 h UTC ; le plan Hobby n'autorise pas plus) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | stockage des documents (bucket privé `documents`, nom modifiable par `SUPABASE_STORAGE_BUCKET`) — **obligatoire**, le disque Vercel est éphémère |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | limitation des tentatives de connexion partagée entre instances (recommandé ; sinon mémoire par instance) |
 
