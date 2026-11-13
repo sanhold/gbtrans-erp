@@ -278,7 +278,15 @@ router.post('/valider-dotation', authorize('FINANCE:MODIFIER'), audit('FINANCE',
 
     let retourCaisseId: string | null = null;
     let retourBanqueId: string | null = null;
+    // Personne qui reçoit le reliquat (« à qui »). À défaut, la personne qui valide la dotation.
+    let beneficiaireRetour: string | null = null;
     if (reliquat > 0) {
+      const saisi = typeof retour?.beneficiaire === 'string' ? retour.beneficiaire.trim().slice(0, 200) : '';
+      if (saisi) beneficiaireRetour = saisi;
+      else {
+        const u = await prisma.utilisateur.findUnique({ where: { id: userId }, select: { prenom: true, nom: true } });
+        beneficiaireRetour = u ? `${u.prenom} ${u.nom}`.trim() : null;
+      }
       const rc = retour?.caisseId || null; const rb = retour?.compteBancaireId || null;
       if ((rc && rb) || (!rc && !rb)) { ApiResponse.badRequest(res, `Il reste ${reliquat} F : choisissez le compte sur lequel ce reliquat est retourné`); return; }
       const compteRetour = rc
@@ -350,6 +358,7 @@ router.post('/valider-dotation', authorize('FINANCE:MODIFIER'), audit('FINANCE',
             societeId, numero: numOpReliquatRetour, type: 'ENCAISSEMENT', sens: 'ENTREE',
             caisseId: retourCaisseId, compteBancaireId: retourBanqueId,
             montant: reliquat, libelle: `Retour du reliquat de la dotation ${dotation.numero}`, reference: dotation.numero,
+            beneficiaire: beneficiaireRetour,
           },
         });
       }

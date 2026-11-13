@@ -10,8 +10,44 @@ import { Prisma } from '@prisma/client';
 const router = Router();
 router.use(authenticate, requireSociete);
 
+const LIBELLE_RETOUR_RELIQUAT = 'Retour du reliquat de la dotation';
+
+/** Reversement du reste d'une dotation soldée : compte crédité, montant, date et personne qui l'a reçu. */
+function formaterReversement(op: any) {
+  return {
+    id: op.id,
+    montant: Number(op.montant),
+    date: op.dateOperation,
+    beneficiaire: op.beneficiaire || null,
+    compte: op.caisse
+      ? { type: 'CAISSE', code: op.caisse.code, libelle: op.caisse.libelle }
+      : op.compteBancaire
+        ? { type: 'BANQUE', code: op.compteBancaire.code, libelle: op.compteBancaire.libelle, banque: op.compteBancaire.banque }
+        : null,
+  };
+}
+
+async function chargerReversement(societeId: string, numero: string) {
+  return prisma.operationFinanciere.findFirst({
+    where: { societeId, type: 'ENCAISSEMENT', reference: numero, libelle: { startsWith: LIBELLE_RETOUR_RELIQUAT }, statut: { not: 'ANNULEE' } },
+    orderBy: { createdAt: 'desc' },
+    include: { caisse: { select: { code: true, libelle: true } }, compteBancaire: { select: { code: true, libelle: true, banque: true } } },
+  });
+}
+
 async function withMontants(dotations: any[]) {
   const ids = dotations.map((d) => d.id);
+  // Reversements des dotations soldées, en une seule requête.
+  const numerosSoldes = dotations.filter((d) => d.statut === 'SOLDEE').map((d) => d.numero as string);
+  const opsRetour = numerosSoldes.length
+    ? await prisma.operationFinanciere.findMany({
+        where: { societeId: dotations[0].societeId, type: 'ENCAISSEMENT', reference: { in: numerosSoldes }, libelle: { startsWith: LIBELLE_RETOUR_RELIQUAT }, statut: { not: 'ANNULEE' } },
+        orderBy: { createdAt: 'desc' },
+        include: { caisse: { select: { code: true, libelle: true } }, compteBancaire: { select: { code: true, libelle: true, banque: true } } },
+      })
+    : [];
+  const reversementParNumero = new Map<string, any>();
+  for (const op of opsRetour) if (op.reference && !reversementParNumero.has(op.reference)) reversementParNumero.set(op.reference, formaterReversement(op));
   const sums = ids.length
     ? await prisma.depense.groupBy({ by: ['dotationId'], _sum: { montant: true }, where: { dotationId: { in: ids }, statut: { not: 'ANNULEE' } } })
     : [];
@@ -24,7 +60,7 @@ async function withMontants(dotations: any[]) {
   return dotations.map((d) => {
     const montantUtilise = utiliseParId.get(d.id) || 0;
     const soumise = soumisParId.has(d.id);
-    return { ...d, montantUtilise, montantRestant: Number(d.montant) - montantUtilise, soumise, modifiable: d.statut === 'VALIDE' && !soumise };
+    return { ...d, montantUtilise, montantRestant: Number(d.montant) - montantUtilise, soumise, modifiable: d.statut === 'VALIDE' && !soumise, reversement: reversementParNumero.get(d.numero) || null };
   });
 }
 
@@ -132,6 +168,30 @@ router.patch('/:id/annuler', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MO
     if (existing.statut === 'SOLDEE') { ApiResponse.badRequest(res, 'Cette dotation est soldée : elle ne peut plus être annulée'); return; }
     const dotation = await prisma.dotation.update({ where: { id: req.params.id }, data: { statut: 'ANNULEE' } });
     ApiResponse.success(res, dotation, 'Dotation annulée');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
+
+/**
+ * Renseigne « à qui » a été versé le reste d'une dotation soldée (pour les dotations validées avant la saisie du bénéficiaire,
+ * ou pour corriger une erreur). N'enregistre aucun mouvement : seul le nom du bénéficiaire est modifié.
+ */
+router.patch('/:id/reversement', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), async (req: AuthRequest, res: Response) => {
+  try {
+    const societeId = req.user!.societeId;
+    const beneficiaire = typeof req.body?.beneficiaire === 'string' ? req.body.beneficiaire.trim() : '';
+    if (!beneficiaire) { ApiResponse.badRequest(res, 'Indiquez à qui le reste a été versé'); return; }
+    if (beneficiaire.length > 200) { ApiResponse.badRequest(res, 'Nom trop long (200 caractères maximum)'); return; }
+
+    const dotation = await prisma.dotation.findFirst({ where: { id: req.params.id, societeId } });
+    if (!dotation) { ApiResponse.notFound(res); return; }
+    const op = await chargerReversement(societeId, dotation.numero);
+    if (!op) { ApiResponse.notFound(res, "Aucun reversement n'est enregistré pour cette dotation"); return; }
+
+    const maj = await prisma.operationFinanciere.update({
+      where: { id: op.id }, data: { beneficiaire },
+      include: { caisse: { select: { code: true, libelle: true } }, compteBancaire: { select: { code: true, libelle: true, banque: true } } },
+    });
+    ApiResponse.success(res, formaterReversement(maj), 'Bénéficiaire du reversement enregistré');
   } catch (e: any) { ApiResponse.badRequest(res, e.message); }
 });
 
