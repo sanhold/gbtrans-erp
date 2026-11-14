@@ -33,6 +33,8 @@ platformClient.interceptors.response.use(
 
 export const platformAuth = {
   login: (email: string, motDePasse: string) => platformClient.post('/login', { email, motDePasse }, { timeout: 90000 }),
+  motDePasseOublie: (email: string) => platformClient.post('/mot-de-passe-oublie', { email }, { timeout: 90000 }),
+  reinitialiserMotDePasse: (token: string, nouveauMotDePasse: string) => platformClient.post('/reinitialiser-mot-de-passe', { token, nouveauMotDePasse }, { timeout: 90000 }),
   setSession: (token: string, admin: any) => {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem('gbtrans_platform_admin', JSON.stringify(admin));
