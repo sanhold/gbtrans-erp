@@ -5,6 +5,7 @@
  */
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import prisma from '../../config/database';
 import { creerComptesTest } from '../../utils/comptesTest';
@@ -14,6 +15,8 @@ import { ApiResponse } from '../../utils/apiResponse';
 import { invaliderSociete } from '../../utils/cacheMemoire';
 import { MODULES, chiffrerChamps, dechiffrerChamps, champsConfigures } from './fournisseurs/registry';
 import { estimerTailleParTable } from '../../utils/tablesSocietes';
+import { envoyerEmail, emailPlateformeConfigure } from '../../utils/email';
+import { logger } from '../../utils/logger';
 
 const router = Router();
 
@@ -62,6 +65,73 @@ async function tracerActivite(req: PlatformRequest, action: string, cibleType?: 
     // Le journal ne doit jamais faire echouer l'action elle-meme.
   }
 }
+
+// ===== MOT DE PASSE OUBLIÉ (administrateurs de la plateforme) =====
+
+const DUREE_JETON_RESET_MS = 60 * 60 * 1000; // 1 heure
+const MESSAGE_RESET = "Si cette adresse correspond à un compte de la plateforme, un e-mail contenant un lien de réinitialisation (valable 1 heure) vient d'être envoyé.";
+const empreinte = (jeton: string) => crypto.createHash('sha256').update(jeton).digest('hex');
+/** Même politique que les comptes des sociétés : 8 caractères minimum, majuscule, minuscule, chiffre, caractère spécial. */
+const motDePasseValide = (m: string) => m.length >= 8 && /[A-Z]/.test(m) && /[a-z]/.test(m) && /[0-9]/.test(m) && /[^A-Za-z0-9]/.test(m);
+/** L'adresse du lien vient de la configuration serveur, jamais d'un en-tête de la requête (anti-détournement du lien). */
+const urlFrontend = () => (process.env.FRONTEND_URL || config.cors.origin[0] || '').replace(/\/$/, '');
+
+router.post('/mot-de-passe-oublie', async (req: Request, res: Response) => {
+  // Réglage global du serveur (ne révèle rien sur les comptes) : mieux vaut le dire clairement à l'opérateur.
+  if (!emailPlateformeConfigure() || !urlFrontend()) {
+    ApiResponse.error(res, "L'envoi d'e-mails n'est pas configuré sur le serveur. Contactez l'administrateur technique.", 503); return;
+  }
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (email && email.length <= 200) {
+      const admin = await prisma.platformAdmin.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, actif: true } });
+      if (admin) {
+        const jeton = crypto.randomBytes(32).toString('hex');
+        await prisma.platformAdmin.update({
+          where: { id: admin.id },
+          data: { tokenResetHash: empreinte(jeton), tokenResetExpire: new Date(Date.now() + DUREE_JETON_RESET_MS) },
+        });
+        const lien = `${urlFrontend()}/admin/reinitialiser?token=${jeton}`;
+        try {
+          await envoyerEmail({
+            destinataire: admin.email,
+            sujet: 'GBTrans — Réinitialisation de votre mot de passe',
+            texte: `Bonjour ${admin.prenom},\n\nUne réinitialisation du mot de passe de votre compte Administration GBTrans a été demandée.\n\nPour choisir un nouveau mot de passe (lien valable 1 heure, utilisable une seule fois) :\n${lien}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe actuel reste valable.\n`,
+          });
+        } catch (e: any) {
+          logger.error(`Envoi du lien de réinitialisation impossible : ${e.message}`);
+        }
+      }
+    }
+    // Même réponse que le compte existe ou non (pas d'énumération des comptes).
+    ApiResponse.success(res, null, MESSAGE_RESET);
+  } catch (e: any) {
+    logger.error(`Mot de passe oublié (plateforme) : ${e.message}`);
+    ApiResponse.success(res, null, MESSAGE_RESET);
+  }
+});
+
+router.post('/reinitialiser-mot-de-passe', async (req: Request, res: Response) => {
+  try {
+    const jeton = String(req.body?.token || '');
+    const nouveau = String(req.body?.nouveauMotDePasse || '');
+    if (!/^[0-9a-f]{64}$/.test(jeton)) { ApiResponse.badRequest(res, 'Lien invalide ou expiré'); return; }
+    if (!motDePasseValide(nouveau)) {
+      ApiResponse.badRequest(res, 'Le mot de passe doit contenir au moins 8 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial'); return;
+    }
+    const admin = await prisma.platformAdmin.findFirst({
+      where: { tokenResetHash: empreinte(jeton), tokenResetExpire: { gt: new Date() }, actif: true },
+    });
+    if (!admin) { ApiResponse.badRequest(res, 'Lien invalide ou expiré'); return; }
+    await prisma.platformAdmin.update({
+      where: { id: admin.id },
+      // Le jeton est à usage unique : effacé dès qu'il a servi.
+      data: { motDePasse: await bcrypt.hash(nouveau, 12), tokenResetHash: null, tokenResetExpire: null },
+    });
+    await tracerActivite({ platformAdminId: admin.id, platformAdminEmail: admin.email } as PlatformRequest, 'MOT_DE_PASSE_REINITIALISE', 'PlatformAdmin', admin.id);
+    ApiResponse.success(res, null, 'Mot de passe modifié. Vous pouvez vous connecter.');
+  } catch (e: any) { ApiResponse.badRequest(res, e.message); }
+});
 
 router.post('/login', async (req: Request, res: Response) => {
   try {

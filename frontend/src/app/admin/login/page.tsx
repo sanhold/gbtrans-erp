@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { platformAuth } from '@/lib/platformApi';
 import { reveillerServeur } from '@/lib/api';
@@ -85,6 +86,9 @@ export default function AdminLoginPage() {
           <button type="submit" disabled={loading} className="btn-primary w-full !py-2.5">
             {loading ? 'Connexion…' : 'Se connecter'}
           </button>
+          <p className="text-center text-sm">
+            <Link href="/admin/mot-de-passe-oublie" className="text-primary-600 hover:underline dark:text-primary-300">Mot de passe oublié ?</Link>
+          </p>
           {lent && loading && (
             <p role="status" className="text-xs text-center text-gray-500 dark:text-gray-400">
               Le serveur se réveille, cela peut prendre jusqu&apos;à une minute. Merci de patienter…

@@ -250,6 +250,9 @@ model PlatformAdmin {
   /// false = lecture seule (ex: compte de demonstration) : ne peut pas modifier abonnements ou formules.
   superAdmin  Boolean  @default(true)
   actif       Boolean  @default(true)
+  /// « Mot de passe oublié » : empreinte SHA-256 du jeton envoyé par e-mail (jamais le jeton lui-même) et sa date limite.
+  tokenResetHash   String?   @db.VarChar(64)
+  tokenResetExpire DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

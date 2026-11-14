@@ -60,6 +60,8 @@ app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/verify-2fa', authLimiter);
 app.use('/api/v1/auth/confirm-2fa', authLimiter);
 app.use('/api/v1/platform/login', authLimiter);
+app.use('/api/v1/platform/mot-de-passe-oublie', authLimiter);
+app.use('/api/v1/platform/reinitialiser-mot-de-passe', authLimiter);
 app.use('/api/v1/saas/inscription', authLimiter);
 
 // Parsing & Compression
