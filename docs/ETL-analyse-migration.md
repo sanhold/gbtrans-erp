@@ -277,3 +277,24 @@ Effet net sur le payé total : +47 732 138 par rapport aux fiches.
 **À signaler à la comptabilité**
 - **FACT2023-973 (OKOUNDA BTP) :** facture soldée dans l'ancien logiciel, mais 1,5 M sans règlement dans le journal. Importée avec un reste de 1,5 M. Le client a d'autres factures du même dossier surpayées en double (§ 12) : le règlement manquant a peut-être été imputé à une autre pièce.
 - **FACT2024-1452 et FACT2024-1771 (MAIRIE D'ALEPE) :** datées de juillet 2025 mais saisies en mars et novembre 2024 ; le règlement partiel de la première date du 16/03/2024, soit avant la facture. Les deux factures (26,7 M) entrent donc dans les pièces à comptabiliser de 2025. Leur date est probablement à corriger en 2024. Aucune correction automatique : 191 factures sont datées plus de 31 jours après leur saisie et 14 de plus de 180 jours (31 si l'on compte les antidatées), la plupart légitimes, et rien ne permet de trancher à coup sûr.
+
+## 14. Dates des factures MAIRIE D'ALEPE : réémission en facture normalisée (tranché)
+
+**Constat.** FACT2024-1452, FACT2024-1771 et FACT2025-1811 ont été **modifiées les 17, 18 et 21 juillet 2025** par NAOMIE.PRISCILLA. À chaque modification, l'ancien logiciel a remplacé la date de facture par la date de modification et a attribué un numéro de facture normalisée de la série 2025 (`25-319-Y0101/N°097`, `N°098`, `N°102`). Ces numéros s'insèrent exactement dans la séquence de juillet 2025 (N°094 le 08/07, N°095 le 10/07, N°099 à N°101 le 18/07, N°104 le 21/07) : la date de juillet 2025 est donc la date de la facture normalisée, pas une faute de frappe.
+
+**Ce n'est pas propre à ce client.** 97 factures ont une date égale à leur date de modification, plus de 30 jours après leur saisie (surtout des réémissions 2024 et 2025 par CISSE.BACARI puis NAOMIE.PRISCILLA). Six changent d'exercice du fait de ce décalage :
+
+| Facture | Saisie | Date de facture | N° normalisé | TTC |
+|---|---|---|---|---|
+| FACT2024-1452 (MAIRIE D'ALEPE) | 16/03/2024 | 17/07/2025 | 25-319-Y0101/N°097 | 20 099 414 |
+| FACT2024-1771 (MAIRIE D'ALEPE) | 22/11/2024 | 21/07/2025 | 25-319-Y0101/N°102 | 6 596 881 |
+| FACT2024-1799, -1800, -1801 | 23/12/2024 | 08/01/2025 | 24-319-Y0101/N°309 à 311 | 4 021 582 |
+| FACT2021-202 (SIMAM CI) | 30/07/2021 | 26/01/2022 | 22-319-IO46/N°011 | 26 649 251 |
+
+**Décision : dates conservées telles que l'ancien logiciel les donne.** La date de la facture normalisée est celle que le client et l'administration fiscale connaissent ; la réécrire à la date de saisie créerait un écart avec le n° normalisé imprimé. Conséquences :
+- FACT2024-1452, FACT2024-1771 et FACT2024-1799 à 1801 (30,7 M) entrent dans les pièces à comptabiliser de **2025**. La comptabilité peut les rattacher à 2024 lors de la validation si le service rendu doit l'être (dédouanement de mars 2024 pour la première).
+- La date de saisie d'origine est conservée dans la date de création de chaque facture.
+- Le règlement partiel de 4 M de FACT2024-1452 date du 16/03/2024, avant la facture : c'est la compensation d'un acompte versé au moment du dédouanement, saisie avant la réémission. Rien à corriger.
+- Le simulateur signale ces six cas (`facture-redatee-exercice-suivant`, alerte) dans `rejets.csv`.
+
+**Point de vigilance pour les 1799 à 1801.** Leur numéro normalisé est de la série **24** alors que leur date est de janvier 2025 : si la comptabilité considère le n° normalisé comme référence, ces trois factures (4 M) sont de 2024.

@@ -308,6 +308,9 @@ function main() {
         signaler('FACTURE', n, 'CORRECTION', 'avoir-reconnu', o ? `facture d'origine probable : ${o[1]}` : 'facture d\'origine non retrouvée dans le libellé');
       }
       if (!str(r['N° Proforma'])) signaler('FACTURE', n, 'ALERTE', 'sans-proforma');
+      // Facture redatée à sa réémission (facture normalisée) : la date vaut la date de modification, parfois dans l'exercice suivant la saisie
+      { const dF = date(r['Date Facture']), dS = date(r.SaisieLe), dM = date(r.ModifierLe);
+        if (dF && dS && dM && dF.getTime() === dM.getTime() && dF.getUTCFullYear() !== dS.getUTCFullYear()) signaler('FACTURE', n, 'ALERTE', 'facture-redatee-exercice-suivant', `saisie le ${dS.toISOString().slice(0, 10)}, date de facture ${dF.toISOString().slice(0, 10)} (réémission, n° normalisé ${str(r['N° Facture Normalisée']) ?? 'aucun'}) : date conservée`); }
       if (num(r['Montant restant']) < -1) signaler('FACTURE', n, 'ALERTE', 'reste-negatif', fmt(num(r['Montant restant'])));
       factNums.add(n); facturesIndex.set(n, r);
       totalTTC += ttc; totalPaye += num(r['Montant Paye']); totalReste += num(r['Montant restant']);
