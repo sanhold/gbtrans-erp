@@ -1,10 +1,16 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import Modal from '@/components/ui/Modal';
+import FiltresDepliables from '@/components/ui/FiltresDepliables';
 import { cautionsApi, clientsApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import PickerField from '@/components/ui/PickerField';
@@ -85,7 +91,7 @@ export default function CautionsPage() {
   const handleAfficher = () => { setPage(1); load(); };
   const handleActualiser = () => { load(); loadStats(); };
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const sommeMontant = items.reduce((s, c) => s + Number(c.montant || 0), 0);
 
   const dossierOptions = dossiers.map(d => ({ id: d.id, label: d.numeroPhysique || d.numero, sublabel: d.client?.raisonSociale }));
@@ -186,183 +192,198 @@ export default function CautionsPage() {
     ], actions);
   };
 
+  const nbFiltres = [dateDebut, dateFin, dossierFiltre, clientFiltre, compagnieFiltre, blFiltre, etatFiltre].filter(Boolean).length;
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'caution', libelle: 'Caution', rendu: c => <DoubleLigne mono haut={c.numero} bas={fmtDate(c.dateCaution)} />, texte: c => c.numero },
+    { cle: 'dossier', libelle: 'Dossier', rendu: c => (
+      <DoubleLigne
+        haut={c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} onClick={e => e.stopPropagation()} className="text-primary-600 hover:underline font-mono">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '—'}
+        bas={c.numeroBL ? `BL ${c.numeroBL}` : undefined}
+      />
+    ), texte: c => c.dossier?.numeroPhysique || c.dossier?.numero || '' },
+    { cle: 'client', libelle: 'Client', rendu: c => <Tiers nom={c.client?.raisonSociale} detail={c.compagnie} />, texte: c => c.client?.raisonSociale || '' },
+    { cle: 'qte', libelle: 'Qté', align: 'right', masquerSous: 'xl', rendu: c => <span className="tabular-nums">{c.quantite}</span>, texte: c => String(c.quantite ?? '') },
+    { cle: 'montant', libelle: 'Montant', align: 'right', rendu: c => <Montant valeur={c.montant} />, texte: c => String(c.montant) },
+    { cle: 'courrier', libelle: 'Dépôt courrier', masquerSous: '2xl', rendu: c => fmtDate(c.dateDepotCourrier), texte: c => fmtDate(c.dateDepotCourrier) },
+    { cle: 'paiement', libelle: 'Paiement', masquerSous: '2xl', rendu: c => fmtDate(c.datePaiement), texte: c => fmtDate(c.datePaiement) },
+    { cle: 'etat', libelle: 'État', rendu: c => <StatutPastille libelle={ETAT_LABELS[c.statut] || c.statut} ton={tonDepuisBadge(ETAT_BADGE[c.statut])} />, texte: c => ETAT_LABELS[c.statut] || c.statut },
+  ];
+
+  const vide = <EmptyState titre="Aucune caution" description="Ajoutez une caution pour suivre un dépôt de conteneur." action={<button type="button" onClick={openCreate} className="btn-primary">Ajouter une caution</button>} />;
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Cautions</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">Dépôts conteneurs</p>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Cautions"
+          sousTitre="Dépôts conteneurs"
+          sousTitreMasqueMobile
+          actions={
+            <>
+              <Link href="/cautions/historique" className="btn-secondary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">Historique</Link>
+              <button type="button" onClick={openCreate} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Ajouter
+              </button>
+            </>
+          }
+        />
+
+        {/* Synthèse : nombre de cautions par situation */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+          {[
+            { l: 'Non activées', v: stats.nonActive, c: 'text-red-600' },
+            { l: 'En attente', v: stats.enAttente, c: 'text-sky-600' },
+            { l: 'Courrier à déposer', v: stats.courrierNonDepose, c: 'text-purple-600' },
+            { l: 'Courrier déposé', v: stats.courrierDepose, c: 'text-emerald-600' },
+          ].map(k => (
+            <div key={k.l} className="card !p-2.5 sm:!p-3 text-center min-w-0">
+              <div className={`text-lg sm:text-xl font-bold tabular-nums ${k.c}`}>{k.v}</div>
+              <div className="text-[10px] sm:text-[11px] leading-tight text-gray-500">{k.l}</div>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0 border-x border-gray-200 dark:border-surface-700 px-2">
-              <span className="badge badge-danger !text-[10px] !px-1.5 !py-0.5" title="Non activé">{stats.nonActive}</span>
-              <span className="badge badge-warning !text-[10px] !px-1.5 !py-0.5" title="En attente">{stats.enAttente}</span>
-              <span className="badge !text-[10px] !px-1.5 !py-0.5 bg-purple-100 text-purple-800" title="Courrier non déposé">{stats.courrierNonDepose}</span>
-              <span className="badge badge-success !text-[10px] !px-1.5 !py-0.5" title="Courrier déposé">{stats.courrierDepose}</span>
-            </div>
-            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Date début" />
-            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0" title="Date fin" />
-            <PickerField value={dossierFiltre} onChange={setDossierFiltre} options={dossierOptions} placeholder="Dossier" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." className="!py-1.5 text-xs w-28 flex-shrink-0" />
-            <PickerField value={clientFiltre} onChange={setClientFiltre} options={clientOptions} placeholder="Client" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!py-1.5 text-xs w-28 flex-shrink-0" />
-            <input type="text" value={compagnieFiltre} onChange={e => setCompagnieFiltre(e.target.value)} className="input-field !py-1.5 text-xs w-24 flex-shrink-0" placeholder="Compagnie" />
-            <input type="text" value={blFiltre} onChange={e => setBlFiltre(e.target.value)} className="input-field !py-1.5 text-xs w-24 flex-shrink-0" placeholder="N° BL" />
-            <select value={etatFiltre} onChange={e => setEtatFiltre(e.target.value)} className="input-field !py-1.5 text-xs w-32 flex-shrink-0">
-              <option value="">Actives (non payées)</option>
-              <option value="NON_ACTIVE">Non activé</option>
-              <option value="EN_ATTENTE">En attente</option>
-              <option value="COURRIER_DEPOSE">Courrier déposé</option>
-              <option value="TOUS">Toutes (payées incl.)</option>
-            </select>
-            <button onClick={handleAfficher} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <button onClick={handleActualiser} className="btn-secondary !px-2 !py-1.5 flex-shrink-0" title="Actualiser">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            </button>
-            <Link href="/cautions/historique" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Historique
-            </Link>
-            <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Ajouter
-            </button>
-          </div>
+          ))}
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed table-strict">
-            <colgroup>
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '4%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Id caution</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Date caution</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N°Dossier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° BL</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-center">Qte</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Compagnie</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Dépôt Courrier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Paiement</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">État</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Observation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={13} />
-              ) : items.length === 0 ? (
-                <tr><td colSpan={13} className="text-center py-12 text-gray-500">Aucune caution enregistrée</td></tr>
-              ) : items.map(c => (
-                <tr key={c.id} className="table-row cursor-pointer" onClick={(e) => { if ((e.target as HTMLElement).closest('a,button,input,select')) return; openCautionMenu(e, c); }}>
-                  <td className="table-cell !px-1" data-label="Actions">
-                    <ActionsButton onOpen={(e) => openCautionMenu(e, c)} />
-                  </td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
-                    {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
-                  </td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
-                  <td className="table-cell !px-1.5" data-label="État"><span className={`badge ${ETAT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{ETAT_LABELS[c.statut]}</span></td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-            {items.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-gray-300 dark:border-surface-600 font-semibold">
-                  <td className="table-cell" colSpan={6}>Somme / Compteur (page)</td>
-                  <td className="table-cell text-right font-mono">{fmt(sommeMontant)}</td>
-                  <td className="table-cell" colSpan={5}>{total} caution(s)</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
+        <FiltresDepliables actifs={nbFiltres}>
+          <form onSubmit={e => { e.preventDefault(); handleAfficher(); }} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div><label className="label">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field" /></div>
+              <div><label className="label">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field" /></div>
+              <div><label className="label">Dossier</label><PickerField value={dossierFiltre} onChange={setDossierFiltre} options={dossierOptions} placeholder="Tous" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." /></div>
+              <div><label className="label">Client</label><PickerField value={clientFiltre} onChange={setClientFiltre} options={clientOptions} placeholder="Tous" title="Sélectionner un client" searchPlaceholder="Raison sociale..." /></div>
+              <div><label className="label">Compagnie</label><input type="text" value={compagnieFiltre} onChange={e => setCompagnieFiltre(e.target.value)} className="input-field" placeholder="MSC, MAERSK..." /></div>
+              <div><label className="label">N° BL</label><input type="text" value={blFiltre} onChange={e => setBlFiltre(e.target.value)} className="input-field" /></div>
+              <div className="sm:col-span-2">
+                <label className="label">Situation</label>
+                <select value={etatFiltre} onChange={e => setEtatFiltre(e.target.value)} className="input-field">
+                  <option value="">Actives (non payées)</option>
+                  <option value="NON_ACTIVE">Non activé</option>
+                  <option value="EN_ATTENTE">En attente</option>
+                  <option value="COURRIER_DEPOSE">Courrier déposé</option>
+                  <option value="TOUS">Toutes (payées incluses)</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="btn-primary flex-1 sm:flex-none">Afficher</button>
+              <button type="button" onClick={handleActualiser} className="btn-secondary flex-1 sm:flex-none">Actualiser</button>
+            </div>
+          </form>
+        </FiltresDepliables>
+
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={items}
+            cleLigne={(c) => c.id}
+            chargement={loading}
+            nomExport="cautions"
+            actionsToujoursVisibles
+            actions={(c) => <ActionsButton onOpen={(e) => openCautionMenu(e, c)} />}
+            pied={
+              <>
+                {items.length > 0 && <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50/50 px-5 py-2.5 text-sm dark:border-surface-700 dark:bg-surface-900/30"><span className="text-gray-500">Somme de la page ({total} caution(s) au total)</span><span className="font-semibold tabular-nums text-gray-900 dark:text-white">{fmt(sommeMontant)} F</span></div>}
+                <TablePagination page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
+              </>
+            }
+            vide={vide}
+          />
         </div>
 
-        {/* Modal création / édition */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-                <h2 className="text-lg font-bold">{editing ? `Modifier Caution N°${editing.numero}` : 'Ajouter une Caution'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1, 2].map(i => <div key={i} className="card !p-0 animate-pulse h-28" />)
+          ) : items.length === 0 ? (
+            <div className="card">{vide}</div>
+          ) : items.map(c => (
+            <div key={c.id} className="card !p-0 overflow-hidden">
+              <div className="px-4 pt-3 pb-2 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">{c.numero}</span>
+                  <StatutPastille libelle={ETAT_LABELS[c.statut] || c.statut} ton={tonDepuisBadge(ETAT_BADGE[c.statut])} />
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[13px]">
+                  <span className="truncate text-gray-800 dark:text-gray-100">{c.client?.raisonSociale || '—'}</span>
+                  <span className="font-mono font-bold whitespace-nowrap text-gray-900 dark:text-white">{fmt(c.montant)} F</span>
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="font-mono text-primary-600">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : 'Sans dossier'}
+                  {c.numeroBL ? ` · BL ${c.numeroBL}` : ''}{c.compagnie ? ` · ${c.compagnie}` : ''} · {fmtDate(c.dateCaution)}
+                </div>
+                {(c.dateDepotCourrier || c.datePaiement) && (
+                  <div className="text-[11px] text-gray-400">{c.dateDepotCourrier ? `Courrier déposé le ${fmtDate(c.dateDepotCourrier)}` : ''}{c.dateDepotCourrier && c.datePaiement ? ' · ' : ''}{c.datePaiement ? `Payée le ${fmtDate(c.datePaiement)}` : ''}</div>
+                )}
               </div>
-              <form onSubmit={handleSave} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="label">Date caution</label><input type="date" value={form.dateCaution} onChange={e => setForm({ ...form, dateCaution: e.target.value })} className="input-field" /></div>
-                  <div>
-                    <label className="label">Dossier</label>
-                    <PickerField value={form.dossierId} onChange={handleDossierChange} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
-                  </div>
-                  <div><label className="label">N° BL</label><input type="text" value={form.numeroBL} onChange={e => setForm({ ...form, numeroBL: e.target.value })} className="input-field" /></div>
-                  <div>
-                    <label className="label">Client</label>
-                    <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Aucun --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." />
-                  </div>
-                  <div><label className="label">Qte</label><input type="number" min="1" value={form.quantite} onChange={e => setForm({ ...form, quantite: e.target.value })} className="input-field" /></div>
-                  <div><label className="label">Montant Caution *</label><input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className="input-field" required /></div>
-                  <div><label className="label">Compagnie</label><input type="text" value={form.compagnie} onChange={e => setForm({ ...form, compagnie: e.target.value })} className="input-field" placeholder="MSC, MAERSK, OOCL..." /></div>
-                  <div className="col-span-2"><label className="label">Observation</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-                </div>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                  <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Créer'}</button>
-                </div>
-              </form>
+              <div className="flex justify-end px-4 pb-3"><ActionsButton onOpen={(e) => openCautionMenu(e, c)} /></div>
             </div>
-          </div>
-        )}
-
-        {/* Modal Paiement */}
-        {payerCaution && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-md mx-4">
-              <div className="flex items-center justify-between px-6 py-3 bg-green-600 text-white">
-                <h2 className="text-base font-bold">Paiement de la Caution</h2>
-                <button onClick={() => setPayerCaution(null)} className="p-1 rounded hover:bg-white/10"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-              </div>
-              <form onSubmit={handlePayer} className="p-6 space-y-4">
-                <div><label className="label">Dossier</label><input type="text" readOnly value={payerCaution.dossier?.numeroPhysique || payerCaution.dossier?.numero || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                <div><label className="label">Compagnie</label><input type="text" readOnly value={payerCaution.compagnie || '-'} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                <div><label className="label">Montant Caution</label><input type="text" readOnly value={`${fmt(payerCaution.montant)} F`} className="input-field bg-gray-100 dark:bg-surface-700" /></div>
-                <div>
-                  <label className="label text-green-600 font-semibold">Date Paiement *</label>
-                  <input type="date" value={datePaiement} onChange={e => setDatePaiement(e.target.value)} className="input-field !bg-green-50 dark:!bg-green-900/20 border-green-300" required />
-                </div>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button type="button" onClick={() => setPayerCaution(null)} className="btn-secondary">Annuler</button>
-                  <button type="submit" className="btn-success">Valider le paiement</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+          ))}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
+        </div>
       </div>
-    <RowActionsMenu state={rowMenu} onClose={() => setRowMenu(null)} />
+
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? `Modifier la caution ${editing.numero}` : 'Ajouter une caution'}
+        size="lg"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-caution" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Créer'}</button>
+          </>
+        }
+      >
+        <form id="form-caution" onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label className="label">Date caution</label><input type="date" value={form.dateCaution} onChange={e => setForm({ ...form, dateCaution: e.target.value })} className="input-field" /></div>
+            <div>
+              <label className="label">Dossier</label>
+              <PickerField value={form.dossierId} onChange={handleDossierChange} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
+            </div>
+            <div><label className="label">N° BL</label><input type="text" value={form.numeroBL} onChange={e => setForm({ ...form, numeroBL: e.target.value })} className="input-field" /></div>
+            <div>
+              <label className="label">Client</label>
+              <PickerField value={form.clientId} onChange={id => setForm({ ...form, clientId: id })} options={clientOptions} placeholder="-- Aucun --" title="Sélectionner un client" searchPlaceholder="Raison sociale..." />
+            </div>
+            <div><label className="label">Quantité</label><input type="number" min="1" value={form.quantite} onChange={e => setForm({ ...form, quantite: e.target.value })} className="input-field" /></div>
+            <div><label className="label">Montant caution (F CFA) *</label><input type="text" inputMode="numeric" value={form.montant ? fmt(form.montant) : ''} onChange={e => setForm({ ...form, montant: e.target.value.replace(/\D/g, '') })} className="input-field" placeholder="0" required /></div>
+            <div className="sm:col-span-2"><label className="label">Compagnie</label><input type="text" value={form.compagnie} onChange={e => setForm({ ...form, compagnie: e.target.value })} className="input-field" placeholder="MSC, MAERSK, OOCL..." /></div>
+            <div className="sm:col-span-2"><label className="label">Observation</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={!!payerCaution}
+        onClose={() => setPayerCaution(null)}
+        title="Paiement de la caution"
+        description={payerCaution?.numero}
+        footer={
+          <>
+            <button type="button" onClick={() => setPayerCaution(null)} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-paiement-caution" className="btn-success">Valider le paiement</button>
+          </>
+        }
+      >
+        {payerCaution && (
+          <form id="form-paiement-caution" onSubmit={handlePayer} className="space-y-4">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-center">
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">Montant de la caution</div>
+              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600">{fmt(payerCaution.montant)} F</div>
+            </div>
+            <dl className="divide-y divide-gray-100 dark:divide-surface-700 text-sm">
+              <div className="flex justify-between gap-4 py-2"><dt className="text-gray-500">Dossier</dt><dd className="font-medium">{payerCaution.dossier?.numeroPhysique || payerCaution.dossier?.numero || '—'}</dd></div>
+              <div className="flex justify-between gap-4 py-2"><dt className="text-gray-500">Compagnie</dt><dd className="font-medium">{payerCaution.compagnie || '—'}</dd></div>
+            </dl>
+            <div>
+              <label className="label">Date de paiement *</label>
+              <input type="date" value={datePaiement} onChange={e => setDatePaiement(e.target.value)} className="input-field" required />
+            </div>
+          </form>
+        )}
+      </Modal>
+      <RowActionsMenu state={rowMenu} onClose={() => setRowMenu(null)} />
     </AppLayout>
   );
 }
