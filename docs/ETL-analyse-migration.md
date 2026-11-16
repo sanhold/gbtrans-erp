@@ -138,3 +138,17 @@ Contrôles à automatiser après import (tolérance 1 F) :
 | Conteneurs | Seul `NbreTC` (nombre) | Table `Conteneur` | Rien à importer |
 | Caution de dépôt | Hors des exports | `Caution` | Hors périmètre (les cautions ne figurent pas dans cet ETL) |
 | Étapes de dossier | Libellés seuls, pas d'historique par dossier | `EtapeDossier` | On peut déduire les étapes réalisées des dates FDI, RFCV, assurance, tirage, BAE présentes sur le dossier |
+
+## 7. Décisions sur les cas « MANUEL » (validées)
+
+| Cas | Décision | Effet constaté sur la copie |
+|---|---|---|
+| Société cible | Société ETL de la base de production | -- |
+| Lignes « 1 » et « 183 » des factures | Lignes de compteur de l'export : ignorées | -- |
+| Clients `CL20220`, `CL20221` absents de la table | Créés sous « CISSE (CL20220) » et « CISSE (CL20221) » (tiers du journal), à compléter | 2 clients |
+| 6 paiements de FACT2021-8, -123, -248 (factures absentes) | Importés comme opérations du compte client, n° de facture en libellé, sans créer de facture | 6 opérations |
+| Ligne N° 41322 sans type de compte (compte `FF013`) | Rattachée automatiquement au compte fournisseur FF013 | 1 opération, total fournisseurs 29 593 677 |
+| 7 autres lignes sans type de compte (39,2 M) | Importées en statut `A_VERIFIER`, sans compte, sans effet sur caisse et banque | 7 opérations |
+
+À noter : N° 47170 et 46310 (10 575 904 chacune, même date et même motif) sont probablement une double saisie.
+La vue « Transaction 2025 » ne reprend pas toujours le même numéro que `Reglement` : seul `Reglement` fait foi.

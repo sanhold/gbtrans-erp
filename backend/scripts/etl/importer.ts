@@ -150,16 +150,19 @@ async function main() {
       telephone: cut(str(r.Tel), 50), ville: cut(str(r.Localisation), 100),
     });
   }
+  const NOMS_INCONNUS: Record<string, string> = { CL20220: 'CISSE (CL20220)', CL20221: 'CISSE (CL20221)' }; // tiers « CISSE » du journal
   const clientDeCode = (c: string | null): string | null => {
     if (!c) return null; const s = survivant(c);
-    if (!clientId.has(s)) { creerClient(s, { raisonSociale: `CLIENT INCONNU ${s}`, observations: undefined }); avert(`Client ${s} créé sous « CLIENT INCONNU » (absent de Table Client)`); }
+    if (!clientId.has(s)) { creerClient(s, { raisonSociale: NOMS_INCONNUS[s] ?? `CLIENT INCONNU ${s}`, observations: undefined }); avert(`Client ${s} créé sous « ${NOMS_INCONNUS[s] ?? 'CLIENT INCONNU'} » (absent de Table Client)`); }
     return clientId.get(s)!;
   };
   const clientParNom = new Map<string, string>();
   clientsSrc.forEach((r) => clientParNom.set(norm(str(r['Raison Sociale'])), survivant(String(r['N° Client']).trim())));
   dossiersSrc.forEach((r) => clientDeCode(str(r.NumInterneClient))); // crée les clients inconnus cités
+  rgSrc.forEach((r) => { if (str(r.Type_Compte) === 'COMPTE CLIENT' && num(r.supprimer) !== 1) clientDeCode(str(r.NumCompte)); });
   const nouveauxCClean = nouveauxC.map(({ observations, ...x }) => x);
   await inserer('client', nouveauxCClean);
+  for (const [code, nom] of Object.entries(NOMS_INCONNUS)) await prisma.client.updateMany({ where: { societeId, code, raisonSociale: `CLIENT INCONNU ${code}` }, data: { raisonSociale: nom } });
   noter('Clients', nouveauxC.length, cExist, fusion.size);
 
   // ---------- Fournisseurs + comptes tiers ----------
@@ -452,7 +455,9 @@ async function main() {
     if (!d || d.getFullYear() < 2020 || (saisi && d.getTime() > saisi.getTime() + 31 * 86400000)) { if (saisi) { d = saisi; jDates++; } else { jIgn++; continue; } }
     let type = str(r.Type_Compte); const compte = str(r.NumCompte);
     if (!type && compte && banqueId.has(compte)) type = 'BANQUE';
-    if (!type) { jIgn++; avert(`Journal ${idSrc} ignoré : type de compte vide (${fmt(e - s)}) ${str(r.Motif) ?? ''}`); continue; }
+    if (!type && compte && fournId.has(compte)) type = 'COMPTE FOURNISSEUR';
+    else if (!type && compte && clientId.has(survivant(compte))) type = 'COMPTE CLIENT';
+    if (!type) { type = 'SANS_COMPTE'; avert(`Journal ${idSrc} importé « à vérifier » : type de compte vide (${fmt(e - s)}) ${str(r.Motif) ?? ''}`); }
     const mode = modePaiement(r.ModeRèglement);
     const valide = num(r.Etat_Encaissement) === 1; const statutOp = valide ? 'VALIDE' : 'EN_ATTENTE';
     const motif = str(r.Motif); const tt = (str(r.TypeTransaction) ?? 'OPERATION').trim();
@@ -461,12 +466,12 @@ async function main() {
     // soldes
     if (type === 'CAISSE') soldes.caisse += e - s;
     else if (type === 'BANQUE' && compte) soldes.banque.set(compte, (soldes.banque.get(compte) ?? 0) + e - s);
-    else if (compte) soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + e - s);
-    const base = { societeId, numero, dateOperation: d, libelle: cut(motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
+    else if (compte && (type === 'COMPTE CLIENT' || type === 'COMPTE FOURNISSEUR')) soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + e - s);
+    const factureAbsente = piece.startsWith('FACT') && e !== 0 && !factureInfo.has(piece);
+    const base = { societeId, numero, dateOperation: d, libelle: cut(factureAbsente ? `${motif ?? tt} (facture ${piece} absente de l'export)` : motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: type === 'SANS_COMPTE' ? 'A_VERIFIER' : statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
     let classe = 'deja-present';
-    if (piece.startsWith('FACT') && e !== 0) {
-      classe = 'paiement-facture'; const f = factureInfo.get(piece);
-      if (!f) { jIgn++; avert(`Règlement ${idSrc} ignoré : facture ${piece} inconnue`); continue; }
+    if (piece.startsWith('FACT') && e !== 0 && factureInfo.has(piece)) {
+      classe = 'paiement-facture'; const f = factureInfo.get(piece)!;
       if (e < 0) { // avoir consommé : trace en opération (sortie), sans Paiement
         if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), ...base, type: 'ENCAISSEMENT', sens: 'SORTIE', montant: -e, libelle: cut(`Régularisation avoir ${piece}`, 500) });
       } else if (f.neuf && !paiExist.has(numero)) {
