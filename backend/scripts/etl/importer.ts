@@ -529,6 +529,41 @@ async function main() {
   await prisma.caisse.update({ where: { id: caisse.id }, data: { solde: soldes.caisse } });
   for (const [cle, solde] of soldes.tiers) { const [, code] = cle.split('|'); const id = tiersId.get(code); if (id) await prisma.compteTiers.update({ where: { id }, data: { solde } }); }
 
+  // ---------- Comptabilité : exercice 2025 et file de décision ----------
+  // L'export ne contient aucune écriture. Décision validée : seules les transactions de 2025 vont aux « pièces à comptabiliser »
+  // (comme le fait la file de décision de l'application) ; celles de 2021-2024 sont mises à la corbeille de la file (réversible) ;
+  // celles de 2026 restent « à décider ».
+  const D2025 = Date.UTC(2025, 0, 1); const D2026 = Date.UTC(2026, 0, 1);
+  const exo = await prisma.exercice.findFirst({ where: { societeId, dateDebut: { lte: new Date(Date.UTC(2025, 11, 31)) }, dateFin: { gte: new Date(D2025) } } });
+  if (!exo) await prisma.exercice.create({ data: { societeId, code: '2025', libelle: 'Exercice 2025', dateDebut: new Date(D2025), dateFin: new Date(Date.UTC(2025, 11, 31)) } });
+  const AUTEUR = 'Reprise ETL';
+  const MOTIF_ANTERIEUR = 'Exercice antérieur à 2025 : hors comptabilité de l\'application (reprise ETL)';
+  const nouvAttente: any[] = []; const nouvDecision: any[] = []; const cpt = { aComptabiliser: 0, normalisees: 0, corbeille: 0, aDecider: 0 };
+  const decider = (source: string, cle: string, id: string, libelle: string, montant: number, d: Date, numeroFne: string | null = null) => {
+    const t = d.getTime();
+    if (t >= D2026) { cpt.aDecider++; return; }
+    if (t < D2025) { nouvDecision.push({ societeId, source, [cle]: id, statut: 'CORBEILLE', motif: MOTIF_ANTERIEUR, decidePar: AUTEUR }); cpt.corbeille++; return; }
+    const attenteId = randomUUID();
+    nouvAttente.push({ id: attenteId, societeId, source, [cle]: id, libelle: cut(libelle, 500)!, montant, dateOperation: d, createurNom: AUTEUR });
+    nouvDecision.push({ societeId, source, [cle]: id, statut: numeroFne ? 'FACTURE_NORMALISEE' : 'RECEVABLE', numeroFne: numeroFne ? cut(numeroFne, 100) : null, decidePar: AUTEUR, ecritureAttenteId: attenteId });
+    cpt.aComptabiliser++; if (numeroFne) cpt.normalisees++;
+  };
+  const idsFactures = [...factureInfo.values()].map((f) => f.id);
+  for (let i = 0; i < idsFactures.length; i += 1000) {
+    const lot = await prisma.facture.findMany({ where: { id: { in: idsFactures.slice(i, i + 1000) }, statut: { notIn: ['BROUILLON', 'ANNULEE'] }, decisionFne: null }, select: { id: true, numero: true, montantTTC: true, dateFacture: true, numeroNormalise: true, client: { select: { raisonSociale: true } } } });
+    lot.forEach((f) => decider('FACTURE', 'factureId', f.id, `Facture ${f.numero}${f.client ? ` — ${f.client.raisonSociale}` : ''}`, Number(f.montantTTC), f.dateFacture, f.numeroNormalise));
+  }
+  const paiementsC = await prisma.paiement.findMany({ where: { numero: { startsWith: 'ETL-' }, client: { societeId }, statut: 'VALIDE', decisionFne: null }, select: { id: true, numero: true, montant: true, datePaiement: true, client: { select: { raisonSociale: true } } } });
+  paiementsC.forEach((p) => decider('PAIEMENT', 'paiementId', p.id, `Paiement client ${p.numero}${p.client ? ` — ${p.client.raisonSociale}` : ''}`, Number(p.montant), p.datePaiement));
+  for (let skip = 0; ; skip += 5000) {
+    const lot = await prisma.depense.findMany({ where: { societeId, numero: { startsWith: 'ETL-' }, statut: 'VALIDE', decisionFne: null }, select: { id: true, numero: true, montant: true, dateDepense: true, categorie: true }, orderBy: { id: 'asc' }, take: 5000, skip });
+    if (!lot.length) break;
+    lot.forEach((d) => decider('DEPENSE', 'depenseId', d.id, `Dépense ${d.numero} — ${d.categorie}`, Number(d.montant), d.dateDepense));
+  }
+  await inserer('ecritureEnAttente', nouvAttente, 1000);
+  await inserer('decisionFne', nouvDecision, 1000);
+  console.log(`  Comptabilité : ${cpt.aComptabiliser} pièces à comptabiliser 2025 (dont ${cpt.normalisees} factures normalisées), ${cpt.corbeille} transactions 2021-2024 à la corbeille, ${cpt.aDecider} de 2026 restant à décider`);
+
   // ---------- Contrôles post-import ----------
   console.log('\nCONTRÔLES POST-IMPORT');
   const controles: [string, number, number][] = [];

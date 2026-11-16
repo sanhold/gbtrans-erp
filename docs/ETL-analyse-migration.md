@@ -185,3 +185,24 @@ Deux comptes fournisseurs sont négatifs dans le journal brut.
 - Une ligne de FF005 porte la date 2052-05-05 (N° 43425, 66 456) : l'import la ramène à sa date de saisie (22/05/2025).
 - La ligne N° 41322 (5 254 347), sans type de compte, rattachée à FF013, explique l'essentiel de la différence avec le solde brut de ce compte.
 - À confirmer avec la comptabilité : le solde positif de 10,7 M de FF005 est-il bien une avance restant chez SERENITY ?
+
+## 10. Écritures comptables (tranché)
+
+**Constat.** L'export ne contient aucune écriture : `CompteDebit`, `CompteCredit` et `NumfactCompta` sont vides sur les 49 002 lignes de `Reglement`, et `EtatComptabilise` vaut 0 partout. Il reste un indicateur « pris en compte » sur 15 647 lignes (32 %, surtout des dépenses de caisse), avec un code exercice 2021 à 2025. Cet indicateur est irrégulier (2021 : environ deux tiers des lignes, 2023 : 2 %) : il ne prouve pas que ces lignes sont comptabilisées ailleurs. Aucune écriture n'est donc à reprendre, et la copie n'a ni plan comptable ni journaux.
+
+**Décision : pièces à comptabiliser pour l'exercice 2025 uniquement.** L'import suit la file de décision de l'application (`DecisionFne`) :
+
+| Transactions | Traitement | Copie locale |
+|---|---|---|
+| 2025, factures avec n° de facture normalisée | Décision `FACTURE_NORMALISEE` (n° repris) + pièce `EN_ATTENTE` | 357 |
+| 2025, autres factures, paiements validés, dépenses | Décision `RECEVABLE` + pièce `EN_ATTENTE` | 77 factures, 2 paiements, 6 648 dépenses |
+| 2020 à 2024 | Décision `CORBEILLE` (motif « exercice antérieur à 2025 »), sans pièce ; réversible depuis la corbeille | 31 073 |
+| 2026 | Laissées « à décider » | 0 |
+
+- Total : **7 084 pièces à comptabiliser** (factures 3,80 Md, dépenses 1,44 Md, paiements 13,7 M). L'exercice **2025** (01/01 au 31/12) est créé s'il n'existe pas.
+- Le plan comptable, les journaux et les à-nouveaux restent à saisir par le comptable : sans plan, les pièces s'affichent mais l'application ne peut pas proposer d'écriture.
+- Les 39 paiements 2025 non encaissés (`EN_ATTENTE`) ne sont pas éligibles à la file : ils y entreront une fois validés.
+- L'import est rejouable : une transaction qui a déjà une décision n'est pas retraitée.
+- **Prérequis de production** : les migrations `052_decisions_fne` et `053_platform_mot_de_passe_oublie` doivent être appliquées à la base avant l'import (la copie de test en manquait).
+
+**Point à vérifier.** Les 434 factures de 2025 (3,8 Md TTC) n'ont que 6,5 M de paiements rattachés, contre 2,8 à 4,0 Md encaissés pour chacune des années précédentes. Soit les règlements de 2025 n'ont pas été rattachés aux factures dans l'ancien logiciel (acomptes sur compte client), soit l'export est incomplet. À confirmer avant de s'appuyer sur les restes à payer de 2025.
