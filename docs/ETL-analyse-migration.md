@@ -390,3 +390,46 @@ Les deux factures correspondantes (FACT2025-2081 et FACT2025-2059, 14,3 M et 4,6
 **Les autres écarts entre compte crédité et client du dossier.** Sur 99 acomptes « budget » de 2025 qui citent un dossier, 10 ont un compte différent du client du dossier (218,7 M). Une fois N° 45420 expliqué, il reste des paiements faits par un tiers ou des références de dossier fautives, sans erreur démontrable : le motif est un texte libre et le compte crédité est celui qui a payé. Importés tels quels, à titre d'information : RAZEL-BEC pour des dossiers d'AFRICA TRAILER (N° 41324 et 41326, 41,2 M), UCP-PIF2 pour I-105/2025 (N° 43384, 10,8 M), GENICI GROUPE pour un dossier TATA (N° 42109, 7,3 M), SUCRIVOIRE pour I-281/2024 de SIMAM CI (N° 41652, 24,7 M), SIMAM CI pour I-292/2025 de TATA (N° 48891, 18,9 M), et **TATA AFRICA CI pour « I-132/2025 », 90 059 725 (N° 46037)** : ce dossier est celui de COASTWIN (vêtements), le numéro cité est donc très probablement faux ; le compte crédité (le payeur) n'est pas en cause.
 
 **Défaut corrigé : doublon client ETMD.** « ETMD » (CL2025196) et « ENTREPRISE DE TRANSPORT DE MANUTENTION ET DIVERS » (CL2023128) ont le même NCC, écrit « 1503333 Z » dans un cas et « 1503333Z » dans l'autre : la fusion ne les voyait pas. Le NCC est maintenant comparé sans espaces ni ponctuation (dans `commun.ts` et dans le simulateur) : ETMD est fusionné vers CL2023128 (clients : 212 au lieu de 213). C'était le seul doublon manqué ; les deux autres fusions par NCC (GEBATEC) sont inchangées. Par ailleurs, l'import crédite désormais toujours le compte du client **survivant** d'une fusion, comme le simulateur. Les provisions restent à 3 899 384 577.
+
+## 20. Mise en production : feuille de route et chiffres de référence
+
+**Les 5 proformas ignorées.** Trois sont des brouillons supprimés et vides (PRO12025-2234, -2238, -2385 : sans dossier, sans libellé, supprimés). Deux sont des offres non validées de 2021 sur le dossier I-298/2021, absent de l'export (PRO2021-388 de 63,5 M « offre N° 547… groupe établissement TOUBA », PRO2021-399 de 85 100) : le client n'est pas déductible avec certitude (deux clients TOUBA, créés en 2022 et 2025). Elles restent ignorées ; elles ne sont ni validées, ni facturées.
+
+**Bloquant avant tout import en production** : l'export de la base 2026 (§ 15). Tant qu'il manque, l'import de fin 2025 ne doit pas être lancé.
+
+**Étapes, dans l'ordre**
+1. **Fichiers.** Récupérer les fichiers 2026 ; je prépare la reprise de 2026 (préfixe `ETL26-`, contrôle des soldes d'ouverture) et refais la simulation sur l'ensemble.
+2. **Sauvegarde complète** de la base Supabase de production, avec un test de restauration. Il n'existe pas de script de purge : le retour arrière passe par cette sauvegarde (l'import n'écrit que dans la société cible, mais mieux vaut une restauration complète qu'un nettoyage partiel).
+3. **Migrations.** Vérifier que `052_decisions_fne` et `053_platform_mot_de_passe_oublie` sont appliquées (`prisma migrate status`). La copie de test en manquait.
+4. **Société cible.** Confirmer que la société de production a bien le code `ETL` ; sinon passer `--societe=<code>`.
+5. **Simulation.** Lancer `simuler-import.ts` sur les fichiers définitifs et relire `rejets.csv` (aucun rejet inattendu, aucun cas « manuel »), puis comparer aux chiffres ci-dessous.
+6. **Import**, par la personne qui détient les accès (l'import en production n'est pas lancé depuis l'assistant). Depuis `backend/`, en PowerShell :
+   `$env:DATABASE_URL="<url de production>"; $env:ETL_AUTORISER_DISTANT="OUI_PRODUCTION"; npx ts-node --transpile-only scripts/etl/importer.ts --appliquer`
+   Sans `ETL_AUTORISER_DISTANT`, le script refuse toute base non locale. Il est relançable sans créer de doublon.
+7. **Contrôles** : comparer la sortie « CONTRÔLES POST-IMPORT » (soldes bancaires, caisse, factures) aux chiffres ci-dessous.
+8. **Utilisateurs.** Créer les vrais comptes, puis lancer `rapprocher-utilisateurs.ts` (§ 16).
+9. **Comptabilité.** Plan comptable, journaux, exercice 2025 (créé par l'import), puis validation des pièces à comptabiliser ; à-nouveaux pour 2026 (§ 10).
+10. **Recouvrement.** Compensation des provisions sur les factures ouvertes avec l'état de rapprochement (§ 11 et 12), puis traitement des lignes « à vérifier » (22 opérations).
+
+**Chiffres de référence (fin 2025, copie de test reconstruite de zéro)**
+
+| Élément | Valeur |
+|---|---|
+| Clients / fournisseurs | 212 / 15 |
+| Dossiers | 1 962 |
+| Factures (dont 33 avoirs) | 2 060 : TTC 17 771 452 591, payé 12 804 922 882, reste 4 966 529 709 |
+| Lignes de facture | 26 166 |
+| Proformas (jumelle comprise) | 2 408 |
+| Paiements de facture | 1 713 |
+| Dotations | 4 045 |
+| Dépenses de dossier | 34 408 |
+| Opérations financières | 12 819 (dont 22 « à vérifier ») |
+| Admissions temporaires | 85 |
+| Solde BNI / BRIDGE / UBA | 122 530 788 / 62 159 051 / 24 743 061 |
+| Solde de la caisse | 211 199 052 |
+| Comptes clients (provisions) | 99 comptes, 3 899 384 577 |
+| Comptes fournisseurs | 12 comptes, 87 646 109 |
+| Pièces à comptabiliser 2025 / décisions de la file | 7 084 / 38 142 |
+| Utilisateurs de reprise | 40 |
+
+Ces chiffres seront à refaire avec les données de 2026.
