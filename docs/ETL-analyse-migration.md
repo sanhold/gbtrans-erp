@@ -235,3 +235,26 @@ Chiffres (107 clients concernés) :
 Situations : 6 clients dont les factures sont entièrement couvertes, 21 à provision insuffisante, 3 avec provision sans facture ouverte (dont CONSEIL REGIONAL DU GBOKLE : 425 M de provision pour 2,5 M de reste, probablement une avance sur travaux non encore facturés), 77 sans provision.
 
 **Effet à connaître après import.** Tant que la compensation n'est pas saisie, les tableaux de bord et relances affichent 3,8 Md de factures de 2025 à recouvrer (échéance à 30 jours déjà dépassée), alors qu'une grande partie est couverte par des provisions détenues.
+
+## 12. Restes à payer antérieurs à 2025 (tranché)
+
+**Constat.** 163 factures d'avant 2025 restent ouvertes pour **1 169 600 356** (32 clients environ) :
+
+| Année de la facture | Factures | Reste |
+|---|---|---|
+| 2021 | 7 | 19,1 M |
+| 2022 | 12 | 99,5 M |
+| 2023 | 24 | 156,2 M |
+| 2024 | 120 | 894,8 M |
+
+136 factures sont totalement impayées (1,007 Md), 27 partiellement (163 M). Les restes 2024 sont récents (surtout le dernier trimestre) et relèvent du recouvrement normal. Les restes de 2021 à 2023 (43 factures, 275 M) ont 2 à 4 ans : à classer en créances anciennes ou douteuses par la comptabilité. Principaux clients : TATA AFRICA CI 256 M, RAZEL-BEC 249 M (dont FACT2023-1059 de 99,4 M impayée depuis juin 2023 et FACT2022-604 de 64,1 M), AFRICA TRAILER 144 M (27 factures), UCP-PIF2 125 M, GEBATEC 83 M, JC YARED 79 M, EKDS 60 M. Ces restes sont importés tels quels et figurent dans l'état de rapprochement (§ 11), car plusieurs de ces clients détiennent une provision (RAZEL-BEC 673 M, TATA 1,29 Md).
+
+**Doubles règlements : 15 factures payées au double de leur TTC (surplus de 30 911 154).** Le champ « Montant payé » de l'ancien logiciel vaut bien le TTC, mais le journal contient chaque règlement deux fois : une « RECETTE » de l'époque, puis un « REGLEMENT FACTURE » ressaisi plus tard (2022 ou 2025), tous deux pris sur le compte client (HP AUTOMOTIVE, OKOUNDA BTP, IRIM, TAHA OMAR). Les 4 autres écarts entre « Montant payé » et journal sont des règlements incomplets, sans lien avec les doublons.
+
+**Décision : plafonner au TTC, doublon importé comme opération « à vérifier ».**
+- Les règlements d'une facture sont alloués par ordre chronologique jusqu'à son TTC (`allouerReglements`, commun à la simulation et à l'import). Reste de la facture : 0.
+- La part au-delà du TTC n'est pas imputée à la facture : elle devient une opération du compte d'origine (compte client pour l'essentiel), statut `A_VERIFIER`, libellé « excédent de règlement de FACT… : doublon probable ». 17 opérations, 30 911 154.
+- Les soldes (caisse, banques, comptes clients et fournisseurs) restent identiques au journal : seule l'affectation aux factures change. Si la comptabilité confirme le doublon, elle réintègre 30,9 M dans la provision des clients concernés.
+- Effet : payé total 12 804 922 882 (au lieu de 12 835 834 036), reste à payer total 4 966 529 709, plus aucune facture normale à reste négatif.
+
+**Autres anomalies relevées (non corrigées).** Trois factures portent un numéro et une date incohérents (FACT2024-1794 datée du 15/09/2021, FACT2024-1356 du 29/12/2023, FACT2022-443 du 31/12/2021). Onze acomptes de caisse ou de banque (89,6 M) portent un dossier à facture ouverte sans n° de facture : ils sont déjà couverts par le « Montant payé » de la facture et ne changent pas le reste. Les restes résiduels correspondants sont minimes (de 23 k à 2,3 M).

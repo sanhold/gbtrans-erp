@@ -19,7 +19,7 @@ import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import {
   Row, str, num, date, norm, cut, estTotal, ajouterJours, lire, normaliserNumeroDossier,
-  STATUT_DOSSIER, TYPE_TRANSPORT, natureDossier, modePaiement, loginDe, calculerFusionClients,
+  STATUT_DOSSIER, TYPE_TRANSPORT, natureDossier, modePaiement, loginDe, calculerFusionClients, allouerReglements,
 } from './commun';
 
 const args = process.argv.slice(2);
@@ -304,11 +304,18 @@ async function main() {
   // ---------- Factures ----------
   const facExist = new Map((await prisma.facture.findMany({ where: { societeId }, select: { id: true, numero: true } })).map((f) => [f.numero, f.id]));
   // règlements par facture (numéro de facture dans NumCheque) : sert à recalculer le payé
+  // Les règlements en trop (doublons de saisie, ex. « RECETTE » puis « REGLEMENT FACTURE » ressaisi) sont plafonnés au TTC.
+  const ttcParFacture = new Map<string, number>();
+  facSrc.forEach((r) => {
+    const n = str(r['N° Facture']); const ttc = num(r['Total TTC Client']); const lib = str(r.Libelle) ?? '';
+    if (n && ttc > 0 && !/^\s*(AVOIR|NOTE DE DEBIT)/i.test(lib)) ttcParFacture.set(n.toUpperCase(), ttc);
+  });
+  const allocation = allouerReglements(rgSrc, ttcParFacture);
   const payeParFacture = new Map<string, number>();
   rgSrc.forEach((r) => {
     if (num(r.supprimer) === 1) return;
     const p = (str(r.NumCheque) ?? '').toUpperCase(); const e = num(r['MontantReglé']);
-    if (p.startsWith('FACT') && e !== 0) payeParFacture.set(p, (payeParFacture.get(p) ?? 0) + e);
+    if (p.startsWith('FACT') && e !== 0) payeParFacture.set(p, (payeParFacture.get(p) ?? 0) + (allocation.get(String(r['N° Enr.']))?.alloue ?? e));
   });
   const factureInfo = new Map<string, { id: string; clientId: string; date: Date; neuf: boolean }>();
   const nouvF: any[] = []; const vuF = new Set<string>(); let fIgn = 0, payeRecalcule = 0;
@@ -475,29 +482,43 @@ async function main() {
     else if (compte && type === 'COMPTE FOURNISSEUR') soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + e - s);
     else if (compte && type === 'COMPTE CLIENT') soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + s - e);
     const factureAbsente = piece.startsWith('FACT') && e !== 0 && !factureInfo.has(piece);
-    const base = { societeId, numero, dateOperation: d, libelle: cut(factureAbsente ? `${motif ?? tt} (facture ${piece} absente de l'export)` : motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: type === 'SANS_COMPTE' ? 'A_VERIFIER' : statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
+    // règlement en trop (doublon probable) : part imputable à la facture et excédent, voir allouerReglements
+    const al = e > 0 && piece.startsWith('FACT') && factureInfo.has(piece) ? allocation.get(String(idSrc)) : undefined;
+    const toutExcedent = !!al && al.alloue <= 1;
+    const base = { societeId, numero, dateOperation: d, libelle: cut(factureAbsente ? `${motif ?? tt} (facture ${piece} absente de l'export)` : toutExcedent ? `${motif ?? tt} (excédent de règlement de ${piece} : doublon probable)` : motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: type === 'SANS_COMPTE' || toutExcedent ? 'A_VERIFIER' : statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
+    // opération du compte d'origine du règlement, pour un montant donné (utilisée par le cas général et par l'excédent)
+    const construireOperation = (numOp: string, montantOp: number, extra: Record<string, unknown> = {}) => {
+      const client = type === 'COMPTE CLIENT';
+      const sens = (e > 0) !== client ? 'ENTREE' : 'SORTIE'; // compte client : sens inversé (voir plus haut)
+      const op: any = { id: randomUUID(), ...base, ...extra, numero: numOp, montant: montantOp, sens, type: client ? (sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT') : /^RETRAIT/i.test(tt) ? 'RETRAIT' : /^APPRO|^REMISE|^DEPOT|^DEPÔT/i.test(tt) ? 'VIREMENT_INTERNE' : sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT' };
+      let cl: string;
+      if (type === 'CAISSE') { cl = sens === 'ENTREE' ? 'entree-caisse' : 'sortie-caisse'; op.caisseId = caisse.id; }
+      else if (type === 'BANQUE') { cl = 'operation-bancaire'; op.compteBancaireId = compte ? banqueId.get(compte) ?? null : null; }
+      else if (type === 'COMPTE FOURNISSEUR' && compte) { cl = 'compte-fournisseur'; op.compteTiersId = tiers(compte, libellesFourn.get(compte) ?? compte, 'FOURNISSEUR'); }
+      else if (type === 'COMPTE CLIENT' && compte) { cl = 'compte-client'; op.compteTiersId = tiers(compte, `Compte client ${compte}`, 'CLIENT'); }
+      else cl = 'autre';
+      return { op, cl };
+    };
     let classe = 'deja-present';
-    if (piece.startsWith('FACT') && e !== 0 && factureInfo.has(piece)) {
+    if (piece.startsWith('FACT') && e !== 0 && factureInfo.has(piece) && !toutExcedent) {
       classe = 'paiement-facture'; const f = factureInfo.get(piece)!;
       if (e < 0) { // avoir consommé : trace en opération (sortie), sans Paiement
         if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), ...base, type: 'ENCAISSEMENT', sens: 'SORTIE', montant: -e, libelle: cut(`Régularisation avoir ${piece}`, 500) });
       } else if (f.neuf && !paiExist.has(numero)) {
-        const pid = randomUUID();
-        nouvPai.push({ id: pid, numero, clientId: f.clientId, datePaiement: d, montant: e, modePaiement: type === 'COMPTE CLIENT' ? 'COMPENSATION' : mode, reference: cut(piece, 100), banque: null, observations: motif, statut: valide ? 'VALIDE' : 'EN_ATTENTE', caisseId: type === 'CAISSE' ? caisse.id : null, compteBancaireId: type === 'BANQUE' && compte ? banqueId.get(compte) ?? null : null, createurId: userDeSaisie(r.SaisiPar), createdAt: saisi ?? d });
-        nouvPF.push({ paiementId: pid, factureId: f.id, montant: e });
+        const pid = randomUUID(); const imputable = al ? al.alloue : e;
+        nouvPai.push({ id: pid, numero, clientId: f.clientId, datePaiement: d, montant: imputable, modePaiement: type === 'COMPTE CLIENT' ? 'COMPENSATION' : mode, reference: cut(piece, 100), banque: null, observations: motif, statut: valide ? 'VALIDE' : 'EN_ATTENTE', caisseId: type === 'CAISSE' ? caisse.id : null, compteBancaireId: type === 'BANQUE' && compte ? banqueId.get(compte) ?? null : null, createurId: userDeSaisie(r.SaisiPar), createdAt: saisi ?? d });
+        nouvPF.push({ paiementId: pid, factureId: f.id, montant: imputable });
+      }
+      if (al && al.excedent > 1 && f.neuf && !opExist.has(`${numero}-EXC`)) { // partie du règlement au-delà du TTC
+        const { op } = construireOperation(`${numero}-EXC`, al.excedent, { statut: 'A_VERIFIER', libelle: cut(`${motif ?? tt} (excédent de règlement de ${piece} : doublon probable)`, 500) });
+        nouvOp.push(op); classes['reglement-excedentaire'] = (classes['reglement-excedentaire'] ?? 0) + 1;
       }
     } else if (type === 'CAISSE' && s > 0 && str(r.NumFacture) && trouveDossier(r.NumFacture)) {
       classe = 'depense-dossier';
       if (!depExist.has(numero)) nouvDep.push({ id: randomUUID(), societeId, numero, dossierId: trouveDossier(r.NumFacture)!.id, caisseId: caisse.id, dotationId: str(r.NumDotation) ? dotationId.get(str(r.NumDotation)!) ?? null : null, dateDepense: d, categorie: cut(tt, 100), designation: cut(motif ?? tt, 500), montant: s, modePaiement: mode, reference: cut(str(r.NumCheque), 100), statut: 'VALIDE', createdAt: saisi ?? d });
     } else if (!opExist.has(numero)) {
-      const client = type === 'COMPTE CLIENT';
-      const sens = (e > 0) !== client ? 'ENTREE' : 'SORTIE'; // compte client : sens inversé (voir plus haut)
-      const op: any = { id: randomUUID(), ...base, montant, sens, type: client ? (sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT') : /^RETRAIT/i.test(tt) ? 'RETRAIT' : /^APPRO|^REMISE|^DEPOT|^DEPÔT/i.test(tt) ? 'VIREMENT_INTERNE' : sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT' };
-      if (type === 'CAISSE') { classe = sens === 'ENTREE' ? 'entree-caisse' : 'sortie-caisse'; op.caisseId = caisse.id; }
-      else if (type === 'BANQUE') { classe = 'operation-bancaire'; op.compteBancaireId = compte ? banqueId.get(compte) ?? null : null; }
-      else if (type === 'COMPTE FOURNISSEUR' && compte) { classe = 'compte-fournisseur'; op.compteTiersId = tiers(compte, libellesFourn.get(compte) ?? compte, 'FOURNISSEUR'); }
-      else if (type === 'COMPTE CLIENT' && compte) { classe = 'compte-client'; op.compteTiersId = tiers(compte, `Compte client ${compte}`, 'CLIENT'); }
-      else { classe = 'autre'; }
+      const { op, cl } = construireOperation(numero, montant);
+      classe = toutExcedent ? 'reglement-excedentaire' : cl;
       nouvOp.push(op);
       classes[classe] = (classes[classe] ?? 0) + 1; continue;
     }

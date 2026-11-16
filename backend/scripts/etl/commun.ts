@@ -66,6 +66,33 @@ export function loginDe(v: string): string {
   return ({ edoukou: 'edoukou.sandrine' } as Record<string, string>)[l] ?? l;
 }
 
+/**
+ * Allocation des règlements d'une facture, par ordre chronologique, dans la limite de son TTC.
+ * Un règlement en trop (doublon de saisie probable) est renvoyé avec son excédent : il ne doit pas être imputé à la facture.
+ * `ttc` : TTC par numéro de facture (majuscules), factures normales seulement. Résultat : par n° d'enregistrement, la part
+ * imputable et l'excédent, uniquement pour les lignes touchées par un dépassement.
+ */
+export function allouerReglements(reglements: Row[], ttc: Map<string, number>): Map<string, { facture: string; alloue: number; excedent: number }> {
+  const parFacture = new Map<string, Row[]>();
+  for (const r of reglements) {
+    if (num(r.supprimer) === 1 || num(r['MontantReglé']) <= 0) continue;
+    const p = (str(r.NumCheque) ?? '').toUpperCase();
+    if (p.startsWith('FACT') && (ttc.get(p) ?? 0) > 0) parFacture.set(p, [...(parFacture.get(p) ?? []), r]);
+  }
+  const res = new Map<string, { facture: string; alloue: number; excedent: number }>();
+  for (const [facture, rows] of parFacture) {
+    const plafond = ttc.get(facture)!;
+    if (rows.reduce((a, r) => a + num(r['MontantReglé']), 0) <= plafond + 1) continue;
+    rows.sort((a, b) => (date(a['DateRèglement'])?.getTime() ?? 0) - (date(b['DateRèglement'])?.getTime() ?? 0) || num(a['N° Enr.']) - num(b['N° Enr.']));
+    let cumul = 0;
+    for (const r of rows) {
+      const e = num(r['MontantReglé']); const alloue = Math.max(0, Math.min(e, plafond - cumul)); cumul += alloue;
+      res.set(String(r['N° Enr.']), { facture, alloue, excedent: e - alloue });
+    }
+  }
+  return res;
+}
+
 /** Fusion des clients en double (même NCC, ou même raison sociale) ; le survivant est celui qui a le plus de dossiers. */
 export function calculerFusionClients(clients: Row[], dossiers: Row[]): Map<string, string> {
   const nbDossiers = new Map<string, number>();

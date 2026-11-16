@@ -14,6 +14,7 @@
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
+import { allouerReglements } from './commun';
 
 const DIR = process.argv[2] || process.env.ETL_DIR || 'C:\\Users\\SANOGO\\Desktop\\ETL';
 const SORTIE = process.env.ETL_SORTIE || path.join(__dirname, '..', '..', 'logs', 'etl-simulation');
@@ -350,6 +351,10 @@ function main() {
   const compter = (c: string, e: number, s: number) => { const x = (classes[c] ??= { n: 0, entrees: 0, sorties: 0 }); x.n++; x.entrees += e; x.sorties += s; };
   const utilisateurs = new Set<string>();
   const payeParFacture = new Map<string, number>();
+  // règlements en trop (doublons de saisie) : plafonnés au TTC de chaque facture normale
+  const ttcParFacture = new Map<string, number>();
+  for (const [n, f] of facturesIndex) { const ttc = num(f['Total TTC Client']); if (ttc > 0 && !/^\s*(AVOIR|NOTE DE DEBIT)/i.test(str(f.Libelle) ?? '')) ttcParFacture.set(n.toUpperCase(), ttc); }
+  const allocation = allouerReglements(rg, ttcParFacture);
   const soldeParCompte = new Map<string, number>();
   const soldeTiers = new Map<string, number>();
   let regulSerenity = 0; // paiements à SERENITY SA faits par banque/caisse hors compte fournisseur FF005
@@ -381,9 +386,13 @@ function main() {
     else if (!type && compte && codesClient.has(survivantDe(compte))) { type = 'COMPTE CLIENT'; signaler('JOURNAL', id, 'CORRECTION', 'type-compte-deduit-du-numero', `${compte} -> COMPTE CLIENT (${fmt(e - s)})`); }
     const factureAbsente = pieceFacture.startsWith('FACT') && e !== 0 && !factNums.has(pieceFacture);
     if (factureAbsente) signaler('JOURNAL', id, 'CORRECTION', 'paiement-facture-absente-importe-comme-operation', `${pieceFacture} : opération du compte client, sans facture`);
-    if (pieceFacture.startsWith('FACT') && e !== 0 && !factureAbsente) {
+    const al = e > 0 && pieceFacture.startsWith('FACT') && !factureAbsente ? allocation.get(String(id)) : undefined;
+    if (al && al.excedent > 1) signaler('JOURNAL', id, 'CORRECTION', 'reglement-excedentaire-importe-a-verifier', `${pieceFacture} : ${fmt(al.excedent)} au-delà du TTC (doublon probable), importé comme opération « à vérifier »${al.alloue > 1 ? `, ${fmt(al.alloue)} imputés à la facture` : ''}`);
+    if (al && al.alloue <= 1) {
+      classe = 'reglement-excedentaire'; // ligne entièrement en trop : opération du compte d'origine, sans Paiement
+    } else if (pieceFacture.startsWith('FACT') && e !== 0 && !factureAbsente) {
       classe = 'paiement-facture';
-      payeParFacture.set(pieceFacture, (payeParFacture.get(pieceFacture) ?? 0) + e);
+      payeParFacture.set(pieceFacture, (payeParFacture.get(pieceFacture) ?? 0) + (al ? al.alloue : e));
     } else if (type === 'COMPTE CLIENT') {
       classe = 'mouvement-compte-client';
       if (compte && !codesClient.has(survivantDe(compte))) { clientsInconnus.add(survivantDe(compte)); signaler('JOURNAL', id, 'CORRECTION', 'client-cree-a-completer', `${compte} -> « ${nomInconnu(survivantDe(compte))} »`); }
