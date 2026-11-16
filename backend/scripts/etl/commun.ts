@@ -74,6 +74,15 @@ export function loginDe(v: string): string {
  */
 export const COMPTE_CLIENT_IMPOSE: Record<string, string> = { '46310': 'CL2025197', '48768': 'CL2025197' };
 export const DOUBLON_DE: Record<string, string> = { '47170': '46310' };
+/**
+ * Entrées bancaires « paiement suivant budget » sans moitié compte client dans le journal (clé : N° d'enregistrement de
+ * l'entrée bancaire) : une entrée de régularisation crédite la provision du client du dossier, sans toucher à la banque.
+ * N° 45210 : dossier I-183/2025, EKDS NOUVELLE. N° 47344 : dossier I-286/2025, TATA AFRICA CI.
+ */
+export const REGULARISATION_CLIENT: Record<string, { client: string; dossier: string }> = {
+  '45210': { client: 'CL202120', dossier: 'I-183/2025' },
+  '47344': { client: 'CL2023132', dossier: 'I-286/2025' },
+};
 
 /**
  * Allocation des règlements d'une facture, par ordre chronologique, dans la limite de son TTC.

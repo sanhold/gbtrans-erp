@@ -14,7 +14,7 @@
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
-import { allouerReglements, COMPTE_CLIENT_IMPOSE, DOUBLON_DE } from './commun';
+import { allouerReglements, COMPTE_CLIENT_IMPOSE, DOUBLON_DE, REGULARISATION_CLIENT } from './commun';
 
 const DIR = process.argv[2] || process.env.ETL_DIR || 'C:\\Users\\SANOGO\\Desktop\\ETL';
 const SORTIE = process.env.ETL_SORTIE || path.join(__dirname, '..', '..', 'logs', 'etl-simulation');
@@ -417,6 +417,11 @@ function main() {
     const cleCompte = type === 'CAISSE' ? 'CAISSE' : compte ?? '(vide)';
     if (type === 'CAISSE' || type === 'BANQUE') soldeParCompte.set(cleCompte, (soldeParCompte.get(cleCompte) ?? 0) + e - s);
     // comptes tiers : fournisseur = entrées - sorties ; client = sorties - entrées (provision, sens inversé par rapport à l'ancien logiciel)
+    const regulC = REGULARISATION_CLIENT[String(id)];
+    if (regulC && type === 'BANQUE' && e > 0) {
+      soldeTiers.set(`C|${survivantDe(regulC.client)}`, (soldeTiers.get(`C|${survivantDe(regulC.client)}`) ?? 0) + e);
+      signaler('JOURNAL', id, 'CORRECTION', 'regularisation-compte-client', `entrée de +${fmt(e)} ajoutée au compte ${regulC.client} (budget ${regulC.dossier}, acompte bancaire sans contrepartie compte client)`);
+    }
     if ((type === 'BANQUE' || type === 'CAISSE') && s > 0 && e === 0 && /SEREN/.test(norm(`${str(r.NumTiers) ?? ''} ${str(r.Motif) ?? ''}`))) regulSerenity += s;
     if (compte && type === 'COMPTE FOURNISSEUR') soldeTiers.set(`F|${compte}`, (soldeTiers.get(`F|${compte}`) ?? 0) + e - s);
     if (compte && type === 'COMPTE CLIENT') soldeTiers.set(`C|${survivantDe(compte)}`, (soldeTiers.get(`C|${survivantDe(compte)}`) ?? 0) + s - e);

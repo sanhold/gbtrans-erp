@@ -351,3 +351,27 @@ Effet net sur le payé total : +47 732 138 par rapport aux fiches.
 **Les 5 lignes encore « à vérifier »** ont toutes leur moitié bancaire, mais aucune indication de client : N° 41654 (3 000 000, « premier versement sur le compte », UBA 41653), N° 42215 (2 200 000, remboursement de caution, 42216), N° 42419 (2 772 000, « transfert interne », 42418, déjà repris dans la paire 42876 et 42877 du 16/04), N° 47582 (1 500 000, motif illisible, 47581) et N° 47170 (doublon). À rattacher par la comptabilité si le client est identifié.
 
 **À examiner avec la comptabilité.** Six autres entrées bancaires « paiement suivant budget » de 2025 n'ont pas de moitié compte client du même montant (3 569 366 ; 8 771 099 AFRICA TRAILER I-245/2025 ; 15 000 000 ISOSIGN I-026/2025 ; 16 517 913 ; 19 450 431 ; 43 038 228 I-183/2025), soit 106,3 M. Elles ont peut-être été ventilées en plusieurs lignes de montants différents ; sinon la provision des clients concernés est sous-évaluée.
+
+## 18. Les six entrées bancaires « paiement suivant budget » sans moitié compte client (tranché)
+
+**Méthode.** Les six entrées bancaires de 2025 sans moitié compte client de même montant et de même motif ont été reprises une à une, en cherchant sur le même jour, le même client et les mêmes dossiers.
+
+| N° | Date | Montant | Dossier | Résultat |
+|---|---|---|---|---|
+| 42196 | 11/03/2025 | 15 000 000 | I-026/2025 ISOSIGN | Moitié trouvée : N° 42197, motif illisible (« ??? »). Rien à faire |
+| 47574 | 03/11/2025 | 8 771 099 | I-245/2025 | Moitié trouvée : N° 47575 sur le compte EKDS (le motif précise « AFRICA TRAILER p/c EKDS »). Rien à faire |
+| 45421 | 19/08/2025 | 16 517 913 | I-136/2025 (12 582 530) et I-132 (3 935 383) | Moitié trouvée : N° 45420, motif fautif. **Mais elle est sur le compte CL202122 (AFRICA TRAILER INDUSTRIE)**, alors que les dossiers cités sont ceux de FOURNITURE INDUSTRIELLE ET MAINTENANCE (I-136) et de COASTWIN (I-132) : compte probablement erroné, à confirmer |
+| 44260 | 01/07/2025 | 3 569 366 | I-097/2025 | Moitié trouvée : N° 43477 de **3 596 366** : inversion de chiffres, 27 000 de plus au compte client (AFRICA TRAILER) qu'en banque |
+| 45210 | 12/08/2025 | 43 038 228 | I-183/2025 EKDS NOUVELLE | **Aucune moitié compte client** |
+| 47344 | 24/10/2025 | 19 450 431 | I-286/2025 TATA AFRICA CI | **Aucune moitié compte client** |
+
+**Décision : régulariser N° 45210 et N° 47344.** L'argent est bien en banque, mais la provision du client n'a jamais enregistré ces deux acomptes. Une entrée de régularisation (`ETL-REG-45210`, `ETL-REG-47344`) crédite le compte client du dossier, sans toucher à la banque ni à la caisse. Même logique que SERENITY (§ 9). Règles dans `commun.ts` (`REGULARISATION_CLIENT`), appliquées par l'import et par la simulation (alerte `regularisation-compte-client`).
+
+| Compte client | Régularisation | Provision après |
+|---|---|---|
+| EKDS NOUVELLE (CL202120) | +43 038 228 | 281 437 931 |
+| TATA AFRICA CI (CL2023132) | +19 450 431 | 1 310 706 715 |
+
+**Effets.** Provisions clients : **3 899 384 577** (3 836 895 918 + 62 488 659), 99 comptes dont 31 positifs et aucun négatif. Banques et caisse inchangées. Compensation proposée dans l'état de rapprochement (§ 11) : 3 300 334 563 au total, dont 2 505 336 563 sur les factures 2025. L'import reste relançable : une régularisation n'est créée qu'une fois.
+
+**À confirmer par la comptabilité.** (1) Le compte crédité par N° 45420 (16,5 M, AFRICA TRAILER INDUSTRIE au lieu des clients des dossiers I-136 et I-132). (2) L'écart de 27 000 entre N° 44260 et N° 43477 : montant bancaire exact ou montant du compte client, non corrigé ici. (3) Que ces deux acomptes n'ont pas été consommés par un autre moyen que le compte client.

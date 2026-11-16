@@ -19,7 +19,7 @@ import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import {
   Row, str, num, date, norm, cut, estTotal, ajouterJours, lire, normaliserNumeroDossier,
-  STATUT_DOSSIER, TYPE_TRANSPORT, natureDossier, modePaiement, loginDe, calculerFusionClients, allouerReglements, COMPTE_CLIENT_IMPOSE, DOUBLON_DE,
+  STATUT_DOSSIER, TYPE_TRANSPORT, natureDossier, modePaiement, loginDe, calculerFusionClients, allouerReglements, COMPTE_CLIENT_IMPOSE, DOUBLON_DE, REGULARISATION_CLIENT,
 } from './commun';
 
 const args = process.argv.slice(2);
@@ -454,6 +454,7 @@ async function main() {
   const nouvOp: any[] = []; const nouvDep: any[] = []; const nouvPai: any[] = []; const nouvPF: any[] = [];
   let jIgn = 0, jDates = 0; const classes: Record<string, number> = {};
   let regulSerenity = 0; let regulDate: Date | null = null;
+  const regulsClient: { idSrc: string; client: string; dossier: string; montant: number; date: Date }[] = [];
   const libellesFourn = new Map(fournSrc.map((r) => [String(r['N° Fournisseur']).trim(), str(r['Raison Sociale']) ?? '']));
   for (const r of rgSrc) {
     const idSrc = r['N° Enr.']; const numero = `ETL-${idSrc}`;
@@ -475,6 +476,8 @@ async function main() {
     const montant = e > 0 ? e : s;
     // Paiements à SERENITY SA faits par banque ou caisse sans passer par son compte fournisseur (FF005) : cumulés pour la régularisation
     if ((type === 'BANQUE' || type === 'CAISSE') && s > 0 && e === 0 && /SEREN/.test(norm(`${str(r.NumTiers) ?? ''} ${motif ?? ''}`))) { regulSerenity += s; if (!regulDate || d > regulDate) regulDate = d; }
+    const regul = REGULARISATION_CLIENT[String(idSrc)];
+    if (regul && type === 'BANQUE' && e > 0) regulsClient.push({ idSrc: String(idSrc), ...regul, montant: e, date: d });
     // soldes
     if (type === 'CAISSE') soldes.caisse += e - s;
     else if (type === 'BANQUE' && compte) soldes.banque.set(compte, (soldes.banque.get(compte) ?? 0) + e - s);
@@ -532,6 +535,13 @@ async function main() {
     if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), societeId, numero, type: 'ENCAISSEMENT', sens: 'ENTREE', montant: regulSerenity, dateOperation: regulDate!, libelle: 'Régularisation import : paiements SERENITY SA faits par banque/caisse hors compte fournisseur', statut: 'VALIDE', observations: 'Écriture ajoutée à la reprise ; ne touche ni la banque ni la caisse', compteTiersId: tiers('FF005', libellesFourn.get('FF005') ?? 'FF005', 'FOURNISSEUR'), createdAt: regulDate! });
     soldes.tiers.set('COMPTE FOURNISSEUR|FF005', (soldes.tiers.get('COMPTE FOURNISSEUR|FF005') ?? 0) + regulSerenity);
     console.log(`    régularisation FF005 : +${fmt(regulSerenity)}`);
+  }
+  // Régularisations client : acomptes bancaires sans moitié compte client (décision validée)
+  for (const g of regulsClient) {
+    const numero = `ETL-REG-${g.idSrc}`;
+    if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), societeId, numero, type: 'ENCAISSEMENT', sens: 'ENTREE', montant: g.montant, dateOperation: g.date, libelle: cut(`Régularisation import : acompte bancaire N° ${g.idSrc} (budget ${g.dossier}) sans contrepartie compte client`, 500)!, statut: 'VALIDE', observations: 'Écriture ajoutée à la reprise ; ne touche ni la banque ni la caisse', compteTiersId: tiers(g.client, `Compte client ${g.client}`, 'CLIENT'), createdAt: g.date });
+    soldes.tiers.set(`COMPTE CLIENT|${g.client}`, (soldes.tiers.get(`COMPTE CLIENT|${g.client}`) ?? 0) + g.montant);
+    console.log(`    régularisation client ${g.client} : +${fmt(g.montant)} (N° ${g.idSrc}, ${g.dossier})`);
   }
   // libellés des comptes clients
   const nomClient = new Map(clientsSrc.map((r) => [String(r['N° Client']).trim(), str(r['Raison Sociale']) ?? '']));
