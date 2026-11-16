@@ -144,7 +144,7 @@ export default function ArchivesPage() {
     { cle: 'nom', libelle: 'Document', rendu: d => <DoubleLigne haut={<button type="button" onClick={(e) => { e.stopPropagation(); telechargerDocument(d); }} className="text-left text-primary-600 hover:underline" title={d.nomOriginal}>{d.nomOriginal}</button>} bas={d.description} />, texte: d => d.nomOriginal },
     { cle: 'categorie', libelle: 'Catégorie', rendu: d => <StatutPastille libelle={CATEGORIE_LABELS[d.categorie] || d.categorie} ton="gray" />, texte: d => CATEGORIE_LABELS[d.categorie] || d.categorie },
     { cle: 'lie', libelle: 'Lié à', rendu: d => (d.dossier && !d.admissionTemporaire ? <Link href={`/dossiers/${d.dossier.id}`} onClick={e => e.stopPropagation()} className="text-primary-600 hover:underline">{liePar(d)}</Link> : liePar(d)), texte: d => liePar(d) },
-    { cle: 'taille', libelle: 'Taille', align: 'right', masquerSous: 'xl', rendu: d => <span className="tabular-nums">{fmtSize(d.taille)}</span>, texte: d => fmtSize(d.taille) },
+    { cle: 'taille', libelle: 'Taille', align: 'right', masquerSous: '2xl', rendu: d => <span className="tabular-nums">{fmtSize(d.taille)}</span>, texte: d => fmtSize(d.taille) },
     { cle: 'date', libelle: 'Date', rendu: d => fmtDate(d.createdAt), texte: d => fmtDate(d.createdAt) },
   ];
 

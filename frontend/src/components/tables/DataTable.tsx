@@ -82,7 +82,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
                   {c.libelle}
                 </th>
               ))}
-              {actions && <th scope="col" className="w-px px-3 py-3"><span className="sr-only">Actions</span></th>}
+              {actions && <th scope="col" className="relative w-px px-3 py-3"><span className="sr-only">Actions</span></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-surface-700/70">
