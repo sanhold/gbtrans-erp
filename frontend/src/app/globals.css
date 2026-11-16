@@ -64,7 +64,7 @@
     @apply w-full px-3 py-2 border border-gray-300 rounded-md
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
            dark:bg-surface-800 dark:border-surface-700 dark:text-white
-           placeholder:text-gray-400 text-sm transition-colors
+           placeholder:text-gray-500 dark:placeholder:text-gray-400 text-sm transition-colors
            disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed dark:disabled:bg-surface-700;
   }
 
@@ -91,10 +91,10 @@
   }
 
   .table-header {
-    @apply px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase
-           bg-gray-50 border-0 border-b border-gray-200 whitespace-nowrap
-           dark:bg-surface-900/50 dark:text-gray-400 dark:border-surface-700;
-    letter-spacing: 0.07em;
+    @apply px-4 py-3 text-left text-[12.5px] font-bold text-white
+           bg-primary-600 border-0 whitespace-nowrap
+           dark:bg-primary-800 dark:text-white;
+    letter-spacing: 0.01em;
   }
 
   .table-header:first-child,
@@ -107,6 +107,9 @@
            dark:text-gray-200 dark:border-surface-700/70;
     letter-spacing: 0.005em;
   }
+
+  .table-container tbody tr:nth-child(even) > .table-cell { background-color: rgb(248 250 252 / 0.7); }
+  .dark .table-container tbody tr:nth-child(even) > .table-cell { background-color: rgb(255 255 255 / 0.02); }
 
   .table-row {
     @apply hover:bg-primary-50/40 dark:hover:bg-white/[.04] transition-colors;

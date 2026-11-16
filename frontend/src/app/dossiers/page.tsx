@@ -100,10 +100,10 @@ export default function DossiersPage() {
   const colonnes: Colonne<any>[] = [
     { cle: 'numero', libelle: 'Dossier', texte: (d) => d.numeroPhysique || d.numero, rendu: (d) => <DoubleLigne mono haut={d.numeroPhysique || d.numero} bas={`Créé le ${dateCourte(d.dateCreation)}`} /> },
     { cle: 'client', libelle: 'Client', texte: (d) => d.client?.raisonSociale || '', rendu: (d) => <Tiers nom={d.client?.raisonSociale} detail={[natureLabels[d.nature] || d.nature, d.type].filter(Boolean).join(' · ')} /> },
-    { cle: 'bl', libelle: 'BL / Navire', masquerSous: 'xl', texte: (d) => [d.numeroBL, d.navire].filter(Boolean).join(' — '), rendu: (d) => (d.numeroBL || d.navire) ? <DoubleLigne haut={<span className="font-mono text-[13px] font-medium text-gray-700 dark:text-gray-200">{d.numeroBL || '—'}</span>} bas={d.navire} /> : <span className="text-gray-300">—</span> },
-    { cle: 'declaration', libelle: 'Déclaration', mono: true, masquerSous: '2xl', texte: (d) => d.numeroDeclaration || '', rendu: (d) => d.numeroDeclaration || <span className="text-gray-300">—</span> },
-    { cle: 'caf', libelle: 'Valeur CAF', align: 'right', masquerSous: 'xl', texte: (d) => montant(d.valeurCAF), rendu: (d) => <Montant valeur={d.valeurCAF} /> },
-    { cle: 'docs', libelle: 'Documents', align: 'center', masquerSous: 'xl', texte: (d) => `${d._count?.proformas ?? 0} proforma(s), ${d._count?.factures ?? 0} facture(s)`, rendu: (d) => (
+    { cle: 'bl', libelle: 'BL / Navire', masquerSous: 'xl', videSi: (d) => !d.numeroBL && !d.navire, texte: (d) => [d.numeroBL, d.navire].filter(Boolean).join(' — '), rendu: (d) => (d.numeroBL || d.navire) ? <DoubleLigne haut={<span className="font-mono text-[13px] font-medium text-gray-700 dark:text-gray-200">{d.numeroBL || '—'}</span>} bas={d.navire} /> : <span className="text-gray-300">—</span> },
+    { cle: 'declaration', libelle: 'Déclaration', mono: true, masquerSous: '2xl', videSi: (d) => !d.numeroDeclaration, texte: (d) => d.numeroDeclaration || '', rendu: (d) => d.numeroDeclaration || <span className="text-gray-300">—</span> },
+    { cle: 'caf', libelle: 'Valeur CAF', align: 'right', masquerSous: 'xl', videSi: (d) => !Number(d.valeurCAF), texte: (d) => montant(d.valeurCAF), rendu: (d) => <Montant valeur={d.valeurCAF} /> },
+    { cle: 'docs', libelle: 'Documents', align: 'center', masquerSous: 'xl', videSi: (d) => !(d._count?.proformas || d._count?.factures), texte: (d) => `${d._count?.proformas ?? 0} proforma(s), ${d._count?.factures ?? 0} facture(s)`, rendu: (d) => (
       <span className="inline-flex items-center gap-1.5">
         <Compteur titre="Proformas" valeur={d._count?.proformas ?? 0} icone={<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6M7 3h7l5 5v12a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" /></svg>} />
         <Compteur titre="Factures" valeur={d._count?.factures ?? 0} icone={<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 3h10v18l-3-2-2 2-2-2-3 2zM10 8h4M10 12h4" /></svg>} />
@@ -155,8 +155,8 @@ export default function DossiersPage() {
         />
 
         {/* Filtres : recherche toujours visible ; les autres filtres se replient sur téléphone */}
-        <form onSubmit={handleSearch} className="card !p-2 sm:!p-3 space-y-2 sm:space-y-3" role="search" aria-label="Rechercher un dossier">
-          <div className="flex gap-2">
+        <form onSubmit={handleSearch} className="card !p-2 sm:!p-3 space-y-2 sm:space-y-3 lg:space-y-0 lg:flex lg:items-center lg:gap-2" role="search" aria-label="Rechercher un dossier">
+          <div className="flex gap-2 lg:flex-1 lg:min-w-[14rem]">
             <input
               type="search"
               value={search}
@@ -178,7 +178,7 @@ export default function DossiersPage() {
               Filtres{filtresActifs > 0 ? ` (${filtresActifs})` : ''}
             </button>
           </div>
-          <div className={`${filtresOuverts ? 'grid' : 'hidden'} md:grid grid-cols-2 md:grid-cols-5 gap-2`}>
+          <div className={`${filtresOuverts ? 'grid' : 'hidden'} md:grid grid-cols-2 md:grid-cols-5 gap-2 lg:grid-cols-[7.5rem_7.5rem_8.5rem_8.5rem_6.5rem] lg:flex-shrink-0`}>
             <select value={filterNature} onChange={(e) => { setFilterNature(e.target.value); setPage(1); }} className="input-field" aria-label="Nature">
               <option value="">Nature</option>
               {Object.entries(natureLabels).map(([k, v]) => (

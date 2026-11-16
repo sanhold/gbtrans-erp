@@ -15,6 +15,8 @@ export interface Colonne<T> {
   mono?: boolean;
   /** Masque la colonne en dessous de cette largeur d'écran. */
   masquerSous?: 'xl' | '2xl';
+  /** Cellule vide pour cette ligne ? Si elle l'est pour toutes les lignes affichées, la colonne est masquée (données non renseignées). */
+  videSi?: (ligne: T) => boolean;
   /** Largeur fixe, ex. « 9rem ». */
   largeur?: string;
 }
@@ -58,14 +60,15 @@ function exporterCsv<T>(colonnes: Colonne<T>[], lignes: T[], nom: string) {
 /** Tableau de bureau soigné : en-tête collant, lignes aérées, survol, ligne sélectionnée, export. */
 export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles }: DataTableProps<T>) {
   const alignement = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
-  const nbCols = colonnes.length + (actions ? 1 : 0);
+  const cols = lignes.length > 0 ? colonnes.filter((c) => !(c.videSi && lignes.every(c.videSi))) : colonnes;
+  const nbCols = cols.length + (actions ? 1 : 0);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_3px_rgba(16,24,40,0.06),0_1px_2px_rgba(16,24,40,0.04)] dark:border-surface-700 dark:bg-surface-800">
       {nomExport && lignes.length > 0 && (
         <div className="flex items-center justify-between px-5 py-3">
           <span className="text-sm text-gray-500">{lignes.length} ligne{lignes.length > 1 ? 's' : ''} sur cette page</span>
-          <button type="button" onClick={() => exporterCsv(colonnes, lignes, nomExport)}
+          <button type="button" onClick={() => exporterCsv(cols, lignes, nomExport)}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200 dark:hover:bg-surface-700">
             <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             Exporter
@@ -76,7 +79,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-y border-gray-200 bg-gray-50 dark:border-surface-700 dark:bg-surface-900/50">
-              {colonnes.map((c) => (
+              {cols.map((c) => (
                 <th key={c.cle} scope="col" style={c.largeur ? { width: c.largeur } : undefined}
                   className={clsx('px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
                   {c.libelle}
@@ -107,7 +110,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
                     tabIndex={onClicLigne ? 0 : undefined}
                     className={clsx('group transition-colors focus:outline-none focus-visible:bg-primary-50/70', onClicLigne && 'cursor-pointer',
                       actif ? 'bg-primary-50/80 dark:bg-primary-500/15 shadow-[inset_3px_0_0_theme(colors.primary.600)]' : 'hover:bg-primary-50/40 dark:hover:bg-white/[.04]')}>
-                    {colonnes.map((c) => (
+                    {cols.map((c) => (
                       <td key={c.cle}
                         className={clsx('px-4 py-3.5 whitespace-nowrap align-middle text-[13.5px] text-gray-700 dark:text-gray-200 first:pl-5', alignement(c.align), c.mono && 'font-mono text-[13px]', c.masquerSous && MASQUE[c.masquerSous])}>
                         {c.rendu(l)}
