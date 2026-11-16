@@ -375,3 +375,18 @@ Effet net sur le payé total : +47 732 138 par rapport aux fiches.
 **Effets.** Provisions clients : **3 899 384 577** (3 836 895 918 + 62 488 659), 99 comptes dont 31 positifs et aucun négatif. Banques et caisse inchangées. Compensation proposée dans l'état de rapprochement (§ 11) : 3 300 334 563 au total, dont 2 505 336 563 sur les factures 2025. L'import reste relançable : une régularisation n'est créée qu'une fois.
 
 **À confirmer par la comptabilité.** (1) Le compte crédité par N° 45420 (16,5 M, AFRICA TRAILER INDUSTRIE au lieu des clients des dossiers I-136 et I-132). (2) L'écart de 27 000 entre N° 44260 et N° 43477 : montant bancaire exact ou montant du compte client, non corrigé ici. (3) Que ces deux acomptes n'ont pas été consommés par un autre moyen que le compte client.
+
+## 19. Le compte crédité par N° 45420 (tranché) et doublon client ETMD
+
+**N° 45420 : le compte est le bon.** Le motif de l'entrée bancaire (« budget I-136/25 (12 582 530) et I-132 (3 935 383) ») cite deux dossiers de 2025 qui appartiennent à FOURNITURE INDUSTRIELLE ET MAINTENANCE et à COASTWIN, alors que le compte crédité est celui d'AFRICA TRAILER INDUSTRIE. L'année du motif est fautive : **I-136/2024 et I-132/2024 sont deux dossiers d'AFRICA TRAILER INDUSTRIE**, ouverts le 30/04/2024, dont les dépenses sont engagées juste après ce versement :
+
+| Dossier (2024) | Dépenses retrouvées (caisse, D&T FF013, assurance FF005) | Budget du motif |
+|---|---|---|
+| I-136/2024 | environ 12,3 M, du 10 au 18/09/2025 (dont 7 944 568 de droits et taxes) | 12 582 530 |
+| I-132/2024 | environ 3,8 M, du 13 au 27/08/2025 | 3 935 383 |
+
+Les deux factures correspondantes (FACT2025-2081 et FACT2025-2059, 14,3 M et 4,6 M TTC) sont au nom d'AFRICA TRAILER INDUSTRIE. **Aucune correction** : l'acompte de 16 517 913 reste sur le compte d'AFRICA TRAILER INDUSTRIE.
+
+**Les autres écarts entre compte crédité et client du dossier.** Sur 99 acomptes « budget » de 2025 qui citent un dossier, 10 ont un compte différent du client du dossier (218,7 M). Une fois N° 45420 expliqué, il reste des paiements faits par un tiers ou des références de dossier fautives, sans erreur démontrable : le motif est un texte libre et le compte crédité est celui qui a payé. Importés tels quels, à titre d'information : RAZEL-BEC pour des dossiers d'AFRICA TRAILER (N° 41324 et 41326, 41,2 M), UCP-PIF2 pour I-105/2025 (N° 43384, 10,8 M), GENICI GROUPE pour un dossier TATA (N° 42109, 7,3 M), SUCRIVOIRE pour I-281/2024 de SIMAM CI (N° 41652, 24,7 M), SIMAM CI pour I-292/2025 de TATA (N° 48891, 18,9 M), et **TATA AFRICA CI pour « I-132/2025 », 90 059 725 (N° 46037)** : ce dossier est celui de COASTWIN (vêtements), le numéro cité est donc très probablement faux ; le compte crédité (le payeur) n'est pas en cause.
+
+**Défaut corrigé : doublon client ETMD.** « ETMD » (CL2025196) et « ENTREPRISE DE TRANSPORT DE MANUTENTION ET DIVERS » (CL2023128) ont le même NCC, écrit « 1503333 Z » dans un cas et « 1503333Z » dans l'autre : la fusion ne les voyait pas. Le NCC est maintenant comparé sans espaces ni ponctuation (dans `commun.ts` et dans le simulateur) : ETMD est fusionné vers CL2023128 (clients : 212 au lieu de 213). C'était le seul doublon manqué ; les deux autres fusions par NCC (GEBATEC) sont inchangées. Par ailleurs, l'import crédite désormais toujours le compte du client **survivant** d'une fusion, comme le simulateur. Les provisions restent à 3 899 384 577.

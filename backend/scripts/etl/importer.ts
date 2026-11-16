@@ -476,6 +476,7 @@ async function main() {
     const montant = e > 0 ? e : s;
     // Paiements à SERENITY SA faits par banque ou caisse sans passer par son compte fournisseur (FF005) : cumulés pour la régularisation
     if ((type === 'BANQUE' || type === 'CAISSE') && s > 0 && e === 0 && /SEREN/.test(norm(`${str(r.NumTiers) ?? ''} ${motif ?? ''}`))) { regulSerenity += s; if (!regulDate || d > regulDate) regulDate = d; }
+    if (type === 'COMPTE CLIENT' && compte) compte = survivant(compte); // un seul compte par client fusionné
     const regul = REGULARISATION_CLIENT[String(idSrc)];
     if (regul && type === 'BANQUE' && e > 0) regulsClient.push({ idSrc: String(idSrc), ...regul, montant: e, date: d });
     // soldes
@@ -538,10 +539,10 @@ async function main() {
   }
   // Régularisations client : acomptes bancaires sans moitié compte client (décision validée)
   for (const g of regulsClient) {
-    const numero = `ETL-REG-${g.idSrc}`;
-    if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), societeId, numero, type: 'ENCAISSEMENT', sens: 'ENTREE', montant: g.montant, dateOperation: g.date, libelle: cut(`Régularisation import : acompte bancaire N° ${g.idSrc} (budget ${g.dossier}) sans contrepartie compte client`, 500)!, statut: 'VALIDE', observations: 'Écriture ajoutée à la reprise ; ne touche ni la banque ni la caisse', compteTiersId: tiers(g.client, `Compte client ${g.client}`, 'CLIENT'), createdAt: g.date });
-    soldes.tiers.set(`COMPTE CLIENT|${g.client}`, (soldes.tiers.get(`COMPTE CLIENT|${g.client}`) ?? 0) + g.montant);
-    console.log(`    régularisation client ${g.client} : +${fmt(g.montant)} (N° ${g.idSrc}, ${g.dossier})`);
+    const numero = `ETL-REG-${g.idSrc}`; const cc = survivant(g.client);
+    if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), societeId, numero, type: 'ENCAISSEMENT', sens: 'ENTREE', montant: g.montant, dateOperation: g.date, libelle: cut(`Régularisation import : acompte bancaire N° ${g.idSrc} (budget ${g.dossier}) sans contrepartie compte client`, 500)!, statut: 'VALIDE', observations: 'Écriture ajoutée à la reprise ; ne touche ni la banque ni la caisse', compteTiersId: tiers(cc, `Compte client ${cc}`, 'CLIENT'), createdAt: g.date });
+    soldes.tiers.set(`COMPTE CLIENT|${cc}`, (soldes.tiers.get(`COMPTE CLIENT|${cc}`) ?? 0) + g.montant);
+    console.log(`    régularisation client ${cc} : +${fmt(g.montant)} (N° ${g.idSrc}, ${g.dossier})`);
   }
   // libellés des comptes clients
   const nomClient = new Map(clientsSrc.map((r) => [String(r['N° Client']).trim(), str(r['Raison Sociale']) ?? '']));

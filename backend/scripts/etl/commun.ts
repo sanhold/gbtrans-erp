@@ -125,7 +125,8 @@ export function calculerFusionClients(clients: Row[], dossiers: Row[]): Map<stri
   };
   const parNcc = new Map<string, Row[]>(); const parRs = new Map<string, Row[]>();
   clients.forEach((r) => {
-    const ncc = str(r['N° CC']); if (ncc) parNcc.set(norm(ncc), [...(parNcc.get(norm(ncc)) ?? []), r]);
+    // NCC comparé sans espaces ni ponctuation (« 1503333 Z » et « 1503333Z » sont le même numéro)
+    const ncc = str(r['N° CC']); const kn = ncc ? norm(ncc).replace(/ /g, '') : ''; if (ncc) parNcc.set(kn, [...(parNcc.get(kn) ?? []), r]);
     const k = norm(str(r['Raison Sociale'])); parRs.set(k, [...(parRs.get(k) ?? []), r]);
   });
   parNcc.forEach(traiter); parRs.forEach(traiter);

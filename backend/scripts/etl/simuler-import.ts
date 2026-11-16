@@ -129,7 +129,7 @@ function main() {
   // ---------- Clients : fusion automatique par NCC ou raison sociale ----------
   const clientsSrc = lire('Table Client');
   const groupes = new Map<string, Row[]>();
-  const cleGroupe = (r: Row) => str(r['N° CC']) ? `NCC:${norm(str(r['N° CC']))}` : `RS:${norm(str(r['Raison Sociale']))}`;
+  const cleGroupe = (r: Row) => str(r['N° CC']) ? `NCC:${norm(str(r['N° CC'])).replace(/ /g, '')}` : `RS:${norm(str(r['Raison Sociale']))}`;
   clientsSrc.forEach((r) => {
     const k = cleGroupe(r);
     groupes.set(k, [...(groupes.get(k) ?? []), r]);
