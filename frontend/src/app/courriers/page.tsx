@@ -1,10 +1,18 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
+import TablePagination from '@/components/tables/TablePagination';
+import DataTable, { type Colonne } from '@/components/tables/DataTable';
+import { DoubleLigne, Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import BoutonIcone, { IconeModifier, IconeSupprimer, IconeValider, IconeEnvoyer, IconeArchiver } from '@/components/tables/BoutonIcone';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import Modal from '@/components/ui/Modal';
+import Tabs from '@/components/ui/Tabs';
+import FiltresDepliables from '@/components/ui/FiltresDepliables';
 import PickerField from '@/components/ui/PickerField';
 import { courriersApi, modelesCourrierApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -68,7 +76,7 @@ export default function CourriersPage() {
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); setAppliedSearch(search); };
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   const openCreate = () => {
     setEditing(null);
@@ -140,174 +148,168 @@ export default function CourriersPage() {
     catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
 
+  const actions = (c: any) => (
+    <>
+      <BoutonIcone titre="Modifier" ton="primaire" onClick={() => openEdit(c)}><IconeModifier /></BoutonIcone>
+      {tab === 'SORTANT' && c.statut === 'BROUILLON' && <BoutonIcone titre="Marquer envoyé" onClick={() => handleStatut(c, 'ENVOYE')}><IconeEnvoyer /></BoutonIcone>}
+      {(c.statut === 'ENVOYE' || c.statut === 'RECU') && <BoutonIcone titre="Marquer traité" onClick={() => handleStatut(c, 'TRAITE')}><IconeValider /></BoutonIcone>}
+      {['ENVOYE', 'RECU', 'TRAITE'].includes(c.statut) && <BoutonIcone titre="Archiver" onClick={() => handleStatut(c, 'ARCHIVE')}><IconeArchiver /></BoutonIcone>}
+      {c.statut === 'BROUILLON' && <BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleDelete(c)}><IconeSupprimer /></BoutonIcone>}
+    </>
+  );
+
+  const tiers = (c: any) => (tab === 'ENTRANT' ? c.expediteur : c.destinataire) || null;
+  const dossierDe = (c: any) => c.dossiers?.[0]?.dossier;
+  const dateDe = (c: any) => fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation);
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'courrier', libelle: 'Courrier', rendu: c => <DoubleLigne mono haut={c.numero} bas={dateDe(c)} />, texte: c => c.numero },
+    { cle: 'tiers', libelle: tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire', rendu: c => <Tiers nom={tiers(c)} detail={c.objet} />, texte: c => `${tiers(c) || ''} — ${c.objet}` },
+    { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl', rendu: c => (dossierDe(c) ? <Link href={`/dossiers/${dossierDe(c).id}`} onClick={e => e.stopPropagation()} className="font-mono text-primary-600 hover:underline">{dossierDe(c).numeroPhysique || dossierDe(c).numero}</Link> : '—'), texte: c => dossierDe(c)?.numeroPhysique || dossierDe(c)?.numero || '' },
+    { cle: 'priorite', libelle: 'Priorité', rendu: c => <StatutPastille libelle={PRIORITE_LABELS[c.priorite] || c.priorite} ton={tonDepuisBadge(PRIORITE_BADGE[c.priorite])} />, texte: c => PRIORITE_LABELS[c.priorite] || c.priorite },
+    { cle: 'statut', libelle: 'Statut', rendu: c => <StatutPastille libelle={STATUT_LABELS[c.statut] || c.statut} ton={tonDepuisBadge(STATUT_BADGE[c.statut])} />, texte: c => STATUT_LABELS[c.statut] || c.statut },
+  ];
+
+  const vide = <EmptyState titre={`Aucun courrier ${tab === 'ENTRANT' ? 'reçu' : 'envoyé'}`} description="Enregistrez un courrier avec le bouton « Nouveau »." action={<button type="button" onClick={openCreate} className="btn-primary">Nouveau courrier</button>} />;
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1">Courriers</h1>
-            <div className="flex gap-0.5 bg-gray-100 dark:bg-surface-700 rounded-lg p-0.5 flex-shrink-0">
-              <button type="button" onClick={() => setTab('ENTRANT')} className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${tab === 'ENTRANT' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}>Reçus</button>
-              <button type="button" onClick={() => setTab('SORTANT')} className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${tab === 'SORTANT' ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}>Envoyés</button>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Courriers"
+          sousTitre="Courriers reçus et envoyés"
+          sousTitreMasqueMobile
+          actions={
+            <>
+              <Link href="/parametres/modeles-courrier" className="btn-secondary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">Modèles</Link>
+              <button type="button" onClick={openCreate} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <span className="sm:hidden">Nouveau</span><span className="hidden sm:inline">Nouveau courrier</span>
+              </button>
+            </>
+          }
+        />
+
+        <Tabs ariaLabel="Type de courrier" value={tab} onChange={(k) => setTab(k as 'ENTRANT' | 'SORTANT')} items={[{ key: 'ENTRANT', label: 'Reçus' }, { key: 'SORTANT', label: 'Envoyés' }]} />
+
+        <FiltresDepliables actifs={(appliedSearch ? 1 : 0) + (statutFiltre ? 1 : 0)}>
+          <form onSubmit={handleSearch}>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_12rem_auto] gap-3 items-end">
+              <div><label className="label">Recherche</label><input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field" placeholder="N°, objet, expéditeur/destinataire..." /></div>
+              <div>
+                <label className="label">Statut</label>
+                <select value={statutFiltre} onChange={e => { setStatutFiltre(e.target.value); setPage(1); }} className="input-field">
+                  <option value="">Tous</option>
+                  {Object.entries(STATUT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <button type="submit" className="btn-primary w-full sm:w-auto">Afficher</button>
             </div>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-48 flex-shrink-0" placeholder="N°, objet, expéditeur/destinataire..." />
-            <select value={statutFiltre} onChange={e => { setStatutFiltre(e.target.value); setPage(1); }} className="input-field !py-1.5 text-xs w-32 flex-shrink-0">
-              <option value="">Tous statuts</option>
-              {Object.entries(STATUT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-            <Link href="/parametres/modeles-courrier" className="text-xs text-primary-600 hover:underline flex-shrink-0 whitespace-nowrap">Modèles →</Link>
-            <button type="button" onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouveau Courrier
-            </button>
           </form>
+        </FiltresDepliables>
+
+        <div className="hidden lg:block">
+          <DataTable
+            colonnes={colonnes}
+            lignes={items}
+            cleLigne={(c) => c.id}
+            chargement={loading}
+            nomExport="courriers"
+            actionsToujoursVisibles
+            actions={actions}
+            pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />}
+            vide={vide}
+          />
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-                <col style={{ width: '25%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '14%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N°</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">{tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Objet</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Priorité</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={8} />
-              ) : items.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun courrier {tab === 'ENTRANT' ? 'reçu' : 'envoyé'}</td></tr>
-              ) : items.map(c => (
-                <tr key={c.id} className="table-row">
-                  <td className="table-cell !px-1" data-label="Actions">
-                    <div className="flex gap-0.5 items-center">
-                      <button onClick={() => openEdit(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Modifier">
-                        <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      </button>
-                      {c.statut === 'BROUILLON' && (
-                        <button onClick={() => handleDelete(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Supprimer">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      )}
-                      {tab === 'SORTANT' && c.statut === 'BROUILLON' && (
-                        <button onClick={() => handleStatut(c, 'ENVOYE')} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer envoyé">
-                          <svg className="w-3.5 h-3.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                        </button>
-                      )}
-                      {(c.statut === 'ENVOYE' || c.statut === 'RECU') && (
-                        <button onClick={() => handleStatut(c, 'TRAITE')} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Marquer traité">
-                          <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        </button>
-                      )}
-                      {['ENVOYE', 'RECU', 'TRAITE'].includes(c.statut) && (
-                        <button onClick={() => handleStatut(c, 'ARCHIVE')} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title="Archiver">
-                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 01-2-2V4a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N°" title={c.numero}>{c.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label={tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}>{(tab === 'ENTRANT' ? c.expediteur : c.destinataire) || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Objet" title={c.objet}>{c.objet}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">
-                    {c.dossiers?.[0]?.dossier ? <Link href={`/dossiers/${c.dossiers[0].dossier.id}`} className="text-primary-600 hover:underline">{c.dossiers[0].dossier.numeroPhysique || c.dossiers[0].dossier.numero}</Link> : '-'}
-                  </td>
-                  <td className="table-cell !px-1.5" data-label="Priorité"><span className={`badge ${PRIORITE_BADGE[c.priorite]} !text-[10px] !px-1.5 !py-0 truncate`}>{PRIORITE_LABELS[c.priorite]}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px] !px-1.5 !py-0 truncate`}>{STATUT_LABELS[c.statut]}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            [0, 1, 2].map(i => <div key={i} className="card !p-0 animate-pulse h-24" />)
+          ) : items.length === 0 ? (
+            <div className="card">{vide}</div>
+          ) : items.map(c => (
+            <div key={c.id} className="card !p-0 overflow-hidden">
+              <div className="px-4 pt-3 pb-2 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">{c.numero}</span>
+                  <StatutPastille libelle={STATUT_LABELS[c.statut] || c.statut} ton={tonDepuisBadge(STATUT_BADGE[c.statut])} />
+                </div>
+                <div className="text-[13px] font-medium text-gray-900 dark:text-white line-clamp-2">{c.objet}</div>
+                <div className="text-xs text-gray-500 truncate">{tiers(c) || '—'} · {dateDe(c)}</div>
+                <div className="flex items-center gap-2 text-xs">
+                  <StatutPastille libelle={PRIORITE_LABELS[c.priorite] || c.priorite} ton={tonDepuisBadge(PRIORITE_BADGE[c.priorite])} />
+                  {dossierDe(c) && <Link href={`/dossiers/${dossierDe(c).id}`} className="font-mono text-primary-600">{dossierDe(c).numeroPhysique || dossierDe(c).numero}</Link>}
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 px-4 pb-3">{actions(c)}</div>
+            </div>
+          ))}
+          <div className="card !p-0 overflow-hidden"><PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} /></div>
         </div>
       </div>
 
-      {/* Modal création / édition */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">{editing ? `Modifier ${editing.numero}` : `Nouveau Courrier ${tab === 'ENTRANT' ? 'Reçu' : 'Envoyé'}`}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? `Modifier ${editing.numero}` : `Nouveau courrier ${tab === 'ENTRANT' ? 'reçu' : 'envoyé'}`}
+        size="lg"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-courrier" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Créer'}</button>
+          </>
+        }
+      >
+        <form id="form-courrier" onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {!editing && modeles.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className="label">Modèle</label>
+                <select value={form.modeleId} onChange={e => applyModele(e.target.value)} className="input-field">
+                  <option value="">-- Aucun (saisie libre) --</option>
+                  {modeles.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="label">{tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}</label>
+              <input type="text" value={form.tiers} onChange={e => setForm({ ...form, tiers: e.target.value })} className="input-field" />
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {!editing && modeles.length > 0 && (
-                  <div className="col-span-2">
-                    <label className="label">Modèle</label>
-                    <select value={form.modeleId} onChange={e => applyModele(e.target.value)} className="input-field">
-                      <option value="">-- Aucun (saisie libre) --</option>
-                      {modeles.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                    </select>
-                  </div>
-                )}
+            <div>
+              <label className="label">Dossier lié</label>
+              <PickerField value={form.dossierId} onChange={applyDossier} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
+            </div>
+            <div className="sm:col-span-2"><label className="label">Objet *</label><input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" required /></div>
+            <div className="sm:col-span-2"><label className="label">Contenu</label><textarea value={form.contenu} onChange={e => setForm({ ...form, contenu: e.target.value })} className="input-field" rows={6} /></div>
+            <div>
+              <label className="label">Priorité</label>
+              <select value={form.priorite} onChange={e => setForm({ ...form, priorite: e.target.value })} className="input-field">
+                {Object.entries(PRIORITE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+            <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
+            {!editing && (
+              <>
                 <div>
-                  <label className="label">{tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire'}</label>
-                  <input type="text" value={form.tiers} onChange={e => setForm({ ...form, tiers: e.target.value })} className="input-field" />
-                </div>
-                <div>
-                  <label className="label">Dossier lié</label>
-                  <PickerField value={form.dossierId} onChange={applyDossier} options={dossierOptions} placeholder="-- Aucun --" title="Sélectionner un dossier" searchPlaceholder="N° physique, client..." />
-                </div>
-                <div className="col-span-2"><label className="label">Objet *</label><input type="text" value={form.objet} onChange={e => setForm({ ...form, objet: e.target.value })} className="input-field" required /></div>
-                <div className="col-span-2"><label className="label">Contenu</label><textarea value={form.contenu} onChange={e => setForm({ ...form, contenu: e.target.value })} className="input-field" rows={6} /></div>
-                <div>
-                  <label className="label">Priorité</label>
-                  <select value={form.priorite} onChange={e => setForm({ ...form, priorite: e.target.value })} className="input-field">
-                    {Object.entries(PRIORITE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  <label className="label">Statut initial</label>
+                  <select value={form.statutInitial} onChange={e => setForm({ ...form, statutInitial: e.target.value })} className="input-field">
+                    {tab === 'ENTRANT' ? (
+                      <><option value="RECU">Reçu</option><option value="BROUILLON">Brouillon (pas encore enregistré officiellement)</option></>
+                    ) : (
+                      <><option value="BROUILLON">Brouillon (à envoyer plus tard)</option><option value="ENVOYE">Envoyé maintenant</option></>
+                    )}
                   </select>
                 </div>
-                <div><label className="label">Référence</label><input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="input-field" /></div>
-                {!editing && (
-                  <>
-                    <div>
-                      <label className="label">Statut initial</label>
-                      <select value={form.statutInitial} onChange={e => setForm({ ...form, statutInitial: e.target.value })} className="input-field">
-                        {tab === 'ENTRANT' ? (
-                          <><option value="RECU">Reçu</option><option value="BROUILLON">Brouillon (pas encore enregistré officiellement)</option></>
-                        ) : (
-                          <><option value="BROUILLON">Brouillon (à envoyer plus tard)</option><option value="ENVOYE">Envoyé maintenant</option></>
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">Date {tab === 'ENTRANT' ? 'de réception' : "d'envoi"}</label>
-                      <input type="date" value={form.dateEvenement} onChange={e => setForm({ ...form, dateEvenement: e.target.value })} className="input-field" disabled={form.statutInitial === 'BROUILLON'} />
-                    </div>
-                  </>
-                )}
-                <div className="col-span-2"><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Créer'}</button>
-              </div>
-            </form>
+                <div>
+                  <label className="label">Date {tab === 'ENTRANT' ? 'de réception' : "d'envoi"}</label>
+                  <input type="date" value={form.dateEvenement} onChange={e => setForm({ ...form, dateEvenement: e.target.value })} className="input-field" disabled={form.statutInitial === 'BROUILLON'} />
+                </div>
+              </>
+            )}
+            <div className="sm:col-span-2"><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </AppLayout>
   );
 }
