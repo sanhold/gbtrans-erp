@@ -162,12 +162,12 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     collapsed && 'lg:justify-center lg:px-0 lg:mx-2',
     'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
     active
-      ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-white font-semibold'
+      ? 'bg-primary-600 dark:bg-primary-500/40 text-white font-semibold'
       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
   );
   const titleCls = clsx(collapsed && 'lg:hidden', 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
   const Icon = ({ d, active }: { d: string; active: boolean }) => (
-    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600 dark:text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d={d} />
     </svg>
   );
