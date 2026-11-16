@@ -206,3 +206,32 @@ Deux comptes fournisseurs sont négatifs dans le journal brut.
 - **Prérequis de production** : les migrations `052_decisions_fne` et `053_platform_mot_de_passe_oublie` doivent être appliquées à la base avant l'import (la copie de test en manquait).
 
 **Point à vérifier.** Les 434 factures de 2025 (3,8 Md TTC) n'ont que 6,5 M de paiements rattachés, contre 2,8 à 4,0 Md encaissés pour chacune des années précédentes. Soit les règlements de 2025 n'ont pas été rattachés aux factures dans l'ancien logiciel (acomptes sur compte client), soit l'export est incomplet. À confirmer avant de s'appuyer sur les restes à payer de 2025.
+
+## 11. Paiements 2025 : factures ouvertes et provisions clients (tranché)
+
+**Constat.** Dans l'ancien logiciel lui-même, les 434 factures de 2025 (3 803 429 353 TTC) sont à zéro payé, sauf 2 500 000 sur une facture de janvier. Seuls 43 règlements de facture sont saisis en 2025 (218 M, tous sur compte client), contre 300 à 490 par an de 2021 à 2024. Les banques et la caisse se retrouvent pourtant au franc près : il ne manque pas d'argent, il manque l'**affectation** des règlements aux factures.
+
+**Explication retenue.** Les provisions clients (3 817 702 523) ont le même ordre de grandeur que les restes de 2025 (3,80 Md), et ce rapprochement tient pour les gros comptes (TATA 1,29 Md de provision pour 1,05 Md de reste 2025, SIMAM 0,44 Md pour 0,37 Md). La « compensation » des acomptes sur les factures (règlement de facture pris sur le compte client) n'a pas été saisie en 2025. Après import, la même créance apparaît donc deux fois : en factures impayées et en provisions.
+
+**Décision : importer tel quel, sans inventer de paiement, et fournir un état de rapprochement.** La compensation se fera dans l'application, facture par facture, avec les vraies dates.
+
+Le simulateur écrit deux fichiers dans `backend/logs/etl-simulation/` (non versionnés) :
+
+| Fichier | Contenu |
+|---|---|
+| `rapprochement-clients.csv` | Par client : provision, reste des factures 2025, reste antérieur, compensation proposée, provision restante, situation |
+| `rapprochement-factures.csv` | Par facture ouverte : TTC, reste, compensation proposée (plus anciennes factures d'abord, dans la limite de la provision) |
+
+Chiffres (107 clients concernés) :
+
+| Mesure | Montant |
+|---|---|
+| Provisions clients | 3 817 702 523 |
+| Reste des factures 2025 | 3 804 444 151 |
+| Reste des factures antérieures à 2025 | 1 169 600 356 (32 clients environ) |
+| Compensation proposée, total | 3 278 084 554 |
+| dont sur les factures 2025 | 2 483 086 554 |
+
+Situations : 6 clients dont les factures sont entièrement couvertes, 21 à provision insuffisante, 3 avec provision sans facture ouverte (dont CONSEIL REGIONAL DU GBOKLE : 425 M de provision pour 2,5 M de reste, probablement une avance sur travaux non encore facturés), 77 sans provision.
+
+**Effet à connaître après import.** Tant que la compensation n'est pas saisie, les tableaux de bord et relances affichent 3,8 Md de factures de 2025 à recouvrer (échéance à 30 jours déjà dépassée), alors qu'une grande partie est couverte par des provisions détenues.

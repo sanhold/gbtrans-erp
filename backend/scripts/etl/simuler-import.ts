@@ -436,7 +436,46 @@ function main() {
   manuel.facturesPayeRecalcule = { comparees: compares, recalculees: ecarts };
   manuel.totauxFactures = { nombre: facOk, avoirs, ttc: Math.round(totalTTC), paye: Math.round(totalPaye), reste: Math.round(totalReste) };
   manuel.clientsAcreer = [...clientsInconnus];
-  
+
+  // ---------- État de rapprochement provisions clients / factures ouvertes ----------
+  // En 2025 l'ancien logiciel n'a presque plus enregistré de règlement de facture sur compte client : les provisions
+  // et les factures ouvertes couvrent donc en grande partie la même créance. Aucun paiement n'est inventé ; ce tableau
+  // propose seulement, par client, une compensation (plus anciennes factures d'abord) que la comptabilité valide.
+  const nomDeClient = new Map(clientsSrc.map((r) => [survivantDe(String(r['N° Client'])), str(r['Raison Sociale']) ?? '']));
+  type FactOuverte = { numero: string; date: Date; dossier: string; ttc: number; reste: number };
+  const ouvertesParClient = new Map<string, FactOuverte[]>();
+  for (const [n, r] of facturesIndex) {
+    const c = clientParNom.get(norm(str(r.Client))); const d = date(r['Date Facture']);
+    if (!c || !d) continue;
+    const ttc = num(r['Total TTC Client']); const reste = ttc - (payeParFacture.get(n.toUpperCase()) ?? num(r['Montant Paye']));
+    if (reste <= 1) continue;
+    ouvertesParClient.set(c, [...(ouvertesParClient.get(c) ?? []), { numero: n, date: d, dossier: str(r['N° Dossier']) ?? '', ttc, reste }]);
+  }
+  const provisions = new Map(tiersC.map((x) => [x.client, x.solde]));
+  const lignesClients: string[][] = []; const lignesFactures: string[][] = [];
+  const tot = { provision: 0, reste2025: 0, resteAnterieur: 0, comp2025: 0, compTotal: 0 };
+  for (const c of new Set([...provisions.keys(), ...ouvertesParClient.keys()])) {
+    const prov = Math.max(0, provisions.get(c) ?? 0);
+    const ouvertes = (ouvertesParClient.get(c) ?? []).sort((a, b) => a.date.getTime() - b.date.getTime());
+    let dispo = prov; let compTotal = 0, comp2025 = 0, reste2025 = 0, resteAnt = 0;
+    for (const f of ouvertes) {
+      const comp = Math.min(dispo, f.reste); dispo -= comp; compTotal += comp;
+      if (f.date.getUTCFullYear() === 2025) { reste2025 += f.reste; comp2025 += comp; } else resteAnt += f.reste;
+      lignesFactures.push([c, nomDeClient.get(c) ?? '', f.numero, f.date.toISOString().slice(0, 10), f.dossier, String(Math.round(f.ttc)), String(Math.round(f.reste)), String(Math.round(comp))]);
+    }
+    const statut = prov === 0 ? 'Sans provision' : ouvertes.length === 0 ? 'Provision sans facture ouverte' : compTotal >= reste2025 + resteAnt - 1 ? 'Factures couvertes par la provision' : 'Provision insuffisante';
+    tot.provision += prov; tot.reste2025 += reste2025; tot.resteAnterieur += resteAnt; tot.comp2025 += comp2025; tot.compTotal += compTotal;
+    lignesClients.push([c, nomDeClient.get(c) ?? '', ...[prov, reste2025, resteAnt, comp2025, compTotal, prov - compTotal].map((x) => String(Math.round(x))), statut]);
+  }
+  lignesClients.sort((a, b) => Number(b[2]) - Number(a[2]));
+  const ecrireCsv = (nom: string, entete: string[], rows: string[][]) => {
+    fs.mkdirSync(SORTIE, { recursive: true });
+    fs.writeFileSync(path.join(SORTIE, nom), '﻿' + [entete, ...rows].map((l) => l.map((x) => `"${x.replace(/"/g, '""')}"`).join(';')).join('\n'), 'utf8');
+  };
+  ecrireCsv('rapprochement-clients.csv', ['client', 'nom', 'provision', 'reste_factures_2025', 'reste_factures_anterieures', 'compensation_proposee_2025', 'compensation_proposee_totale', 'provision_restante', 'situation'], lignesClients);
+  ecrireCsv('rapprochement-factures.csv', ['client', 'nom', 'facture', 'date', 'dossier', 'ttc', 'reste', 'compensation_proposee'], lignesFactures);
+  manuel.rapprochementProvisions = { provisions: Math.round(tot.provision), reste2025: Math.round(tot.reste2025), resteAnterieur: Math.round(tot.resteAnterieur), compensable2025: Math.round(tot.comp2025), compensableTotal: Math.round(tot.compTotal) };
+
   // ---------- Sorties ----------
   fs.mkdirSync(SORTIE, { recursive: true });
   const csv = ['entite;cle;gravite;regle;detail', ...lignes.map((l) => [l.entite, l.cle, l.gravite, l.regle, l.detail].map((x) => `"${String(x).replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`).join(';'))].join('\n');
