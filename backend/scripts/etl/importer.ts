@@ -19,7 +19,7 @@ import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import {
   Row, str, num, date, norm, cut, estTotal, ajouterJours, lire, normaliserNumeroDossier,
-  STATUT_DOSSIER, TYPE_TRANSPORT, natureDossier, modePaiement, loginDe, calculerFusionClients, allouerReglements,
+  STATUT_DOSSIER, TYPE_TRANSPORT, natureDossier, modePaiement, loginDe, calculerFusionClients, allouerReglements, COMPTE_CLIENT_IMPOSE, DOUBLON_DE,
 } from './commun';
 
 const args = process.argv.slice(2);
@@ -462,7 +462,8 @@ async function main() {
     if (e === 0 && s === 0) { jIgn++; continue; }
     let d = date(r['DateRèglement']); const saisi = date(r.SaisiLe);
     if (!d || d.getFullYear() < 2020 || (saisi && d.getTime() > saisi.getTime() + 31 * 86400000)) { if (saisi) { d = saisi; jDates++; } else { jIgn++; continue; } }
-    let type = str(r.Type_Compte); const compte = str(r.NumCompte);
+    let type = str(r.Type_Compte); let compte = str(r.NumCompte);
+    if (!type && COMPTE_CLIENT_IMPOSE[String(idSrc)]) { type = 'COMPTE CLIENT'; compte = COMPTE_CLIENT_IMPOSE[String(idSrc)]; }
     if (!type && compte && banqueId.has(compte)) type = 'BANQUE';
     if (!type && compte && fournId.has(compte)) type = 'COMPTE FOURNISSEUR';
     else if (!type && compte && clientId.has(survivant(compte))) type = 'COMPTE CLIENT';
@@ -486,7 +487,7 @@ async function main() {
     // règlement en trop (doublon probable) : part imputable à la facture et excédent, voir allouerReglements
     const al = e > 0 && piece.startsWith('FACT') && factureInfo.has(piece) ? allocation.get(String(idSrc)) : undefined;
     const toutExcedent = !!al && al.alloue <= 1;
-    const base = { societeId, numero, dateOperation: d, libelle: cut(factureAbsente ? `${motif ?? tt} (facture ${piece} absente de l'export)` : toutExcedent ? `${motif ?? tt} (excédent de règlement de ${piece} : doublon probable)` : motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: type === 'SANS_COMPTE' || toutExcedent ? 'A_VERIFIER' : statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
+    const base = { societeId, numero, dateOperation: d, libelle: cut(factureAbsente ? `${motif ?? tt} (facture ${piece} absente de l'export)` : toutExcedent ? `${motif ?? tt} (excédent de règlement de ${piece} : doublon probable)` : DOUBLON_DE[String(idSrc)] ? `${motif ?? tt} (doublon de N° ${DOUBLON_DE[String(idSrc)]})` : motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: type === 'SANS_COMPTE' || toutExcedent ? 'A_VERIFIER' : statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
     // opération du compte d'origine du règlement, pour un montant donné (utilisée par le cas général et par l'excédent)
     const construireOperation = (numOp: string, montantOp: number, extra: Record<string, unknown> = {}) => {
       const client = type === 'COMPTE CLIENT';

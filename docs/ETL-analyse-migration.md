@@ -336,3 +336,18 @@ Effet net sur le payé total : +47 732 138 par rapport aux fiches.
 - **Test sur la copie** : avec trois vrais utilisateurs fictifs (un par nom, un par matricule, un par fichier), 1 914 lignes ont été réaffectées sans erreur ; la relance ne déplace plus rien et supprime les trois comptes devenus orphelins.
 
 **À faire pour la production** : après l'import et la création des vrais comptes, lancer la simulation, vérifier `propositions.csv` avec la direction (qui est qui), compléter le fichier de correspondance pour les cas sans proposition (SUPERVISEUR, ADMIN, les agents de dotation sans compte), puis appliquer. Un utilisateur de reprise sans correspondance reste inactif et garde son historique : c'est acceptable, ces agents (chauffeurs, convoyeurs) n'ont pas forcément de compte.
+
+## 17. Écritures N° 46310 et 47170 (doublon) et lignes « à vérifier » (tranché)
+
+**Constat.** Le virement UBA de 10 575 904 du 25/09/2025 (« paiement suivant budget I-224/2025 », COASTWIN) n'existe qu'**une fois** en banque (N° 46309). Sa moitié « compte client » existe **deux fois**, sans type de compte : N° 46310 (saisie le 25/09, chèque 4471076) et N° 47170 (ressaisie le 23/10 avec la faute « BUDEGET » et le chèque 4471016, mêmes saisisseur, date, montant et motif que l'entrée bancaire, qui a été saisie le même jour). Le client COASTWIN (CL2025197) n'a aucune ligne de compte dans le journal : son crédit manquait. N° 48768 (8 617 491, dossier I-132/2025, jumelle de l'entrée bancaire 48767) est dans le même cas, sans doublon. Sur 90 entrées bancaires « paiement suivant budget » de 2025, 82 ont leur moitié compte client ; ces trois lignes sont des moitiés restées sans compte.
+
+**Décision : créditer COASTWIN une seule fois.**
+- N° 46310 et N° 48768 deviennent des acomptes du compte client COASTWIN (CL2025197) : provision **+19 193 395**.
+- N° 47170 est écartée comme doublon de N° 46310 : opération « à vérifier », libellée « (doublon de N° 46310) », sans effet sur les soldes.
+- Règles dans `commun.ts` (`COMPTE_CLIENT_IMPOSE`, `DOUBLON_DE`), appliquées par l'import et la simulation (alertes `compte-client-impose` et `doublon-declare`).
+
+**Effets.** Provisions clients : 3 836 895 918 (au lieu de 3 817 702 523), 99 comptes dont 31 positifs et aucun négatif. Lignes « à vérifier » sans compte : 5 pour 20 047 904 (au lieu de 7 pour 39 241 299). Les soldes bancaires et la caisse sont inchangés. Les chiffres des § 8 et § 11 se lisent donc avec ce supplément de 19 193 395 sur la provision de COASTWIN.
+
+**Les 5 lignes encore « à vérifier »** ont toutes leur moitié bancaire, mais aucune indication de client : N° 41654 (3 000 000, « premier versement sur le compte », UBA 41653), N° 42215 (2 200 000, remboursement de caution, 42216), N° 42419 (2 772 000, « transfert interne », 42418, déjà repris dans la paire 42876 et 42877 du 16/04), N° 47582 (1 500 000, motif illisible, 47581) et N° 47170 (doublon). À rattacher par la comptabilité si le client est identifié.
+
+**À examiner avec la comptabilité.** Six autres entrées bancaires « paiement suivant budget » de 2025 n'ont pas de moitié compte client du même montant (3 569 366 ; 8 771 099 AFRICA TRAILER I-245/2025 ; 15 000 000 ISOSIGN I-026/2025 ; 16 517 913 ; 19 450 431 ; 43 038 228 I-183/2025), soit 106,3 M. Elles ont peut-être été ventilées en plusieurs lignes de montants différents ; sinon la provision des clients concernés est sous-évaluée.

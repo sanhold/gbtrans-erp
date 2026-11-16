@@ -14,7 +14,7 @@
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
-import { allouerReglements } from './commun';
+import { allouerReglements, COMPTE_CLIENT_IMPOSE, DOUBLON_DE } from './commun';
 
 const DIR = process.argv[2] || process.env.ETL_DIR || 'C:\\Users\\SANOGO\\Desktop\\ETL';
 const SORTIE = process.env.ETL_SORTIE || path.join(__dirname, '..', '..', 'logs', 'etl-simulation');
@@ -378,7 +378,9 @@ function main() {
     if (mode.douteux && num(r.Etat_Encaissement) === 1) signaler('JOURNAL', id, 'ALERTE', 'mode-reglement-a-qualifier', String(r['ModeRèglement']));
     if (num(r.Etat_Encaissement) === 0) nonEncaisses.n++;
     let type = str(r.Type_Compte);
-    const compte = str(r.NumCompte);
+    let compte = str(r.NumCompte);
+    if (!type && COMPTE_CLIENT_IMPOSE[String(id)]) { type = 'COMPTE CLIENT'; compte = COMPTE_CLIENT_IMPOSE[String(id)]; signaler('JOURNAL', id, 'CORRECTION', 'compte-client-impose', `${compte} (${fmt(e - s)}) : moitié compte client d'un virement bancaire, sans compte dans le fichier`); }
+    if (DOUBLON_DE[String(id)]) signaler('JOURNAL', id, 'CORRECTION', 'doublon-declare', `ressaisie de N° ${DOUBLON_DE[String(id)]} (${fmt(e - s)}) : importée « à vérifier », sans effet sur les soldes`);
     if (!type && compte && soldesBancaires.has(compte)) {
       type = 'BANQUE'; // type vide mais compte bancaire connu : classé par numéro de compte
       signaler('JOURNAL', id, 'CORRECTION', 'type-compte-deduit-du-numero', `${compte} -> BANQUE (${fmt(e - s)})`);

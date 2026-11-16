@@ -67,6 +67,15 @@ export function loginDe(v: string): string {
 }
 
 /**
+ * Corrections validées sur des lignes du journal sans type de compte (clé : N° d'enregistrement).
+ * N° 46310 et 48768 : moitié « compte client » d'un virement bancaire (budgets des dossiers I-224/2025 et I-132/2025),
+ * restée sans compte : elle crédite COASTWIN (CL2025197). N° 47170 : ressaisie de 46310 (même montant, même motif),
+ * écartée comme doublon.
+ */
+export const COMPTE_CLIENT_IMPOSE: Record<string, string> = { '46310': 'CL2025197', '48768': 'CL2025197' };
+export const DOUBLON_DE: Record<string, string> = { '47170': '46310' };
+
+/**
  * Allocation des règlements d'une facture, par ordre chronologique, dans la limite de son TTC.
  * Un règlement en trop (doublon de saisie probable) est renvoyé avec son excédent : il ne doit pas être imputé à la facture.
  * `ttc` : TTC par numéro de facture (majuscules), factures normales seulement. Résultat : par n° d'enregistrement, la part
