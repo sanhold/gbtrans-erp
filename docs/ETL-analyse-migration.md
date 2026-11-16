@@ -298,3 +298,19 @@ Effet net sur le payé total : +47 732 138 par rapport aux fiches.
 - Le simulateur signale ces six cas (`facture-redatee-exercice-suivant`, alerte) dans `rejets.csv`.
 
 **Point de vigilance pour les 1799 à 1801.** Leur numéro normalisé est de la série **24** alors que leur date est de janvier 2025 : si la comptabilité considère le n° normalisé comme référence, ces trois factures (4 M) sont de 2024.
+
+## 15. Données de 2026 : l'export actuel s'arrête fin 2025
+
+**Constat.** Les fichiers ont été exportés le 15/11/2026 mais ne contiennent que la base « 2025 » : dernière facture le 30/12/2025 ; dernier dossier, proforma et dotation entre le 26 et le 30/12/2025 ; dans le journal `Reglement`, seulement deux saisies de 2026 (le 27/04/2026, deux paiements fournisseurs : N° 49004 et 39671) ; une admission temporaire de février 2026. Le fichier « Transaction 2025 » mentionne aussi des dates de 2026 sans lien avec des saisies (vue dérivée). Les tables portent le millésime 2025 : l'ancien logiciel garde une base par année, et les opérations de **janvier à novembre 2026 sont dans une base 2026 qui n'a pas été exportée** (réponse du propriétaire).
+
+**Conséquence.** L'import de 2025 est une reprise **arrêtée au 31/12/2025**, correcte en soi (soldes bancaires au franc près) mais incomplète pour une mise en service en novembre 2026. Aucun import en production ne doit être lancé avant la reprise de 2026, sinon les 11 mois d'activité manqueraient et les soldes seraient faux.
+
+**À exporter de la base 2026** (mêmes noms qu'en 2025, millésime 2026) : `Dossier 2026`, `Liste des Dossiers2026`, `Table Facture2026` (et `Table FactureN2 2026` si elle existe), `Table Proforma2026`, `DetailFacture`, `DetailProforma`, `Dotation2026`, `Table AT2026`, le journal des règlements de 2026, `Table Client`, `Table Fournisseur`, `Liste Compte Bancaire`, et le fichier des soldes d'ouverture s'il existe.
+
+**Points à traiter quand les fichiers seront disponibles.**
+1. **Numéros d'enregistrement.** L'import numérote les opérations `ETL-<N° Enr.>`. Une base 2026 repart probablement de 1 : la reprise 2026 doit utiliser un autre préfixe (par exemple `ETL26-`) pour ne pas entrer en collision avec 2025 ou être ignorée comme « déjà présente ».
+2. **Soldes d'ouverture.** Les soldes bancaires, la caisse et les comptes clients et fournisseurs en début de 2026 doivent égaler ceux de fin 2025 repris (BNI 122 530 788, BRIDGE 62 159 051, UBA 24 743 061, caisse 211 199 052, provisions clients 3 817 702 523, comptes fournisseurs 87 646 109). Tout écart sera analysé avant import.
+3. **Clients, fournisseurs, dossiers.** Un même client, fournisseur ou dossier peut figurer dans les deux bases : la reprise 2026 ne crée que les nouveaux (idempotence par code).
+4. **Reports de 2025.** Les factures de 2025 ouvertes et les provisions seront payées ou consommées en 2026 : les règlements de 2026 doivent s'imputer aux factures reprises de 2025, ce qui est possible puisque la clé est le numéro de facture.
+5. **Comptabilité.** L'exercice 2026 et ses pièces à comptabiliser seront créés à ce moment, avec la même règle que 2025.
+6. **Numérotation de l'application.** Les numéros générés par l'application (`FAC/2026/000001`, `PRO/…`) n'ont pas le même format que ceux de l'ancien logiciel (`FACT2025-2158`, `PRO2024-1681`) : aucune collision possible. Les numéros physiques de dossier (`I-042/2025`) sont proposés par l'application à partir du plus grand numéro existant, donc repartent après les dossiers repris. Aucun compteur à ajuster.
