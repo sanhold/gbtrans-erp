@@ -123,7 +123,8 @@ async function main() {
   facSrc.forEach((r) => { userDeSaisie(r.SaisiePar); });
   proSrc.forEach((r) => { userDeSaisie(r.SaisiePar); });
   const agentDeMatricule = (mat: string): string =>
-    assurerUtilisateur(`agent-${mat}`, 'Agent', mat, mat.slice(0, 50));
+    // matricule préfixé : il est unique dans toute la base, un vrai utilisateur peut déjà porter le matricule brut
+    assurerUtilisateur(`agent-${mat}`, 'Agent', mat, `ETL-${mat}`.slice(0, 50));
   dotSrc.forEach((r) => { agentDeMatricule(str(r.Matricule) ?? 'INCONNU'); });
   await inserer('utilisateur', nouveauxU);
   noter('Utilisateurs de reprise', nouveauxU.length, uExist);

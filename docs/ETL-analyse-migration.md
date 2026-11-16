@@ -314,3 +314,25 @@ Effet net sur le payé total : +47 732 138 par rapport aux fiches.
 4. **Reports de 2025.** Les factures de 2025 ouvertes et les provisions seront payées ou consommées en 2026 : les règlements de 2026 doivent s'imputer aux factures reprises de 2025, ce qui est possible puisque la clé est le numéro de facture.
 5. **Comptabilité.** L'exercice 2026 et ses pièces à comptabiliser seront créés à ce moment, avec la même règle que 2025.
 6. **Numérotation de l'application.** Les numéros générés par l'application (`FAC/2026/000001`, `PRO/…`) n'ont pas le même format que ceux de l'ancien logiciel (`FACT2025-2158`, `PRO2024-1681`) : aucune collision possible. Les numéros physiques de dossier (`I-042/2025`) sont proposés par l'application à partir du plus grand `numeroPhysique` existant : l'import le renseigne désormais pour les 1 958 dossiers au format standard (les 4 autres ont un numéro non standard), et l'application proposerait `I-398/2025` après le dernier dossier repris. Aucun compteur à ajuster.
+
+## 16. Utilisateurs de reprise : rapprochement avec les vrais utilisateurs
+
+**Ce que crée l'import.** 40 utilisateurs de reprise (inactifs, mot de passe inutilisable, e-mail `…@etl-import.local`) pour conserver l'auteur de chaque pièce :
+
+| Catégorie | Nombre | Détail |
+|---|---|---|
+| Compte technique `etl-import` | 1 | Auteur des 1 962 dossiers et des 4 045 dotations (le fichier n'a pas de créateur) |
+| Saisisseurs de factures, paiements et proformas | 9 | KOFFI.AKASSI (1 037 factures, 70 paiements), NAOMIE.PRISCILLA (668), CISSE.BACARI (185 factures, 638 paiements), SUPERVISEUR (123, 235), MINGNI ARLHANDIE LOUISE (28), KONE.ABDOULAYE (10), TRAORE.KARIDJA (5), EDOUKOU.SANDRINE (2 factures, 656 paiements), DEME.RAMATOU (2, 114) |
+| Identifiants sans pièce visible | 4 | NULL, TRAORE.ABDUL, ADMIN, LASSANA (présents comme auteurs de proformas ou de lignes du journal) |
+| Agents bénéficiaires de dotations | 26 | Matricules `0xx/DG/TMS` (de 888 dotations pour 010/DG/TMS à 1 pour 017/DG/TMS) et `1` |
+
+**Défaut corrigé dans l'import.** Le matricule d'un utilisateur est unique dans **toute la base**, pas par société. Les agents de reprise portaient le matricule brut de l'ancien logiciel (`010/DG/TMS`) : si un vrai utilisateur a déjà ce matricule en production, l'insertion (qui ignore silencieusement les doublons) aurait écarté l'agent et fait échouer les dotations. Les matricules des agents sont désormais préfixés `ETL-` (`ETL-010/DG/TMS`), comme ceux des saisisseurs ; le matricule d'origine reste lisible dans le prénom.
+
+**Outil de rapprochement : `backend/scripts/etl/rapprocher-utilisateurs.ts`.** Il remplace un utilisateur de reprise par le vrai utilisateur dans **toutes** les tables qui le référencent (les colonnes sont déduites du schéma Prisma, aucune liste à maintenir), puis laisse le compte de reprise inactif, ou le supprime s'il n'a plus aucune référence (`--supprimer-orphelins`).
+- **Simulation par défaut** : il écrit `backend/logs/etl-utilisateurs/propositions.csv` (nom, nombre de références, proposition, méthode) et ne modifie rien.
+- **Propositions automatiques** : même matricule (agents), ou mêmes nom et prénoms dans un ordre quelconque (saisisseurs). Elles ne sont appliquées qu'avec `--accepter-propositions`. S'il y a plusieurs candidats, aucune proposition n'est faite.
+- **Fichier de correspondance** (`--correspondance=fichier.csv`, lignes `reprise;reel`, par exemple `superviseur;chef@gbtrans.ci`) : toujours appliqué.
+- **Garde-fous** : base non locale refusée sans `ETL_AUTORISER_DISTANT=OUI_PRODUCTION` pour l'écriture ; le compte technique n'est jamais touché ; relançable.
+- **Test sur la copie** : avec trois vrais utilisateurs fictifs (un par nom, un par matricule, un par fichier), 1 914 lignes ont été réaffectées sans erreur ; la relance ne déplace plus rien et supprime les trois comptes devenus orphelins.
+
+**À faire pour la production** : après l'import et la création des vrais comptes, lancer la simulation, vérifier `propositions.csv` avec la direction (qui est qui), compléter le fichier de correspondance pour les cas sans proposition (SUPERVISEUR, ADMIN, les agents de dotation sans compte), puis appliquer. Un utilisateur de reprise sans correspondance reste inactif et garde son historique : c'est acceptable, ces agents (chauffeurs, convoyeurs) n'ont pas forcément de compte.
