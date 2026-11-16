@@ -466,7 +466,11 @@ async function main() {
     // soldes
     if (type === 'CAISSE') soldes.caisse += e - s;
     else if (type === 'BANQUE' && compte) soldes.banque.set(compte, (soldes.banque.get(compte) ?? 0) + e - s);
-    else if (compte && (type === 'COMPTE CLIENT' || type === 'COMPTE FOURNISSEUR')) soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + e - s);
+    // Compte fournisseur : dépôt = entrée, retrait = sortie (même sens que l'application).
+    // Compte client : l'ancien logiciel note l'acompte en « sortie » et la consommation en « entrée » ; l'application
+    // tient le compte client comme une provision (solde positif, acompte = entrée) : le sens est donc inversé.
+    else if (compte && type === 'COMPTE FOURNISSEUR') soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + e - s);
+    else if (compte && type === 'COMPTE CLIENT') soldes.tiers.set(`${type}|${compte}`, (soldes.tiers.get(`${type}|${compte}`) ?? 0) + s - e);
     const factureAbsente = piece.startsWith('FACT') && e !== 0 && !factureInfo.has(piece);
     const base = { societeId, numero, dateOperation: d, libelle: cut(factureAbsente ? `${motif ?? tt} (facture ${piece} absente de l'export)` : motif ?? tt, 500)!, reference: cut(str(r.NumCheque), 100), beneficiaire: cut(str(r.NumTiers), 200), statut: type === 'SANS_COMPTE' ? 'A_VERIFIER' : statutOp, observations: str(r.NumFacture) ? `Dossier ${str(r.NumFacture)}` : null, createdAt: saisi ?? d };
     let classe = 'deja-present';
@@ -483,8 +487,9 @@ async function main() {
       classe = 'depense-dossier';
       if (!depExist.has(numero)) nouvDep.push({ id: randomUUID(), societeId, numero, dossierId: trouveDossier(r.NumFacture)!.id, caisseId: caisse.id, dotationId: str(r.NumDotation) ? dotationId.get(str(r.NumDotation)!) ?? null : null, dateDepense: d, categorie: cut(tt, 100), designation: cut(motif ?? tt, 500), montant: s, modePaiement: mode, reference: cut(str(r.NumCheque), 100), statut: 'VALIDE', createdAt: saisi ?? d });
     } else if (!opExist.has(numero)) {
-      const sens = e > 0 ? 'ENTREE' : 'SORTIE';
-      const op: any = { id: randomUUID(), ...base, montant, sens, type: /^RETRAIT/i.test(tt) ? 'RETRAIT' : /^APPRO|^REMISE|^DEPOT|^DEPÔT/i.test(tt) && type !== 'COMPTE CLIENT' ? 'VIREMENT_INTERNE' : sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT' };
+      const client = type === 'COMPTE CLIENT';
+      const sens = (e > 0) !== client ? 'ENTREE' : 'SORTIE'; // compte client : sens inversé (voir plus haut)
+      const op: any = { id: randomUUID(), ...base, montant, sens, type: client ? (sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT') : /^RETRAIT/i.test(tt) ? 'RETRAIT' : /^APPRO|^REMISE|^DEPOT|^DEPÔT/i.test(tt) ? 'VIREMENT_INTERNE' : sens === 'ENTREE' ? 'ENCAISSEMENT' : 'DECAISSEMENT' };
       if (type === 'CAISSE') { classe = sens === 'ENTREE' ? 'entree-caisse' : 'sortie-caisse'; op.caisseId = caisse.id; }
       else if (type === 'BANQUE') { classe = 'operation-bancaire'; op.compteBancaireId = compte ? banqueId.get(compte) ?? null : null; }
       else if (type === 'COMPTE FOURNISSEUR' && compte) { classe = 'compte-fournisseur'; op.compteTiersId = tiers(compte, libellesFourn.get(compte) ?? compte, 'FOURNISSEUR'); }

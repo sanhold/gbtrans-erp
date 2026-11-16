@@ -100,7 +100,7 @@ Cela impose de classer chaque ligne du journal avant import (voir section 5).
 - **I1.** Deux colonnes de « Total » sont étiquetées `Unnamed: 11` et `Unnamed: 14` dans les factures (colonnes sans titre) : ce sont des séparateurs vides.
 - **I2.** `Total TTC Client` est le **vrai total de la facture**. `TTC Prestation` n'est qu'un sous-ensemble (honoraires du transitaire + leur TVA) déjà inclus. Dans l'application : `montantPrestation` et `tvaPrestation`. Ne pas additionner les deux.
 - **I3.** `Transaction 2025` est une vue du journal. Son total (93,8 Md d'entrées) vaut le double du journal (46,9 Md) uniquement à cause de sa ligne `Somme`. Elle contient 221 lignes absentes du journal et le journal 227 lignes absentes de la vue (écarts de dates et d'états). **Reglement reste la source de vérité** : c'est lui qui redonne les soldes bancaires exacts.
-- **I4.** Soldes reconstitués par type de compte : caisse 211 199 052 ; banques 260 218 022 (dont 4e compte fermé, 50,8 M) ; comptes fournisseurs 34 848 024 ; **comptes clients -3 817 702 523** (31 clients débiteurs sur 98, aucun créditeur : ce sont des avances consommées sur le compte client plus que déposées. Attention, l'application stocke un `Client.solde`, il faudra décider du sens).
+- **I4.** Soldes reconstitués par type de compte : caisse 211 199 052 ; banques 260 218 022 (dont 4e compte fermé, 50,8 M) ; comptes fournisseurs 34 848 024 ; **comptes clients -3 817 702 523** (31 clients débiteurs sur 98, aucun créditeur : ce sont des avances consommées sur le compte client plus que déposées. Sens tranché au § 8 : ce sont des provisions, importées en solde positif).
 - **I5.** 626 dossiers sont archivés, 1 151 en cours, 184 nouveaux, 1 terminé. Aucun dossier n'est annulé.
 - **I6.** Pas de contacts clients ni fournisseurs séparés dans les exports : 15 fournisseurs n'ont que leur nom (ni NCC, ni adresse).
 - **I7.** Colonnes très peu remplies dans les dossiers : navire 5 %, bureau de douane 9 %, déclaration 12 %, FDI 17 %, conteneurs 11 % (`NbreTC` est un nombre, pas des numéros de conteneurs : aucun `Conteneur` ne peut être créé).
@@ -152,3 +152,22 @@ Contrôles à automatiser après import (tolérance 1 F) :
 
 À noter : N° 47170 et 46310 (10 575 904 chacune, même date et même motif) sont probablement une double saisie.
 La vue « Transaction 2025 » ne reprend pas toujours le même numéro que `Reglement` : seul `Reglement` fait foi.
+
+## 8. Sens des soldes des comptes clients et fournisseurs (tranché)
+
+**Constat dans l'ancien logiciel.** Sur un compte client, l'acompte (types ACOMPTE, RETRAIT, REMISE, VIREMENT) est noté en « sortie » (17,7 Md) et la consommation (règlement de facture, recette, ajustement) en « entrée » (13,9 Md). Le solde brut « entrées - sorties » vaut donc -3,82 Md. Aucun des 98 comptes n'est créditeur au sens brut : 31 sont négatifs, 67 à zéro. C'est la signature d'une **provision** : le client dépose d'abord, la société consomme ensuite. Le signe négatif est une convention de l'ancien logiciel, pas une dette du client.
+
+**Convention de l'application.** Un compte tiers est une provision à solde positif : une entrée l'augmente, une sortie la diminue, et `debiterCompteTiers` refuse un débit supérieur au solde.
+
+**Décision appliquée par l'import.**
+
+| Compte | Sens dans l'ancien logiciel | Sens importé | Solde importé |
+|---|---|---|---|
+| Fournisseur | dépôt = entrée, retrait = sortie | identique | entrées - sorties = **+29 593 677** (2 comptes négatifs : FF005 -47,4 M, FF013 -0,4 M) |
+| Client | acompte = sortie, consommation = entrée | **inversé** : acompte = `ENCAISSEMENT`/`ENTREE`, consommation = `DECAISSEMENT`/`SORTIE` | sorties - entrées = **+3 817 702 523** (30 comptes positifs après fusion des doublons, aucun négatif) |
+
+- Les règlements de factures pris sur le compte client sont importés comme paiements en mode `COMPENSATION` et diminuent ce solde sans opération séparée : 17 708 M (acomptes) - 1 052 M (opérations de consommation) - 12 839 M (paiements de factures) = 3 817 M.
+- `Client.solde` reste à zéro : il sert à l'encours de facturation, pas à la provision.
+- Les 3,8 Md sont de l'argent que la société détient pour le compte de ses clients (dette envers eux), à rapprocher des soldes bancaires et de la caisse avant la mise en service.
+- Le simulateur contrôle ces soldes (`soldesComptesTiers` dans `rapport.json`) et alerte sur tout compte négatif.
+- Point à vérifier avec la comptabilité : en rejouant le journal date par date, 67 clients passent brièvement en négatif (jusqu'à 387 M), ce qui indique des consommations saisies avant l'acompte correspondant. Le solde final n'est pas affecté.

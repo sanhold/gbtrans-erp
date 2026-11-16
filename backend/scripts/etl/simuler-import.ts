@@ -351,6 +351,7 @@ function main() {
   const utilisateurs = new Set<string>();
   const payeParFacture = new Map<string, number>();
   const soldeParCompte = new Map<string, number>();
+  const soldeTiers = new Map<string, number>();
   const nonEncaisses = { n: 0 }; let jOk = 0; let dateCorrigee = 0;
   for (const r of rg) {
     const id = r['N° Enr.'];
@@ -400,6 +401,9 @@ function main() {
     compter(classe, e, s);
     const cleCompte = type === 'CAISSE' ? 'CAISSE' : compte ?? '(vide)';
     if (type === 'CAISSE' || type === 'BANQUE') soldeParCompte.set(cleCompte, (soldeParCompte.get(cleCompte) ?? 0) + e - s);
+    // comptes tiers : fournisseur = entrées - sorties ; client = sorties - entrées (provision, sens inversé par rapport à l'ancien logiciel)
+    if (compte && type === 'COMPTE FOURNISSEUR') soldeTiers.set(`F|${compte}`, (soldeTiers.get(`F|${compte}`) ?? 0) + e - s);
+    if (compte && type === 'COMPTE CLIENT') soldeTiers.set(`C|${survivantDe(compte)}`, (soldeTiers.get(`C|${survivantDe(compte)}`) ?? 0) + s - e);
     jOk++;
   }
   bilan('Journal (règlements)', rg.length, jOk);
@@ -413,6 +417,14 @@ function main() {
   const horsListe = [...soldeParCompte.keys()].filter((k) => k !== 'CAISSE' && !soldesBancaires.has(k));
   manuel.comptesBancairesHorsListe = horsListe.map((k) => ({ compte: k, solde: soldeParCompte.get(k) }));
   manuel.soldeCaisse = soldeParCompte.get('CAISSE') ?? 0;
+  const tiersC = [...soldeTiers].filter(([k]) => k.startsWith('C|')).map(([k, v]) => ({ client: k.slice(2), solde: Math.round(v) }));
+  const tiersF = [...soldeTiers].filter(([k]) => k.startsWith('F|')).map(([k, v]) => ({ fournisseur: k.slice(2), solde: Math.round(v) }));
+  manuel.soldesComptesTiers = {
+    clients: { total: tiersC.reduce((a, x) => a + x.solde, 0), positifs: tiersC.filter((x) => x.solde > 0).length, nuls: tiersC.filter((x) => x.solde === 0).length, negatifs: tiersC.filter((x) => x.solde < 0) },
+    fournisseurs: { total: tiersF.reduce((a, x) => a + x.solde, 0), negatifs: tiersF.filter((x) => x.solde < 0) },
+  };
+  tiersC.filter((x) => x.solde < 0).forEach((x) => signaler('COMPTE_CLIENT', x.client, 'ALERTE', 'solde-compte-client-negatif', `${fmt(x.solde)} : plus consommé que déposé`));
+  tiersF.filter((x) => x.solde < 0).forEach((x) => signaler('COMPTE_FOURNISSEUR', x.fournisseur, 'ALERTE', 'solde-compte-fournisseur-negatif', `${fmt(x.solde)} : plus dépensé que déposé`));
   let ecarts = 0, compares = 0;
   for (const [n, p] of payeParFacture) { const f = facturesIndex.get(n); if (!f) continue; compares++; if (Math.abs(num(f['Montant Paye']) - p) > 1) { ecarts++; totalPaye += p - num(f['Montant Paye']); totalReste -= p - num(f['Montant Paye']); signaler('FACTURE', n, 'CORRECTION', 'paye-recalcule-depuis-reglements', `facture ${fmt(num(f['Montant Paye']))} -> règlements ${fmt(p)}`); } }
   manuel.facturesPayeRecalcule = { comparees: compares, recalculees: ecarts };
