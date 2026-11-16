@@ -258,3 +258,22 @@ Situations : 6 clients dont les factures sont entièrement couvertes, 21 à prov
 - Effet : payé total 12 804 922 882 (au lieu de 12 835 834 036), reste à payer total 4 966 529 709, plus aucune facture normale à reste négatif.
 
 **Autres anomalies relevées (non corrigées).** Trois factures portent un numéro et une date incohérents (FACT2024-1794 datée du 15/09/2021, FACT2024-1356 du 29/12/2023, FACT2022-443 du 31/12/2021). Onze acomptes de caisse ou de banque (89,6 M) portent un dossier à facture ouverte sans n° de facture : ils sont déjà couverts par le « Montant payé » de la facture et ne changent pas le reste. Les restes résiduels correspondants sont minimes (de 23 k à 2,3 M).
+
+## 13. Les six factures dont le « Montant payé » diffère du journal (tranché)
+
+Après plafonnement des doublons (§ 12), six factures ont un « Montant payé » différent de la somme de leurs règlements. L'import retient le **journal**, pour deux raisons : la fiche facture de l'ancien logiciel n'est pas toujours remise à jour, et dans chacun de ces cas les règlements sont des compensations prises sur le compte client, déjà déduites de la provision. Garder le payé de la fiche laisserait la facture ouverte alors que la provision est consommée (double comptage).
+
+| Facture | Client | TTC | Payé fiche | Payé journal | Constat |
+|---|---|---|---|---|---|
+| FACT2024-1545 | RAZEL-BEC | 4 408 010 | 0 | 4 408 010 | Règlement du 21/05/2024 sur compte client, saisi le 10/07/2024 ; fiche jamais mise à jour |
+| FACT2024-1471 | KLO-AMTCI | 34 461 267 | 0 | 34 438 343 | Deux compensations (33,6 M saisis le 20/11/2024 et 0,85 M), qui consomment les acomptes de caisse du dossier I-030/2024 ; reste 22 924 |
+| FACT2021-238 | AFRICA TRAILER | 6 445 785 | 0 | 6 445 785 | Quatre recettes de 2021 qui soldent exactement la facture ; fiche jamais mise à jour |
+| FACT2024-1452 | MAIRIE D'ALEPE | 20 099 414 | 0 | 4 000 000 | Compensation partielle du 16/03/2024 ; reste 16,1 M |
+| FACT2024-1454 | AFRICA BETON PLUS | 26 849 292 | 26 600 000 | 26 540 000 | Les acomptes de caisse du dossier valent 26,6 M, mais seuls 26,54 M ont été compensés : 60 000 restent en provision ; reste 309 292 |
+| FACT2023-973 | OKOUNDA BTP | 3 000 000 | 3 000 000 | 1 500 000 | Seule trace dans le journal : 1,5 M de compensation. Le 1,5 M manquant n'a aucun règlement retrouvé |
+
+Effet net sur le payé total : +47 732 138 par rapport aux fiches.
+
+**À signaler à la comptabilité**
+- **FACT2023-973 (OKOUNDA BTP) :** facture soldée dans l'ancien logiciel, mais 1,5 M sans règlement dans le journal. Importée avec un reste de 1,5 M. Le client a d'autres factures du même dossier surpayées en double (§ 12) : le règlement manquant a peut-être été imputé à une autre pièce.
+- **FACT2024-1452 et FACT2024-1771 (MAIRIE D'ALEPE) :** datées de juillet 2025 mais saisies en mars et novembre 2024 ; le règlement partiel de la première date du 16/03/2024, soit avant la facture. Les deux factures (26,7 M) entrent donc dans les pièces à comptabiliser de 2025. Leur date est probablement à corriger en 2024. Aucune correction automatique : 191 factures sont datées plus de 31 jours après leur saisie et 14 de plus de 180 jours (31 si l'on compte les antidatées), la plupart légitimes, et rien ne permet de trancher à coup sûr.
