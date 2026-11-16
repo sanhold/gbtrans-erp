@@ -466,3 +466,10 @@ Ces chiffres seront à refaire avec les données de 2026.
 - **Employés : 26** (le modèle `Employe` existe) et **utilisateurs : 11**, dont 3 administrateurs, avec leurs droits par module. Les mots de passe de l'export ne seront pas repris.
 - **Compagnies : 9** (MSC, AGL, OOCL, PIL, OMA GROUP, COMA, CMA CGM, GRIMALDI, ARKAS), nécessaires aux cautions.
 - **Rubriques : 208** contre 209 en 2025, dont 132 libellés communs : mise à jour du catalogue de prestations.
+
+## 22. Périmètre de la reprise 2026 (réponses du propriétaire)
+
+- **Trésorerie 2026 : dans un autre fichier à exporter.** Le journal de règlements exporté ne contient aucune opération de banque ni aucun approvisionnement de caisse. À fournir : la liste des comptes bancaires avec soldes, la vue « Transaction 2026 » (qui, en 2025, contenait les lignes de banque), toute table de soldes d'ouverture ou de trésorerie, et le journal de banque 2026 s'il existe. Tant que ce fichier manque, les soldes de banque et de caisse de 2026 ne sont pas contrôlables.
+- **Fin de la reprise : 30 juin 2026.** L'activité de juillet à novembre 2026 est saisie directement dans l'application. La reprise s'arrête donc au 30/06/2026 et ne doit pas écraser ni dupliquer ce qui existe déjà dans l'application.
+- **Conséquence : contrôle de jonction avant tout import en production.** Il faut comparer les données déjà saisies dans l'application depuis juillet (dossiers, factures, proformas, règlements, soldes) avec la fin de la reprise : numéros en doublon, factures de l'ancien logiciel déjà ressaisies, soldes de banque et de caisse, numérotation. Ce contrôle exige une lecture de la base de production.
+- **Méthode de la reprise 2026 : un delta.** Les éléments nouveaux de 2026 sont créés ; les éléments reportés de 2025 ne sont pas recréés, mais mis à jour quand c'est justifié (statut du dossier, payé de la facture) ; les 2 408 lignes de journal reportées sont ignorées ; les 86 lignes de fin décembre 2025 sont reprises ; les numéros d'enregistrement de 2026 reçoivent un préfixe distinct de celui de 2025.
