@@ -473,3 +473,42 @@ Ces chiffres seront à refaire avec les données de 2026.
 - **Fin de la reprise : 30 juin 2026.** L'activité de juillet à novembre 2026 est saisie directement dans l'application. La reprise s'arrête donc au 30/06/2026 et ne doit pas écraser ni dupliquer ce qui existe déjà dans l'application.
 - **Conséquence : contrôle de jonction avant tout import en production.** Il faut comparer les données déjà saisies dans l'application depuis juillet (dossiers, factures, proformas, règlements, soldes) avec la fin de la reprise : numéros en doublon, factures de l'ancien logiciel déjà ressaisies, soldes de banque et de caisse, numérotation. Ce contrôle exige une lecture de la base de production.
 - **Méthode de la reprise 2026 : un delta.** Les éléments nouveaux de 2026 sont créés ; les éléments reportés de 2025 ne sont pas recréés, mais mis à jour quand c'est justifié (statut du dossier, payé de la facture) ; les 2 408 lignes de journal reportées sont ignorées ; les 86 lignes de fin décembre 2025 sont reprises ; les numéros d'enregistrement de 2026 reçoivent un préfixe distinct de celui de 2025.
+
+## 23. Reprise 2026, partie « documents » (réalisée sur la copie de test)
+
+**Script** : `backend/scripts/etl/importer-2026.ts`. Sans `--appliquer`, simulation (la base est lue, rien n'est écrit) ; une base non locale est refusée sans `ETL_AUTORISER_DISTANT`. Rapport : `backend/logs/etl-2026/rejets.csv`.
+`$env:DATABASE_URL="<base>"; npx ts-node --transpile-only scripts/etl/importer-2026.ts [--appliquer] [--dir2026="..."] [--dir2025="..."]`
+
+**Périmètre : ce qui ne dépend pas de la banque.** Clients, catalogue, dossiers et dossiers d'offre, factures et lignes, proformas et lignes, offres commerciales, cautions. Hors périmètre, en attente du fichier de trésorerie ou du contrôle de jonction : journal de règlements, banque, caisse, comptes clients et fournisseurs, payé des factures reportées, écritures et pièces comptables 2026, employés, utilisateurs.
+
+**Résultat sur la copie** (relançable : le rejeu ne crée rien) :
+
+| Élément | Créés | Déjà repris de 2025 | Ignorés | Mis à jour |
+|---|---|---|---|---|
+| Clients | 15 (+1 fusionné : SISAME vers CL2026221) | 217 | 0 | 0 |
+| Dossiers et dossiers d'offre | 290 (253 + 37) | 160 | 2 | 89 (statuts) |
+| Factures | 196 | 93 | 13 | 0 |
+| Lignes de facture | 2 410 | n.c. | 0 | n.c. |
+| Proformas (dont 1 jumelle) | 227 | 2 408 | 1 | 11 |
+| Lignes de proforma | 1 413 | n.c. | 0 | n.c. |
+| Offres commerciales et lignes | 34 et 452 | 0 | 3 | n.c. |
+| Cautions | 102 (80 776 978) | 0 | 3 | n.c. |
+
+Totaux en base après reprise : 227 clients, 2 252 dossiers, 2 256 factures (TTC 20 162 639 168, payé 13 509 025 778, reste 6 653 613 390), 2 635 proformas, 34 offres, 102 cautions (101 en attente, 1 non activée).
+
+**Règles appliquées**
+- **Clients** : seuls les nouveaux sont créés ; fusion sur le même NCC (sans espaces) ou la même raison sociale, cohérente avec celle de 2025.
+- **Dossiers reportés** : le statut est mis à jour (32 « nouveau » passent « en cours », 56 passent « archivés »). Les 37 dossiers d'offre (O-001/2026 et suivants, statut « nouveau ») sont importés comme dossiers, car l'offre commerciale s'y rattache.
+- **Factures** : pas de client dans le fichier 2026, il est déduit du dossier (ou de la proforma). Statut `ANNULEE` pour les 11 supprimées. Le payé des nouvelles factures est repris de la fiche.
+- **Proformas reportées** : statut mis à jour, et rattachement à leur nouvelle facture 2026 si elle n'en avait pas.
+- **Offres** : statut brouillon (aucune n'est validée ni facturée), annulée si supprimée.
+- **Cautions** : statut selon l'état, la date de dépôt du courrier et la date de paiement ; marqueur « Reprise ETL 2026 n°… » dans les observations (rejeu sans doublon) ; client et dossier déduits du numéro de dossier.
+
+**Rejetés** : 9 factures vides (TTC 0, sans ligne) ; **4 copies de factures aux numéros corrompus** (FACT2026-23182222, FACT2024-168322222, FACT2023-96633333, FACT2023-1018333333333 : chiffres parasites ajoutés à FACT2026-2318, FACT2024-1683, FACT2023-966 et FACT2023-1018) ; 3 offres sans dossier ni client (O-007/2026, OF12026-16, OF12026-150) ; 1 proforma sans dossier (PRO12026-130) ; 1 doublon de dossier (O-001/2026) ; 3 cautions à montant nul (MEDUF15562337, MEDUF5561099, MEDUF5563566). Sept cautions sont importées sans dossier, celui-ci étant introuvable.
+
+**À confirmer par la comptabilité**
+- **Cinq factures de 2025 ont un TTC différent en 2026** : FACT2025-2224 (32 621 045 devient 32 727 965), FACT2025-2230 (11 417 685 devient 11 789 505), FACT2025-2231 (2 875 000 devient 2 880 500), FACT2025-2197 (6 975 750 devient 7 038 750) et FACT2025-2198 (9 956 511 devient 9 495 011). Elles ont été corrigées en 2026 ; la copie reste au montant de 2025, non modifiée en attendant la décision.
+- **Payé en attente** : 55 factures de 2025 ont un payé en hausse de 494 031 680, non appliqué faute du journal de trésorerie ; 18 nouvelles factures ont un payé de 704 102 896 repris de la fiche, à rapprocher de ce journal.
+- **Dossiers d'offre importés comme dossiers** (37) : à confirmer, ils apparaissent dans la liste des dossiers avec le statut « nouveau ».
+
+**Non fait volontairement** : pièces comptables 2026 (l'exercice 2026 existe peut-être déjà dans l'application, depuis la saisie de juillet à novembre ; à traiter avec le contrôle de jonction). Les nouvelles factures de 2026 restent donc « à décider » dans la file de décision.
