@@ -89,8 +89,8 @@ function main() {
   // ---------- Société, comptes bancaires, étapes, fournisseurs ----------
   const societe = lire('Societe');
   manuel.societe = societe[0]?.RaisonSocial ?? null;
-  signaler('SOCIETE', societe[0]?.CodeSociété, 'MANUEL', 'societe-cible',
-    `Le fichier décrit « ${societe[0]?.RaisonSocial} ». Confirmer la société cible (GBTRANS ou nouvelle société).`);
+  signaler('SOCIETE', societe[0]?.CodeSociété, 'ALERTE', 'societe-cible',
+    `Le fichier décrit « ${societe[0]?.RaisonSocial} » : import dans la société ETL de la base de production (décision validée).`);
   bilan('Société', societe.length, societe.length);
 
   const banquesSrc = lire('Liste Compte Bancaire').filter((r) => !estTotal(r['N°']) && !estTotal(r.Nom));
@@ -166,10 +166,12 @@ function main() {
 
   // clients cités mais absents
   const clientsInconnus = new Set<string>();
+  const NOMS_INCONNUS: Record<string, string> = { CL20220: 'CISSE (CL20220)', CL20221: 'CISSE (CL20221)' }; // tiers « CISSE » du journal
+  const nomInconnu = (c: string) => NOMS_INCONNUS[c] ?? `CLIENT INCONNU ${c}`;
   const verifClient = (code: string | null, origine: string, cle: unknown) => {
     if (!code) return;
     const s = survivantDe(code);
-    if (!codesClient.has(s)) { clientsInconnus.add(s); signaler(origine, cle, 'CORRECTION', 'client-cree-a-completer', `Client ${s} absent de Table Client : créé sous « CLIENT INCONNU ${s} »`); }
+    if (!codesClient.has(s)) { clientsInconnus.add(s); signaler(origine, cle, 'CORRECTION', 'client-cree-a-completer', `Client ${s} absent de Table Client : créé sous « ${nomInconnu(s)} »`); }
   };
 
   // ---------- Dossiers ----------
@@ -289,7 +291,11 @@ function main() {
       if (factNums.has(n)) { signaler('FACTURE', n, 'REJET', 'doublon-numero', source); continue; }
       const ttc = num(r['Total TTC Client']);
       const client = clientParNom.get(norm(str(r.Client)));
-      if (!client) { signaler('FACTURE', n, 'MANUEL', 'client-inconnu', String(r.Client)); continue; }
+      if (!client) {
+        if (/^\d+$/.test(n) && !str(r.Client)) signaler('FACTURE', n, 'REJET', 'ligne-de-compteur', "ligne de total/compteur de l'export");
+        else signaler('FACTURE', n, 'MANUEL', 'client-inconnu', String(r.Client));
+        continue;
+      }
       const dossierNum = str(r['N° Dossier']);
       if (!dossierNum) signaler('FACTURE', n, 'ALERTE', 'sans-dossier');
       else if (!trouveDossier(dossierNum)) signaler('FACTURE', n, 'ALERTE', 'dossier-inconnu', dossierNum);
@@ -369,13 +375,16 @@ function main() {
     }
     const pieceFacture = (str(r.NumCheque) ?? '').toUpperCase();
     let classe: string;
-    if (pieceFacture.startsWith('FACT') && e !== 0) {
+    if (!type && compte && codesFour.has(compte)) { type = 'COMPTE FOURNISSEUR'; signaler('JOURNAL', id, 'CORRECTION', 'type-compte-deduit-du-numero', `${compte} -> COMPTE FOURNISSEUR (${fmt(e - s)})`); }
+    else if (!type && compte && codesClient.has(survivantDe(compte))) { type = 'COMPTE CLIENT'; signaler('JOURNAL', id, 'CORRECTION', 'type-compte-deduit-du-numero', `${compte} -> COMPTE CLIENT (${fmt(e - s)})`); }
+    const factureAbsente = pieceFacture.startsWith('FACT') && e !== 0 && !factNums.has(pieceFacture);
+    if (factureAbsente) signaler('JOURNAL', id, 'CORRECTION', 'paiement-facture-absente-importe-comme-operation', `${pieceFacture} : opération du compte client, sans facture`);
+    if (pieceFacture.startsWith('FACT') && e !== 0 && !factureAbsente) {
       classe = 'paiement-facture';
       payeParFacture.set(pieceFacture, (payeParFacture.get(pieceFacture) ?? 0) + e);
-      if (!factNums.has(pieceFacture)) signaler('JOURNAL', id, 'MANUEL', 'paiement-facture-inconnue', pieceFacture);
     } else if (type === 'COMPTE CLIENT') {
       classe = 'mouvement-compte-client';
-      if (compte && !codesClient.has(survivantDe(compte))) signaler('JOURNAL', id, 'MANUEL', 'compte-client-inconnu', compte);
+      if (compte && !codesClient.has(survivantDe(compte))) { clientsInconnus.add(survivantDe(compte)); signaler('JOURNAL', id, 'CORRECTION', 'client-cree-a-completer', `${compte} -> « ${nomInconnu(survivantDe(compte))} »`); }
     } else if (type === 'COMPTE FOURNISSEUR') {
       classe = 'mouvement-compte-fournisseur';
       if (compte && !codesFour.has(compte)) signaler('JOURNAL', id, 'MANUEL', 'compte-fournisseur-inconnu', compte);
@@ -387,7 +396,7 @@ function main() {
       }
     } else if (type === 'CAISSE') {
       classe = s > 0 && str(r.NumFacture) && trouveDossier(r.NumFacture) ? 'depense-dossier' : e > 0 ? 'entree-caisse' : 'sortie-caisse-sans-dossier';
-    } else { classe = 'a-classer-manuellement'; signaler('JOURNAL', id, 'MANUEL', 'type-compte-vide', `${fmt(e)} / ${fmt(s)} - ${str(r.Motif)}`); }
+    } else { classe = 'a-verifier-sans-compte'; signaler('JOURNAL', id, 'ALERTE', 'importee-a-verifier-sans-compte', `${fmt(e)} / ${fmt(s)} - ${str(r.Motif)} (statut A_VERIFIER, sans effet sur les soldes)`); }
     compter(classe, e, s);
     const cleCompte = type === 'CAISSE' ? 'CAISSE' : compte ?? '(vide)';
     if (type === 'CAISSE' || type === 'BANQUE') soldeParCompte.set(cleCompte, (soldeParCompte.get(cleCompte) ?? 0) + e - s);
