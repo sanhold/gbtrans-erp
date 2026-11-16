@@ -244,7 +244,7 @@ async function main() {
     const transport = TYPE_TRANSPORT[norm(str(r.ModeTransport))] ?? 'MARITIME';
     const devise = str(r.MonnaieFact);
     nouveauxD.push({
-      id, societeId, createurId: importUser, numero: cut(n.numero, 50), annee, nature: natureDossier(str(r.NatureDossier), n.prefixe),
+      id, societeId, createurId: importUser, numero: cut(n.numero, 50), numeroPhysique: n.standard ? cut(n.numero, 50) : null, annee, nature: natureDossier(str(r.NatureDossier), n.prefixe),
       type: transport, statut, clientId: cid, processusId: processus!.id,
       compagnieMaritime: cut(str(r.CompagnieTransport), 200), navire: cut(str(r.Navire), 200), numeroBL: cut(str(r.NumTitreTransPort), 100),
       dateArrivee: date(r.DateArrivee), designation: str(r.Marchandise) ?? str(r.NatureMarch),
