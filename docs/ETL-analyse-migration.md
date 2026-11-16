@@ -433,3 +433,36 @@ Les deux factures correspondantes (FACT2025-2081 et FACT2025-2059, 14,3 M et 4,6
 | Utilisateurs de reprise | 40 |
 
 Ces chiffres seront à refaire avec les données de 2026.
+
+## 21. Analyse des fichiers de 2026 (dossier « ETL 2026 »)
+
+**Contenu : 15 fichiers.** Cautions (105 lignes), clients (233), compagnies maritimes (9), détails de facture (3 721) et de proforma (3 089), dossiers (413) et dossiers d'offre (39), employés (26), factures (302), offres (37, avec 466 lignes de détail), proformas (355), règlements (3 416), rubriques de facturation (208), utilisateurs (11).
+
+**Nature de la base 2026 : un report des éléments ouverts de 2025 plus l'activité de 2026.**
+
+| Élément | Total 2026 | Déjà dans 2025 | Nouveau |
+|---|---|---|---|
+| Dossiers | 413 | 160 (surtout en cours ou nouveaux) | 253, tous de 2026 (jusqu'à I-240/2026 et O-021/2026) |
+| Factures | 302 | 93 (TTC identique pour 88) | 209 : 193 datées 2026, 4 datées de novembre 2025 (FACT2026-2254, -2255, -2256, -2263, 64,6 M), 12 anciennes dont 8 à TTC 0 |
+| Proformas | 355 | 128 | 227 |
+| Clients | 233 | 217 (tous) | 16 (CL2026217 et suivants) |
+| Offres et dossiers d'offre | 37 et 38 | 0 | 37 et 38 (n° `OF12026-n` et `O-001/2026`...), 1,82 Md de TTC, aucune validée ni facturée |
+
+**Le journal 2026 pose trois problèmes.**
+1. **Numéros d'enregistrement repartis de 1** (1 à 3 416) : ils entrent en collision avec ceux de 2025 (jusqu'à 49 004). La reprise doit utiliser un autre préfixe.
+2. **Soldes d'ouverture absents.** 219 lignes « REPORT A NOUVEAU » du 31/12/2025 existent (3 banques, 201 comptes clients, 15 comptes fournisseurs), mais tous leurs montants valent 0 : les soldes ne figurent pas dans l'export. Les soldes de fin 2025 repris sont donc la seule base d'ouverture.
+3. **Trésorerie de 2026 absente.** Sur les 703 lignes datées de 2026 : 661 de caisse (sorties de 137 581 350, aucune entrée ni approvisionnement), 24 de comptes fournisseurs (sorties de 495 635 386), 18 de comptes clients (compensations de factures pour 647 830 756) et **aucune ligne de banque** : ni acompte client, ni virement, ni retrait. En 2025 il y avait 2 544 lignes de banque et plus de 1 000 acomptes.
+
+**Les autres lignes du journal.** 2 494 lignes sont datées d'avant 2026 : 2 408 sont des copies de lignes déjà présentes dans 2025 (même date, montant et motif) et doivent être ignorées ; 86 sont des dépenses de fin décembre 2025 (dossier I-339/2025 en particulier) saisies après la clôture de l'export 2025 et sont à reprendre, après contrôle des doublons internes.
+
+**Activité et arrêt des données.** Nouveaux dossiers par mois : 33, 32, 66, 34, 39, 49 de janvier à juin. Factures de 2026 : 1, 4, 19, 70, 26, 65, 8 de janvier à juillet. Écritures de journal : 136, 213, 182, 73, 43, 56. Dernières dates : dossier le 30/06/2026, règlement le 22/06/2026 (saisi le 03/07), facture le 02/07/2026, dernière modification le 02/09/2026. Rien après l'été 2026.
+
+**Paiements des factures de 2025.** 55 factures de 2025 ont un payé en hausse de 494 031 680, mais seules 5 (86 852 216) sont expliquées par des règlements du journal 2026. Le reste a été mis à jour sans écriture de journal.
+
+**Qualité des données.** Quelques numéros de facture aberrants (FACT2024-168322222, FACT2023-96633333, FACT2023-1018333333333), 8 factures de 2021 et 2023 à TTC 0, 11 factures supprimées, 255 factures sur 302 avec numéro normalisé.
+
+**Nouveaux types de données (absents de l'export 2025).**
+- **Cautions : 105 lignes**, 80 776 978 au total, 104 « en attente » et 1 « non activée », 87 de la compagnie MSC, 33 de 2026 ; aucune payée. Le modèle `Caution` de l'application peut les accueillir.
+- **Employés : 26** (le modèle `Employe` existe) et **utilisateurs : 11**, dont 3 administrateurs, avec leurs droits par module. Les mots de passe de l'export ne seront pas repris.
+- **Compagnies : 9** (MSC, AGL, OOCL, PIL, OMA GROUP, COMA, CMA CGM, GRIMALDI, ARKAS), nécessaires aux cautions.
+- **Rubriques : 208** contre 209 en 2025, dont 132 libellés communs : mise à jour du catalogue de prestations.
