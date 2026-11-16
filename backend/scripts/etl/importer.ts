@@ -445,6 +445,7 @@ async function main() {
   const soldes = { caisse: 0, banque: new Map<string, number>(), tiers: new Map<string, number>() };
   const nouvOp: any[] = []; const nouvDep: any[] = []; const nouvPai: any[] = []; const nouvPF: any[] = [];
   let jIgn = 0, jDates = 0; const classes: Record<string, number> = {};
+  let regulSerenity = 0; let regulDate: Date | null = null;
   const libellesFourn = new Map(fournSrc.map((r) => [String(r['N° Fournisseur']).trim(), str(r['Raison Sociale']) ?? '']));
   for (const r of rgSrc) {
     const idSrc = r['N° Enr.']; const numero = `ETL-${idSrc}`;
@@ -463,6 +464,8 @@ async function main() {
     const motif = str(r.Motif); const tt = (str(r.TypeTransaction) ?? 'OPERATION').trim();
     const piece = (str(r.NumCheque) ?? '').toUpperCase();
     const montant = e > 0 ? e : s;
+    // Paiements à SERENITY SA faits par banque ou caisse sans passer par son compte fournisseur (FF005) : cumulés pour la régularisation
+    if ((type === 'BANQUE' || type === 'CAISSE') && s > 0 && e === 0 && /SEREN/.test(norm(`${str(r.NumTiers) ?? ''} ${motif ?? ''}`))) { regulSerenity += s; if (!regulDate || d > regulDate) regulDate = d; }
     // soldes
     if (type === 'CAISSE') soldes.caisse += e - s;
     else if (type === 'BANQUE' && compte) soldes.banque.set(compte, (soldes.banque.get(compte) ?? 0) + e - s);
@@ -499,6 +502,13 @@ async function main() {
       classes[classe] = (classes[classe] ?? 0) + 1; continue;
     }
     classes[classe] = (classes[classe] ?? 0) + 1;
+  }
+  // Régularisation du compte SERENITY SA (FF005) : entrée égale aux paiements faits hors compte (décision validée)
+  if (regulSerenity > 0 && fournId.has('FF005')) {
+    const numero = 'ETL-REG-FF005';
+    if (!opExist.has(numero)) nouvOp.push({ id: randomUUID(), societeId, numero, type: 'ENCAISSEMENT', sens: 'ENTREE', montant: regulSerenity, dateOperation: regulDate!, libelle: 'Régularisation import : paiements SERENITY SA faits par banque/caisse hors compte fournisseur', statut: 'VALIDE', observations: 'Écriture ajoutée à la reprise ; ne touche ni la banque ni la caisse', compteTiersId: tiers('FF005', libellesFourn.get('FF005') ?? 'FF005', 'FOURNISSEUR'), createdAt: regulDate! });
+    soldes.tiers.set('COMPTE FOURNISSEUR|FF005', (soldes.tiers.get('COMPTE FOURNISSEUR|FF005') ?? 0) + regulSerenity);
+    console.log(`    régularisation FF005 : +${fmt(regulSerenity)}`);
   }
   // libellés des comptes clients
   const nomClient = new Map(clientsSrc.map((r) => [String(r['N° Client']).trim(), str(r['Raison Sociale']) ?? '']));

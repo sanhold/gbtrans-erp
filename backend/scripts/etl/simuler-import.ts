@@ -352,6 +352,7 @@ function main() {
   const payeParFacture = new Map<string, number>();
   const soldeParCompte = new Map<string, number>();
   const soldeTiers = new Map<string, number>();
+  let regulSerenity = 0; // paiements à SERENITY SA faits par banque/caisse hors compte fournisseur FF005
   const nonEncaisses = { n: 0 }; let jOk = 0; let dateCorrigee = 0;
   for (const r of rg) {
     const id = r['N° Enr.'];
@@ -402,6 +403,7 @@ function main() {
     const cleCompte = type === 'CAISSE' ? 'CAISSE' : compte ?? '(vide)';
     if (type === 'CAISSE' || type === 'BANQUE') soldeParCompte.set(cleCompte, (soldeParCompte.get(cleCompte) ?? 0) + e - s);
     // comptes tiers : fournisseur = entrées - sorties ; client = sorties - entrées (provision, sens inversé par rapport à l'ancien logiciel)
+    if ((type === 'BANQUE' || type === 'CAISSE') && s > 0 && e === 0 && /SEREN/.test(norm(`${str(r.NumTiers) ?? ''} ${str(r.Motif) ?? ''}`))) regulSerenity += s;
     if (compte && type === 'COMPTE FOURNISSEUR') soldeTiers.set(`F|${compte}`, (soldeTiers.get(`F|${compte}`) ?? 0) + e - s);
     if (compte && type === 'COMPTE CLIENT') soldeTiers.set(`C|${survivantDe(compte)}`, (soldeTiers.get(`C|${survivantDe(compte)}`) ?? 0) + s - e);
     jOk++;
@@ -417,6 +419,10 @@ function main() {
   const horsListe = [...soldeParCompte.keys()].filter((k) => k !== 'CAISSE' && !soldesBancaires.has(k));
   manuel.comptesBancairesHorsListe = horsListe.map((k) => ({ compte: k, solde: soldeParCompte.get(k) }));
   manuel.soldeCaisse = soldeParCompte.get('CAISSE') ?? 0;
+  if (regulSerenity > 0) {
+    soldeTiers.set('F|FF005', (soldeTiers.get('F|FF005') ?? 0) + regulSerenity);
+    signaler('COMPTE_FOURNISSEUR', 'FF005', 'CORRECTION', 'regularisation-compte-fournisseur', `entrée de +${fmt(regulSerenity)} ajoutée (paiements SERENITY SA faits par banque/caisse hors compte)`);
+  }
   const tiersC = [...soldeTiers].filter(([k]) => k.startsWith('C|')).map(([k, v]) => ({ client: k.slice(2), solde: Math.round(v) }));
   const tiersF = [...soldeTiers].filter(([k]) => k.startsWith('F|')).map(([k, v]) => ({ fournisseur: k.slice(2), solde: Math.round(v) }));
   manuel.soldesComptesTiers = {

@@ -163,7 +163,7 @@ La vue « Transaction 2025 » ne reprend pas toujours le même numéro que `Regl
 
 | Compte | Sens dans l'ancien logiciel | Sens importé | Solde importé |
 |---|---|---|---|
-| Fournisseur | dépôt = entrée, retrait = sortie | identique | entrées - sorties = **+29 593 677** (2 comptes négatifs : FF005 -47,4 M, FF013 -0,4 M) |
+| Fournisseur | dépôt = entrée, retrait = sortie | identique | entrées - sorties = **+29 593 677** avant régularisation, **+87 646 109** après (§ 9) |
 | Client | acompte = sortie, consommation = entrée | **inversé** : acompte = `ENCAISSEMENT`/`ENTREE`, consommation = `DECAISSEMENT`/`SORTIE` | sorties - entrées = **+3 817 702 523** (30 comptes positifs après fusion des doublons, aucun négatif) |
 
 - Les règlements de factures pris sur le compte client sont importés comme paiements en mode `COMPENSATION` et diminuent ce solde sans opération séparée : 17 708 M (acomptes) - 1 052 M (opérations de consommation) - 12 839 M (paiements de factures) = 3 817 M.
@@ -171,3 +171,17 @@ La vue « Transaction 2025 » ne reprend pas toujours le même numéro que `Regl
 - Les 3,8 Md sont de l'argent que la société détient pour le compte de ses clients (dette envers eux), à rapprocher des soldes bancaires et de la caisse avant la mise en service.
 - Le simulateur contrôle ces soldes (`soldesComptesTiers` dans `rapport.json`) et alerte sur tout compte négatif.
 - Point à vérifier avec la comptabilité : en rejouant le journal date par date, 67 clients passent brièvement en négatif (jusqu'à 387 M), ce qui indique des consommations saisies avant l'acompte correspondant. Le solde final n'est pas affecté.
+
+## 9. Comptes fournisseurs négatifs (tranché)
+
+Deux comptes fournisseurs sont négatifs dans le journal brut.
+
+| Compte | Solde brut | Cause constatée | Décision | Solde importé |
+|---|---|---|---|---|
+| FF005 SERENITY SA (assurance) | -47 366 461 | 606 primes d'assurance de dossiers (52,3 M) prélevées sur le compte depuis 2020, pour seulement 4,9 M de dépôts. Les vrais paiements au fournisseur (« acomptes sur production d'assurance ») ont été saisis en retraits **bancaires** (57,1 M, 30 lignes) et **caisse** (0,95 M) libellés « SERENITY SA », sans alimenter le compte. | **Régularisation** : entrée `ETL-REG-FF005` de +58 052 432, datée du dernier paiement, sans effet sur banque ni caisse | **+10 685 971** |
+| FF013 IPT | -417 411 | Dernier paiement de douane de 427 401 (29/12/2025) pas encore réapprovisionné. Le compte a déjà été à découvert jusqu'à -63 M (déc. 2023) puis réapprovisionné : fonctionnement habituel avec ce transitaire. | **Laissé tel quel**, signalé en alerte | **-417 411** |
+
+- La régularisation est la somme des retraits banque et caisse dont le tiers ou le motif contient « SEREN ». Elle est recalculée à chaque simulation et à chaque import, et l'écriture n'est créée qu'une fois.
+- Une ligne de FF005 porte la date 2052-05-05 (N° 43425, 66 456) : l'import la ramène à sa date de saisie (22/05/2025).
+- La ligne N° 41322 (5 254 347), sans type de compte, rattachée à FF013, explique l'essentiel de la différence avec le solde brut de ce compte.
+- À confirmer avec la comptabilité : le solde positif de 10,7 M de FF005 est-il bien une avance restant chez SERENITY ?
