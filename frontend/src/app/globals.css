@@ -37,7 +37,7 @@
            disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
 
-  .btn-primary { @apply bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 shadow-sm; }
+  .btn-primary { @apply bg-azure text-white hover:bg-azure-hover active:bg-azure-hover shadow-sm focus-visible:ring-azure; }
 
   .btn-secondary {
     @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 active:bg-gray-100
@@ -52,9 +52,6 @@
     @apply text-primary-600 hover:bg-primary-50 active:bg-primary-100
            dark:text-primary-300 dark:hover:bg-white/10;
   }
-
-  /* Bouton d'action principal d'une page : vert, comme dans la charte */
-  .ph-actions .btn-primary { @apply bg-green-700 hover:bg-green-800 active:bg-green-900 focus-visible:ring-green-600 shadow-sm; }
 
   .btn-sm { @apply !px-3 !py-1.5 !text-xs; }
 
@@ -536,4 +533,10 @@ input[type='number'] {
   .dark .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) {
     background: theme('colors.surface.800');
   }
+}
+
+/* Tableaux sur ordinateur : une seule ligne par enregistrement, la seconde information passe en infobulle. */
+@media (min-width: 1024px) {
+  .dt-une-ligne .dt-bas { display: none; }
+  .dt-une-ligne .dt-avatar { height: 1.5rem; width: 1.5rem; font-size: 10px; }
 }

@@ -14,7 +14,7 @@ import { Compteur, DoubleLigne, Montant, Progression, StatutPastille, Tiers, ton
 import PaginationControls from '@/components/tables/PaginationControls';
 import BoutonIcone, { IconeModifier, IconeVoir } from '@/components/tables/BoutonIcone';
 import KpiCard from '@/components/dashboard/KpiCard';
-import { dossiersApi } from '@/lib/api';
+import { agencesApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { statutColors, statutLabels, STATUTS_DOSSIER, STATUTS_DOSSIER_FERME } from '@/lib/dossierStatut';
 
@@ -38,6 +38,8 @@ export default function DossiersPage() {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filterNature, setFilterNature] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [filterAgence, setFilterAgence] = useState('');
+  const [agences, setAgences] = useState<{ id: string; nom: string }[]>([]);
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -47,6 +49,11 @@ export default function DossiersPage() {
   const [rechargement, setRechargement] = useState(0);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [compteurs, setCompteurs] = useState<{ NOUVEAU?: number; EN_COURS?: number; TERMINE?: number }>({});
+
+  // Agences de la société (filtre affiché seulement s'il y en a plusieurs)
+  useEffect(() => {
+    agencesApi.list().then((r) => setAgences(r.data.data || [])).catch(() => setAgences([]));
+  }, []);
 
   // Compteurs des indicateurs (une requête légère par statut)
   useEffect(() => {
@@ -70,6 +77,7 @@ export default function DossiersPage() {
     if (appliedSearch) params.search = appliedSearch;
     if (filterNature) params.nature = filterNature;
     if (filterStatut) params.statut = filterStatut;
+    if (filterAgence) params.agenceId = filterAgence;
     if (dateDebut && dateFin) {
       params.dateDebut = `${dateDebut}T00:00:00.000Z`;
       params.dateFin = `${dateFin}T23:59:59.999Z`;
@@ -82,11 +90,11 @@ export default function DossiersPage() {
       })
       .catch(() => { setDossiers([]); setErreur(true); })
       .finally(() => setLoading(false));
-  }, [page, limit, filterNature, filterStatut, appliedSearch, sortOrder, dateDebut, dateFin, rechargement]);
+  }, [page, limit, filterNature, filterStatut, filterAgence, appliedSearch, sortOrder, dateDebut, dateFin, rechargement]);
 
-  const filtresActifs = [filterNature, filterStatut, dateDebut, dateFin, appliedSearch].filter(Boolean).length;
+  const filtresActifs = [filterNature, filterStatut, filterAgence, dateDebut, dateFin, appliedSearch].filter(Boolean).length;
   const reinitialiserFiltres = () => {
-    setSearch(''); setAppliedSearch(''); setFilterNature(''); setFilterStatut(''); setDateDebut(''); setDateFin(''); setPage(1);
+    setSearch(''); setAppliedSearch(''); setFilterNature(''); setFilterStatut(''); setFilterAgence(''); setDateDebut(''); setDateFin(''); setPage(1);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -110,9 +118,12 @@ export default function DossiersPage() {
   // Colonnes du tableau (ordinateur)
   const dateCourte = (v: any) => new Date(v).toLocaleDateString('fr-FR');
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'Dossier', texte: (d) => d.numeroPhysique || d.numero, rendu: (d) => <DoubleLigne mono haut={d.numeroPhysique || d.numero} bas={`Créé le ${dateCourte(d.dateCreation)}`} /> },
-    { cle: 'client', libelle: 'Client', texte: (d) => d.client?.raisonSociale || '', rendu: (d) => <Tiers nom={d.client?.raisonSociale} detail={[natureLabels[d.nature] || d.nature, d.type].filter(Boolean).join(' · ')} /> },
-    { cle: 'bl', libelle: 'BL / Navire', masquerSous: 'xl', videSi: (d) => !d.numeroBL && !d.navire, texte: (d) => [d.numeroBL, d.navire].filter(Boolean).join(' — '), rendu: (d) => (d.numeroBL || d.navire) ? <DoubleLigne haut={<span className="font-mono text-[13px] font-medium text-gray-700 dark:text-gray-200">{d.numeroBL || '—'}</span>} bas={d.navire} /> : <span className="text-gray-300">—</span> },
+    { cle: 'numero', libelle: 'N° dossier', texte: (d) => d.numeroPhysique || d.numero, rendu: (d) => <span className="font-mono text-[13px] font-semibold text-primary-600 dark:text-primary-300">{d.numeroPhysique || d.numero}</span> },
+    { cle: 'date', libelle: 'Date', texte: (d) => dateCourte(d.dateCreation), rendu: (d) => <span className="tabular-nums text-gray-500 dark:text-gray-400">{dateCourte(d.dateCreation)}</span> },
+    { cle: 'client', libelle: 'Client', texte: (d) => d.client?.raisonSociale || '', rendu: (d) => <Tiers nom={d.client?.raisonSociale} /> },
+    { cle: 'nature', libelle: 'Nature', masquerSous: 'xl', texte: (d) => [natureLabels[d.nature] || d.nature, d.type].filter(Boolean).join(' · '), rendu: (d) => <span className="text-gray-700 dark:text-gray-200">{[natureLabels[d.nature] || d.nature, d.type ? d.type.charAt(0) + d.type.slice(1).toLowerCase() : ''].filter(Boolean).join(' · ')}</span> },
+    { cle: 'bl', libelle: 'BL', masquerSous: 'xl', videSi: (d) => !d.numeroBL && !d.navire, texte: (d) => [d.numeroBL, d.navire].filter(Boolean).join(' — '), rendu: (d) => (d.numeroBL || d.navire) ? <span title={d.navire || undefined} className="font-mono text-[13px] text-gray-700 dark:text-gray-200">{d.numeroBL || d.navire}</span> : <span className="text-gray-300">—</span> },
+    { cle: 'agence', libelle: 'Agence', masquerSous: 'xl', videSi: (d) => !d.agence, texte: (d) => d.agence?.nom || '', rendu: (d) => d.agence?.nom ? <span className="text-gray-700 dark:text-gray-200">{d.agence.nom}</span> : <span className="text-gray-300">—</span> },
     { cle: 'declaration', libelle: 'Déclaration', mono: true, masquerSous: '2xl', videSi: (d) => !d.numeroDeclaration, texte: (d) => d.numeroDeclaration || '', rendu: (d) => d.numeroDeclaration || <span className="text-gray-300">—</span> },
     { cle: 'caf', libelle: 'Valeur CAF', align: 'right', masquerSous: 'xl', videSi: (d) => !Number(d.valeurCAF), texte: (d) => montant(d.valeurCAF), rendu: (d) => <Montant valeur={d.valeurCAF} /> },
     { cle: 'docs', libelle: 'Documents', align: 'center', masquerSous: 'xl', videSi: (d) => !(d._count?.proformas || d._count?.factures), texte: (d) => `${d._count?.proformas ?? 0} proforma(s), ${d._count?.factures ?? 0} facture(s)`, rendu: (d) => (
@@ -205,7 +216,7 @@ export default function DossiersPage() {
               Filtres{filtresActifs > 0 ? ` (${filtresActifs})` : ''}
             </button>
           </div>
-          <div className={`${filtresOuverts ? 'grid' : 'hidden'} md:grid grid-cols-2 md:grid-cols-5 gap-2 lg:grid-cols-[7.5rem_7.5rem_8.5rem_8.5rem_6.5rem] lg:flex-shrink-0`}>
+          <div className={`${filtresOuverts ? 'grid' : 'hidden'} md:grid grid-cols-2 md:grid-cols-5 gap-2 ${agences.length > 1 ? 'lg:grid-cols-[7rem_7rem_7.5rem_8.5rem_8.5rem_6.5rem]' : 'lg:grid-cols-[7.5rem_7.5rem_8.5rem_8.5rem_6.5rem]'} lg:flex-shrink-0`}>
             <select value={filterNature} onChange={(e) => { setFilterNature(e.target.value); setPage(1); }} className="input-field" aria-label="Nature">
               <option value="">Nature</option>
               {Object.entries(natureLabels).map(([k, v]) => (
@@ -218,6 +229,12 @@ export default function DossiersPage() {
                 <option key={k} value={k}>{statutLabels[k]}</option>
               ))}
             </select>
+            {agences.length > 1 && (
+              <select value={filterAgence} onChange={(e) => { setFilterAgence(e.target.value); setPage(1); }} className="input-field" aria-label="Agence">
+                <option value="">Agence</option>
+                {agences.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
+              </select>
+            )}
             <input type="date" value={dateDebut} onChange={(e) => { setDateDebut(e.target.value); setPage(1); }} className="input-field" aria-label="Période : du" title="Période : du" />
             <input type="date" value={dateFin} onChange={(e) => { setDateFin(e.target.value); setPage(1); }} className="input-field" aria-label="Période : au" title="Période : au" />
             <select value={sortOrder} onChange={(e) => { setSortOrder(e.target.value as 'desc' | 'asc'); setPage(1); }} className="input-field" aria-label="Tri">

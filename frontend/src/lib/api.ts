@@ -97,6 +97,10 @@ export const dashboardApi = {
 };
 
 // Dossiers API
+export const agencesApi = {
+  list: () => api.get('/agences'),
+};
+
 export const dossiersApi = {
   list: (params?: Record<string, any>) =>
     api.get('/dossiers', { params }),

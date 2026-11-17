@@ -21,7 +21,7 @@ export interface NavItem {
   sous?: { name: string; href: string }[];
 }
 
-const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesOuverts';
+const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesPlies';
 const EVT_GROUPES = 'gbtrans:menu-groupes';
 function lireGroupesOuverts(): string {
   try { return window.localStorage.getItem(CLE_GROUPES_OUVERTS) || '[]'; } catch { return '[]'; }
@@ -122,9 +122,9 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
-  // Groupes dépliés (mémorisés). Par défaut, tout le menu est plié.
+  // Groupes pliés (mémorisés). Par défaut, tout le menu est déplié.
   const ouvertsBrut = useSyncExternalStore(abonnerGroupes, lireGroupesOuverts, () => '[]');
-  const ouverts: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
+  const plies: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
   const basculerGroupe = useCallback((titre: string) => {
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
     ecrireGroupesOuverts(actuels.includes(titre) ? actuels.filter((t) => t !== titre) : [...actuels, titre]);
@@ -144,13 +144,13 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     if (d) setBadges({ dossiers: d.totalDossiers, courriers: d.totalCourriers });
   }, [badgeStats]);
 
-  // Quand on change de page, le groupe qui la contient se déplie (les autres restent pliés).
+  // Quand on change de page, le groupe qui la contient se déplie s'il était plié.
   useEffect(() => {
     const groupe = navGroups.find((g) => g.items.some((i) =>
       pathname === i.href || pathname?.startsWith(i.href + '/') || i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))));
     if (!groupe) return;
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
-    if (!actuels.includes(groupe.title)) ecrireGroupesOuverts([...actuels, groupe.title]);
+    if (actuels.includes(groupe.title)) ecrireGroupesOuverts(actuels.filter((t) => t !== groupe.title));
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -211,7 +211,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
 
           // En mode réduit (icônes seules) il n'y a pas de titres : tout reste visible.
           const pliable = visibleItems.length > 1;
-          const replie = !collapsed && pliable && !ouverts.includes(group.title);
+          const replie = !collapsed && pliable && plies.includes(group.title);
           const idListe = `menu-groupe-${group.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
 
           return (

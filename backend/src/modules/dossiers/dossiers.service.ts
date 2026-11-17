@@ -148,6 +148,7 @@ export class DossierService {
         include: {
           client: { select: { id: true, code: true, raisonSociale: true } },
           agent: { select: { id: true, nom: true, prenom: true } },
+          agence: { select: { id: true, code: true, nom: true } },
           // conteneurs retirés de la liste (non utilisés par le frontend hors fiche détail)
           processus: { select: { _count: { select: { etapes: true } } } },
           _count: {
