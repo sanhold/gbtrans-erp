@@ -1,11 +1,15 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import api, { financeApi } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import KpiCard from '@/components/dashboard/KpiCard';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeVoir } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import PickerField from '@/components/ui/PickerField';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -70,63 +74,47 @@ export default function FacturationFournisseursPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
+  const date = (f: any) => new Date(f.dateEcheance).toLocaleDateString('fr-FR');
+  const statut = (f: any) => (f.statut || '').replace(/_/g, ' ');
+  const dossier = (f: any) => f.dossier?.numeroPhysique || f.dossier?.numero || '—';
+  const colonnes = [
+    { cle: 'numero', libelle: 'N° facture', texte: (f: any) => f.numero, rendu: (f: any) => <Numero>{f.numero}</Numero> },
+    { cle: 'date', libelle: 'Échéance', texte: date, rendu: (f: any) => <Discret>{date(f)}</Discret> },
+    { cle: 'fournisseur', libelle: 'Fournisseur', texte: (f: any) => f.fournisseur?.raisonSociale || '', rendu: (f: any) => <Tronque texte={f.fournisseur?.raisonSociale} largeur="18rem" /> },
+    { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl' as const, texte: dossier, rendu: (f: any) => <Discret>{dossier(f)}</Discret> },
+    { cle: 'ttc', libelle: 'Total TTC', align: 'right' as const, texte: (f: any) => String(f.montantTTC), rendu: (f: any) => <Montant valeur={f.montantTTC} /> },
+    { cle: 'paye', libelle: 'Payé', align: 'right' as const, masquerSous: 'xl' as const, texte: (f: any) => String(f.montantPaye), rendu: (f: any) => <Montant valeur={f.montantPaye} ton="positif" /> },
+    { cle: 'reste', libelle: 'Reste', align: 'right' as const, texte: (f: any) => String(f.resteAPayer), rendu: (f: any) => <Montant valeur={f.resteAPayer} ton="negatif" /> },
+    { cle: 'statut', libelle: 'Statut', texte: statut, rendu: (f: any) => <StatutPastille libelle={statut(f)} ton={tonDepuisBadge(statutColors[f.statut])} /> },
+  ];
+
   return (
     <AppLayout>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Facturation Fournisseur</h1>
-            <p className="text-sm text-gray-500">{total} facture(s) fournisseur</p>
-          </div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Facture Fournisseur
-          </button>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Facturation fournisseur"
+          sousTitre={`${total} facture(s) fournisseur`}
+          actions={<button onClick={() => setShowModal(true)} className="btn-primary">+ Nouvelle facture</button>}
+        />
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <KpiCard label="Total facturé" value={fmt(totaux.ttc)} unit="F" icon="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+          <KpiCard label="Total payé" value={fmt(totaux.paye)} unit="F" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" iconClass="text-green-600" />
+          <KpiCard label="Reste à payer" value={fmt(totaux.reste)} unit="F" icon="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" iconClass="text-red-600" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total facturé</p><p className="text-sm font-bold">{fmt(totaux.ttc)} F</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total payé</p><p className="text-sm font-bold text-green-600">{fmt(totaux.paye)} F</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Reste à payer</p><p className="text-sm font-bold text-red-600">{fmt(totaux.reste)} F</p></div>
-        </div>
-
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '12%' }} />
-            </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Fournisseur</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total TTC</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={8} />
-              : factures.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune facture fournisseur</td></tr>
-              : factures.map(f => (
-                <tr key={f.id} className="table-row cursor-pointer" onClick={() => openDetail(f.id)}>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Facture" title={f.numero}>{f.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Fournisseur" title={f.fournisseur?.raisonSociale}>{f.fournisseur?.raisonSociale}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Dossier">{f.dossier?.numeroPhysique || f.dossier?.numero || '-'}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Total TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
-                  <td className="table-cell text-right font-mono text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste">{fmt(f.resteAPayer)}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Échéance">{new Date(f.dateEcheance).toLocaleDateString('fr-FR')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
-        </div>
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={factures}
+          cleLigne={(f: any) => f.id}
+          chargement={loading}
+          nomExport="factures-fournisseurs"
+          onClic={(f: any) => openDetail(f.id)}
+          actions={(f: any) => <BoutonIcone titre="Voir" ton="primaire" href={`/facturation-fournisseurs/${f.id}`}><IconeVoir /></BoutonIcone>}
+          carte={(f: any) => ({ titre: f.numero, sousTitre: f.fournisseur?.raisonSociale || '—', droite: <Montant valeur={f.resteAPayer} ton="negatif" />, details: <span className="inline-flex flex-wrap items-center gap-2">{date(f)}<StatutPastille libelle={statut(f)} ton={tonDepuisBadge(statutColors[f.statut])} /></span> })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: changePageSize }}
+          vide={<EmptyState titre="Aucune facture fournisseur" description="Créez une première facture fournisseur." />}
+        />
 
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
