@@ -13,9 +13,6 @@ import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import { useAuthStore } from '@/stores/authStore';
 import ComptesBancairesManager from '@/components/finance/ComptesBancairesManager';
-import { GraphifyChart } from '@/components/charts';
-import MontantsMasques from '@/components/ui/MontantsMasques';
-import type { GraphifyData } from '@/types/graphify';
 
 const MONTANT_MASQUE = '•••••••';
 
@@ -199,22 +196,6 @@ export default function ComptesPage() {
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Types de compte</h3>
           {loading ? <div className="card text-center text-gray-500 py-8">Chargement...</div> : (
             <>
-              {typeTiles.some(t => t.total !== 0) && (
-                <div className="card !p-4 mb-4">
-                  {canSeeMontants ? (
-                    <GraphifyChart
-                      type="bar"
-                      data={{
-                        labels: typeTiles.map(t => TYPE_LABELS[t.type]),
-                        series: [{ label: 'Solde', data: typeTiles.map(t => t.total), color: '#345c80' }],
-                      } as GraphifyData}
-                      config={{ height: 160, yAxisFormatter: (v) => fmt(v) }}
-                    />
-                  ) : (
-                    <MontantsMasques height={160} label="Soldes masqués" />
-                  )}
-                </div>
-              )}
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
               {typeTiles.map(t => (
                 <button key={t.type} type="button" onClick={() => setSelectedType(t.type)}
