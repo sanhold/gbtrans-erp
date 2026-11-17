@@ -1,5 +1,6 @@
 'use client';
 
+import { useStyleMenu, STYLES_MENU } from '@/lib/styleMenu';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
@@ -85,6 +86,7 @@ export default function Header({ onToggleSidebar = () => {}, onToggleCollapse, c
   const { data: alertesRes } = useCachedFetch('dashboard:alertes', () => dashboardApi.alertes(), TTL.normal);
   const al = alertesRes?.data?.data;
   const nbAlertes = (al?.facturesEnRetard?.length || 0) + (al?.atExpirationProche?.length || 0) + (al?.cautionsCourrierEnAttente?.length || 0);
+  const { style: styleMenu, changer: changerStyleMenu } = useStyleMenu();
   const iconBtn = 'w-11 h-11 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70';
   const [identite, setIdentite] = useState<{ raisonSociale?: string; logo?: string | null } | null>(null);
 
@@ -188,10 +190,23 @@ export default function Header({ onToggleSidebar = () => {}, onToggleCollapse, c
           </button>
 
           {showProfile && (
-            <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-surface-800 text-gray-900 dark:text-white rounded-sm shadow-lg border border-gray-300 dark:border-surface-700 py-1 z-50">
+            <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-surface-800 text-gray-900 dark:text-white rounded-sm shadow-lg border border-gray-300 dark:border-surface-700 py-1 z-50">
               <div className="px-3.5 py-2 border-b border-gray-100 dark:border-surface-700">
                 <p className="text-sm font-medium">{user ? `${user.prenom} ${user.nom}` : ''}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+              </div>
+              <div className="px-3.5 py-2 border-b border-gray-100 dark:border-surface-700">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">Style du menu</p>
+                <div className="flex flex-col gap-1" role="radiogroup" aria-label="Style du menu latéral">
+                  {STYLES_MENU.map((st) => (
+                    <button key={st.cle} type="button" role="radio" aria-checked={styleMenu === st.cle} onClick={() => changerStyleMenu(st.cle)} title={st.description}
+                      className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${styleMenu === st.cle ? 'bg-azure-tint text-primary-600 font-semibold dark:bg-white/10 dark:text-white' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-surface-700'}`}>
+                      <span aria-hidden="true" className="h-5 w-5 flex-shrink-0 rounded-full border border-black/10" style={{ background: st.pastille }} />
+                      <span className="flex-1">{st.libelle}</span>
+                      {styleMenu === st.cle && <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>}
+                    </button>
+                  ))}
+                </div>
               </div>
               <button
                 onClick={() => { setShowProfile(false); router.push('/mon-compte'); }}
