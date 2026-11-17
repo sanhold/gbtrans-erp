@@ -80,7 +80,7 @@ router.post('/', audit('FINANCE', 'CREER'), async (req: AuthRequest, res: Respon
     // Seul le bénéficiaire de la dotation peut y déposer des justificatifs.
     const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId, agentId: userId } });
     if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
-    if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée : plus aucune dépense ne peut y être ajoutée' : 'Cette dotation est annulée'); return; }
+    if (dotation.statut === 'SOLDEE' || dotation.statut === 'ANNULEE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée : plus aucune dépense ne peut y être ajoutée' : 'Cette dotation est annulée'); return; }
     await assertDossierOuvert(dossierId, societeId);
 
     const [dep, att] = await Promise.all([
@@ -116,7 +116,7 @@ router.post('/soumettre', audit('FINANCE', 'MODIFIER'), async (req: AuthRequest,
     if (!dotationId) { ApiResponse.badRequest(res, 'Dotation requise'); return; }
     const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId, agentId: userId } });
     if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
-    if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée : plus aucune dépense ne peut y être ajoutée' : 'Cette dotation est annulée'); return; }
+    if (dotation.statut === 'SOLDEE' || dotation.statut === 'ANNULEE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée : plus aucune dépense ne peut y être ajoutée' : 'Cette dotation est annulée'); return; }
     const r = await prisma.justificatifDotation.updateMany({
       where: { societeId, dotationId, auteurId: userId, statut: 'BROUILLON' },
       data: { statut: 'EN_ATTENTE' },
@@ -216,7 +216,7 @@ router.post('/comptable', authorize('FINANCE:CREER'), audit('FINANCE', 'CREER'),
     }
     const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId } });
     if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
-    if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée' : 'Cette dotation est annulée'); return; }
+    if (dotation.statut === 'SOLDEE' || dotation.statut === 'ANNULEE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est soldée' : 'Cette dotation est annulée'); return; }
     await assertDossierOuvert(dossierId, societeId);
     const m = await montantsDotation(dotationId, Number(dotation.montant));
     if (montant > m.montantRestant) { ApiResponse.badRequest(res, `Montant supérieur au reste disponible sur cette dotation (${m.montantRestant})`); return; }
@@ -255,7 +255,7 @@ router.post('/valider-dotation', authorize('FINANCE:MODIFIER'), audit('FINANCE',
 
     const dotation = await prisma.dotation.findFirst({ where: { id: dotationId, societeId } });
     if (!dotation) { ApiResponse.notFound(res, 'Dotation introuvable'); return; }
-    if (dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est déjà soldée' : 'Cette dotation est annulée'); return; }
+    if (dotation.statut === 'SOLDEE' || dotation.statut === 'ANNULEE') { ApiResponse.badRequest(res, dotation.statut === 'SOLDEE' ? 'Cette dotation est déjà soldée' : 'Cette dotation est annulée'); return; }
 
     const enAttente = await prisma.justificatifDotation.findMany({ where: { dotationId, societeId, statut: 'EN_ATTENTE' } });
     const retenus = enAttente.filter((j) => justificatifIds.includes(j.id));
@@ -406,7 +406,7 @@ router.post('/:id/valider', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MOD
     const j = await prisma.justificatifDotation.findFirst({ where: { id: req.params.id, societeId }, relationLoadStrategy: 'join', include: { dotation: true } });
     if (!j) { ApiResponse.notFound(res, 'Justificatif introuvable'); return; }
     if (j.statut !== 'EN_ATTENTE') { ApiResponse.badRequest(res, 'Ce justificatif est déjà traité'); return; }
-    if (j.dotation.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }
+    if (j.dotation.statut === 'SOLDEE' || j.dotation.statut === 'ANNULEE') { ApiResponse.badRequest(res, 'Cette dotation est annulée'); return; }
     if (j.dossierId) await assertDossierOuvert(j.dossierId, societeId);
 
     const compte = caisseId
