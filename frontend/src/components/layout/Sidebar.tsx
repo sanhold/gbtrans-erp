@@ -280,15 +280,27 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
               return (
                 <div key={item.href}>
                 {accordeon ? (
-                  <button
-                    type="button"
-                    onClick={() => basculerSous(item.href)}
-                    aria-expanded={ouvert}
-                    className={clsx(linkCls(false), 'w-[calc(100%-1.5rem)] text-left', dansSous && 'font-semibold')}
-                    style={teinte(idx)}
-                  >
-                    {contenuLien}
-                  </button>
+                  <>
+                    {/* Téléphone : un simple lien. Les pages de la rubrique s'affichent en haut de la page elle-même. */}
+                    <div className="lg:hidden">
+                      <Link href={cible} onClick={onClose} aria-current={isActive ? 'page' : undefined} className={linkCls(isActive)} style={teinte(idx)}>
+                        <Icon d={item.icon} />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    </div>
+                    {/* Ordinateur : la rubrique se déplie dans le menu. */}
+                    <div className="hidden lg:block">
+                      <button
+                        type="button"
+                        onClick={() => basculerSous(item.href)}
+                        aria-expanded={ouvert}
+                        className={clsx(linkCls(false), 'w-[calc(100%-1.5rem)] text-left', dansSous && 'font-semibold')}
+                        style={teinte(idx)}
+                      >
+                        {contenuLien}
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <Link
                     href={cible}
@@ -302,7 +314,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
                   </Link>
                 )}
                 {afficherSous && (
-                  <div role="group" aria-label={item.name} className="my-0.5 space-y-0.5">
+                  <div role="group" aria-label={item.name} className="hidden lg:block my-0.5 space-y-0.5">
                     {item.sous!.map((x) => {
                       const actif = pathname === x.href || pathname?.startsWith(x.href + '/');
                       return (
