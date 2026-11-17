@@ -512,3 +512,24 @@ Totaux en base après reprise : 227 clients, 2 252 dossiers, 2 256 factures (TTC
 - **Dossiers d'offre importés comme dossiers** (37) : à confirmer, ils apparaissent dans la liste des dossiers avec le statut « nouveau ».
 
 **Non fait volontairement** : pièces comptables 2026 (l'exercice 2026 existe peut-être déjà dans l'application, depuis la saisie de juillet à novembre ; à traiter avec le contrôle de jonction). Les nouvelles factures de 2026 restent donc « à décider » dans la file de décision.
+
+## 24. Reprise 2026 : employés, utilisateurs et compagnies
+
+Préparation uniquement : rien n'est importé. Les états sont dans `backend/logs/etl-2026/` (`employes-2026.csv`, `utilisateurs-2026.csv`, `compagnies-2026.csv`) ; les mots de passe du fichier ne sont repris nulle part.
+
+**Employés (26)**
+- Le fichier ne donne ni poste, ni salaire, ni contrat, ni CNPS : seuls l'identité, la naissance et, pour 5 personnes, la date d'entrée sont renseignés. Or la fiche employé de l'application exige un poste, une date d'embauche et un salaire de base.
+- Anomalies : matricule 0118/DG/TMS (MOCTAR COULIBALY, nom et prénom probablement inversés) ; date de naissance impossible pour TRAORE KARIDJA (29/06/2023, entrée en 2024) ; « IVOIRIENNE » saisi comme lieu de naissance pour ASSORI AHOU URSULA ; sexe absent pour DAH PHUREX et KONE IBRAHIMA.
+- Intérêt réel : les matricules 001 à 027/DG/TMS sont ceux des 26 agents des dossiers. Ils permettent de donner un vrai nom aux 40 utilisateurs de reprise (`ETL-<matricule>`) lors du rapprochement.
+
+**Utilisateurs (11)**
+- 3 administrateurs (le propriétaire, le DG, un compte générique `admin`) et 8 agents. Le propriétaire est administrateur sans aucun droit de module coché.
+- Cinq agents ont tous les droits sauf la gestion des utilisateurs ; trois ont des droits restreints (dossiers sans finance, ou finance limitée aux dotations).
+- 9 employés sur 11 comptes se rapprochent sans ambiguïté ; TRAORE ABDOUL / TRAORE TIDIANE ABDUL (matricule 006) est à confirmer ; 14 employés n'ont aucun compte.
+- Mots de passe : 8 sur 11 ont moins de 8 caractères (dont `admin`) : jamais repris ; les comptes réels se créent dans l'application avec changement obligatoire au premier accès.
+
+**Compagnies (9)**
+- Il n'existe pas de table des compagnies dans l'application : la compagnie maritime est un texte libre du dossier. Rien à importer.
+- La liste du logiciel (MSC, AGL, OOCL, PIL, OMA GROUP, COMA, CMA CGM, GRIMALDI, ARKAS) est incomplète : les dossiers repris en citent d'autres (MAERSK, DHL, ONE, HAPAG LLOYD, COSCO…) et de nombreuses variantes mal orthographiées (GRIAMLDI, GRIMADI, GRILMALDI, ARKHAS, MAESK, OMA / OMA CI…).
+
+**Décisions à prendre** : importer ou non les employés ; profils à créer pour les 8 agents ; normalisation des variantes de compagnies sur les dossiers repris.
