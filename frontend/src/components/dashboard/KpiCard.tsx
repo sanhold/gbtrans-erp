@@ -26,9 +26,9 @@ export default function KpiCard({ label, value, unit, icon, iconClass = 'text-pr
         <span className="text-[11.5px] text-gray-500 dark:text-gray-400 font-medium leading-tight line-clamp-2" title={label}>{label}</span>
         <Pictogramme icon={icon} className={`w-4 h-4 flex-shrink-0 ${iconClass}`} />
       </div>
-      <div className="sm:hidden font-display font-extrabold tracking-tight text-gray-900 dark:text-white leading-none whitespace-nowrap text-[22px]">
+      <div className="sm:hidden font-display font-extrabold tracking-tight text-gray-900 dark:text-white leading-none whitespace-nowrap text-[19px] overflow-hidden text-ellipsis">
         {value}
-        {unit && <span className="ml-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 tracking-normal">{unit}</span>}
+        {unit && <span className="ml-1 hidden min-[400px]:inline text-[11px] font-medium text-gray-500 dark:text-gray-400 tracking-normal">{unit}</span>}
       </div>
       {/* Ordinateur : pastille colorée + chiffre + libellé */}
       <div className="hidden sm:flex items-center gap-3.5 min-w-0">
