@@ -580,3 +580,19 @@ html:not(.dark) .menu-lateral[data-menu='ciel'] .m-it[aria-current='page'] { bac
 html:not(.dark) .menu-lateral[data-menu='ciel'] .m-it[aria-current='page'] .m-ico { background: #E8F0FF; color: #1F6FEB; }
 html:not(.dark) .menu-lateral[data-menu='ciel'] .m-badge { background: #1F6FEB; color: #fff; }
 .dark .menu-lateral[data-menu='ciel'] .m-it[aria-current='page'] { background: #1F6FEB; color: #fff; }
+
+/* Titres de page des écrans qui n'utilisent pas encore PageHeader : même identité (Plus Jakarta Sans, bleu nuit). */
+h1.text-2xl.font-bold,
+h1.text-xl.font-bold {
+  font-family: var(--font-display, 'Plus Jakarta Sans', 'Inter', sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #12314f;
+}
+.dark h1.text-2xl.font-bold,
+.dark h1.text-xl.font-bold { color: #fff; }
+
+/* Tableaux historiques (classes .table-cell) : lignes de 40 px, comme les tableaux compacts. */
+@media (min-width: 1024px) {
+  .table-container:not(.table-compact) .table-cell { padding-top: 0.5625rem; padding-bottom: 0.5625rem; }
+}

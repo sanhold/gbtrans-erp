@@ -1,10 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import { fmt, CREANCE_STATUTS_OUVERTS, CREANCE_STATUT_BADGE } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
@@ -22,53 +24,52 @@ export default function DettesFournisseursPage() {
   }, []);
 
   const total = rows.reduce((s, r) => s + Number(r.resteAPayer), 0);
+  const tiers = (f: any) => f.fournisseur?.raisonSociale || '—';
+  const date = (f: any) => new Date(f.dateEcheance).toLocaleDateString('fr-FR');
+  const statut = (f: any) => (f.statut || '').replace(/_/g, ' ');
+  const lien = (f: any) => `/facturation-fournisseurs/${f.id}`;
+
+  const colonnes = [
+    { cle: 'numero', libelle: 'N° facture', texte: (f: any) => f.numero, rendu: (f: any) => <Numero>{f.numero}</Numero> },
+    { cle: 'date', libelle: 'Échéance', texte: date, rendu: (f: any) => <Discret>{date(f)}</Discret> },
+    { cle: 'tiers', libelle: 'Fournisseur', texte: tiers, rendu: (f: any) => <Tronque texte={tiers(f)} largeur="18rem" /> },
+    { cle: 'ttc', libelle: 'Total TTC', align: 'right' as const, texte: (f: any) => String(f.montantTTC), rendu: (f: any) => <Montant valeur={f.montantTTC} /> },
+    { cle: 'paye', libelle: 'Payé', align: 'right' as const, masquerSous: 'xl' as const, texte: (f: any) => String(f.montantPaye), rendu: (f: any) => <Montant valeur={f.montantPaye} ton="positif" /> },
+    { cle: 'reste', libelle: 'Reste à payer', align: 'right' as const, texte: (f: any) => String(f.resteAPayer), rendu: (f: any) => <Montant valeur={f.resteAPayer} ton="negatif" /> },
+    { cle: 'statut', libelle: 'Statut', texte: statut, rendu: (f: any) => <StatutPastille libelle={statut(f)} ton={tonDepuisBadge(CREANCE_STATUT_BADGE[f.statut])} /> },
+  ];
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dettes Fournisseurs</h1><p className="text-sm text-gray-500">Factures fournisseurs validées et non soldées</p></div>
-
-        <div className="card !py-3 !px-4 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800 text-sm text-red-800 dark:text-red-300">
-          Total des dettes fournisseurs : <span className="font-mono font-bold">{fmt(total)} XOF</span> — {rows.length} facture(s) ouverte(s)
-        </div>
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '13%' }} />
-                <col style={{ width: '10%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '12%' }} />
-            </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Fournisseur</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Facture</th><th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TTC</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={8} />
-              : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucune dette ouverte</td></tr>
-              : paged.map(f => (
-                <tr key={f.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions"><Link href={`/facturation-fournisseurs/${f.id}`} className="btn-primary !px-2 !py-1 text-[10.5px]">Payer</Link></td>
-                  <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Fournisseur" title={f.fournisseur?.raisonSociale}>{f.fournisseur?.raisonSociale}</td>
-                  <td className="table-cell font-mono text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Facture">{f.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Échéance">{new Date(f.dateEcheance).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="TTC">{fmt(f.montantTTC)}</td>
-                  <td className="table-cell text-right font-mono text-green-600 !px-1.5 !text-[10.5px] truncate" data-label="Payé">{fmt(f.montantPaye)}</td>
-                  <td className="table-cell text-right font-mono font-semibold text-red-600 !px-1.5 !text-[10.5px] truncate" data-label="Reste à payer">{fmt(f.resteAPayer)}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${CREANCE_STATUT_BADGE[f.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{f.statut?.replace(/_/g, ' ')}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={totalRows} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Dettes fournisseurs"
+          sousTitre="Factures fournisseurs validées et non soldées"
+          icone="M12 8c-2 0-3 .9-3 2s1 2 3 2 3 .9 3 2-1 2-3 2m0-8V6m0 12v-2"
+          centre={
+            <>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800">
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-red-500" />
+                <b className="tabular-nums">{fmt(total)}</b><span className="text-gray-500">XOF à payer</span>
+              </span>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800">
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-blue-600" />
+                <b className="tabular-nums">{rows.length}</b><span className="text-gray-500">facture(s) ouverte(s)</span>
+              </span>
+            </>
+          }
+        />
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={paged}
+          cleLigne={(f: any) => f.id}
+          chargement={loading}
+          nomExport="dettes-fournisseurs"
+          actions={(f: any) => <BoutonIcone titre="Payer" ton="primaire" href={lien(f)}><IconeValider /></BoutonIcone>}
+          carte={(f: any) => ({ titre: f.numero, sousTitre: tiers(f), droite: <Montant valeur={f.resteAPayer} ton="negatif" />, details: <span className="inline-flex flex-wrap items-center gap-2">{date(f)}<StatutPastille libelle={statut(f)} ton={tonDepuisBadge(CREANCE_STATUT_BADGE[f.statut])} /></span> })}
+          pagination={{ page, totalPages, total: totalRows, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre="Aucune dette ouverte" description="Toutes les factures sont soldées." />}
+        />
       </div>
     </AppLayout>
   );
