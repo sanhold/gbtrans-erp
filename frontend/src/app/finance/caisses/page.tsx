@@ -1,11 +1,14 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider, IconeArchiver } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
-import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
+import { useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -41,44 +44,38 @@ export default function CaissesPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Caisses</h1><p className="text-sm text-gray-500">Gestion des caisses espèces</p></div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouvelle Caisse
-          </button>
-        </div>
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '10%' }} />
-              </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Plafond</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={7} />
-              : caisses.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucune caisse. Créez-en une.</td></tr>
-              : paged.map(c => (
-                <tr key={c.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => toggleActif(c)} className="text-[10.5px] text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Plafond">{canSeeMontants ? (c.plafond ? fmt(c.plafond) : '-') : MONTANT_MASQUE}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut">{c.actif ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Actif</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Inactif</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Caisses"
+          sousTitre="Gestion des caisses espèces"
+          icone="M3 7h18v10H3zM12 14a2 2 0 100-4 2 2 0 000 4z"
+          actions={
+            <button onClick={() => setShowModal(true)} className="btn-primary">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouvelle caisse
+            </button>
+          }
+        />
+        <ListeResponsive
+          colonnes={[
+            { cle: 'code', libelle: 'Code', texte: (c: any) => c.code, rendu: (c: any) => <Numero>{c.code}</Numero> },
+            { cle: 'libelle', libelle: 'Libellé', texte: (c: any) => c.libelle, rendu: (c: any) => <Tronque texte={c.libelle} largeur="22rem" /> },
+            { cle: 'devise', libelle: 'Devise', masquerSous: 'xl' as const, texte: (c: any) => c.devise, rendu: (c: any) => <Discret>{c.devise}</Discret> },
+            { cle: 'plafond', libelle: 'Plafond', align: 'right' as const, masquerSous: 'xl' as const, texte: (c: any) => String(c.plafond ?? ''), rendu: (c: any) => (canSeeMontants ? (c.plafond ? <Montant valeur={c.plafond} /> : <span className="text-gray-300">—</span>) : MONTANT_MASQUE) },
+            { cle: 'solde', libelle: 'Solde', align: 'right' as const, texte: (c: any) => String(c.solde), rendu: (c: any) => (canSeeMontants ? <Montant valeur={c.solde} /> : MONTANT_MASQUE) },
+            { cle: 'statut', libelle: 'Statut', texte: (c: any) => (c.actif ? 'Actif' : 'Inactif'), rendu: (c: any) => <StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} /> },
+          ]}
+          lignes={paged}
+          cleLigne={(c: any) => c.id}
+          chargement={loading}
+          nomExport="caisses"
+          actions={(c: any) => (
+            <BoutonIcone titre={c.actif ? 'Désactiver' : 'Activer'} ton={c.actif ? 'neutre' : 'primaire'} onClick={() => toggleActif(c)}>{c.actif ? <IconeArchiver /> : <IconeValider />}</BoutonIcone>
+          )}
+          carte={(c: any) => ({ titre: c.libelle, sousTitre: c.code, statut: <StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} />, droite: canSeeMontants ? <Montant valeur={c.solde} /> : MONTANT_MASQUE })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre="Aucune caisse" description="Utilisez le bouton en haut à droite pour en ajouter un." />}
+        />
 
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">

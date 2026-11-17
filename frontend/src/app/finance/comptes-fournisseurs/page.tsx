@@ -1,9 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeVoir } from '@/components/tables/BoutonIcone';
+import { Numero, Tronque, Montant } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import { fmt } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
@@ -40,44 +43,38 @@ export default function ComptesFournisseursPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptes Fournisseurs</h1><p className="text-sm text-gray-500">Solde de chaque fournisseur au titre des factures validées</p></div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total dû aux fournisseurs</p><p className="text-base font-bold text-amber-600">{canSeeMontants ? `${fmt(totalDu)} F` : MONTANT_MASQUE}</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Total facturé (validé)</p><p className="text-base font-bold text-gray-900 dark:text-white">{canSeeMontants ? `${fmt(totalFacture)} F` : MONTANT_MASQUE}</p></div>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Fournisseurs</p><p className="text-base font-bold text-gray-900 dark:text-white">{rows.length}</p></div>
-        </div>
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
-              </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Fournisseur</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total facturé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total payé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Reste</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Factures</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={7} />
-              : rows.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun fournisseur facturé</td></tr>
-              : paged.map(r => (
-                <tr key={r.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={() => openReleve(r.id)} className="text-[10.5px] text-primary-600 hover:underline">Relevé</button></td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{r.code}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Fournisseur" title={r.raisonSociale}>{r.raisonSociale}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total facturé">{canSeeMontants ? fmt(r.totalFacture) : MONTANT_MASQUE}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Total payé">{canSeeMontants ? fmt(r.totalPaye) : MONTANT_MASQUE}</td>
-                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.resteAPayer) > 0 ? 'text-red-600' : 'text-green-600'}`} data-label="Reste à payer">{canSeeMontants ? fmt(r.resteAPayer) : MONTANT_MASQUE}</td>
-                  <td className="table-cell text-right !px-1.5 !text-[10.5px] truncate" data-label="Factures">{Number(r.nombreFactures)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Comptes fournisseurs"
+          sousTitre="Solde de chaque fournisseur au titre des factures validées"
+          icone="M17 20h5v-1a4 4 0 00-3-3.87M9 20H4v-1a4 4 0 013-3.87m5-2.13a4 4 0 100-8 4 4 0 000 8z"
+          centre={
+            <>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-500" /><b className="tabular-nums">{canSeeMontants ? fmt(totalDu) : MONTANT_MASQUE}</b><span className="text-gray-500">F dus aux fournisseurs</span></span>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-blue-600" /><b className="tabular-nums">{canSeeMontants ? fmt(totalFacture) : MONTANT_MASQUE}</b><span className="text-gray-500">F facturés</span></span>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-violet-600" /><b className="tabular-nums">{rows.length}</b><span className="text-gray-500">fournisseurs</span></span>
+            </>
+          }
+        />
+        <ListeResponsive
+          colonnes={[
+            { cle: 'code', libelle: 'Code', texte: (r: any) => r.code, rendu: (r: any) => <Numero>{r.code}</Numero> },
+            { cle: 'nom', libelle: 'Fournisseur', texte: (r: any) => r.raisonSociale, rendu: (r: any) => <Tronque texte={r.raisonSociale} largeur="22rem" /> },
+            { cle: 'facture', libelle: 'Total facturé', align: 'right' as const, texte: (r: any) => String(r.totalFacture), rendu: (r: any) => (canSeeMontants ? <Montant valeur={r.totalFacture} /> : MONTANT_MASQUE) },
+            { cle: 'paye', libelle: 'Total payé', align: 'right' as const, masquerSous: 'xl' as const, texte: (r: any) => String(r.totalPaye), rendu: (r: any) => (canSeeMontants ? <Montant valeur={r.totalPaye} ton="positif" /> : MONTANT_MASQUE) },
+            { cle: 'reste', libelle: 'Reste à payer', align: 'right' as const, texte: (r: any) => String(r.resteAPayer), rendu: (r: any) => (canSeeMontants ? <Montant valeur={r.resteAPayer} ton={Number(r.resteAPayer) > 0 ? 'negatif' : 'positif'} /> : MONTANT_MASQUE) },
+            { cle: 'nb', libelle: 'Factures', align: 'right' as const, texte: (r: any) => String(Number(r.nombreFactures)), rendu: (r: any) => <span className="tabular-nums">{Number(r.nombreFactures)}</span> },
+          ]}
+          lignes={paged}
+          cleLigne={(r: any) => r.id}
+          chargement={loading}
+          nomExport="comptes-fournisseurs"
+          onClic={(r: any) => openReleve(r.id)}
+          actions={(r: any) => <BoutonIcone titre="Relevé de compte" ton="primaire" onClick={() => openReleve(r.id)}><IconeVoir /></BoutonIcone>}
+          carte={(r: any) => ({ titre: r.raisonSociale, sousTitre: r.code, droite: canSeeMontants ? <Montant valeur={r.resteAPayer} ton={Number(r.resteAPayer) > 0 ? 'negatif' : 'positif'} /> : MONTANT_MASQUE, details: `${Number(r.nombreFactures)} facture(s)` })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre="Aucun fournisseur facturé" description="Les comptes apparaissent dès qu'une facture est validée." />}
+        />
 
         {detail && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
