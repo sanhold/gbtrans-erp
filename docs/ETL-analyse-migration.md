@@ -552,3 +552,17 @@ Script : `backend/scripts/etl/importer-2026-journal.ts` (simulation par défaut,
 - Les deux seules factures dont le payé dépasse le TTC sont des avoirs (TTC négatif), sans lien avec ce passage.
 
 **À compléter** : approvisionnements de caisse, mouvements bancaires et acomptes clients de 2026, puis contrôle des soldes négatifs ; pièces comptables 2026 (aucune écriture n'est créée pour ces lignes).
+
+## 26. Décisions du propriétaire et contrôle de la production (lecture seule)
+
+**Décisions**
+- **Employés** : ne pas importer pour l'instant (données de paie absentes). Les matricules servent au rapprochement des utilisateurs de reprise.
+- **Compagnies maritimes** : variantes évidentes corrigées sur les dossiers repris (14 dossiers : ARKAS LINE, CMA-CGM, GRIAMLDI, GRIMADI, GRILMALDI, MAESK, HAPAG-LLOYD, one, OMA CI, ARKHAS, DIAMOND SHIPING). Valeurs douteuses laissées (AF702, S322596743, EVOQUA…). Script `corriger-2026.ts`.
+- **Cinq factures de 2025 au TTC modifié** : montant 2026 appliqué (totaux, TVA de prestation et lignes remplacés ; payé conservé, reste à payer et statut recalculés). FACT2025-2224 +106 920, -2230 +371 820, -2231 +5 500, -2197 +63 000, -2198 −461 500 ; les quatre premières restent partiellement payées ou à payer pour l'écart, la dernière reste soldée. Rapport : `corrections-factures.csv`.
+- **Lecture seule de la production** : autorisée ; effectuée (voir ci-dessous). Aucune écriture.
+
+**Constat sur la production (projet Supabase « gbtranserp », migrations 052 et 053 appliquées)**
+- La société **ETL est vide** (0 client, 0 dossier, 0 facture) : elle ne contient que l'exercice 2026 et l'administrateur de la reprise. La reprise y entrera donc sans collision.
+- La société **GBTRANS** contient déjà 61 clients, 459 dossiers (de 2023 à septembre 2026), 264 factures (TTC 2 935 298 937, payé 1 591 186 357) et 4 exercices (2023 à 2026). 256 de ces factures portent des numéros de l'ancien logiciel (FACT2022-748 à FACT2026-2310, dont FACT2024-168322222, copie corrompue que la reprise rejette) : toutes ont été créées entre le 01/09/2026 et le 16/10/2026, c'est-à-dire saisies ou importées à la main, partiellement, dans la société GBTRANS.
+- L'activité propre à l'application est faible : 8 factures et avoirs au format FAC/2026 et AVR/2026 (septembre et octobre) et un dossier DOS/2026/000255 en septembre. Les 5 utilisateurs de la société GBTRANS (admin, commercial, comptable, transitaire, consultation) sont encore actifs (connexion la plus récente le 17/11/2026).
+- **Risque** : l'activité de l'ancien logiciel existerait en double, dans GBTRANS (partielle) et dans ETL (complète). À trancher : quelle société est la société réelle ?
