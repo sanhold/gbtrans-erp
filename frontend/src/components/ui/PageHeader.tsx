@@ -14,10 +14,10 @@ export default function PageHeader({ titre, sousTitre, actions, sousTitreMasqueM
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 mb-3 sm:mb-5">
       <div className="min-w-0">
-        <h1 className="font-display text-[20px] sm:text-[26px] leading-tight font-extrabold tracking-tight text-gray-900 dark:text-white">{titre}</h1>
+        <h1 className="font-display text-[20px] sm:text-[26px] leading-tight font-extrabold tracking-tight text-primary-600 dark:text-white">{titre}</h1>
         {sousTitre && <p className={`text-[12.5px] sm:text-[14px] text-gray-500 dark:text-gray-400 ${sousTitreMasqueMobile ? 'hidden sm:block' : ''}`}>{sousTitre}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2 flex-shrink-0">{actions}</div>}
+      {actions && <div className="ph-actions flex flex-wrap items-center gap-2 flex-shrink-0">{actions}</div>}
     </div>
   );
 }
