@@ -4,6 +4,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
 import { utilisateursApi, parametresApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -292,36 +293,36 @@ export default function ParametresPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Paramètres</h1><p className="text-sm text-gray-500">Configuration générale de l&apos;application</p></div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader titre="Paramètres" sousTitre="Configuration générale de l'application" icone="M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-2-4-2 1a7 7 0 00-2-1l-.5-2h-4L10 7a7 7 0 00-2 1L6 7l-2 4 2 1a7 7 0 000 2l-2 1 2 4 2-1a7 7 0 002 1l.5 2h4l.5-2a7 7 0 002-1l2 1 2-4-2-1a7 7 0 000-2z" sousTitreMasqueMobile />
 
-        <div className="flex gap-6">
-          <div className="w-56 space-y-1">
+        <div className="flex flex-col gap-3 lg:flex-row lg:gap-6">
+          {/* Sections : bandeau de pastilles défilant sur téléphone, colonne à gauche sur ordinateur */}
+          <nav aria-label="Sections des paramètres" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-56 lg:flex-shrink-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0 lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-surface-700'}`}>
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? 'page' : undefined}
+                className={`flex-shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-azure lg:w-full lg:rounded-lg lg:border-transparent lg:text-left lg:font-medium ${activeTab === tab.id ? 'border-primary-600 bg-primary-600 text-white shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-azure hover:bg-azure-tint dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200 dark:hover:bg-white/10 lg:bg-transparent lg:hover:bg-gray-50'}`}>
                 {tab.label}
               </button>
             ))}
-            <div className="pt-2 mt-2 border-t border-gray-200 dark:border-surface-700 space-y-1">
-              {linkTabs.map(tab => (
-                <Link key={tab.href} href={tab.href}
-                  className="flex items-center justify-between w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-surface-700 transition-all">
-                  {tab.label}
-                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-              ))}
-            </div>
-          </div>
+            <span aria-hidden="true" className="my-1 hidden border-t border-gray-200 dark:border-surface-700 lg:block" />
+            {linkTabs.map(tab => (
+              <Link key={tab.href} href={tab.href}
+                className="inline-flex flex-shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-full border border-dashed border-gray-300 bg-white px-4 py-2 text-[13.5px] font-medium text-gray-600 transition-colors hover:border-azure hover:text-azure focus:outline-none focus-visible:ring-2 focus-visible:ring-azure dark:border-surface-600 dark:bg-surface-800 dark:text-gray-300 lg:w-full lg:rounded-lg lg:border-transparent lg:bg-transparent lg:hover:bg-gray-50">
+                {tab.label}
+                <svg aria-hidden="true" className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Link>
+            ))}
+          </nav>
 
-          <div className="flex-1 card">
+          <div className="card min-w-0 flex-1 !p-4 sm:!p-6">
             {activeTab === 'entreprise' && (
               loadingSociete ? (
                 <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
               ) : (
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Logo & Signature</h3>
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white mb-4">Logo & Signature</h3>
                   <p className="text-xs text-gray-500 mb-4">Affichés sur les documents générés (proforma, facture...). Image, 2 Mo maximum.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
@@ -357,8 +358,8 @@ export default function ParametresPage() {
                   </div>
                 </div>
 
-                <div className="card !p-5">
-                  <h3 className="text-lg font-semibold mb-1">Activités</h3>
+                <div className="card !p-3 sm:!p-5">
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white mb-1">Activités</h3>
                   <p className="text-xs text-gray-500 mb-3">Détermine les modules visibles dans le menu (Transit : dossiers, douane, AT, cautions — Transport : véhicules, chauffeurs, courses). Au moins une activité doit rester active.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className={`rounded-xl border-2 p-3 flex items-center justify-between ${societe?.activiteTransit ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-surface-700'}`}>
@@ -391,7 +392,7 @@ export default function ParametresPage() {
                 </div>
 
                 <form onSubmit={handleSaveSociete} className="space-y-4">
-                  <h3 className="text-lg font-semibold">Informations Société</h3>
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white">Informations Société</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div><label className="label">Raison Sociale</label><input type="text" value={societeForm.raisonSociale} onChange={e => setSocieteForm({ ...societeForm, raisonSociale: e.target.value })} className="input-field" /></div>
                     <div><label className="label">Forme Juridique</label><input type="text" value={societeForm.formeJuridique} onChange={e => setSocieteForm({ ...societeForm, formeJuridique: e.target.value })} className="input-field" /></div>
@@ -414,7 +415,7 @@ export default function ParametresPage() {
                     <div><label className="label">Site web</label><input type="text" value={societeForm.siteWeb} onChange={e => setSocieteForm({ ...societeForm, siteWeb: e.target.value })} className="input-field" /></div>
                   </div>
 
-                  <h3 className="text-lg font-semibold pt-2 border-t border-gray-200 dark:border-surface-700">En-tête et pied de page des documents</h3>
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white pt-2 border-t border-gray-200 dark:border-surface-700">En-tête et pied de page des documents</h3>
                   <p className="text-xs text-gray-500 -mt-2">Ces informations apparaissent sur les factures, proformas et autres documents générés (PDF, impression).</p>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
@@ -436,7 +437,7 @@ export default function ParametresPage() {
             {activeTab === 'utilisateurs' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Utilisateurs ({utilisateurs.length})</h3>
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white">Utilisateurs ({utilisateurs.length})</h3>
                   <button onClick={openCreateUser} className="btn-primary text-sm">+ Nouvel Utilisateur</button>
                 </div>
                 <div className="table-container !shadow-none !border-0">
@@ -490,7 +491,7 @@ export default function ParametresPage() {
             {activeTab === 'profils' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Profils & Permissions</h3>
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white">Profils & Permissions</h3>
                   <button onClick={openCreateProfil} className="btn-primary text-sm">+ Nouveau Profil</button>
                 </div>
                 {loadingUsers ? (
@@ -517,7 +518,7 @@ export default function ParametresPage() {
 
             {activeTab === 'numerotation' && (
               <div>
-                <h3 className="text-lg font-semibold mb-1">Numérotation automatique</h3>
+                <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white mb-1">Numérotation automatique</h3>
                 <p className="text-xs text-gray-500 mb-4">Préfixe et longueur du compteur pour l&apos;année {new Date().getFullYear()}. Format : PRÉFIXE/ANNÉE/COMPTEUR.</p>
                 {loadingNumerotations ? (
                   <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
@@ -551,7 +552,7 @@ export default function ParametresPage() {
                 <div className="text-center py-8 text-gray-500"><div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" /></div>
               ) : (
                 <form onSubmit={handleSaveSociete}>
-                  <h3 className="text-lg font-semibold mb-4">Configuration SMTP</h3>
+                  <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white mb-4">Configuration SMTP</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div><label className="label">Serveur SMTP</label><input type="text" value={societeForm.smtpHost} onChange={e => setSocieteForm({ ...societeForm, smtpHost: e.target.value })} className="input-field" placeholder="smtp.gmail.com" /></div>
                     <div><label className="label">Port</label><input type="number" value={societeForm.smtpPort} onChange={e => setSocieteForm({ ...societeForm, smtpPort: e.target.value })} className="input-field" placeholder="587" /></div>
@@ -566,7 +567,7 @@ export default function ParametresPage() {
                 </form>
               )
             )}
-            {activeTab === 'sms' && <div><h3 className="text-lg font-semibold mb-4">Configuration SMS</h3><p className="text-gray-500 text-sm">Configurez l&apos;API Orange pour l&apos;envoi de SMS automatiques.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"><div><label className="label">Clé API Orange</label><input type="text" className="input-field" /></div><div><label className="label">Secret API</label><input type="password" className="input-field" /></div></div></div>}
+            {activeTab === 'sms' && <div><h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white mb-4">Configuration SMS</h3><p className="text-gray-500 text-sm">Configurez l&apos;API Orange pour l&apos;envoi de SMS automatiques.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"><div><label className="label">Clé API Orange</label><input type="text" className="input-field" /></div><div><label className="label">Secret API</label><input type="password" className="input-field" /></div></div></div>}
             {activeTab === 'sauvegarde' && <SectionSauvegarde />}
           </div>
         </div>
@@ -761,7 +762,7 @@ function SectionSauvegarde() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-lg font-semibold">Sauvegarde automatique</h3>
+      <h3 className="font-display text-[17px] font-extrabold text-primary-600 dark:text-white">Sauvegarde automatique</h3>
       <p className="text-sm text-gray-500 -mt-3">
         Un export de vos données (dossiers, clients, factures, etc.) est envoyé par email selon la fréquence choisie ci-dessous.
         Les fichiers joints aux dossiers ne sont pas inclus, uniquement les données structurées.
