@@ -4,6 +4,8 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import KpiCard from '@/components/dashboard/KpiCard';
 import PaginationControls from '@/components/tables/PaginationControls';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
@@ -174,13 +176,13 @@ export default function ComptesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptes</h1><p className="text-sm text-gray-500">Vue consolidée de la trésorerie : comptes de caisse et banque, plus les comptes tiers (clients à recevoir, fournisseurs à payer). Ouvrez un type de compte pour voir ses comptes.</p></div>
+        <PageHeader titre="Comptes" sousTitre="Vue consolidée de la trésorerie : caisses, banques et comptes tiers. Ouvrez un type de compte pour voir ses comptes." sousTitreMasqueMobile />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Trésorerie disponible</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(tresorerie)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">{caissesItems.length + banquesItems.length} comptes</p></div>
-          <Link href="/finance/creances-clients" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Créances clients</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(totalCreances)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à recevoir</p></Link>
-          <Link href="/finance/dettes-fournisseurs" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Dettes fournisseurs</p><p className="text-lg font-bold text-amber-600">{canSeeMontants ? `${fmt(totalDettes)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à payer</p></Link>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Position nette</p><p className={`text-lg font-bold ${positionNette >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{canSeeMontants ? `${fmt(positionNette)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">dispo + créances − dettes</p></div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <KpiCard label="Trésorerie disponible" value={canSeeMontants ? fmt(tresorerie) : MONTANT_MASQUE} unit="F" icon="M3 7h16a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 13h3" iconClass="text-blue-600" context={`${caissesItems.length + banquesItems.length} comptes`} />
+          <Link href="/finance/creances-clients" className="block min-w-0 hover:opacity-90 transition-opacity"><KpiCard label="Créances clients" value={canSeeMontants ? fmt(totalCreances) : MONTANT_MASQUE} unit="F" icon="M7 17l10-10M7 7h10v10" iconClass="text-green-600" context="à recevoir" /></Link>
+          <Link href="/finance/dettes-fournisseurs" className="block min-w-0 hover:opacity-90 transition-opacity"><KpiCard label="Dettes fournisseurs" value={canSeeMontants ? fmt(totalDettes) : MONTANT_MASQUE} unit="F" icon="M17 7L7 17M17 17H7V7" iconClass="text-orange-500" context="à payer" /></Link>
+          <KpiCard label="Position nette" value={canSeeMontants ? fmt(positionNette) : MONTANT_MASQUE} unit="F" icon="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6" iconClass={positionNette >= 0 ? 'text-primary-600' : 'text-red-600'} context="dispo + créances − dettes" />
         </div>
 
         <div>
