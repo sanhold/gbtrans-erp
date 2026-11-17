@@ -9,11 +9,11 @@ import { ENTREE_PLAN, type DefOnglet } from '@/lib/comptaOnglets';
  * Écran d'accueil d'une rubrique sur téléphone : toutes les pages sont des cartes alignées
  * (pictogramme, titre, description, flèche), regroupées par thème. Un toucher ouvre la page.
  */
-export default function MenuRubriqueCompta({ base, defs, titre }: { base: string; defs: DefOnglet[]; titre: string }) {
+export default function MenuRubriqueCompta({ base, defs, titre, avecPlan = true, retour = '/comptabilite' }: { base: string; defs: DefOnglet[]; titre: string; avecPlan?: boolean; retour?: string }) {
   const router = useRouter();
   const entrees = [
     ...defs.map(d => ({ href: `${base}/${d.slug}`, libelle: d.libelle, desc: d.desc, icone: d.icone, groupe: d.groupe })),
-    ENTREE_PLAN,
+    ...(avecPlan ? [ENTREE_PLAN] : []),
   ];
   const groupes = Array.from(new Set(entrees.map(e => e.groupe)));
 
@@ -21,7 +21,7 @@ export default function MenuRubriqueCompta({ base, defs, titre }: { base: string
     <AppLayout>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => router.push('/comptabilite')} aria-label="Retour" className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200">
+          <button type="button" onClick={() => router.push(retour)} aria-label="Retour" className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
           <h1 className="font-display text-[22px] font-extrabold leading-tight tracking-tight text-primary-600 dark:text-white">{titre}</h1>

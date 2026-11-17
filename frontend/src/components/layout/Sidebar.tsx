@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '@/lib/api';
 import { useCachedFetch, TTL } from '@/lib/cache';
 import { getRequiredModule } from '@/lib/permissions';
-import { BASE_AUTO, BASE_REEL, ONGLETS_AUTO, ONGLETS_REEL, sousMenu } from '@/lib/comptaOnglets';
+import { BASE_AUTO, BASE_FNE, BASE_REEL, ONGLETS_AUTO, ONGLETS_FNE, ONGLETS_REEL, sousMenu } from '@/lib/comptaOnglets';
 
 export interface NavItem {
   name: string;
@@ -100,7 +100,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { name: 'Plan comptable', href: '/comptabilite/plan-comptable', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
       { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z', sousVisible: true, sous: sousMenu(BASE_AUTO, ONGLETS_AUTO) },
-      { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+      { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', sousVisible: true, sous: sousMenu(BASE_FNE, ONGLETS_FNE) },
       { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4', sousVisible: true, sous: sousMenu(BASE_REEL, ONGLETS_REEL) },
     ],
   },

@@ -1,4 +1,4 @@
-export type OngletCompta = 'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan';
+export type OngletCompta = 'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan' | 'a-decider' | 'traitees' | 'corbeille';
 
 export interface DefOnglet { slug: string; onglet: OngletCompta; libelle: string; desc: string; icone: string; groupe: string }
 
@@ -32,6 +32,14 @@ export const ONGLETS_AUTO: DefOnglet[] = [
   { slug: 'grand-livre', onglet: 'grand-livre', libelle: 'Grand Livre', desc: 'Mouvements détaillés de chaque compte.', icone: I.livre, groupe: 'États' },
   { slug: 'balance', onglet: 'balance', libelle: 'Balance', desc: 'Totaux et soldes de tous les comptes.', icone: I.balance, groupe: 'États' },
   { slug: 'bilan', onglet: 'bilan', libelle: 'Bilan', desc: 'Actif, passif, charges, produits et résultat.', icone: I.bilan, groupe: 'États' },
+];
+
+/** Facture FNE Comptabilité : file de décision en trois pages. */
+export const BASE_FNE = '/comptabilite/facture-fne';
+export const ONGLETS_FNE: DefOnglet[] = [
+  { slug: 'a-decider', onglet: 'a-decider', libelle: 'À décider', desc: 'Transactions en attente : facture normalisée, comptabilité réelle ou corbeille.', icone: I.attente, groupe: 'File de décision' },
+  { slug: 'traitees', onglet: 'traitees', libelle: 'Décidées', desc: 'Transactions déjà traitées, avec leur décision et leur numéro FNE.', icone: I.livre, groupe: 'File de décision' },
+  { slug: 'corbeille', onglet: 'corbeille', libelle: 'Corbeille', desc: 'Transactions écartées, restaurables à tout moment.', icone: I.rejetees, groupe: 'File de décision' },
 ];
 
 export const ENTREE_PLAN = { href: '/comptabilite/plan-comptable', libelle: 'Plan comptable', desc: 'Comptes, journaux et exercices communs à Compta Auto et Compta Manuelle.', icone: I.plan, groupe: 'Paramétrage' };
