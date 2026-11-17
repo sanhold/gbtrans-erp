@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, StatutPastille } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, StatutPastille } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -78,7 +78,9 @@ export default function DepensesPage() {
   const statut = (d: any): { libelle: string; ton: 'success' | 'gray' } => d.statut === 'VALIDE' ? { libelle: 'Validée', ton: 'success' } : { libelle: d.statut === 'ANNULEE' ? 'Annulée' : d.statut, ton: 'gray' };
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'dep', libelle: 'Dépense', rendu: d => <DoubleLigne haut={d.designation} bas={`${d.numero} · ${fmtDate(d.dateDepense)}`} />, texte: d => d.designation },
+    { cle: 'num', libelle: 'N°', rendu: d => <Numero>{d.numero}</Numero>, texte: d => d.numero },
+    { cle: 'date', libelle: 'Date', rendu: d => <Discret>{fmtDate(d.dateDepense)}</Discret>, texte: d => fmtDate(d.dateDepense) },
+    { cle: 'dep', libelle: 'Désignation', rendu: d => <Tronque texte={d.designation} largeur="22rem" />, texte: d => d.designation },
     { cle: 'cat', libelle: 'Catégorie', rendu: d => <StatutPastille libelle={d.categorie} ton="info" />, texte: d => d.categorie },
     { cle: 'compte', libelle: 'Compte débité', masquerSous: 'xl', rendu: d => nomCompte(d), texte: d => nomCompte(d) },
     { cle: 'dotation', libelle: 'Dotation', masquerSous: 'xl', mono: true, rendu: d => d.dotation?.numero || '—', texte: d => d.dotation?.numero || '' },

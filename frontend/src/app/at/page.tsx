@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -249,10 +249,12 @@ export default function ATPage() {
   const numDossier = (at: any) => (dossierDe(at) ? dossierDe(at).numeroPhysique || dossierDe(at).numero : null);
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'at', libelle: 'AT', rendu: at => <DoubleLigne mono haut={at.numero} bas={fmtDate(at.dateCreation)} />, texte: at => at.numero },
-    { cle: 'client', libelle: 'Client', rendu: at => <Tiers nom={at.client?.raisonSociale} detail={numDossier(at) ? `Dossier ${numDossier(at)}` : undefined} />, texte: at => at.client?.raisonSociale || '' },
-    { cle: 'designation', libelle: 'Désignation', masquerSous: 'xl', rendu: at => <DoubleLigne haut={<span className="font-medium">{at.designation}</span>} bas={at.nature} />, texte: at => at.designation || '' },
-    { cle: 'echeance', libelle: 'Échéance', rendu: at => <div className="leading-tight"><div>{fmtDate(at.dateExpiration)}</div><div className={`mt-0.5 text-xs font-semibold ${tonRestant(at)}`}>{at.etat === 'APURE' ? 'Apurée' : `${at.joursRestants} j restants`}</div></div>, texte: at => fmtDate(at.dateExpiration) },
+    { cle: 'at', libelle: 'N° AT', rendu: at => <Numero>{at.numero}</Numero>, texte: at => at.numero },
+    { cle: 'date', libelle: 'Date', rendu: at => <Discret>{fmtDate(at.dateCreation)}</Discret>, texte: at => fmtDate(at.dateCreation) },
+    { cle: 'client', libelle: 'Client', rendu: at => <Tiers nom={at.client?.raisonSociale} />, texte: at => at.client?.raisonSociale || '' },
+    { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl', videSi: at => !numDossier(at), rendu: at => <span className="font-mono text-[13px] text-gray-700 dark:text-gray-200">{numDossier(at) || '—'}</span>, texte: at => numDossier(at) || '' },
+    { cle: 'designation', libelle: 'Désignation', masquerSous: 'xl', rendu: at => <Tronque texte={at.designation} largeur="16rem" />, texte: at => at.designation || '' },
+    { cle: 'echeance', libelle: 'Échéance', rendu: at => <span className="inline-flex items-center gap-2"><span className="tabular-nums">{fmtDate(at.dateExpiration)}</span><span className={`text-xs font-semibold ${tonRestant(at)}`}>{at.etat === 'APURE' ? 'Apurée' : `${at.joursRestants} j`}</span></span>, texte: at => fmtDate(at.dateExpiration) },
     { cle: 'garantie', libelle: 'Garantie', align: 'right', masquerSous: '2xl', rendu: at => <Montant valeur={at.montantCaution} />, texte: at => String(at.montantCaution ?? '') },
     { cle: 'etat', libelle: 'État', rendu: at => <StatutPastille libelle={ETAT_LABELS[at.etat] || at.etat} ton={tonDepuisBadge(ETAT_BADGE[at.etat])} />, texte: at => ETAT_LABELS[at.etat] || at.etat },
   ];

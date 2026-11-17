@@ -10,10 +10,9 @@ import AppLayout from '@/components/layout/AppLayout';
 import DossierActions from '@/components/dossiers/DossierActions';
 import DataTable, { Colonne } from '@/components/tables/DataTable';
 import TablePagination from '@/components/tables/TablePagination';
-import { Compteur, DoubleLigne, Montant, Progression, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
+import { Compteur, Montant, Progression, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
 import PaginationControls from '@/components/tables/PaginationControls';
 import BoutonIcone, { IconeModifier, IconeVoir } from '@/components/tables/BoutonIcone';
-import KpiCard from '@/components/dashboard/KpiCard';
 import { agencesApi, dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { statutColors, statutLabels, STATUTS_DOSSIER, STATUTS_DOSSIER_FERME } from '@/lib/dossierStatut';
@@ -160,6 +159,24 @@ export default function DossiersPage() {
           titre="Dossiers"
           icone="M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
           sousTitre={`${total} dossier${total > 1 ? 's' : ''} au total`}
+          centre={
+            <>
+              {([
+                { st: '', label: 'Tous', val: compteurs.NOUVEAU !== undefined && compteurs.EN_COURS !== undefined && compteurs.TERMINE !== undefined ? compteurs.NOUVEAU + compteurs.EN_COURS + compteurs.TERMINE : undefined, pt: 'bg-blue-600' },
+                { st: 'NOUVEAU', label: 'Nouveaux', val: compteurs.NOUVEAU, pt: 'bg-orange-500' },
+                { st: 'EN_COURS', label: 'En cours', val: compteurs.EN_COURS, pt: 'bg-green-600' },
+                { st: 'TERMINE', label: 'Terminés', val: compteurs.TERMINE, pt: 'bg-violet-600' },
+              ]).map((k) => (
+                <button key={k.label} type="button" onClick={() => { setFilterStatut(k.st); setPage(1); }} aria-pressed={filterStatut === k.st}
+                  title={`Afficher : ${k.label.toLowerCase()}`}
+                  className={`inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border px-3 text-[13px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-azure ${filterStatut === k.st ? 'border-primary-600 bg-primary-600 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-azure hover:bg-azure-tint dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200 dark:hover:bg-white/10'}`}>
+                  <span aria-hidden="true" className={`h-2 w-2 rounded-full ${k.pt}`} />
+                  <b className="tabular-nums font-bold">{k.val === undefined ? '…' : k.val}</b>
+                  <span className={filterStatut === k.st ? 'text-white/90' : 'text-gray-500 dark:text-gray-400'}>{k.label}</span>
+                </button>
+              ))}
+            </>
+          }
           actions={
             <>
               <Link href="/dossiers/historique" className="btn-secondary" aria-label="Historique" title="Historique">
@@ -177,20 +194,6 @@ export default function DossiersPage() {
             </>
           }
         />
-
-        {/* Indicateurs cliquables : filtrent la liste par statut */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {([
-            { st: '', label: 'Tous les dossiers', val: filterStatut || appliedSearch ? undefined : total, icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', cls: 'text-blue-600' },
-            { st: 'NOUVEAU', label: 'Nouveaux', val: compteurs.NOUVEAU, icon: 'M12 5v14M5 12h14', cls: 'text-orange-500' },
-            { st: 'EN_COURS', label: 'En cours', val: compteurs.EN_COURS, icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', cls: 'text-green-600' },
-            { st: 'TERMINE', label: 'Terminés', val: compteurs.TERMINE, icon: 'M5 13l4 4L19 7', cls: 'text-violet-600' },
-          ]).map((k) => (
-            <button key={k.label} type="button" onClick={() => { setFilterStatut(k.st); setPage(1); }} aria-pressed={filterStatut === k.st} className={`text-left min-w-0 rounded-2xl transition-shadow hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${filterStatut === k.st ? 'ring-2 ring-primary-600' : ''}`}>
-              <KpiCard fleche label={k.label} value={k.val === undefined ? (k.st === '' ? `${compteurs.NOUVEAU !== undefined && compteurs.EN_COURS !== undefined && compteurs.TERMINE !== undefined ? compteurs.NOUVEAU + compteurs.EN_COURS + compteurs.TERMINE : '…'}` : '…') : `${k.val}`} icon={k.icon} iconClass={k.cls} />
-            </button>
-          ))}
-        </div>
 
         {/* Filtres : recherche toujours visible ; les autres filtres se replient sur téléphone */}
         <form onSubmit={handleSearch} className="card !p-2 sm:!p-3 space-y-2 sm:space-y-3 lg:space-y-0 lg:flex lg:items-center lg:gap-2" role="search" aria-label="Rechercher un dossier">

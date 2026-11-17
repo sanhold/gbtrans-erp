@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import ListeResponsive from '@/components/tables/ListeResponsive';
-import { DoubleLigne, Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import BoutonIcone, { IconeModifier, IconeSupprimer } from '@/components/tables/BoutonIcone';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -72,7 +72,7 @@ export default function ChauffeursPage() {
   const echeance = (d: any) => <span className={dateProche(d) ? 'text-red-600 font-semibold' : ''}>{fmtDate(d)}</span>;
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'nom', libelle: 'Chauffeur', rendu: c => <Tiers nom={`${c.prenom} ${c.nom}`} detail={c.email} />, texte: c => `${c.prenom} ${c.nom}` },
+    { cle: 'nom', libelle: 'Chauffeur', rendu: c => <Tiers nom={`${c.prenom} ${c.nom}`} />, texte: c => `${c.prenom} ${c.nom}` },
     { cle: 'tel', libelle: 'Téléphone', rendu: c => c.telephone || '—', texte: c => c.telephone || '' },
     { cle: 'permis', libelle: 'Permis', rendu: c => permis(c), texte: c => permis(c) },
     { cle: 'exp', libelle: 'Expiration permis', rendu: c => echeance(c.dateExpirationPermis), texte: c => fmtDate(c.dateExpirationPermis) },

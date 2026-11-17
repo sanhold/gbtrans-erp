@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import BoutonIcone, { IconeSupprimer } from '@/components/tables/BoutonIcone';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -114,8 +114,11 @@ export default function OffresPage() {
   const supprimable = (o: any) => o.statut !== 'TRANSFORMEE';
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'offre', libelle: 'Offre', rendu: o => <DoubleLigne mono haut={o.numero} bas={`${fmtDate(o.dateOffre)} · valide jusqu'au ${fmtDate(o.dateValidite)}`} />, texte: o => o.numero },
-    { cle: 'client', libelle: 'Client', rendu: o => <Tiers nom={o.client?.raisonSociale} detail={o.objet} />, texte: o => o.client?.raisonSociale || '' },
+    { cle: 'offre', libelle: 'N° offre', rendu: o => <Numero>{o.numero}</Numero>, texte: o => o.numero },
+    { cle: 'date', libelle: 'Date', rendu: o => <Discret>{fmtDate(o.dateOffre)}</Discret>, texte: o => fmtDate(o.dateOffre) },
+    { cle: 'validite', libelle: 'Valable jusqu\'au', masquerSous: 'xl', rendu: o => <Discret>{fmtDate(o.dateValidite)}</Discret>, texte: o => fmtDate(o.dateValidite) },
+    { cle: 'client', libelle: 'Client', rendu: o => <Tiers nom={o.client?.raisonSociale} />, texte: o => o.client?.raisonSociale || '' },
+    { cle: 'objet', libelle: 'Objet', masquerSous: 'xl', rendu: o => <Tronque texte={o.objet} />, texte: o => o.objet || '' },
     { cle: 'ttc', libelle: 'Montant TTC', align: 'right', rendu: o => <Montant valeur={o.montantTTC} />, texte: o => String(o.montantTTC) },
     { cle: 'statut', libelle: 'Statut', rendu: o => <StatutPastille libelle={statutLabels[o.statut] || o.statut} ton={tonDepuisBadge(statutColors[o.statut])} />, texte: o => statutLabels[o.statut] || o.statut },
   ];

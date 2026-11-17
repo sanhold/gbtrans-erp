@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, StatutPastille } from '@/components/tables/cellules';
+import { Tronque, Tiers, StatutPastille } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -74,9 +74,11 @@ export default function ClientsPage() {
   const typeLibelle: Record<string, string> = { ENTREPRISE: 'Entreprise', PARTICULIER: 'Particulier', ADMINISTRATION: 'Administration', ONG: 'ONG', DIPLOMATIQUE: 'Diplomatique' };
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'client', libelle: 'Client', rendu: c => <Tiers nom={c.raisonSociale} detail={<span className="font-mono">{c.code}</span>} />, texte: c => c.raisonSociale },
+    { cle: 'client', libelle: 'Client', rendu: c => <Tiers nom={c.raisonSociale} />, texte: c => c.raisonSociale },
+    { cle: 'code', libelle: 'Code', rendu: c => <span className="font-mono text-[13px] text-gray-600 dark:text-gray-300">{c.code}</span>, texte: c => c.code || '' },
     { cle: 'type', libelle: 'Type', masquerSous: 'xl', rendu: c => typeLibelle[c.type] || c.type || '—', texte: c => c.type || '' },
-    { cle: 'contact', libelle: 'Contact', rendu: c => <DoubleLigne haut={c.telephone || c.mobile || '—'} bas={c.email} />, texte: c => `${c.telephone || c.mobile || ''} ${c.email || ''}`.trim() },
+    { cle: 'tel', libelle: 'Téléphone', rendu: c => <span className="tabular-nums">{c.telephone || c.mobile || '—'}</span>, texte: c => c.telephone || c.mobile || '' },
+    { cle: 'email', libelle: 'Email', masquerSous: 'xl', videSi: c => !c.email, rendu: c => <Tronque texte={c.email} largeur="14rem" />, texte: c => c.email || '' },
     { cle: 'ncc', libelle: 'NCC', masquerSous: '2xl', mono: true, rendu: c => c.ncc || '—', texte: c => c.ncc || '' },
     { cle: 'ville', libelle: 'Ville', masquerSous: 'xl', rendu: c => c.ville || '—', texte: c => c.ville || '' },
     { cle: 'dossiers', libelle: 'Dossiers', align: 'right', rendu: c => <span className="tabular-nums">{c._count?.dossiers || 0}</span>, texte: c => String(c._count?.dossiers || 0) },

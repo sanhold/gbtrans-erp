@@ -106,3 +106,19 @@ export function Compteur({ icone, valeur, titre }: { icone: ReactNode; valeur: n
     </span>
   );
 }
+
+/** Numéro de pièce (dossier, facture, caution…) : police à chasse fixe, en bleu nuit, sur une seule ligne. */
+export function Numero({ children }: { children: ReactNode }) {
+  return <span className="font-mono text-[13px] font-semibold text-primary-600 dark:text-primary-300">{children}</span>;
+}
+
+/** Date ou information secondaire : grise, chiffres tabulaires. */
+export function Discret({ children, titre }: { children: ReactNode; titre?: string }) {
+  return <span title={titre} className="tabular-nums text-gray-500 dark:text-gray-400">{children}</span>;
+}
+
+/** Texte libre tronqué sur une ligne (objet, désignation, motif) ; le texte complet reste en infobulle. */
+export function Tronque({ texte, largeur = '20rem' }: { texte?: string | null; largeur?: string }) {
+  if (!texte) return <span className="text-gray-300">—</span>;
+  return <span className="block truncate text-gray-700 dark:text-gray-200" style={{ maxWidth: largeur }} title={texte}>{texte}</span>;
+}
