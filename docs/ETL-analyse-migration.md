@@ -533,3 +533,22 @@ Préparation uniquement : rien n'est importé. Les états sont dans `backend/log
 - La liste du logiciel (MSC, AGL, OOCL, PIL, OMA GROUP, COMA, CMA CGM, GRIMALDI, ARKAS) est incomplète : les dossiers repris en citent d'autres (MAERSK, DHL, ONE, HAPAG LLOYD, COSCO…) et de nombreuses variantes mal orthographiées (GRIAMLDI, GRIMADI, GRILMALDI, ARKHAS, MAESK, OMA / OMA CI…).
 
 **Décisions à prendre** : importer ou non les employés ; profils à créer pour les 8 agents ; normalisation des variantes de compagnies sur les dossiers repris.
+
+## 25. Reprise 2026 : journal (partiel, à compléter)
+
+Script : `backend/scripts/etl/importer-2026-journal.ts` (simulation par défaut, `--appliquer` pour écrire, refus d'une base non locale). Appliqué sur la copie locale uniquement ; rien n'a été écrit en production.
+
+**Constat sur le fichier reçu.** Le journal REGLEMENT 2026 ne contient aucune entrée de caisse (pas d'APPRO CAISSE, 7,78 Md en 2025), aucun mouvement bancaire daté de 2026 et aucun acompte client : ces lignes seront ajoutées plus tard (décision du propriétaire). Le script est donc conçu comme un delta relançable.
+
+**Méthode**
+- Une ligne de 2026 est une copie de 2025 si la base 2025 a la même date, le même compte, la même entrée et la même sortie (multi-ensemble). 2 367 copies ignorées ; 221 lignes à montant nul (reports à nouveau) ignorées. L'identifiant de règlement du fichier 2026 est inexploitable (valeur identique pour toutes les lignes).
+- Numérotation `ETL26-<N° Enr.>` : une ligne déjà importée est ignorée au second passage (vérifié : rien n'est recréé, aucun solde ajusté deux fois).
+- Les soldes sont ajustés du mouvement des seules lignes créées (le solde de fin 2025 est déjà en base).
+
+**Résultat sur la copie** : 828 lignes créées = 723 dépenses de dossier, 72 paiements de facture, 30 opérations de compte fournisseur, 6 opérations « à vérifier » (excédents de règlement) ; 125 lignes sont datées d'avant 2026 et absentes de la base 2025 (`journal-lignes-anterieures.csv`).
+- **Factures** : 69 touchées, payé en hausse sur 55 pour +493 870 315, ce qui explique la quasi-totalité des +494 031 680 relevés au §23. Payé total 14 002 896 093 ; reste 6 159 743 075. Le payé ne fait que monter, plafonné au TTC.
+- **Caisse** : 211 199 052 − 161 150 150 = 50 048 902, **provisoire** : aucune entrée de 2026 n'est encore enregistrée.
+- **Comptes** : le compte fournisseur FF013 (IPT) passe à −552 751 825 ; 5 comptes clients deviennent négatifs (AFRICA TRAILER −278 783 725, IVOIRE TRANSPORT −182 855 357, CHAMOBEL −15 818 260, OTCI −4 993 344, SIRAKONI −2 272 464). Ces soldes négatifs viennent des acomptes et approvisionnements manquants et doivent disparaître à la réception du reste du journal.
+- Les deux seules factures dont le payé dépasse le TTC sont des avoirs (TTC négatif), sans lien avec ce passage.
+
+**À compléter** : approvisionnements de caisse, mouvements bancaires et acomptes clients de 2026, puis contrôle des soldes négatifs ; pièces comptables 2026 (aucune écriture n'est créée pour ces lignes).
