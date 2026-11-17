@@ -555,38 +555,40 @@ export default function FactureDetailPage() {
 
       {/* Modal Catalogue */}
       {showCatalogue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b"><h3 className="font-bold text-lg">Ajouter une prestation</h3><button onClick={() => setShowCatalogue(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-            <div className="px-4 pt-3 space-y-2">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in" onClick={() => setShowCatalogue(false)}>
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated dark:bg-surface-800 sm:mx-4 sm:max-h-[85vh] sm:rounded-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-surface-700">
+              <h3 className="font-display text-base font-bold text-primary-600 dark:text-white sm:text-lg">Ajouter une prestation</h3>
+              <button onClick={() => setShowCatalogue(false)} aria-label="Fermer" className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div className="space-y-2 px-4 pt-3">
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" value={searchCat} onChange={e => setSearchCat(e.target.value)} placeholder="Rechercher..." className="input-field pl-10 text-sm" autoFocus />
+                <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input type="text" value={searchCat} onChange={e => setSearchCat(e.target.value)} placeholder="Rechercher une prestation..." className="input-field pl-10 text-sm" />
               </div>
-              <div className="flex gap-1 flex-wrap">
-                <button onClick={() => setSelectedCat('')} className={`px-3 py-1 rounded-full text-xs font-medium ${!selectedCat ? 'bg-gray-800 text-white' : 'bg-gray-100'}`}>Toutes</button>
-                {Object.entries(CAT_COLORS).map(([cat, color]) => (
-                  <button key={cat} onClick={() => setSelectedCat(cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${selectedCat === cat ? 'text-white' : 'bg-gray-100'}`} style={selectedCat === cat ? { backgroundColor: color } : { color }}>{cat}</button>
+              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {['', ...Object.keys(CAT_COLORS)].map(cat => (
+                  <button key={cat || 'toutes'} onClick={() => setSelectedCat(cat)} className={`flex-shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors ${selectedCat === cat ? 'border-primary-600 bg-primary-600 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-300'}`}>{cat || 'Toutes'}</button>
                 ))}
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
+            <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
               {catalogue.filter(p => (!selectedCat || p.categorie === selectedCat) && (!searchCat || p.designation.toLowerCase().includes(searchCat.toLowerCase()) || p.code.toLowerCase().includes(searchCat.toLowerCase()))).map(p => {
                 const exists = lignes.some((l: any) => l.codePrestation === p.code);
                 return (
-                  <div key={p.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${exists ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 hover:border-primary-300'}`}>
-                    <div className="flex items-center gap-3">
-                      <span className="px-2 py-0.5 rounded text-[9px] font-bold text-white min-w-[40px] text-center" style={{ backgroundColor: CAT_COLORS[p.categorie] || '#6B7280' }}>{p.code}</span>
-                      <div><p className="text-sm font-medium">{p.designation}</p><p className="text-[10px] text-gray-400">{p.categorie}{p.montantDefaut ? ` • ${fmt(Number(p.montantDefaut))} F` : ''}</p></div>
+                  <div key={p.id} className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${exists ? 'border-green-200 bg-green-50 dark:border-green-500/30 dark:bg-green-500/10' : 'border-gray-200 bg-white dark:border-surface-700 dark:bg-surface-800'}`}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{p.designation}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-500"><span className="font-mono">{p.code}</span> · {p.categorie}{p.montantDefaut ? ` · ${fmt(Number(p.montantDefaut))} F` : ''}</p>
                     </div>
-                    {exists ? <span className="text-green-600 text-xs">Ajouté</span> : (
-                      <button onClick={() => handleAddLigne(p)} className="px-3 py-1 bg-primary-500 text-white rounded text-xs hover:bg-primary-600">+ Ajouter</button>
+                    {exists ? <span className="flex-shrink-0 text-xs font-semibold text-green-600">Ajouté ✓</span> : (
+                      <button onClick={() => handleAddLigne(p)} aria-label={`Ajouter ${p.designation}`} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-azure text-xl leading-none text-white hover:bg-azure-hover">+</button>
                     )}
                   </div>
                 );
               })}
             </div>
-            <div className="p-4 border-t flex justify-end"><button onClick={() => setShowCatalogue(false)} className="btn-primary">Fermer</button></div>
+            <div className="flex justify-end border-t border-gray-200 p-3 dark:border-surface-700"><button onClick={() => setShowCatalogue(false)} className="btn-primary w-full sm:w-auto">Fermer</button></div>
           </div>
         </div>
       )}
