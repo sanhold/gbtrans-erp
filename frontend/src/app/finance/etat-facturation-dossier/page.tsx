@@ -1,9 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import PickerField from '@/components/ui/PickerField';
 import { dossiersApi, clientsApi, facturesApi } from '@/lib/api';
 import { fmt, STATUTS_DOSSIER } from '@/lib/financeHelpers';
@@ -186,150 +188,135 @@ export default function EtatFacturationDossierPage() {
     finally { setDownloading(false); }
   };
 
+  const nomStatut = (x?: string) => (x || '').replace(/_/g, ' ');
+  const dateFr = (d?: string) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+  const factureOk = (r: any) => Number(r.montantTVA) > 0 || Number(r.montantPrestation) > 0;
+
+  const colonnes = [
+    { cle: 'num', libelle: 'N° dossier', texte: (r: any) => r.numeroPhysique || r.numero, rendu: (r: any) => <Numero>{r.numeroPhysique || r.numero}</Numero> },
+    { cle: 'statut', libelle: 'Statut', texte: (r: any) => nomStatut(r.statut), rendu: (r: any) => <StatutPastille libelle={nomStatut(r.statut)} ton="info" /> },
+    { cle: 'prof', libelle: 'Proforma', align: 'right' as const, texte: (r: any) => String(r.montantProforma), rendu: (r: any) => <Montant valeur={r.montantProforma} unite="" /> },
+    { cle: 'tva', libelle: 'TVA', align: 'right' as const, masquerSous: '2xl' as const, texte: (r: any) => String(r.montantTVA), rendu: (r: any) => <Montant valeur={r.montantTVA} unite="" /> },
+    { cle: 'prest', libelle: 'Prestation', align: 'right' as const, masquerSous: '2xl' as const, texte: (r: any) => String(r.montantPrestation), rendu: (r: any) => <Montant valeur={r.montantPrestation} unite="" /> },
+    { cle: 'paye', libelle: 'Payé', align: 'right' as const, texte: (r: any) => String(r.montantPaye), rendu: (r: any) => <Montant valeur={r.montantPaye} ton="positif" unite="" /> },
+    { cle: 'reste', libelle: 'Restant', align: 'right' as const, texte: (r: any) => String(r.montantRestant), rendu: (r: any) => <Montant valeur={r.montantRestant} unite="" /> },
+    { cle: 'dep', libelle: 'Dépensé', align: 'right' as const, masquerSous: '2xl' as const, texte: (r: any) => String(r.montantDepense), rendu: (r: any) => <Montant valeur={r.montantDepense} unite="" /> },
+    { cle: 'res', libelle: 'Résultat', align: 'right' as const, texte: (r: any) => String(r.resultat), rendu: (r: any) => <Montant valeur={r.resultat} ton={Number(r.resultat) < 0 ? 'negatif' : Number(r.resultat) > 0 ? 'positif' : 'normal'} unite="" /> },
+    { cle: 'fact', libelle: 'Facturation', texte: (r: any) => factureOk(r) ? 'Facturé' : 'Non facturé', rendu: (r: any) => <StatutPastille libelle={factureOk(r) ? 'Facturé' : 'Non facturé'} ton={factureOk(r) ? 'success' : 'gray'} /> },
+  ];
+
+  const encaisse = (detail?.factures || []).reduce((s: number, f: any) => s + Number(f.montantPaye || 0), 0);
+  const depense = (detail?.depenses || []).reduce((s: number, d: any) => s + Number(d.montant || 0), 0);
+  const resultat = encaisse - depense;
+
+  const Section = ({ titre, children }: { titre: string; children: React.ReactNode }) => (
+    <section><h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">{titre}</h4>{children}</section>
+  );
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">État Facturation Dossier</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">Cliquez une ligne pour le détail</p>
-            </div>
-            <input type="number" value={annee} onChange={e => setAnnee(e.target.value)} className="input-field !py-1.5 text-xs !w-20 flex-shrink-0" title="Année" />
-            <select value={statut} onChange={e => setStatut(e.target.value)} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
-              <option value="">Tous statuts</option>
-              {STATUTS_DOSSIER.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous clients" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!py-1.5 text-xs w-40 flex-shrink-0" />
-            <button onClick={load} className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-          </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader titre="État facturation dossier" sousTitre="Touchez une ligne pour voir le détail du dossier" />
+
+        <div className="card !p-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <input type="number" value={annee} onChange={e => setAnnee(e.target.value)} className="input-field !py-2 text-sm sm:!w-24" title="Année" aria-label="Année" />
+          <select value={statut} onChange={e => setStatut(e.target.value)} aria-label="Statut" className="input-field !py-2 text-sm sm:!w-auto">
+            <option value="">Tous statuts</option>
+            {STATUTS_DOSSIER.map(s => <option key={s} value={s}>{nomStatut(s)}</option>)}
+          </select>
+          <div className="col-span-2 sm:col-span-1 sm:w-56"><PickerField value={clientId} onChange={setClientId} options={clientOptions} placeholder="Tous clients" title="Sélectionner un client" searchPlaceholder="Raison sociale..." className="!py-2 text-sm" /></div>
+          <button onClick={() => { setPage(1); load(); }} className="btn-primary col-span-2 sm:col-span-1">Afficher</button>
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Proforma</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">TVA</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Prestation</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Payé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Restant</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Dépensé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Résultat</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Facturation</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={10} />
-              : rows.length === 0 ? <tr><td colSpan={10} className="text-center py-12 text-gray-500">Aucun dossier trouvé pour ces critères</td></tr>
-              : rows.map((r: any) => {
-                const facture = Number(r.montantTVA) > 0 || Number(r.montantPrestation) > 0;
-                return (
-                  <tr key={r.id} className="table-row cursor-pointer" onClick={() => openDetail(r.id)}>
-                    <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={r.numeroPhysique || r.numero}>{r.numeroPhysique || r.numero}</td>
-                    <td className="table-cell !px-1.5" data-label="Statut"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{r.statut}</span></td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Proforma">{fmt(r.montantProforma)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant TVA">{fmt(r.montantTVA)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Prestation">{fmt(r.montantPrestation)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Payé">{fmt(r.montantPaye)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Restant">{fmt(r.montantRestant)}</td>
-                    <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Dépensé">{fmt(r.montantDepense)}</td>
-                    <td className={`table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate ${Number(r.resultat) < 0 ? 'text-red-600' : Number(r.resultat) > 0 ? 'text-green-600' : ''}`} data-label="Résultat" title="Payé − dépensé">{fmt(r.resultat)}</td>
-                    <td className="table-cell !px-1.5" data-label="Facturation">{facture ? <span className="badge badge-success !text-[10px] !px-1.5 !py-0">Facturé</span> : <span className="badge badge-gray !text-[10px] !px-1.5 !py-0">Non facturé</span>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />
-        </div>
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={rows}
+          cleLigne={(r: any) => r.id}
+          chargement={loading}
+          nomExport="etat-facturation-dossier"
+          onClic={(r: any) => openDetail(r.id)}
+          carte={(r: any) => ({
+            titre: r.numeroPhysique || r.numero,
+            sousTitre: <span>Proforma {fmt(r.montantProforma)} F — Payé {fmt(r.montantPaye)} F</span>,
+            statut: <StatutPastille libelle={factureOk(r) ? 'Facturé' : 'Non facturé'} ton={factureOk(r) ? 'success' : 'gray'} />,
+            details: <span>Restant {fmt(r.montantRestant)} F — Résultat <b className={Number(r.resultat) < 0 ? 'text-red-600' : 'text-gray-700'}>{fmt(r.resultat)} F</b></span>,
+          })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: changePageSize }}
+          vide={<EmptyState titre="Aucun dossier" description="Aucun dossier trouvé pour ces critères." />}
+        />
 
         {detail && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
-                <h3 className="font-bold text-lg">Dossier — {detail.dossier?.numeroPhysique || detail.dossier?.numero || ''}</h3>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleDownloadPdf} disabled={downloading || loadingDetail} className="btn-primary text-xs disabled:opacity-50">
-                    {downloading ? 'Génération...' : 'Télécharger l’état PDF'}
-                  </button>
-                  <button onClick={() => setDetail(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in" onClick={() => setDetail(null)}>
+            <div onClick={e => e.stopPropagation()} className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated dark:bg-surface-800 sm:mx-4 sm:rounded-xl">
+              <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-surface-700">
+                <div className="min-w-0">
+                  <h3 className="truncate font-display text-base font-bold text-primary-600 dark:text-white sm:text-lg">Dossier {detail.dossier?.numeroPhysique || detail.dossier?.numero || ''}</h3>
+                  {detail.dossier && <p className="truncate text-xs text-gray-500">{detail.dossier.client?.raisonSociale} · {nomStatut(detail.dossier.statut)}</p>}
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                  <button onClick={handleDownloadPdf} disabled={downloading || loadingDetail} className="btn-primary !px-3 !py-1.5 text-xs disabled:opacity-50">{downloading ? '…' : 'PDF'}</button>
+                  <button onClick={() => setDetail(null)} aria-label="Fermer" className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                {loadingDetail ? <p className="text-center text-gray-500 py-8">Chargement...</p> : (
+              <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                {loadingDetail ? <p className="py-8 text-center text-gray-500">Chargement...</p> : (
                   <>
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
-                      <span className="font-semibold">{detail.dossier?.client?.raisonSociale}</span> — <span className="badge badge-info">{detail.dossier?.statut}</span>
-                    </div>
-
-                    {(() => {
-                      const encaisse = (detail.factures || []).reduce((s: number, f: any) => s + Number(f.montantPaye || 0), 0);
-                      const depense = (detail.depenses || []).reduce((s: number, d: any) => s + Number(d.montant || 0), 0);
-                      const resultat = encaisse - depense;
-                      return (
-                        <div className="grid grid-cols-3 gap-px rounded-xl overflow-hidden border border-gray-200 dark:border-surface-700 bg-gray-200 dark:bg-surface-700 text-center">
-                          <div className="bg-white dark:bg-surface-800 py-3"><div className="text-[10px] uppercase text-gray-500">Encaissé (paiements)</div><div className="font-bold font-mono text-green-600">{fmt(encaisse)} F</div></div>
-                          <div className="bg-white dark:bg-surface-800 py-3"><div className="text-[10px] uppercase text-gray-500">Dépensé</div><div className="font-bold font-mono text-red-600">{fmt(depense)} F</div></div>
-                          <div className="bg-primary-50 dark:bg-primary-500/15 py-3"><div className="text-[10px] uppercase text-gray-500">Résultat du dossier</div><div className={`font-bold font-mono ${resultat < 0 ? 'text-red-600' : 'text-primary-700 dark:text-primary-200'}`}>{fmt(resultat)} F</div></div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[['Encaissé', encaisse, 'text-green-600'], ['Dépensé', depense, 'text-red-600'], ['Résultat', resultat, resultat < 0 ? 'text-red-600' : 'text-primary-600 dark:text-primary-200']].map(([l, v, c]: any) => (
+                        <div key={l} className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-2 py-2.5 text-center dark:border-surface-700 dark:bg-surface-700/40">
+                          <div className="text-[10.5px] uppercase text-gray-500">{l}</div>
+                          <div className={`truncate font-mono text-[13px] font-bold tabular-nums sm:text-[15px] ${c}`}>{fmt(v)}<span className="text-[10px] text-gray-400"> F</span></div>
                         </div>
-                      );
-                    })()}
-
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Factures ({detail.factures?.length || 0})</h4>
-                      <table className="w-full text-sm">
-                        <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header text-right">TTC</th><th className="table-header text-right">Payé</th><th className="table-header text-right">Reste</th><th className="table-header">Statut</th></tr></thead>
-                        <tbody>{(detail.factures || []).length === 0 ? <tr><td colSpan={6} className="text-center py-6 text-gray-500">Aucune facture liée</td></tr> : detail.factures.map((f: any) => (
-                          <tr key={f.id} className="table-row">
-                            <td className="table-cell" data-label="N°">{f.numero}</td>
-                            <td className="table-cell text-xs" data-label="Date">{f.dateFacture ? new Date(f.dateFacture).toLocaleDateString('fr-FR') : '-'}</td>
-                            <td className="table-cell text-right font-mono" data-label="TTC">{fmt(f.montantTTC)}</td>
-                            <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{fmt(f.montantPaye)}</td>
-                            <td className="table-cell text-right font-mono text-red-600" data-label="Reste">{fmt(f.resteAPayer)}</td>
-                            <td className="table-cell" data-label="Statut"><span className="badge badge-info">{f.statut}</span></td>
-                          </tr>
-                        ))}</tbody>
-                      </table>
+                      ))}
                     </div>
 
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Dépenses ({detail.depenses?.length || 0})</h4>
-                      <table className="w-full text-sm">
-                        <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Catégorie</th><th className="table-header">Désignation</th><th className="table-header text-right">Montant</th></tr></thead>
-                        <tbody>{(detail.depenses || []).length === 0 ? <tr><td colSpan={5} className="text-center py-6 text-gray-500">Aucune dépense liée</td></tr> : detail.depenses.map((d: any) => (
-                          <tr key={d.id} className="table-row">
-                            <td className="table-cell" data-label="N°">{d.numero}</td>
-                            <td className="table-cell text-xs" data-label="Date">{d.dateDepense ? new Date(d.dateDepense).toLocaleDateString('fr-FR') : '-'}</td>
-                            <td className="table-cell" data-label="Catégorie">{d.categorie}</td>
-                            <td className="table-cell" data-label="Désignation">{d.designation}</td>
-                            <td className="table-cell text-right font-mono" data-label="Montant">{fmt(d.montant)}</td>
-                          </tr>
-                        ))}</tbody>
-                      </table>
-                    </div>
+                    <Section titre={`Factures (${detail.factures?.length || 0})`}>
+                      <ListeResponsive
+                        colonnes={[
+                          { cle: 'n', libelle: 'N°', texte: (f: any) => f.numero, rendu: (f: any) => <Numero>{f.numero}</Numero> },
+                          { cle: 'd', libelle: 'Date', texte: (f: any) => dateFr(f.dateFacture), rendu: (f: any) => <Discret>{dateFr(f.dateFacture)}</Discret> },
+                          { cle: 't', libelle: 'TTC', align: 'right' as const, texte: (f: any) => String(f.montantTTC), rendu: (f: any) => <Montant valeur={f.montantTTC} unite="" /> },
+                          { cle: 'p', libelle: 'Payé', align: 'right' as const, texte: (f: any) => String(f.montantPaye), rendu: (f: any) => <Montant valeur={f.montantPaye} ton="positif" unite="" /> },
+                          { cle: 'r', libelle: 'Reste', align: 'right' as const, texte: (f: any) => String(f.resteAPayer), rendu: (f: any) => <Montant valeur={f.resteAPayer} ton="negatif" unite="" /> },
+                          { cle: 's', libelle: 'Statut', texte: (f: any) => nomStatut(f.statut), rendu: (f: any) => <StatutPastille libelle={nomStatut(f.statut)} ton="info" /> },
+                        ]}
+                        lignes={detail.factures || []}
+                        cleLigne={(f: any) => f.id}
+                        carte={(f: any) => ({ titre: f.numero, sousTitre: `${dateFr(f.dateFacture)} — Payé ${fmt(f.montantPaye)} F`, droite: <Montant valeur={f.resteAPayer} ton="negatif" />, details: nomStatut(f.statut) })}
+                        vide={<p className="py-3 text-center text-sm text-gray-500">Aucune facture liée</p>}
+                      />
+                    </Section>
 
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Paiements ({detail.paiements?.length || 0})</h4>
-                      <table className="w-full text-sm">
-                        <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header">Facture</th><th className="table-header text-right">Montant</th></tr></thead>
-                        <tbody>{(detail.paiements || []).length === 0 ? <tr><td colSpan={4} className="text-center py-6 text-gray-500">Aucun paiement enregistré</td></tr> : detail.paiements.map((p: any, i: number) => (
-                          <tr key={p.id || i} className="table-row">
-                            <td className="table-cell" data-label="N°">{p.paiement?.numero || '-'}</td>
-                            <td className="table-cell text-xs" data-label="Date">{p.paiement?.datePaiement ? new Date(p.paiement.datePaiement).toLocaleDateString('fr-FR') : '-'}</td>
-                            <td className="table-cell font-mono text-xs text-primary-600" data-label="Facture">{p.factureNumero || '-'}</td>
-                            <td className="table-cell text-right font-mono" data-label="Montant">{fmt(p.montant)}</td>
-                          </tr>
-                        ))}</tbody>
-                      </table>
-                    </div>
+                    <Section titre={`Dépenses (${detail.depenses?.length || 0})`}>
+                      <ListeResponsive
+                        colonnes={[
+                          { cle: 'n', libelle: 'N°', texte: (d: any) => d.numero, rendu: (d: any) => <Numero>{d.numero}</Numero> },
+                          { cle: 'd', libelle: 'Date', texte: (d: any) => dateFr(d.dateDepense), rendu: (d: any) => <Discret>{dateFr(d.dateDepense)}</Discret> },
+                          { cle: 'c', libelle: 'Catégorie', texte: (d: any) => d.categorie, rendu: (d: any) => <Discret>{d.categorie}</Discret> },
+                          { cle: 'des', libelle: 'Désignation', texte: (d: any) => d.designation, rendu: (d: any) => <Tronque texte={d.designation} largeur="16rem" /> },
+                          { cle: 'm', libelle: 'Montant', align: 'right' as const, texte: (d: any) => String(d.montant), rendu: (d: any) => <Montant valeur={d.montant} unite="" /> },
+                        ]}
+                        lignes={detail.depenses || []}
+                        cleLigne={(d: any) => d.id}
+                        carte={(d: any) => ({ titre: d.designation || d.numero, sousTitre: `${d.numero} — ${dateFr(d.dateDepense)} — ${d.categorie || ''}`, droite: <Montant valeur={d.montant} /> })}
+                        vide={<p className="py-3 text-center text-sm text-gray-500">Aucune dépense liée</p>}
+                      />
+                    </Section>
+
+                    <Section titre={`Paiements (${detail.paiements?.length || 0})`}>
+                      <ListeResponsive
+                        colonnes={[
+                          { cle: 'n', libelle: 'N°', texte: (p: any) => p.paiement?.numero || '', rendu: (p: any) => <Numero>{p.paiement?.numero || '—'}</Numero> },
+                          { cle: 'd', libelle: 'Date', texte: (p: any) => dateFr(p.paiement?.datePaiement), rendu: (p: any) => <Discret>{dateFr(p.paiement?.datePaiement)}</Discret> },
+                          { cle: 'f', libelle: 'Facture', texte: (p: any) => p.factureNumero || '', rendu: (p: any) => <Discret>{p.factureNumero || '—'}</Discret> },
+                          { cle: 'm', libelle: 'Montant', align: 'right' as const, texte: (p: any) => String(p.montant), rendu: (p: any) => <Montant valeur={p.montant} ton="positif" unite="" /> },
+                        ]}
+                        lignes={detail.paiements || []}
+                        cleLigne={(p: any) => p.id || p.paiement?.numero || String(Math.random())}
+                        carte={(p: any) => ({ titre: p.paiement?.numero || '—', sousTitre: `${dateFr(p.paiement?.datePaiement)} — ${p.factureNumero || ''}`, droite: <Montant valeur={p.montant} ton="positif" /> })}
+                        vide={<p className="py-3 text-center text-sm text-gray-500">Aucun paiement enregistré</p>}
+                      />
+                    </Section>
                   </>
                 )}
               </div>
