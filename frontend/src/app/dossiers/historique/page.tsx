@@ -1,10 +1,13 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Numero, Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { statutColors, statutLabels, STATUTS_DOSSIER } from '@/lib/dossierStatut';
@@ -17,6 +20,7 @@ const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 const toInputDate = (d: Date) => d.toISOString().slice(0, 10);
 
 export default function DossiersHistoriquePage() {
+  const router = useRouter();
   const today = new Date();
   const debutAnnee = toInputDate(new Date(today.getFullYear(), 0, 1));
   const finAujourdhui = toInputDate(today);
@@ -76,95 +80,73 @@ export default function DossiersHistoriquePage() {
   const totalPages = Math.ceil(total / limit);
   const valeurTotale = dossiers.reduce((s, d) => s + (Number(d.valeurCAF) || 0), 0);
 
+  const colonnes = [
+    { cle: 'num', libelle: 'N° dossier', texte: (d: any) => d.numeroPhysique || d.numero, rendu: (d: any) => <Link href={`/dossiers/${d.id}`} onClick={e => e.stopPropagation()} className="font-mono text-[12.5px] font-semibold text-azure hover:underline">{d.numeroPhysique || d.numero}</Link> },
+    { cle: 'cree', libelle: 'Créé le', texte: (d: any) => fmtDate(d.dateCreation), rendu: (d: any) => <Discret>{fmtDate(d.dateCreation)}</Discret> },
+    { cle: 'client', libelle: 'Client', texte: (d: any) => d.client?.raisonSociale || '', rendu: (d: any) => <Tronque texte={d.client?.raisonSociale} largeur="18rem" /> },
+    { cle: 'nature', libelle: 'Nature', texte: (d: any) => natureLabels[d.nature] || d.nature, rendu: (d: any) => <Discret>{natureLabels[d.nature] || d.nature}</Discret> },
+    { cle: 'statut', libelle: 'Statut', texte: (d: any) => statutLabels[d.statut] || d.statut, rendu: (d: any) => <StatutPastille libelle={statutLabels[d.statut] || d.statut} ton={tonDepuisBadge(statutColors[d.statut])} /> },
+    { cle: 'caf', libelle: 'Valeur CAF', align: 'right' as const, texte: (d: any) => String(d.valeurCAF ?? ''), rendu: (d: any) => d.valeurCAF ? <Montant valeur={d.valeurCAF} unite="" /> : <Discret>—</Discret> },
+    { cle: 'clot', libelle: 'Clôturé le', masquerSous: 'xl' as const, texte: (d: any) => fmtDate(d.dateCloture), rendu: (d: any) => <Discret>{fmtDate(d.dateCloture)}</Discret> },
+  ];
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <Link href="/dossiers" className="text-[10px] text-primary-600 hover:underline block">← Dossiers</Link>
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Historique</h1>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {presets.map(p => (
-                <button key={p.label} type="button" onClick={() => { const [d, f] = p.get(); applyPreset(d, f); }} className="btn-secondary !py-1.5 !px-2 !text-[10.5px]">
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Du" />
-            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-1.5 text-xs w-36 flex-shrink-0" title="Au" />
-            <select value={filterNature} onChange={e => setFilterNature(e.target.value)} className="input-field !py-1.5 text-xs w-28 flex-shrink-0">
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Historique des dossiers"
+          sousTitre="Recherchez les dossiers sur une période"
+          actions={<Link href="/dossiers" className="btn-secondary">← Dossiers</Link>}
+          centre={
+            <>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800">
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-blue-600" /><b className="tabular-nums">{total}</b><span className="text-gray-500">dossier(s)</span>
+              </span>
+              <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800">
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-green-500" /><b className="tabular-nums">{fmt(valeurTotale)}</b><span className="text-gray-500">XOF CAF (page)</span>
+              </span>
+            </>
+          }
+        />
+
+        <form onSubmit={handleSearch} className="card !p-3 space-y-2">
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {presets.map(p => (
+              <button key={p.label} type="button" onClick={() => { const [d, f] = p.get(); applyPreset(d, f); }} className="flex-shrink-0 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-300">{p.label}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center">
+            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !py-2 text-sm lg:!w-40" title="Du" aria-label="Du" />
+            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !py-2 text-sm lg:!w-40" title="Au" aria-label="Au" />
+            <select value={filterNature} onChange={e => setFilterNature(e.target.value)} aria-label="Nature" className="input-field !py-2 text-sm lg:!w-32">
               <option value="">Nature</option>
               {Object.entries(natureLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)} className="input-field !py-1.5 text-xs w-28 flex-shrink-0">
+            <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)} aria-label="Statut" className="input-field !py-2 text-sm lg:!w-32">
               <option value="">Statut</option>
               {STATUTS_DOSSIER.map((k) => <option key={k} value={k}>{statutLabels[k]}</option>)}
             </select>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-40 flex-shrink-0" placeholder="N° dossier, BL, client..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-          </form>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="card !p-4">
-            <p className="text-xs text-gray-500">Dossiers sur la période</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{total}</p>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-2 text-sm col-span-2 lg:col-span-1 lg:!w-56" placeholder="N° dossier, BL, client..." aria-label="Rechercher" />
+            <button type="submit" className="btn-primary col-span-2 lg:col-span-1">Afficher</button>
           </div>
-          <div className="card !p-4 sm:col-span-2">
-            <p className="text-xs text-gray-500">Valeur CAF cumulée (page affichée)</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{fmt(valeurTotale)} XOF</p>
-          </div>
-        </div>
+        </form>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° Physique</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Nature</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Valeur CAF</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Créé le</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Clôturé le</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={8} />
-              ) : dossiers.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun dossier sur cette période</td></tr>
-              ) : dossiers.map(d => (
-                <tr key={d.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="N° Dossier" title={d.numeroPhysique || d.numero}>
-                    <Link href={`/dossiers/${d.id}`} className="hover:underline">{d.numeroPhysique || d.numero}</Link>
-                  </td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Physique">{d.numeroPhysique || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={d.client?.raisonSociale || undefined}>{d.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Nature"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{natureLabels[d.nature] || d.nature}</span></td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[d.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{statutLabels[d.statut] || d.statut}</span></td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Valeur CAF">{d.valeurCAF ? fmt(d.valeurCAF) : '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date création">{fmtDate(d.dateCreation)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date clôture">{fmtDate(d.dateCloture)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
-        </div>
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={dossiers}
+          cleLigne={(d: any) => d.id}
+          chargement={loading}
+          nomExport="historique-dossiers"
+          carte={(d: any) => ({
+            titre: d.numeroPhysique || d.numero,
+            sousTitre: d.client?.raisonSociale || '—',
+            statut: <StatutPastille libelle={statutLabels[d.statut] || d.statut} ton={tonDepuisBadge(statutColors[d.statut])} />,
+            details: `${natureLabels[d.nature] || d.nature} — créé le ${fmtDate(d.dateCreation)}${d.valeurCAF ? ` — CAF ${fmt(d.valeurCAF)}` : ''}`,
+          })}
+          onClic={(d: any) => { router.push(`/dossiers/${d.id}`); }}
+          pagination={{ page, totalPages: Math.max(1, totalPages), total, pageSize: limit, onPageChange: setPage, onPageSizeChange: changeLimit }}
+          vide={<EmptyState titre="Aucun dossier" description="Aucun dossier sur cette période." />}
+        />
       </div>
     </AppLayout>
   );
