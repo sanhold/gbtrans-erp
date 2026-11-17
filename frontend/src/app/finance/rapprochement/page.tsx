@@ -1,9 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider } from '@/components/tables/BoutonIcone';
+import { Discret, Montant, StatutPastille } from '@/components/tables/cellules';
 import PickerField from '@/components/ui/PickerField';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
@@ -59,56 +62,50 @@ export default function RapprochementPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
+  const dateFr = (d: any) => new Date(d).toLocaleDateString('fr-FR');
+  const ok = (r: any) => r.statut === 'VALIDE' || r.statut === 'CLOTURE';
+  const ton = (r: any) => (Number(r.ecart) === 0 ? 'positif' : 'negatif') as 'positif' | 'negatif';
+  const colonnes = [
+    { cle: 'db', libelle: 'Date bancaire', texte: (r: any) => dateFr(r.dateBancaire), rendu: (r: any) => <Discret>{dateFr(r.dateBancaire)}</Discret> },
+    { cle: 'dc', libelle: 'Date comptable', texte: (r: any) => dateFr(r.dateComptable), rendu: (r: any) => <Discret>{dateFr(r.dateComptable)}</Discret> },
+    { cle: 'sr', libelle: 'Solde relevé', align: 'right' as const, texte: (r: any) => String(r.soldeReleve), rendu: (r: any) => <Montant valeur={r.soldeReleve} /> },
+    { cle: 'sc', libelle: 'Solde comptable', align: 'right' as const, texte: (r: any) => String(r.soldeComptable), rendu: (r: any) => <Montant valeur={r.soldeComptable} /> },
+    { cle: 'ec', libelle: 'Écart', align: 'right' as const, texte: (r: any) => String(r.ecart), rendu: (r: any) => <Montant valeur={r.ecart} ton={ton(r)} /> },
+    { cle: 'st', libelle: 'Statut', texte: (r: any) => r.statut, rendu: (r: any) => <StatutPastille libelle={(r.statut || '').replace(/_/g, ' ')} ton={ok(r) ? 'success' : 'warning'} /> },
+  ];
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rapprochement Bancaire</h1><p className="text-sm text-gray-500">Comparez le solde relevé bancaire au solde comptable</p></div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte, banque..." className="!w-full sm:!w-64" />
-            <button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary disabled:opacity-50">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouveau Rapprochement
-            </button>
-          </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Rapprochement bancaire"
+          sousTitre="Comparez le solde du relevé au solde comptable"
+          actions={<button onClick={() => setShowModal(true)} disabled={!compteId} className="btn-primary disabled:opacity-50">+ Nouveau rapprochement</button>}
+        />
+        <div className="card !p-3 sm:max-w-md">
+          <PickerField value={compteId} onChange={setCompteId} options={comptes.map(c => ({ id: c.id, label: c.libelle, sublabel: c.banque }))} placeholder="Sélectionner un compte bancaire..." title="Sélectionner un compte bancaire" searchPlaceholder="Compte..." />
         </div>
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Date bancaire</th><th className="table-header !text-[10px] !px-1.5 truncate">Date comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde relevé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde comptable</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Écart</th><th className="table-header !text-[10px] !px-1.5 truncate">Statut</th></tr></thead>
-            <tbody>
-              {!compteId ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sélectionnez un compte bancaire</td></tr>
-              : loading ? <SkeletonRows cols={7} />
-              : rapprochements.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun rapprochement en cours</td></tr>
-              : paged.map(r => (
-                <tr key={r.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    {r.statut === 'EN_COURS' && <button onClick={() => updateStatut(r.id, 'VALIDE')} className="text-[10.5px] text-primary-600 hover:underline">Valider</button>}
-                  </td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date bancaire">{new Date(r.dateBancaire).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date comptable">{new Date(r.dateComptable).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde relevé">{fmt(r.soldeReleve)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde comptable">{fmt(r.soldeComptable)}</td>
-                  <td className={`table-cell text-right font-mono font-semibold !px-1.5 !text-[10.5px] truncate ${Number(r.ecart) === 0 ? 'text-green-600' : 'text-red-600'}`} data-label="Écart">{fmt(r.ecart)}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${r.statut === 'VALIDE' || r.statut === 'CLOTURE' ? 'badge-success' : 'badge-warning'} !text-[10px] !px-1.5 !py-0`}>{r.statut}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={compteId ? paged : []}
+          cleLigne={(r: any) => r.id}
+          chargement={loading}
+          nomExport="rapprochements"
+          actions={(r: any) => r.statut === 'EN_COURS' ? <BoutonIcone titre="Valider" ton="primaire" onClick={() => updateStatut(r.id, 'VALIDE')}><IconeValider /></BoutonIcone> : null}
+          carte={(r: any) => ({
+            titre: dateFr(r.dateBancaire),
+            sousTitre: `Écart de rapprochement — compta ${dateFr(r.dateComptable)}`,
+            statut: <StatutPastille libelle={(r.statut || '').replace(/_/g, ' ')} ton={ok(r) ? 'success' : 'warning'} />,
+            droite: <Montant valeur={r.ecart} ton={ton(r)} />,
+            details: `Relevé ${fmt(r.soldeReleve)} F · Comptable ${fmt(r.soldeComptable)} F`,
+          })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre={compteId ? 'Aucun rapprochement' : 'Sélectionnez un compte'} description={compteId ? 'Créez un rapprochement pour ce compte.' : 'Choisissez un compte bancaire pour voir ses rapprochements.'} />}
+        />
 
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in">
+            <div className="bg-white dark:bg-surface-800 rounded-t-2xl sm:rounded-xl shadow-elevated w-full max-w-lg sm:mx-4 max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
                 <h2 className="text-lg font-bold">Nouveau Rapprochement</h2>
                 <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
