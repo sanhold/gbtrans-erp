@@ -1,9 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Discret, Tronque, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import api from '@/lib/api';
 import { usePagination } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
@@ -56,95 +58,37 @@ export default function ProspectsPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Prospects</h1>
-            <p className="text-sm text-gray-500">{prospects.length} prospect(s)</p>
-          </div>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Nouveau Prospect
-          </button>
-        </div>
-
-        {!loading && prospects.length > 0 && (
-          <div className="card">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Pipeline commercial</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-              <GraphifyChart
-                type="doughnut"
-                data={{
-                  labels: PIPELINE_STAGES.map(s => s.label),
-                  series: [{
-                    label: 'Prospects',
-                    data: PIPELINE_STAGES.map(s => prospects.filter(p => p.statut === s.statut).length),
-                    colors: PIPELINE_STAGES.map(s => s.color),
-                  }],
-                } as GraphifyData}
-                config={{ height: 180, showLegend: false }}
-              />
-              <div className="space-y-2">
-                {PIPELINE_STAGES.map(s => {
-                  const count = prospects.filter(p => p.statut === s.statut).length;
-                  return (
-                    <div key={s.label} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                        {s.label}
-                      </span>
-                      <span className="font-bold text-gray-900 dark:text-white">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Raison Sociale</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Contact</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Téléphone</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Email</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Activité</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Source</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={8} />
-              ) : prospects.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun prospect. Ajoutez votre premier prospect commercial.</td></tr>
-              ) : paged.map(p => (
-                <tr key={p.id} className="table-row">
-                  <td className="table-cell font-medium !px-1.5 !text-[11px] truncate" data-label="Raison Sociale" title={p.raisonSociale}>{p.raisonSociale}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Contact">{p.contact || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Téléphone">{p.telephone || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Email" title={p.email || undefined}>{p.email || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Activité" title={p.activite || undefined}>{p.activite || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Source">{p.source || '-'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${statutColors[p.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0 truncate`}>{p.statut?.replace(/_/g, ' ')}</span></td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date">{new Date(p.createdAt).toLocaleDateString('fr-FR')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={totalProspects} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Prospects"
+          sousTitre={`${prospects.length} prospect(s)`}
+          icone="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2 20c0-3 3-5 7-5s7 2 7 5M19 8v6M16 11h6"
+          actions={
+            <button onClick={() => setShowModal(true)} className="btn-primary">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nouveau prospect
+            </button>
+          }
+        />
+        <ListeResponsive
+          colonnes={[
+            { cle: 'nom', libelle: 'Raison sociale', texte: (p: any) => p.raisonSociale, rendu: (p: any) => <Tronque texte={p.raisonSociale} largeur="18rem" /> },
+            { cle: 'contact', libelle: 'Contact', masquerSous: 'xl' as const, texte: (p: any) => p.contact || '', rendu: (p: any) => <Tronque texte={p.contact} largeur="12rem" /> },
+            { cle: 'tel', libelle: 'Téléphone', texte: (p: any) => p.telephone || '', rendu: (p: any) => <span className="tabular-nums">{p.telephone || '—'}</span> },
+            { cle: 'email', libelle: 'Email', masquerSous: 'xl' as const, texte: (p: any) => p.email || '', rendu: (p: any) => <Tronque texte={p.email} largeur="14rem" /> },
+            { cle: 'activite', libelle: 'Activité', masquerSous: '2xl' as const, texte: (p: any) => p.activite || '', rendu: (p: any) => <Tronque texte={p.activite} largeur="12rem" /> },
+            { cle: 'source', libelle: 'Source', masquerSous: '2xl' as const, texte: (p: any) => p.source || '', rendu: (p: any) => <Tronque texte={p.source} largeur="10rem" /> },
+            { cle: 'statut', libelle: 'Statut', texte: (p: any) => (p.statut || '').replace(/_/g, ' '), rendu: (p: any) => <StatutPastille libelle={(p.statut || '').replace(/_/g, ' ')} ton={tonDepuisBadge(statutColors[p.statut])} /> },
+            { cle: 'date', libelle: 'Date', texte: (p: any) => new Date(p.createdAt).toLocaleDateString('fr-FR'), rendu: (p: any) => <Discret>{new Date(p.createdAt).toLocaleDateString('fr-FR')}</Discret> },
+          ]}
+          lignes={paged}
+          cleLigne={(p: any) => p.id}
+          chargement={loading}
+          nomExport="prospects"
+          carte={(p: any) => ({ titre: p.raisonSociale, sousTitre: p.contact || p.telephone || undefined, statut: <StatutPastille libelle={(p.statut || '').replace(/_/g, ' ')} ton={tonDepuisBadge(statutColors[p.statut])} />, details: [p.telephone, p.email].filter(Boolean).join(' · ') || undefined })}
+          pagination={{ page, totalPages, total: totalProspects, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre="Aucun prospect" description="Ajoutez votre premier prospect commercial." />}
+        />
       </div>
 
       {showModal && (
