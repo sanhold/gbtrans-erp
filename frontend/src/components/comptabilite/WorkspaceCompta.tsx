@@ -8,6 +8,8 @@ import BoutonIcone, { IconeValider, IconeSupprimer } from '@/components/tables/B
 import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { BASE_AUTO, BASE_REEL, ONGLETS_AUTO, ONGLETS_REEL, type OngletCompta } from '@/lib/comptaOnglets';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
@@ -22,10 +24,13 @@ const emptyLigne = () => ({ compteId: '', libelle: '', debit: '', credit: '' });
 const emptyEcritureForm = () => ({ journalId: '', dateEcriture: new Date().toISOString().slice(0, 10), libelle: '', reference: '', piece: '', lignes: [emptyLigne(), emptyLigne()] });
 const emptyExerciceForm = { code: '', libelle: '', dateDebut: '', dateFin: '' };
 
-export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' }) {
+export default function WorkspaceCompta({ source, onglet }: { source: 'REEL' | 'AUTO'; onglet: OngletCompta }) {
+  const router = useRouter();
   const estReel = source === 'REEL';
   const origine: 'AUTO' | 'MANUEL' = estReel ? 'MANUEL' : 'AUTO';
-  const [tab, setTab] = useState<'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan' | 'plan'>(estReel ? 'ecritures' : 'generation');
+  const tab = onglet;
+  const defs = estReel ? ONGLETS_REEL : ONGLETS_AUTO;
+  const titrePage = defs.find(d => d.onglet === onglet)?.libelle || (estReel ? 'Compta Manuelle' : 'Compta Auto');
   const [exercices, setExercices] = useState<any[]>([]);
   const [exerciceId, setExerciceId] = useState('');
   const [comptes, setComptes] = useState<any[]>([]);
@@ -96,8 +101,8 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
     <AppLayout>
       <div className="space-y-3 sm:space-y-4">
         <PageHeader
-          titre={estReel ? 'Compta Manuelle' : 'Compta Auto'}
-          sousTitre={estReel ? 'Pièces à comptabiliser et écritures diverses' : 'Écritures générées automatiquement'}
+          titre={titrePage}
+          sousTitre={estReel ? 'Compta Manuelle' : 'Compta Auto'}
           sousTitreMasqueMobile
           actions={
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -121,28 +126,11 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
           }
         />
 
-        <div role="tablist" className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {[
-            ...(estReel ? [] : [{ id: 'generation', label: 'Génération' }]),
-            { id: 'ecritures', label: estReel ? 'Journal manuel' : 'Journal automatique' },
-            ...(estReel ? [{ id: 'attente', label: 'Pièces à comptabiliser' }, { id: 'rejetees', label: 'Pièces rejetées' }] : []),
-            { id: 'grand-livre', label: 'Grand Livre' },
-            { id: 'balance', label: 'Balance' },
-            { id: 'bilan', label: 'Bilan' },
-            { id: 'plan', label: 'Plan comptable' },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)} className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${tab === t.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
         {/* Les pièces à comptabiliser ne dépendent pas d'un exercice : Compta Auto peut en
             déposer avant même qu'un exercice ne soit ouvert. */}
         {estReel && tab === 'attente' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="EN_ATTENTE" />}
         {estReel && tab === 'rejetees' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="REJETEE" />}
 
-        {tab === 'plan' && <PlanComptablePanel lectureSeule />}
 
         {tab === 'generation' && !estReel && (exercices.length === 0 ? (
           <div className="card text-center py-16 text-gray-500">
@@ -150,7 +138,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
             <button onClick={() => setShowExerciceModal(true)} className="btn-primary text-sm">+ Nouvel exercice</button>
           </div>
         ) : (
-          <GenerationAutoTab exercice={exercices.find(e => e.id === exerciceId)} onGenerated={() => setTab('ecritures')} />
+          <GenerationAutoTab exercice={exercices.find(e => e.id === exerciceId)} onGenerated={() => router.push(`${BASE_AUTO}/journal`)} />
         ))}
 
         {['ecritures', 'grand-livre', 'balance', 'bilan'].includes(tab) && exercices.length === 0 ? (

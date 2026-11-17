@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '@/lib/api';
 import { useCachedFetch, TTL } from '@/lib/cache';
 import { getRequiredModule } from '@/lib/permissions';
+import { BASE_AUTO, BASE_REEL, ONGLETS_AUTO, ONGLETS_REEL, sousMenu } from '@/lib/comptaOnglets';
 
 export interface NavItem {
   name: string;
@@ -20,6 +21,8 @@ export interface NavItem {
   repli?: string;
   /** Pages regroupées sous cette entrée (onglets) : elles activent l'entrée et sont cherchables. */
   sous?: { name: string; href: string }[];
+  /** Affiche les pages `sous` comme sous-menu, dès que l'on est dans cette rubrique. */
+  sousVisible?: boolean;
 }
 
 const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesPlies';
@@ -96,9 +99,9 @@ export const navGroups: NavGroup[] = [
     title: 'Comptabilité',
     items: [
       { name: 'Plan comptable', href: '/comptabilite/plan-comptable', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z', sousVisible: true, sous: sousMenu(BASE_AUTO, ONGLETS_AUTO) },
       { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
+      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4', sousVisible: true, sous: sousMenu(BASE_REEL, ONGLETS_REEL) },
     ],
   },
   {
@@ -248,14 +251,16 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
               const isActive = isItemActive(cible, item.sous);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
+              const dansSous = !!item.sousVisible && !!item.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'));
+              const afficherSous = !!item.sousVisible && !!item.sous && !collapsed && isActive;
               return (
+                <div key={item.href}>
                 <Link
-                  key={item.href}
                   href={cible}
                   onClick={onClose}
-                  aria-current={isActive ? 'page' : undefined}
+                  aria-current={isActive && !dansSous ? 'page' : undefined}
                   title={collapsed ? item.name : undefined}
-                  className={linkCls(isActive)}
+                  className={linkCls(isActive && !dansSous)}
                   style={teinte(idx)}
                 >
                   <Icon d={item.icon} />
@@ -266,6 +271,25 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
                     </span>
                   )}
                 </Link>
+                {afficherSous && (
+                  <div role="group" aria-label={item.name} className="my-0.5 space-y-0.5">
+                    {item.sous!.map((x) => {
+                      const actif = pathname === x.href || pathname?.startsWith(x.href + '/');
+                      return (
+                        <Link
+                          key={x.href}
+                          href={x.href}
+                          onClick={onClose}
+                          aria-current={actif ? 'page' : undefined}
+                          className={clsx('m-it flex items-center ml-[38px] mr-3 pl-3 pr-2 min-h-[38px] lg:min-h-[32px] rounded-lg text-[13px] border-l border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500', actif ? 'font-semibold' : 'opacity-90')}
+                        >
+                          <span className="truncate">{x.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>
               );
             })}
             </div>
