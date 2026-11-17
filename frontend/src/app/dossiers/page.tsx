@@ -147,6 +147,7 @@ export default function DossiersPage() {
       <div className="space-y-3 sm:space-y-4">
         <PageHeader
           titre="Dossiers"
+          icone="M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
           sousTitre={`${total} dossier${total > 1 ? 's' : ''} au total`}
           actions={
             <>
@@ -175,7 +176,7 @@ export default function DossiersPage() {
             { st: 'TERMINE', label: 'Terminés', val: compteurs.TERMINE, icon: 'M5 13l4 4L19 7', cls: 'text-violet-600' },
           ]).map((k) => (
             <button key={k.label} type="button" onClick={() => { setFilterStatut(k.st); setPage(1); }} aria-pressed={filterStatut === k.st} className={`text-left min-w-0 rounded-2xl transition-shadow hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${filterStatut === k.st ? 'ring-2 ring-primary-600' : ''}`}>
-              <KpiCard label={k.label} value={k.val === undefined ? (k.st === '' ? `${compteurs.NOUVEAU !== undefined && compteurs.EN_COURS !== undefined && compteurs.TERMINE !== undefined ? compteurs.NOUVEAU + compteurs.EN_COURS + compteurs.TERMINE : '…'}` : '…') : `${k.val}`} icon={k.icon} iconClass={k.cls} />
+              <KpiCard fleche label={k.label} value={k.val === undefined ? (k.st === '' ? `${compteurs.NOUVEAU !== undefined && compteurs.EN_COURS !== undefined && compteurs.TERMINE !== undefined ? compteurs.NOUVEAU + compteurs.EN_COURS + compteurs.TERMINE : '…'}` : '…') : `${k.val}`} icon={k.icon} iconClass={k.cls} />
             </button>
           ))}
         </div>
