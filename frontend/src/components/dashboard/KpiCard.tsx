@@ -44,7 +44,7 @@ export default function KpiCard({ label, value, unit, icon, iconClass = 'text-pr
           <div className="mt-1 text-[13.5px] text-gray-700 dark:text-gray-300 font-medium leading-tight truncate" title={label}>{label}</div>
         </div>
       </div>
-      <div className="text-[11.5px] sm:text-[12.5px] sm:min-h-[18px] leading-snug text-gray-500 dark:text-gray-400">{context}</div>
+      {context && <div className="text-[11.5px] sm:text-[12.5px] sm:min-h-[18px] leading-snug text-gray-500 dark:text-gray-400">{context}</div>}
     </div>
   );
 }

@@ -1,31 +1,36 @@
 'use client';
 
 import { ReactNode } from 'react';
+import Link from 'next/link';
 
 const TONS = {
-  primaire: 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200',
-  danger: 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300',
+  primaire: 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:border-blue-700',
+  danger: 'border-red-600 bg-red-600 text-white hover:bg-red-700 hover:border-red-700',
   neutre: 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200',
 } as const;
 
 interface Props {
   titre: string;
-  onClick: () => void;
+  onClick?: () => void;
+  /** Si renseigné, le bouton est un lien (navigation). */
+  href?: string;
   ton?: keyof typeof TONS;
   disabled?: boolean;
   children: ReactNode;
 }
 
 /** Petit bouton carré à icône, toujours visible, avec info-bulle : action de ligne d'un tableau de bureau. */
-export default function BoutonIcone({ titre, onClick, ton = 'neutre', disabled, children }: Props) {
+export default function BoutonIcone({ titre, onClick, href, ton = 'neutre', disabled, children }: Props) {
+  const classes = `inline-flex h-8 w-8 items-center justify-center rounded-lg border shadow-sm transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${TONS[ton]}`;
+  if (href) return <Link href={href} title={titre} aria-label={titre} onClick={(e) => e.stopPropagation()} className={classes}>{children}</Link>;
   return (
     <button
       type="button"
       title={titre}
       aria-label={titre}
       disabled={disabled}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${TONS[ton]}`}
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      className={classes}
     >
       {children}
     </button>

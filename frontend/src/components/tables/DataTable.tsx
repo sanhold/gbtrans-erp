@@ -58,7 +58,7 @@ function exporterCsv<T>(colonnes: Colonne<T>[], lignes: T[], nom: string) {
 }
 
 /** Tableau de bureau soigné : en-tête collant, lignes aérées, survol, ligne sélectionnée, export. */
-export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles }: DataTableProps<T>) {
+export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles = true }: DataTableProps<T>) {
   const alignement = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
   const cols = lignes.length > 0 ? colonnes.filter((c) => !(c.videSi && lignes.every(c.videSi))) : colonnes;
   const nbCols = cols.length + (actions ? 1 : 0);
@@ -78,14 +78,14 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-y border-gray-200 bg-gray-50 dark:border-surface-700 dark:bg-surface-900/50">
+            <tr className="bg-primary-600 dark:bg-primary-800">
               {cols.map((c) => (
                 <th key={c.cle} scope="col" style={c.largeur ? { width: c.largeur } : undefined}
-                  className={clsx('px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
+                  className={clsx('px-4 py-3 text-[12.5px] font-bold tracking-[0.01em] text-white whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
                   {c.libelle}
                 </th>
               ))}
-              {actions && <th scope="col" className="relative w-px px-3 py-3"><span className="sr-only">Actions</span></th>}
+              {actions && <th scope="col" className="px-4 py-3 text-center text-[12.5px] font-bold text-white whitespace-nowrap">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-surface-700/70">
@@ -117,8 +117,8 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
                       </td>
                     ))}
                     {actions && (
-                      <td className="whitespace-nowrap px-3 py-3.5 text-right align-middle" onClick={(e) => e.stopPropagation()}>
-                        <div className={clsx('flex items-center justify-end gap-1', !actionsToujoursVisibles && 'gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 group-focus:opacity-100')}>{actions(l)}</div>
+                      <td className="whitespace-nowrap px-3 py-3.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                        <div className={clsx('flex items-center justify-center gap-1.5', !actionsToujoursVisibles && 'gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 group-focus:opacity-100')}>{actions(l)}</div>
                       </td>
                     )}
                   </tr>
