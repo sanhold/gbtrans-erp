@@ -126,6 +126,9 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
+  // Rubriques à sous-menu (Compta Auto, Compta Manuelle) dépliées : on voit toutes les pages d'un coup d'œil, sans quitter le menu.
+  const [sousOuverts, setSousOuverts] = useState<string[]>([]);
+  const basculerSous = (href: string) => setSousOuverts((l) => (l.includes(href) ? l.filter((h) => h !== href) : [...l, href]));
   // Groupes pliés (mémorisés). Par défaut, tout le menu est déplié.
   const ouvertsBrut = useSyncExternalStore(abonnerGroupes, lireGroupesOuverts, () => '[]');
   const plies: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
@@ -155,6 +158,11 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     if (!groupe) return;
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
     if (actuels.includes(groupe.title)) ecrireGroupesOuverts(actuels.filter((t) => t !== groupe.title));
+  }, [pathname]);
+
+  useEffect(() => {
+    const dedans = navGroups.flatMap((g) => g.items).filter((i) => i.sousVisible && i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))).map((i) => i.href);
+    if (dedans.length) setSousOuverts((l) => Array.from(new Set([...l, ...dedans])));
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -252,25 +260,47 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
               const dansSous = !!item.sousVisible && !!item.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'));
-              const afficherSous = !!item.sousVisible && !!item.sous && !collapsed && isActive;
-              return (
-                <div key={item.href}>
-                <Link
-                  href={cible}
-                  onClick={onClose}
-                  aria-current={isActive && !dansSous ? 'page' : undefined}
-                  title={collapsed ? item.name : undefined}
-                  className={linkCls(isActive && !dansSous)}
-                  style={teinte(idx)}
-                >
+              const accordeon = !!item.sousVisible && !!item.sous && !collapsed;
+              const ouvert = accordeon && sousOuverts.includes(item.href);
+              const afficherSous = ouvert;
+              const contenuLien = (
+                <>
                   <Icon d={item.icon} />
                   <span className={clsx('truncate', collapsed && 'lg:hidden')}>{item.name}</span>
+                  {accordeon && (
+                    <svg aria-hidden="true" className={clsx('ml-auto w-4 h-4 flex-shrink-0 transition-transform duration-150', ouvert ? 'rotate-180' : 'rotate-0')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                  )}
                   {!!badge && (
                     <span className={clsx(collapsed && 'lg:hidden', 'm-badge ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
                       {badge}
                     </span>
                   )}
-                </Link>
+                </>
+              );
+              return (
+                <div key={item.href}>
+                {accordeon ? (
+                  <button
+                    type="button"
+                    onClick={() => basculerSous(item.href)}
+                    aria-expanded={ouvert}
+                    className={clsx(linkCls(false), 'w-[calc(100%-1.5rem)] text-left', dansSous && 'font-semibold')}
+                    style={teinte(idx)}
+                  >
+                    {contenuLien}
+                  </button>
+                ) : (
+                  <Link
+                    href={cible}
+                    onClick={onClose}
+                    aria-current={isActive ? 'page' : undefined}
+                    title={collapsed ? item.name : undefined}
+                    className={linkCls(isActive)}
+                    style={teinte(idx)}
+                  >
+                    {contenuLien}
+                  </Link>
+                )}
                 {afficherSous && (
                   <div role="group" aria-label={item.name} className="my-0.5 space-y-0.5">
                     {item.sous!.map((x) => {
