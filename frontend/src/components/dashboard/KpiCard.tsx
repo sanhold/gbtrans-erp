@@ -9,6 +9,8 @@ interface KpiCardProps {
   iconClass?: string;
   /** Ligne de contexte sous le chiffre. */
   context?: ReactNode;
+  /** Carte cliquable : affiche une flèche en haut à droite. */
+  fleche?: boolean;
 }
 
 const Pictogramme = ({ icon, className }: { icon: string; className: string }) => (
@@ -18,9 +20,10 @@ const Pictogramme = ({ icon, className }: { icon: string; className: string }) =
 );
 
 /** Carte d'indicateur de la charte : pastille d'icône colorée à gauche (ordinateur), chiffre en grand, libellé, contexte. */
-export default function KpiCard({ label, value, unit, icon, iconClass = 'text-primary-600 dark:text-primary-300', context }: KpiCardProps) {
+export default function KpiCard({ label, value, unit, icon, iconClass = 'text-primary-600 dark:text-primary-300', context, fleche }: KpiCardProps) {
   return (
-    <div className="card !p-3 sm:!p-4 flex flex-col gap-1.5 sm:gap-2.5 min-w-0 sm:rounded-2xl">
+    <div className="card relative !p-3 sm:!p-4 flex flex-col gap-1.5 sm:gap-2.5 min-w-0 sm:rounded-2xl">
+      {fleche && <svg aria-hidden="true" className="hidden sm:block absolute right-3.5 top-3.5 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>}
       {/* Téléphone : libellé + petite icône, chiffre dessous */}
       <div className="flex items-start justify-between gap-2 sm:hidden">
         <span className="text-[11.5px] text-gray-500 dark:text-gray-400 font-medium leading-tight line-clamp-2" title={label}>{label}</span>
@@ -44,6 +47,7 @@ export default function KpiCard({ label, value, unit, icon, iconClass = 'text-pr
           <div className="mt-1 text-[13.5px] text-gray-700 dark:text-gray-300 font-medium leading-tight truncate" title={label}>{label}</div>
         </div>
       </div>
+      <span aria-hidden="true" className={`hidden sm:block h-[3px] w-14 rounded-full bg-current ${iconClass}`} />
       {context && <div className="text-[11.5px] sm:text-[12.5px] sm:min-h-[18px] leading-snug text-gray-500 dark:text-gray-400">{context}</div>}
     </div>
   );

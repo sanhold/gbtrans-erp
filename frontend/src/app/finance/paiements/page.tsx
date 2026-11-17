@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, StatutPastille } from '@/components/tables/cellules';
+import { Numero, Discret, Tiers, StatutPastille } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -39,7 +39,8 @@ export default function PaiementsPage() {
   const statut = (p: any): { libelle: string; ton: 'success' | 'gray' } => p.statut === 'VALIDE' ? { libelle: 'Validé', ton: 'success' } : { libelle: p.statut === 'ANNULE' ? 'Annulé' : p.statut, ton: 'gray' };
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'pai', libelle: 'Paiement', rendu: p => <DoubleLigne mono haut={p.numero} bas={fmtDate(p.datePaiement)} />, texte: p => p.numero },
+    { cle: 'pai', libelle: 'N° paiement', rendu: p => <Numero>{p.numero}</Numero>, texte: p => p.numero },
+    { cle: 'date', libelle: 'Date', rendu: p => <Discret>{fmtDate(p.datePaiement)}</Discret>, texte: p => fmtDate(p.datePaiement) },
     { cle: 'client', libelle: 'Client', rendu: p => <Tiers nom={p.client?.raisonSociale} />, texte: p => p.client?.raisonSociale || '' },
     { cle: 'mode', libelle: 'Mode', rendu: p => <StatutPastille libelle={MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement} ton="info" />, texte: p => MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement },
     { cle: 'factures', libelle: 'Facture(s)', masquerSous: 'xl', mono: true, rendu: p => factures(p) || '—', texte: p => factures(p) },

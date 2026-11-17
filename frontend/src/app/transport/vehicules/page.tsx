@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import ListeResponsive from '@/components/tables/ListeResponsive';
-import { DoubleLigne, Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Tronque, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import BoutonIcone, { IconeModifier, IconeSupprimer } from '@/components/tables/BoutonIcone';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -83,7 +83,8 @@ export default function VehiculesPage() {
   );
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'immat', libelle: 'Véhicule', rendu: v => <DoubleLigne haut={<Link href={`/transport/vehicules/${v.id}`} className="font-mono text-primary-600 hover:underline">{v.immatriculation}</Link>} bas={[v.marque, v.modele].filter(Boolean).join(' ') || undefined} />, texte: v => v.immatriculation },
+    { cle: 'immat', libelle: 'Véhicule', rendu: v => <Link href={`/transport/vehicules/${v.id}`} className="font-mono text-[13px] font-semibold text-primary-600 hover:underline">{v.immatriculation}</Link>, texte: v => v.immatriculation },
+    { cle: 'modele', libelle: 'Marque / modèle', masquerSous: 'xl', videSi: v => !(v.marque || v.modele), rendu: v => <Tronque texte={[v.marque, v.modele].filter(Boolean).join(' ')} largeur="14rem" />, texte: v => [v.marque, v.modele].filter(Boolean).join(' ') },
     { cle: 'type', libelle: 'Type', rendu: v => TYPE_LABEL[v.type] || v.type, texte: v => TYPE_LABEL[v.type] || v.type },
     { cle: 'statut', libelle: 'Statut', rendu: v => <StatutPastille libelle={STATUT_LABEL[v.statut] || v.statut} ton={tonDepuisBadge(STATUT_BADGE[v.statut])} />, texte: v => STATUT_LABEL[v.statut] || v.statut },
     { cle: 'assurance', libelle: 'Assurance', rendu: v => echeance(v.dateExpirationAssurance), texte: v => fmtDate(v.dateExpirationAssurance) },

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore, useCallback } from 'react';
+import { useEffect, useState, useSyncExternalStore, useCallback, type CSSProperties } from 'react';
+import { useStyleMenu } from '@/lib/styleMenu';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -21,7 +22,7 @@ export interface NavItem {
   sous?: { name: string; href: string }[];
 }
 
-const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesOuverts';
+const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesPlies';
 const EVT_GROUPES = 'gbtrans:menu-groupes';
 function lireGroupesOuverts(): string {
   try { return window.localStorage.getItem(CLE_GROUPES_OUVERTS) || '[]'; } catch { return '[]'; }
@@ -119,12 +120,13 @@ interface SidebarProps {
 
 export default function Sidebar({ open = false, onClose = () => {}, collapsed = false }: SidebarProps) {
   const pathname = usePathname();
+  const { style: styleMenu } = useStyleMenu();
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
-  // Groupes dépliés (mémorisés). Par défaut, tout le menu est plié.
+  // Groupes pliés (mémorisés). Par défaut, tout le menu est déplié.
   const ouvertsBrut = useSyncExternalStore(abonnerGroupes, lireGroupesOuverts, () => '[]');
-  const ouverts: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
+  const plies: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
   const basculerGroupe = useCallback((titre: string) => {
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
     ecrireGroupesOuverts(actuels.includes(titre) ? actuels.filter((t) => t !== titre) : [...actuels, titre]);
@@ -144,13 +146,13 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     if (d) setBadges({ dossiers: d.totalDossiers, courriers: d.totalCourriers });
   }, [badgeStats]);
 
-  // Quand on change de page, le groupe qui la contient se déplie (les autres restent pliés).
+  // Quand on change de page, le groupe qui la contient se déplie s'il était plié.
   useEffect(() => {
     const groupe = navGroups.find((g) => g.items.some((i) =>
       pathname === i.href || pathname?.startsWith(i.href + '/') || i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))));
     if (!groupe) return;
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
-    if (!actuels.includes(groupe.title)) ecrireGroupesOuverts([...actuels, groupe.title]);
+    if (actuels.includes(groupe.title)) ecrireGroupesOuverts(actuels.filter((t) => t !== groupe.title));
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -160,17 +162,22 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
 
   const linkCls = (active: boolean) => clsx(
     collapsed && 'lg:justify-center lg:px-0 lg:mx-2',
-    'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+    'm-it flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
     active
       ? 'bg-primary-600 dark:bg-primary-500/40 text-white font-semibold'
       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
   );
-  const titleCls = clsx(collapsed && 'lg:hidden', 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
-  const Icon = ({ d, active }: { d: string; active: boolean }) => (
-    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
+  const titleCls = clsx(collapsed && 'lg:hidden', 'm-t px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
+  const Icon = ({ d }: { d: string }) => (
+    <span className="m-ico flex-shrink-0">
+      <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    </span>
   );
+  // Une couleur par entrée de menu (utilisée par le style « Blanc et couleurs »)
+  const PALETTE = ['#1F6FEB', '#0EA5E9', '#F97316', '#16A34A', '#7C3AED', '#64748B'];
+  const teinte = (i: number) => ({ '--c': PALETTE[i % PALETTE.length] } as CSSProperties);
 
   return (
     <>
@@ -182,7 +189,9 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
         />
       )}
       <aside
+        data-menu={styleMenu}
         className={clsx(
+          'menu-lateral',
           collapsed ? 'lg:w-[72px]' : 'lg:w-[250px] xl:w-[260px]',
           'fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] flex-shrink-0 bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
@@ -211,7 +220,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
 
           // En mode réduit (icônes seules) il n'y a pas de titres : tout reste visible.
           const pliable = visibleItems.length > 1;
-          const replie = !collapsed && pliable && !ouverts.includes(group.title);
+          const replie = !collapsed && pliable && plies.includes(group.title);
           const idListe = `menu-groupe-${group.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
 
           return (
@@ -234,7 +243,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
               <div className={titleCls}>{group.title}</div>
             )}
             <div id={idListe} hidden={replie}>
-            {visibleItems.map((item) => {
+            {visibleItems.map((item, idx) => {
               const moduleItem = getRequiredModule(item.href);
               const cible = item.repli && moduleItem && !hasPermission(`${moduleItem}:LIRE`) ? item.repli : item.href;
               const isActive = isItemActive(cible, item.sous);
@@ -248,11 +257,12 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
                   aria-current={isActive ? 'page' : undefined}
                   title={collapsed ? item.name : undefined}
                   className={linkCls(isActive)}
+                  style={teinte(idx)}
                 >
-                  <Icon d={item.icon} active={isActive} />
+                  <Icon d={item.icon} />
                   <span className={clsx('truncate', collapsed && 'lg:hidden')}>{item.name}</span>
                   {!!badge && (
-                    <span className={clsx(collapsed && 'lg:hidden', 'ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
+                    <span className={clsx(collapsed && 'lg:hidden', 'm-badge ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
                       {badge}
                     </span>
                   )}
@@ -266,12 +276,12 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto pb-3 border-t border-gray-200 dark:border-surface-700">
+      <div className="m-foot mt-auto pb-3 border-t border-gray-200 dark:border-surface-700">
         {hasPermission('PARAMETRES:LIRE') && (
           <>
             <div className={titleCls}>Configuration</div>
-            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} title={collapsed ? 'Paramètres' : undefined} className={linkCls(isItemActive('/parametres'))}>
-              <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" active={isItemActive('/parametres')} />
+            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} title={collapsed ? 'Paramètres' : undefined} className={linkCls(isItemActive('/parametres'))} style={teinte(5)}>
+              <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
               <span className={clsx(collapsed && 'lg:hidden')}>Paramètres</span>
             </Link>
           </>
@@ -279,7 +289,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
         <button
           onClick={handleLogout}
           title={collapsed ? 'Déconnexion' : undefined}
-          className={clsx(collapsed && 'lg:justify-center lg:px-0', 'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400')}
+          className={clsx(collapsed && 'lg:justify-center lg:px-0', 'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] m-out rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400')}
         >
           <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
           <span className={clsx(collapsed && 'lg:hidden')}>Déconnexion</span>

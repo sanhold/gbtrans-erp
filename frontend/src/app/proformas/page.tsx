@@ -7,7 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import BoutonIcone, { IconeModifier, IconeSupprimer, IconeTelecharger } from '@/components/tables/BoutonIcone';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -88,8 +88,11 @@ export default function ProformasPage() {
   );
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'Proforma', rendu: p => <DoubleLigne mono haut={p.numero} bas={`${fmtDate(p.dateProforma)}${p.titre ? ' · ' + p.titre : ''}`} />, texte: p => p.numero },
-    { cle: 'client', libelle: 'Client', rendu: p => <Tiers nom={p.client?.raisonSociale} detail={p.dossier ? `Dossier ${p.dossier.numeroPhysique || p.dossier.numero}` : undefined} />, texte: p => p.client?.raisonSociale || '' },
+    { cle: 'numero', libelle: 'Proforma', rendu: p => <Numero>{p.numero}</Numero>, texte: p => p.numero },
+    { cle: 'date', libelle: 'Date', rendu: p => <Discret>{fmtDate(p.dateProforma)}</Discret>, texte: p => fmtDate(p.dateProforma) },
+    { cle: 'client', libelle: 'Client', rendu: p => <Tiers nom={p.client?.raisonSociale} />, texte: p => p.client?.raisonSociale || '' },
+    { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl', videSi: p => !p.dossier, rendu: p => <span className="font-mono text-[13px] text-gray-700 dark:text-gray-200">{p.dossier ? (p.dossier.numeroPhysique || p.dossier.numero) : '—'}</span>, texte: p => p.dossier?.numeroPhysique || p.dossier?.numero || '' },
+    { cle: 'titre', libelle: 'Titre', masquerSous: '2xl', videSi: p => !p.titre, rendu: p => <Tronque texte={p.titre} largeur="14rem" />, texte: p => p.titre || '' },
     { cle: 'ht', libelle: 'Total HT', align: 'right', masquerSous: '2xl', rendu: p => <Montant valeur={p.montantHT} />, texte: p => String(p.montantHT) },
     { cle: 'tva', libelle: 'TVA', align: 'right', masquerSous: '2xl', rendu: p => <Montant valeur={p.montantTVA} />, texte: p => String(p.montantTVA) },
     { cle: 'ttc', libelle: 'Total TTC', align: 'right', rendu: p => <Montant valeur={p.montantTTC} />, texte: p => String(p.montantTTC) },

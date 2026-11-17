@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, Montant, Progression, StatutPastille } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, Montant, Progression, StatutPastille } from '@/components/tables/cellules';
 import EmptyState from '@/components/ui/EmptyState';
 import PickerField from '@/components/ui/PickerField';
 import Modal from '@/components/ui/Modal';
@@ -163,8 +163,10 @@ export default function DotationPage() {
   );
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'Dotation', rendu: d => <DoubleLigne mono haut={d.numero} bas={`${new Date(d.dateDotation).toLocaleDateString('fr-FR')}${d.motif ? ' · ' + d.motif : ''}`} />, texte: d => d.numero },
+    { cle: 'numero', libelle: 'N° dotation', rendu: d => <Numero>{d.numero}</Numero>, texte: d => d.numero },
+    { cle: 'date', libelle: 'Date', rendu: d => <Discret>{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</Discret>, texte: d => new Date(d.dateDotation).toLocaleDateString('fr-FR') },
     { cle: 'agent', libelle: 'Agent', rendu: d => <Tiers nom={d.agent ? `${d.agent.prenom} ${d.agent.nom}` : null} />, texte: d => (d.agent ? `${d.agent.prenom} ${d.agent.nom}` : '') },
+    { cle: 'motif', libelle: 'Motif', masquerSous: 'xl', videSi: d => !d.motif, rendu: d => <Tronque texte={d.motif} largeur="14rem" />, texte: d => d.motif || '' },
     { cle: 'montant', libelle: 'Montant', align: 'right', rendu: d => <Montant valeur={d.montant} />, texte: d => String(d.montant) },
     { cle: 'utilise', libelle: 'Utilisé', align: 'right', rendu: d => <Montant valeur={d.montantUtilise} ton="negatif" />, texte: d => String(d.montantUtilise) },
     { cle: 'restant', libelle: 'Restant', align: 'right', rendu: d => <Montant valeur={d.montantRestant} ton="positif" />, texte: d => String(d.montantRestant) },

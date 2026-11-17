@@ -10,7 +10,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import DataTable, { Colonne } from '@/components/tables/DataTable';
 import TablePagination from '@/components/tables/TablePagination';
-import { DoubleLigne, Montant, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
+import { Numero, Discret, Montant, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
 import PaginationControls from '@/components/tables/PaginationControls';
 import api, { facturesApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -88,8 +88,10 @@ export default function FacturationPage() {
 
   const dateCourte = (v: any) => new Date(v).toLocaleDateString('fr-FR');
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'Facture', texte: (f) => f.numero, rendu: (f) => <DoubleLigne mono haut={f.numero} bas={`Du ${dateCourte(f.dateFacture)}`} /> },
-    { cle: 'client', libelle: 'Client', texte: (f) => f.client?.raisonSociale || '', rendu: (f) => <Tiers nom={f.client?.raisonSociale} detail={(f.dossier?.numeroPhysique || f.dossier?.numero) ? `Dossier ${f.dossier?.numeroPhysique || f.dossier?.numero}` : undefined} /> },
+    { cle: 'numero', libelle: 'Facture', texte: (f) => f.numero, rendu: (f) => <Numero>{f.numero}</Numero> },
+    { cle: 'date', libelle: 'Date', texte: (f) => dateCourte(f.dateFacture), rendu: (f) => <Discret>{dateCourte(f.dateFacture)}</Discret> },
+    { cle: 'client', libelle: 'Client', texte: (f) => f.client?.raisonSociale || '', rendu: (f) => <Tiers nom={f.client?.raisonSociale} /> },
+    { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl', videSi: (f) => !(f.dossier?.numeroPhysique || f.dossier?.numero), texte: (f) => f.dossier?.numeroPhysique || f.dossier?.numero || '', rendu: (f) => <span className="font-mono text-[13px] text-gray-700 dark:text-gray-200">{f.dossier?.numeroPhysique || f.dossier?.numero || '—'}</span> },
     { cle: 'normalise', libelle: 'N° normalisé', mono: true, masquerSous: '2xl', texte: (f) => f.numeroNormalise || '', rendu: (f) => f.numeroNormalise || <span className="text-gray-300">—</span> },
     { cle: 'ttc', libelle: 'Total TTC', align: 'right', texte: (f) => fmt(f.montantTTC), rendu: (f) => <Montant valeur={f.montantTTC} /> },
     { cle: 'paye', libelle: 'Payé', align: 'right', masquerSous: 'xl', texte: (f) => fmt(f.montantPaye), rendu: (f) => <Montant valeur={f.montantPaye} ton="positif" /> },

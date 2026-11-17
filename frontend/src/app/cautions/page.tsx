@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -195,14 +195,12 @@ export default function CautionsPage() {
   const nbFiltres = [dateDebut, dateFin, dossierFiltre, clientFiltre, compagnieFiltre, blFiltre, etatFiltre].filter(Boolean).length;
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'caution', libelle: 'Caution', rendu: c => <DoubleLigne mono haut={c.numero} bas={fmtDate(c.dateCaution)} />, texte: c => c.numero },
-    { cle: 'dossier', libelle: 'Dossier', rendu: c => (
-      <DoubleLigne
-        haut={c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} onClick={e => e.stopPropagation()} className="text-primary-600 hover:underline font-mono">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '—'}
-        bas={c.numeroBL ? `BL ${c.numeroBL}` : undefined}
-      />
-    ), texte: c => c.dossier?.numeroPhysique || c.dossier?.numero || '' },
-    { cle: 'client', libelle: 'Client', rendu: c => <Tiers nom={c.client?.raisonSociale} detail={c.compagnie} />, texte: c => c.client?.raisonSociale || '' },
+    { cle: 'caution', libelle: 'N° caution', rendu: c => <Numero>{c.numero}</Numero>, texte: c => c.numero },
+    { cle: 'date', libelle: 'Date', rendu: c => <Discret>{fmtDate(c.dateCaution)}</Discret>, texte: c => fmtDate(c.dateCaution) },
+    { cle: 'dossier', libelle: 'Dossier', rendu: c => (c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} onClick={e => e.stopPropagation()} className="text-primary-600 hover:underline font-mono text-[13px]">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '—'), texte: c => c.dossier?.numeroPhysique || c.dossier?.numero || '' },
+    { cle: 'bl', libelle: 'BL', masquerSous: 'xl', videSi: c => !c.numeroBL, rendu: c => <span className="font-mono text-[13px] text-gray-700 dark:text-gray-200">{c.numeroBL || '—'}</span>, texte: c => c.numeroBL || '' },
+    { cle: 'client', libelle: 'Client', rendu: c => <Tiers nom={c.client?.raisonSociale} />, texte: c => c.client?.raisonSociale || '' },
+    { cle: 'compagnie', libelle: 'Compagnie', masquerSous: 'xl', videSi: c => !c.compagnie, rendu: c => <Tronque texte={c.compagnie} largeur='10rem' />, texte: c => c.compagnie || '' },
     { cle: 'qte', libelle: 'Qté', align: 'right', masquerSous: 'xl', rendu: c => <span className="tabular-nums">{c.quantite}</span>, texte: c => String(c.quantite ?? '') },
     { cle: 'montant', libelle: 'Montant', align: 'right', rendu: c => <Montant valeur={c.montant} />, texte: c => String(c.montant) },
     { cle: 'courrier', libelle: 'Dépôt courrier', masquerSous: '2xl', rendu: c => fmtDate(c.dateDepotCourrier), texte: c => fmtDate(c.dateDepotCourrier) },

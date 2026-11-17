@@ -6,6 +6,7 @@ module.exports = {
     extend: {
       colors: {
         canvas: '#eceff4',
+        azure: { DEFAULT: '#1F6FEB', hover: '#1859C2', tint: '#E8F0FF' },
         primary: {
           50: '#eef3f8',
           100: '#d7e3ee',

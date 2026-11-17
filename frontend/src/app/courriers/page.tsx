@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import BoutonIcone, { IconeModifier, IconeSupprimer, IconeValider, IconeEnvoyer, IconeArchiver } from '@/components/tables/BoutonIcone';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -163,8 +163,10 @@ export default function CourriersPage() {
   const dateDe = (c: any) => fmtDate(c.dateReception || c.dateEnvoi || c.dateCreation);
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'courrier', libelle: 'Courrier', rendu: c => <DoubleLigne mono haut={c.numero} bas={dateDe(c)} />, texte: c => c.numero },
-    { cle: 'tiers', libelle: tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire', rendu: c => <Tiers nom={tiers(c)} detail={c.objet} />, texte: c => `${tiers(c) || ''} — ${c.objet}` },
+    { cle: 'courrier', libelle: 'N° courrier', rendu: c => <Numero>{c.numero}</Numero>, texte: c => c.numero },
+    { cle: 'date', libelle: 'Date', rendu: c => <Discret>{dateDe(c)}</Discret>, texte: c => String(dateDe(c) ?? '') },
+    { cle: 'tiers', libelle: tab === 'ENTRANT' ? 'Expéditeur' : 'Destinataire', rendu: c => <Tiers nom={tiers(c)} />, texte: c => tiers(c) || '' },
+    { cle: 'objet', libelle: 'Objet', rendu: c => <Tronque texte={c.objet} />, texte: c => c.objet || '' },
     { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl', rendu: c => (dossierDe(c) ? <Link href={`/dossiers/${dossierDe(c).id}`} onClick={e => e.stopPropagation()} className="font-mono text-primary-600 hover:underline">{dossierDe(c).numeroPhysique || dossierDe(c).numero}</Link> : '—'), texte: c => dossierDe(c)?.numeroPhysique || dossierDe(c)?.numero || '' },
     { cle: 'priorite', libelle: 'Priorité', rendu: c => <StatutPastille libelle={PRIORITE_LABELS[c.priorite] || c.priorite} ton={tonDepuisBadge(PRIORITE_BADGE[c.priorite])} />, texte: c => PRIORITE_LABELS[c.priorite] || c.priorite },
     { cle: 'statut', libelle: 'Statut', rendu: c => <StatutPastille libelle={STATUT_LABELS[c.statut] || c.statut} ton={tonDepuisBadge(STATUT_BADGE[c.statut])} />, texte: c => STATUT_LABELS[c.statut] || c.statut },

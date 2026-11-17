@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, StatutPastille } from '@/components/tables/cellules';
+import { Tronque, StatutPastille } from '@/components/tables/cellules';
 import BoutonIcone, { IconeTelecharger } from '@/components/tables/BoutonIcone';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -141,7 +141,8 @@ export default function ArchivesPage() {
   const liePar = (d: any) => (d.admissionTemporaire ? `AT ${d.admissionTemporaire.numero}` : d.dossier ? (d.dossier.numeroPhysique || d.dossier.numero) : d.client ? d.client.raisonSociale : '—');
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'nom', libelle: 'Document', rendu: d => <DoubleLigne haut={<button type="button" onClick={(e) => { e.stopPropagation(); telechargerDocument(d); }} className="text-left text-primary-600 hover:underline" title={d.nomOriginal}>{d.nomOriginal}</button>} bas={d.description} />, texte: d => d.nomOriginal },
+    { cle: 'nom', libelle: 'Document', rendu: d => <button type="button" onClick={(e) => { e.stopPropagation(); telechargerDocument(d); }} className="block max-w-[22rem] truncate text-left text-primary-600 hover:underline" title={d.description ? `${d.nomOriginal} — ${d.description}` : d.nomOriginal}>{d.nomOriginal}</button>, texte: d => d.nomOriginal },
+    { cle: 'description', libelle: 'Description', masquerSous: '2xl', videSi: d => !d.description, rendu: d => <Tronque texte={d.description} largeur="18rem" />, texte: d => d.description || '' },
     { cle: 'categorie', libelle: 'Catégorie', rendu: d => <StatutPastille libelle={CATEGORIE_LABELS[d.categorie] || d.categorie} ton="gray" />, texte: d => CATEGORIE_LABELS[d.categorie] || d.categorie },
     { cle: 'lie', libelle: 'Lié à', rendu: d => (d.dossier && !d.admissionTemporaire ? <Link href={`/dossiers/${d.dossier.id}`} onClick={e => e.stopPropagation()} className="text-primary-600 hover:underline">{liePar(d)}</Link> : liePar(d)), texte: d => liePar(d) },
     { cle: 'taille', libelle: 'Taille', align: 'right', masquerSous: '2xl', rendu: d => <span className="tabular-nums">{fmtSize(d.taille)}</span>, texte: d => fmtSize(d.taille) },
