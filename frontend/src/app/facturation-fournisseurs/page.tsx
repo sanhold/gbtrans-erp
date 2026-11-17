@@ -8,7 +8,6 @@ import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import KpiCard from '@/components/dashboard/KpiCard';
 import ListeResponsive from '@/components/tables/ListeResponsive';
-import BoutonIcone, { IconeVoir } from '@/components/tables/BoutonIcone';
 import { Numero, Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import PickerField from '@/components/ui/PickerField';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
@@ -19,6 +18,7 @@ const statutColors: Record<string, string> = {
   PARTIELLEMENT_PAYEE: 'badge-warning', PAYEE: 'badge-success',
   EN_RETARD: 'badge-danger', ANNULEE: 'badge-danger', CONTENTIEUX: 'badge-danger',
 };
+const fmtK = (n: number) => n >= 1e6 ? `${(n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M` : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n).replace(/[\u202f\u00a0]/g, ' ');
 const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FacturationFournisseursPage() {
@@ -81,7 +81,7 @@ export default function FacturationFournisseursPage() {
     { cle: 'numero', libelle: 'N° facture', texte: (f: any) => f.numero, rendu: (f: any) => <Numero>{f.numero}</Numero> },
     { cle: 'date', libelle: 'Échéance', texte: date, rendu: (f: any) => <Discret>{date(f)}</Discret> },
     { cle: 'fournisseur', libelle: 'Fournisseur', texte: (f: any) => f.fournisseur?.raisonSociale || '', rendu: (f: any) => <Tronque texte={f.fournisseur?.raisonSociale} largeur="18rem" /> },
-    { cle: 'dossier', libelle: 'Dossier', masquerSous: 'xl' as const, texte: dossier, rendu: (f: any) => <Discret>{dossier(f)}</Discret> },
+    { cle: 'dossier', libelle: 'Dossier', masquerSous: '2xl' as const, texte: dossier, rendu: (f: any) => <Discret>{dossier(f)}</Discret> },
     { cle: 'ttc', libelle: 'Total TTC', align: 'right' as const, texte: (f: any) => String(f.montantTTC), rendu: (f: any) => <Montant valeur={f.montantTTC} /> },
     { cle: 'paye', libelle: 'Payé', align: 'right' as const, masquerSous: 'xl' as const, texte: (f: any) => String(f.montantPaye), rendu: (f: any) => <Montant valeur={f.montantPaye} ton="positif" /> },
     { cle: 'reste', libelle: 'Reste', align: 'right' as const, texte: (f: any) => String(f.resteAPayer), rendu: (f: any) => <Montant valeur={f.resteAPayer} ton="negatif" /> },
@@ -98,9 +98,9 @@ export default function FacturationFournisseursPage() {
         />
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <KpiCard label="Total facturé" value={fmt(totaux.ttc)} unit="F" icon="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-          <KpiCard label="Total payé" value={fmt(totaux.paye)} unit="F" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" iconClass="text-green-600" />
-          <KpiCard label="Reste à payer" value={fmt(totaux.reste)} unit="F" icon="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" iconClass="text-red-600" />
+          <KpiCard label="Total facturé" value={fmtK(totaux.ttc)} unit="F" icon="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+          <KpiCard label="Total payé" value={fmtK(totaux.paye)} unit="F" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" iconClass="text-green-600" />
+          <KpiCard label="Reste à payer" value={fmtK(totaux.reste)} unit="F" icon="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" iconClass="text-red-600" />
         </div>
 
         <ListeResponsive
@@ -110,7 +110,6 @@ export default function FacturationFournisseursPage() {
           chargement={loading}
           nomExport="factures-fournisseurs"
           onClic={(f: any) => openDetail(f.id)}
-          actions={(f: any) => <BoutonIcone titre="Voir" ton="primaire" href={`/facturation-fournisseurs/${f.id}`}><IconeVoir /></BoutonIcone>}
           carte={(f: any) => ({ titre: f.numero, sousTitre: f.fournisseur?.raisonSociale || '—', droite: <Montant valeur={f.resteAPayer} ton="negatif" />, details: <span className="inline-flex flex-wrap items-center gap-2">{date(f)}<StatutPastille libelle={statut(f)} ton={tonDepuisBadge(statutColors[f.statut])} /></span> })}
           pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: changePageSize }}
           vide={<EmptyState titre="Aucune facture fournisseur" description="Créez une première facture fournisseur." />}
