@@ -14,7 +14,6 @@ import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
 import GenerationAutoTab from './GenerationAutoTab';
-import MenuRubriqueCompta from './MenuRubriqueCompta';
 import PlanComptablePanel from './PlanComptablePanel';
 import InfoBulle from '@/components/ui/InfoBulle';
 import toast from 'react-hot-toast';
@@ -101,6 +100,10 @@ export default function WorkspaceCompta({ source, onglet }: { source: 'REEL' | '
   return (
     <AppLayout>
       <div className="space-y-3 sm:space-y-4">
+        <Link href={estReel ? BASE_REEL : BASE_AUTO} className="lg:hidden -mb-1 inline-flex items-center gap-1 text-[13px] font-medium text-azure">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          {estReel ? 'Compta Manuelle' : 'Compta Auto'}
+        </Link>
         <PageHeader
           titre={titrePage}
           sousTitre={estReel ? 'Compta Manuelle' : 'Compta Auto'}
@@ -126,8 +129,6 @@ export default function WorkspaceCompta({ source, onglet }: { source: 'REEL' | '
             </div>
           }
         />
-
-        <MenuRubriqueCompta base={estReel ? BASE_REEL : BASE_AUTO} defs={defs} titre={estReel ? 'Compta Manuelle' : 'Compta Auto'} />
 
         {/* Les pièces à comptabiliser ne dépendent pas d'un exercice : Compta Auto peut en
             déposer avant même qu'un exercice ne soit ouvert. */}
