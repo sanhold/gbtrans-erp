@@ -12,6 +12,8 @@ import DataTable, { Colonne } from '@/components/tables/DataTable';
 import TablePagination from '@/components/tables/TablePagination';
 import { Compteur, DoubleLigne, Montant, Progression, StatutPastille, Tiers, tonDepuisBadge } from '@/components/tables/cellules';
 import PaginationControls from '@/components/tables/PaginationControls';
+import BoutonIcone, { IconeModifier, IconeVoir } from '@/components/tables/BoutonIcone';
+import KpiCard from '@/components/dashboard/KpiCard';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { statutColors, statutLabels, STATUTS_DOSSIER, STATUTS_DOSSIER_FERME } from '@/lib/dossierStatut';
@@ -44,6 +46,16 @@ export default function DossiersPage() {
   const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [rechargement, setRechargement] = useState(0);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [compteurs, setCompteurs] = useState<{ NOUVEAU?: number; EN_COURS?: number; TERMINE?: number }>({});
+
+  // Compteurs des indicateurs (une requête légère par statut)
+  useEffect(() => {
+    (['NOUVEAU', 'EN_COURS', 'TERMINE'] as const).forEach((st) => {
+      dossiersApi.list({ page: 1, limit: 1, statut: st })
+        .then((r) => setCompteurs((c) => ({ ...c, [st]: r.data.pagination.total })))
+        .catch(() => {});
+    });
+  }, [rechargement]);
 
   // Recherche globale du header : /dossiers?search=...
   useEffect(() => {
@@ -153,6 +165,20 @@ export default function DossiersPage() {
             </>
           }
         />
+
+        {/* Indicateurs cliquables : filtrent la liste par statut */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          {([
+            { st: '', label: 'Tous les dossiers', val: filterStatut || appliedSearch ? undefined : total, icon: 'M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', cls: 'text-blue-600' },
+            { st: 'NOUVEAU', label: 'Nouveaux', val: compteurs.NOUVEAU, icon: 'M12 5v14M5 12h14', cls: 'text-orange-500' },
+            { st: 'EN_COURS', label: 'En cours', val: compteurs.EN_COURS, icon: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', cls: 'text-green-600' },
+            { st: 'TERMINE', label: 'Terminés', val: compteurs.TERMINE, icon: 'M5 13l4 4L19 7', cls: 'text-violet-600' },
+          ]).map((k) => (
+            <button key={k.label} type="button" onClick={() => { setFilterStatut(k.st); setPage(1); }} aria-pressed={filterStatut === k.st} className={`text-left min-w-0 rounded-2xl transition-shadow hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${filterStatut === k.st ? 'ring-2 ring-primary-600' : ''}`}>
+              <KpiCard label={k.label} value={k.val === undefined ? (k.st === '' ? `${compteurs.NOUVEAU !== undefined && compteurs.EN_COURS !== undefined && compteurs.TERMINE !== undefined ? compteurs.NOUVEAU + compteurs.EN_COURS + compteurs.TERMINE : '…'}` : '…') : `${k.val}`} icon={k.icon} iconClass={k.cls} />
+            </button>
+          ))}
+        </div>
 
         {/* Filtres : recherche toujours visible ; les autres filtres se replient sur téléphone */}
         <form onSubmit={handleSearch} className="card !p-2 sm:!p-3 space-y-2 sm:space-y-3 lg:space-y-0 lg:flex lg:items-center lg:gap-2" role="search" aria-label="Rechercher un dossier">
@@ -284,13 +310,9 @@ export default function DossiersPage() {
                   }
                   actions={(d) => (
                     <>
-                      <Link href={`/dossiers/${d.id}`} title="Voir la fiche" aria-label="Voir la fiche" className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-500">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      </Link>
+                      <BoutonIcone titre="Voir la fiche" ton="primaire" href={`/dossiers/${d.id}`}><IconeVoir /></BoutonIcone>
                       {!STATUTS_DOSSIER_FERME.includes(d.statut) && (
-                        <Link href={`/dossiers/${d.id}/edit`} title="Modifier" aria-label="Modifier" className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-500">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        </Link>
+                        <BoutonIcone titre="Modifier" ton="primaire" href={`/dossiers/${d.id}/edit`}><IconeModifier /></BoutonIcone>
                       )}
                     </>
                   )}
