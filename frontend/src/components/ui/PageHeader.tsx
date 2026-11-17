@@ -29,7 +29,7 @@ export default function PageHeader({ titre, sousTitre, actions, sousTitreMasqueM
         </div>
       </div>
       {centre && <div className="order-last lg:order-none flex w-full lg:w-auto lg:flex-1 min-w-0 flex-wrap items-center gap-2 lg:justify-center">{centre}</div>}
-      {actions && <div className="ph-actions flex flex-wrap items-center gap-2 flex-shrink-0">{actions}</div>}
+      {actions && <div className="ph-actions flex max-w-full flex-wrap items-center gap-2 flex-shrink-0">{actions}</div>}
     </div>
   );
 }
