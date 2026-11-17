@@ -1,9 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useState } from 'react';
 import Link from 'next/link';
-import PaginationControls from '@/components/tables/PaginationControls';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider, IconeArchiver } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
@@ -42,41 +44,35 @@ export default function ComptesBancairesManager({ onSelectAccount }: { onSelectA
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-3">
-        <Link href="/finance/comptes-bancaires/historique" className="btn-secondary">
-          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          Comptes désactivés
-        </Link>
-        <button onClick={() => setShowModal(true)} className="btn-primary">
-          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Nouveau Compte
-        </button>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Link href="/finance/comptes-bancaires/historique" className="btn-secondary">Comptes désactivés</Link>
+        <button onClick={() => setShowModal(true)} className="btn-primary">+ Nouveau compte</button>
       </div>
-      <div className="table-container">
-        <table className="w-full">
-          <thead><tr><th className="table-header"></th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Banque</th><th className="table-header">Devise</th><th className="table-header text-right">Solde</th><th className="table-header">Statut</th></tr></thead>
-          <tbody>
-            {loading ? <SkeletonRows cols={7} />
-            : comptesActifs.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucun compte bancaire actif. Créez-en un.</td></tr>
-            : paged.map(c => (
-              <tr key={c.id} className={`table-row ${onSelectAccount ? 'cursor-pointer' : ''}`} onClick={() => onSelectAccount?.(c.id)}>
-                <td className="table-cell" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); toggleActif(c); }} className="text-xs text-primary-600 hover:underline">{c.actif ? 'Désactiver' : 'Activer'}</button></td>
-                <td className="table-cell font-medium text-primary-600" data-label="Code">{c.code}</td>
-                <td className="table-cell" data-label="Libellé">{c.libelle}</td>
-                <td className="table-cell" data-label="Banque">{c.banque}</td>
-                <td className="table-cell" data-label="Devise">{c.devise}</td>
-                <td className="table-cell text-right font-mono" data-label="Solde">{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</td>
-                <td className="table-cell" data-label="Statut">{c.actif ? <span className="badge badge-success">Actif</span> : <span className="badge badge-gray">Inactif</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-      </div>
+      <ListeResponsive
+        colonnes={[
+          { cle: 'code', libelle: 'Code', texte: (c: any) => c.code, rendu: (c: any) => <Numero>{c.code}</Numero> },
+          { cle: 'libelle', libelle: 'Libellé', texte: (c: any) => c.libelle, rendu: (c: any) => <Tronque texte={c.libelle} largeur="20rem" /> },
+          { cle: 'banque', libelle: 'Banque', texte: (c: any) => c.banque || '', rendu: (c: any) => <Tronque texte={c.banque} largeur="12rem" /> },
+          { cle: 'devise', libelle: 'Devise', masquerSous: 'xl' as const, texte: (c: any) => c.devise, rendu: (c: any) => <Discret>{c.devise}</Discret> },
+          { cle: 'solde', libelle: 'Solde', align: 'right' as const, texte: (c: any) => String(c.solde), rendu: (c: any) => (canSeeMontants ? <Montant valeur={c.solde} /> : MONTANT_MASQUE) },
+          { cle: 'statut', libelle: 'Statut', texte: (c: any) => (c.actif ? 'Actif' : 'Inactif'), rendu: (c: any) => <StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} /> },
+        ]}
+        lignes={paged}
+        cleLigne={(c: any) => c.id}
+        chargement={loading}
+        nomExport="comptes-bancaires"
+        onClic={onSelectAccount ? (c: any) => onSelectAccount(c.id) : undefined}
+        actions={(c: any) => (
+          <BoutonIcone titre={c.actif ? 'Désactiver' : 'Activer'} ton={c.actif ? 'neutre' : 'primaire'} onClick={() => toggleActif(c)}>{c.actif ? <IconeArchiver /> : <IconeValider />}</BoutonIcone>
+        )}
+        carte={(c: any) => ({ titre: c.libelle, sousTitre: `${c.code} — ${c.banque || ''}`, statut: <StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} />, droite: canSeeMontants ? <Montant valeur={c.solde} /> : MONTANT_MASQUE })}
+        pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+        vide={<EmptyState titre="Aucun compte bancaire actif" description="Créez-en un avec « Nouveau compte »." />}
+      />
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-t-2xl sm:rounded-xl shadow-elevated w-full max-w-lg sm:mx-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
               <h2 className="text-lg font-bold">Nouveau Compte Bancaire</h2>
               <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
