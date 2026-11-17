@@ -1,8 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeArchiver, IconeValider } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, StatutPastille } from '@/components/tables/cellules';
 import toast from 'react-hot-toast';
 
 export default function ExercicesPanel() {
@@ -82,33 +85,23 @@ export default function ExercicesPanel() {
           </div>
         )}
 
-        <div className="table-container table-compact">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Actions</th><th className="table-header">Code</th><th className="table-header">Libellé</th><th className="table-header">Début</th><th className="table-header">Fin</th><th className="table-header text-right">Écritures</th><th className="table-header">Statut</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={7} />
-              ) : exercices.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-500">Aucun exercice comptable</td></tr>
-              ) : exercices.map(ex => (
-                <tr className="table-row" key={ex.id}>
-                  <td className="table-cell" data-label="Actions">
-                    <button onClick={() => toggleCloture(ex)} disabled={busyId === ex.id} className="text-xs text-gray-600 hover:underline disabled:opacity-50">{ex.cloture ? 'Rouvrir' : 'Clôturer'}</button>
-                  </td>
-                  <td className="table-cell font-medium" data-label="Code">{ex.code}</td>
-                  <td className="table-cell" data-label="Libellé">{ex.libelle}</td>
-                  <td className="table-cell" data-label="Début">{new Date(ex.dateDebut).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Fin">{new Date(ex.dateFin).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="Écritures">
-                    {ex.nbEcritures ?? 0}
-                    {ex.nbNonValidees > 0 && <span className="ml-1 text-[10px] text-amber-600" title="Écritures non validées">({ex.nbNonValidees} à valider)</span>}
-                  </td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${ex.cloture ? 'badge-gray' : 'badge-success'}`}>{ex.cloture ? 'Clôturé' : 'Actif'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'code', libelle: 'Code', texte: (ex: any) => ex.code, rendu: (ex: any) => <Numero>{ex.code}</Numero> },
+            { cle: 'lib', libelle: 'Libellé', texte: (ex: any) => ex.libelle, rendu: (ex: any) => <Tronque texte={ex.libelle} largeur="20rem" /> },
+            { cle: 'deb', libelle: 'Début', texte: (ex: any) => new Date(ex.dateDebut).toLocaleDateString('fr-FR'), rendu: (ex: any) => <Discret>{new Date(ex.dateDebut).toLocaleDateString('fr-FR')}</Discret> },
+            { cle: 'fin', libelle: 'Fin', texte: (ex: any) => new Date(ex.dateFin).toLocaleDateString('fr-FR'), rendu: (ex: any) => <Discret>{new Date(ex.dateFin).toLocaleDateString('fr-FR')}</Discret> },
+            { cle: 'nb', libelle: 'Écritures', align: 'right' as const, texte: (ex: any) => String(ex.nbEcritures ?? 0), rendu: (ex: any) => <span className="font-mono text-[13px] tabular-nums">{ex.nbEcritures ?? 0}{ex.nbNonValidees > 0 && <span className="ml-1 text-[11px] text-amber-600" title="Écritures non validées">({ex.nbNonValidees} à valider)</span>}</span> },
+            { cle: 'st', libelle: 'Statut', texte: (ex: any) => (ex.cloture ? 'Clôturé' : 'Actif'), rendu: (ex: any) => <StatutPastille libelle={ex.cloture ? 'Clôturé' : 'Actif'} ton={ex.cloture ? 'gray' : 'success'} /> },
+          ]}
+          lignes={exercices}
+          cleLigne={(ex: any) => ex.id}
+          chargement={loading}
+          nomExport="exercices"
+          actions={(ex: any) => <BoutonIcone titre={ex.cloture ? 'Rouvrir' : 'Clôturer'} ton={ex.cloture ? 'primaire' : 'neutre'} disabled={busyId === ex.id} onClick={() => toggleCloture(ex)}>{ex.cloture ? <IconeValider /> : <IconeArchiver />}</BoutonIcone>}
+          carte={(ex: any) => ({ titre: ex.libelle, sousTitre: `${ex.code} — ${new Date(ex.dateDebut).toLocaleDateString('fr-FR')} au ${new Date(ex.dateFin).toLocaleDateString('fr-FR')}`, statut: <StatutPastille libelle={ex.cloture ? 'Clôturé' : 'Actif'} ton={ex.cloture ? 'gray' : 'success'} />, details: `${ex.nbEcritures ?? 0} écriture(s)${ex.nbNonValidees > 0 ? ` — ${ex.nbNonValidees} à valider` : ''}` })}
+          vide={<EmptyState titre="Aucun exercice comptable" description="Créez votre premier exercice." />}
+        />
       </div>
     </div>
   );
