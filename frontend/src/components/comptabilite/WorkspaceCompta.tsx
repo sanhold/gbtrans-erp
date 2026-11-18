@@ -1,8 +1,15 @@
 'use client';
 
 import { SkeletonRows } from '@/components/ui/Skeleton';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider, IconeSupprimer } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { BASE_AUTO, BASE_REEL, ONGLETS_AUTO, ONGLETS_REEL, type OngletCompta } from '@/lib/comptaOnglets';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
@@ -17,10 +24,13 @@ const emptyLigne = () => ({ compteId: '', libelle: '', debit: '', credit: '' });
 const emptyEcritureForm = () => ({ journalId: '', dateEcriture: new Date().toISOString().slice(0, 10), libelle: '', reference: '', piece: '', lignes: [emptyLigne(), emptyLigne()] });
 const emptyExerciceForm = { code: '', libelle: '', dateDebut: '', dateFin: '' };
 
-export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' }) {
+export default function WorkspaceCompta({ source, onglet }: { source: 'REEL' | 'AUTO'; onglet: OngletCompta }) {
+  const router = useRouter();
   const estReel = source === 'REEL';
   const origine: 'AUTO' | 'MANUEL' = estReel ? 'MANUEL' : 'AUTO';
-  const [tab, setTab] = useState<'generation' | 'ecritures' | 'attente' | 'rejetees' | 'grand-livre' | 'balance' | 'bilan' | 'plan'>(estReel ? 'ecritures' : 'generation');
+  const tab = onglet;
+  const defs = estReel ? ONGLETS_REEL : ONGLETS_AUTO;
+  const titrePage = defs.find(d => d.onglet === onglet)?.libelle || (estReel ? 'Compta Manuelle' : 'Compta Auto');
   const [exercices, setExercices] = useState<any[]>([]);
   const [exerciceId, setExerciceId] = useState('');
   const [comptes, setComptes] = useState<any[]>([]);
@@ -89,11 +99,24 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
 
   return (
     <AppLayout>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{estReel ? 'Compta Manuelle' : 'Compta Auto'}</h1>
-            <InfoBulle titre={estReel ? 'Compta Manuelle' : 'Compta Auto'} cote="gauche" alerte={!estReel}>
+      <div className="space-y-3 sm:space-y-4">
+        <Link href={estReel ? BASE_REEL : BASE_AUTO} className="lg:hidden -mb-1 inline-flex items-center gap-1 text-[13px] font-medium text-azure">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          {estReel ? 'Compta Manuelle' : 'Compta Auto'}
+        </Link>
+        <PageHeader
+          titre={titrePage}
+          sousTitre={estReel ? 'Compta Manuelle' : 'Compta Auto'}
+          sousTitreMasqueMobile
+          actions={
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field min-w-0 !w-full sm:!w-auto !py-1.5 text-sm max-w-full">
+              {exercices.length === 0 && <option value="">Aucun exercice</option>}
+              {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.libelle} ({ex.code}){ex.cloture ? ' — clôturé' : ''}</option>)}
+            </select>
+            <button onClick={() => setShowExerciceModal(true)} className="btn-secondary">+ Nouvel exercice</button>
+            <Link href="/comptabilite/plan-comptable" className="btn-secondary">Paramètres</Link>
+              <InfoBulle titre={estReel ? 'Compta Manuelle' : 'Compta Auto'} cote="gauche" alerte={!estReel}>
               <p>{estReel
                 ? 'Comptabilisez les pièces en attente ou passez des écritures diverses — même plan comptable que Compta Auto.'
                 : 'Écritures générées et validées automatiquement depuis les factures, paiements et dépenses — même plan comptable que Compta Manuelle.'}</p>
@@ -103,39 +126,15 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
                 </p>
               )}
             </InfoBulle>
-          </div>
-          <div className="flex gap-2 items-center flex-wrap">
-            <select value={exerciceId} onChange={e => setExerciceId(e.target.value)} className="input-field !w-auto text-sm">
-              {exercices.length === 0 && <option value="">Aucun exercice</option>}
-              {exercices.map(ex => <option key={ex.id} value={ex.id}>{ex.libelle} ({ex.code}){ex.cloture ? ' — clôturé' : ''}</option>)}
-            </select>
-            <button onClick={() => setShowExerciceModal(true)} className="btn-secondary text-sm">+ Nouvel exercice</button>
-            <Link href="/comptabilite/plan-comptable" className="btn-secondary text-sm">Paramètres</Link>
-          </div>
-        </div>
-
-        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
-          {[
-            ...(estReel ? [] : [{ id: 'generation', label: 'Génération' }]),
-            { id: 'ecritures', label: estReel ? 'Journal manuel' : 'Journal automatique' },
-            ...(estReel ? [{ id: 'attente', label: 'Pièces à comptabiliser' }, { id: 'rejetees', label: 'Pièces rejetées' }] : []),
-            { id: 'grand-livre', label: 'Grand Livre' },
-            { id: 'balance', label: 'Balance' },
-            { id: 'bilan', label: 'Bilan' },
-            { id: 'plan', label: 'Plan comptable' },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)} className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${tab === t.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+            </div>
+          }
+        />
 
         {/* Les pièces à comptabiliser ne dépendent pas d'un exercice : Compta Auto peut en
             déposer avant même qu'un exercice ne soit ouvert. */}
         {estReel && tab === 'attente' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="EN_ATTENTE" />}
         {estReel && tab === 'rejetees' && <EnAttenteTab exerciceId={exerciceId} comptes={comptes} journaux={journaux} statutFiltre="REJETEE" />}
 
-        {tab === 'plan' && <PlanComptablePanel lectureSeule />}
 
         {tab === 'generation' && !estReel && (exercices.length === 0 ? (
           <div className="card text-center py-16 text-gray-500">
@@ -143,7 +142,7 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
             <button onClick={() => setShowExerciceModal(true)} className="btn-primary text-sm">+ Nouvel exercice</button>
           </div>
         ) : (
-          <GenerationAutoTab exercice={exercices.find(e => e.id === exerciceId)} onGenerated={() => setTab('ecritures')} />
+          <GenerationAutoTab exercice={exercices.find(e => e.id === exerciceId)} onGenerated={() => router.push(`${BASE_AUTO}/journal`)} />
         ))}
 
         {['ecritures', 'grand-livre', 'balance', 'bilan'].includes(tab) && exercices.length === 0 ? (
@@ -162,8 +161,8 @@ export default function WorkspaceCompta({ source }: { source: 'REEL' | 'AUTO' })
       </div>
 
       {showExerciceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-sm mx-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in">
+          <div className="bg-white dark:bg-surface-800 rounded-t-2xl sm:rounded-xl shadow-elevated w-full max-w-sm sm:mx-4">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
               <h3 className="font-bold text-lg">Nouvel exercice</h3>
               <button onClick={() => setShowExerciceModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
@@ -197,6 +196,7 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
   const [form, setForm] = useState(emptyEcritureForm());
   const [saving, setSaving] = useState(false);
   const [ouverte, setOuverte] = useState<string | null>(null);
+  const totalEc = (ec: any, k: 'debit' | 'credit') => ec.mouvements.reduce((s: number, m: any) => s + Number(m[k]), 0);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -261,79 +261,63 @@ function EcrituresTab({ exerciceId, comptes, journaux, origine, lectureSeule = f
         </select>
         {!lectureSeule && <button onClick={openCreate} className="btn-primary text-sm">+ Nouvelle écriture</button>}
       </div>
-      <div className="table-container">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '6%' }} />
-          </colgroup>
-          <thead><tr>
-            <th className="table-header !text-[10px] !px-1.5 truncate">N°</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Journal</th>
-            <th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Crédit</th>
-            <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th><th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-          </tr></thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows cols={8} />
-            ) : ecritures.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-12 text-gray-500">{lectureSeule ? 'Aucune écriture. Lancez la génération depuis l\'onglet Génération.' : 'Aucune écriture. Cliquez sur "+ Nouvelle écriture".'}</td></tr>
-            ) : ecritures.map(ec => {
-              const totalDebit = ec.mouvements.reduce((s: number, m: any) => s + Number(m.debit), 0);
-              const totalCredit = ec.mouvements.reduce((s: number, m: any) => s + Number(m.credit), 0);
-              return (
-                <Fragment key={ec.id}>
-                  <tr className="table-row cursor-pointer" onClick={() => setOuverte(ouverte === ec.id ? null : ec.id)}>
-                    <td className="table-cell font-mono text-xs text-primary-600" data-label="N°">{ec.numero}</td>
-                    <td className="table-cell text-xs" data-label="Date">{new Date(ec.dateEcriture).toLocaleDateString('fr-FR')}</td>
-                    <td className="table-cell" data-label="Journal"><span className="badge badge-gray">{ec.journal.code}</span></td>
-                    <td className="table-cell text-xs" data-label="Libellé">{ec.libelle}</td>
-                    <td className="table-cell text-right font-mono" data-label="Débit">{fmt(totalDebit)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Crédit">{fmt(totalCredit)}</td>
-                    <td className="table-cell" data-label="Statut"><span className={`badge ${ec.validee ? 'badge-success' : 'badge-gray'}`}>{ec.validee ? 'Validée' : 'Brouillon'}</span></td>
-                    <td className="table-cell" data-label="Actions">
-                      {!ec.validee && (
-                        <div className="flex gap-2 text-xs" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => handleValider(ec.id)} className="text-primary-500 hover:underline">Valider</button>
-                          <button onClick={() => handleSupprimer(ec.id)} className="text-red-500 hover:underline">Supprimer</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                  {ouverte === ec.id && (
-                    <tr>
-                      <td colSpan={8} className="p-0 bg-gray-50 dark:bg-surface-700/40">
-                        <table className="w-full text-xs">
-                          <thead><tr><th className="table-header !py-1.5">Compte</th><th className="table-header !py-1.5">Libellé</th><th className="table-header !py-1.5 text-right">Débit</th><th className="table-header !py-1.5 text-right">Crédit</th></tr></thead>
-                          <tbody>
-                            {ec.mouvements.map((m: any) => (
-                              <tr key={m.id} className="border-t border-gray-100 dark:border-surface-700">
-                                <td className="px-3 py-1.5 font-mono">{m.compte.numero} — {m.compte.libelle}</td>
-                                <td className="px-3 py-1.5">{m.libelle || '-'}</td>
-                                <td className="px-3 py-1.5 text-right font-mono">{Number(m.debit) > 0 ? fmt(m.debit) : ''}</td>
-                                <td className="px-3 py-1.5 text-right font-mono">{Number(m.credit) > 0 ? fmt(m.credit) : ''}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ListeResponsive
+        colonnes={[
+          { cle: 'n', libelle: 'N°', texte: (ec: any) => ec.numero, rendu: (ec: any) => <Numero>{ec.numero}</Numero> },
+          { cle: 'd', libelle: 'Date', texte: (ec: any) => new Date(ec.dateEcriture).toLocaleDateString('fr-FR'), rendu: (ec: any) => <Discret>{new Date(ec.dateEcriture).toLocaleDateString('fr-FR')}</Discret> },
+          { cle: 'j', libelle: 'Journal', texte: (ec: any) => ec.journal.code, rendu: (ec: any) => <Discret>{ec.journal.code}</Discret> },
+          { cle: 'l', libelle: 'Libellé', texte: (ec: any) => ec.libelle, rendu: (ec: any) => <Tronque texte={ec.libelle} largeur="24rem" /> },
+          { cle: 'db', libelle: 'Débit', align: 'right' as const, texte: (ec: any) => String(totalEc(ec, 'debit')), rendu: (ec: any) => <Montant valeur={totalEc(ec, 'debit')} unite="" /> },
+          { cle: 'cr', libelle: 'Crédit', align: 'right' as const, texte: (ec: any) => String(totalEc(ec, 'credit')), rendu: (ec: any) => <Montant valeur={totalEc(ec, 'credit')} unite="" /> },
+          { cle: 's', libelle: 'Statut', texte: (ec: any) => (ec.validee ? 'Validée' : 'Brouillon'), rendu: (ec: any) => <StatutPastille libelle={ec.validee ? 'Validée' : 'Brouillon'} ton={ec.validee ? 'success' : 'gray'} /> },
+        ]}
+        lignes={ecritures}
+        cleLigne={(ec: any) => ec.id}
+        chargement={loading}
+        nomExport="ecritures"
+        onClic={(ec: any) => setOuverte(ec.id)}
+        actions={(ec: any) => !ec.validee ? (
+          <>
+            <BoutonIcone titre="Valider" ton="primaire" onClick={() => handleValider(ec.id)}><IconeValider /></BoutonIcone>
+            <BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleSupprimer(ec.id)}><IconeSupprimer /></BoutonIcone>
+          </>
+        ) : null}
+        carte={(ec: any) => ({ titre: ec.libelle, sousTitre: `${ec.numero} — ${ec.journal.code} — ${new Date(ec.dateEcriture).toLocaleDateString('fr-FR')}`, statut: <StatutPastille libelle={ec.validee ? 'Validée' : 'Brouillon'} ton={ec.validee ? 'success' : 'gray'} />, details: `Débit ${fmt(totalEc(ec, 'debit'))} — Crédit ${fmt(totalEc(ec, 'credit'))}` })}
+        vide={<EmptyState titre="Aucune écriture" description={lectureSeule ? "Lancez la génération depuis l'onglet Génération." : 'Utilisez « + Nouvelle écriture ».'} />}
+      />
+
+      {ouverte && (() => {
+        const ec = ecritures.find(x => x.id === ouverte);
+        if (!ec) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in" onClick={() => setOuverte(null)}>
+            <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated dark:bg-surface-800 sm:mx-4 sm:rounded-xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-surface-700">
+                <div className="min-w-0"><h3 className="truncate font-display text-base font-bold text-primary-600 dark:text-white">{ec.numero}</h3><p className="truncate text-xs text-gray-500">{ec.libelle} — {ec.journal.code}</p></div>
+                <button onClick={() => setOuverte(null)} aria-label="Fermer" className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+              </div>
+              <div className="overflow-y-auto p-4">
+                <ListeResponsive
+                  colonnes={[
+                    { cle: 'c', libelle: 'Compte', texte: (m: any) => `${m.compte.numero} ${m.compte.libelle}`, rendu: (m: any) => <Tronque texte={`${m.compte.numero} — ${m.compte.libelle}`} largeur="20rem" /> },
+                    { cle: 'l', libelle: 'Libellé', texte: (m: any) => m.libelle || '', rendu: (m: any) => <Discret>{m.libelle || '—'}</Discret> },
+                    { cle: 'd', libelle: 'Débit', align: 'right' as const, texte: (m: any) => String(m.debit), rendu: (m: any) => Number(m.debit) > 0 ? <Montant valeur={m.debit} unite="" /> : <Discret>—</Discret> },
+                    { cle: 'k', libelle: 'Crédit', align: 'right' as const, texte: (m: any) => String(m.credit), rendu: (m: any) => Number(m.credit) > 0 ? <Montant valeur={m.credit} unite="" /> : <Discret>—</Discret> },
+                  ]}
+                  lignes={ec.mouvements}
+                  cleLigne={(m: any) => m.id}
+                  carte={(m: any) => ({ titre: `${m.compte.numero} — ${m.compte.libelle}`, sousTitre: m.libelle || undefined, droite: Number(m.debit) > 0 ? <span>D {fmt(m.debit)}</span> : <span>C {fmt(m.credit)}</span> })}
+                  vide={<p className="py-3 text-center text-sm text-gray-500">Aucun mouvement</p>}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in sm:p-4">
+          <div className="bg-white dark:bg-surface-800 rounded-t-2xl sm:rounded-xl shadow-elevated w-full max-w-3xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
               <h3 className="font-bold text-lg">Nouvelle écriture</h3>
               <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
@@ -418,43 +402,34 @@ function GrandLivreTab({ exerciceId, origine }: { exerciceId: string; origine: '
     <div className="space-y-3">
       {comptes.map((c: any) => (
         <div key={c.compte.id} className="card !p-0 overflow-hidden">
-          <button onClick={() => toggle(c.compte.id)} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-surface-700">
+          <button onClick={() => toggle(c.compte.id)} className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-3 sm:p-4 text-left hover:bg-gray-50 dark:hover:bg-surface-700">
             <div className="flex items-center gap-3">
               <svg className={`w-4 h-4 text-gray-400 transition-transform ${ouverts[c.compte.id] ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               <span className="font-mono font-semibold text-primary-600">{c.compte.numero}</span>
               <span className="text-sm text-gray-700 dark:text-gray-300">{c.compte.libelle}</span>
             </div>
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 pl-7 sm:pl-0 text-xs sm:text-sm">
               <span className="text-gray-500">Débit <span className="font-mono text-gray-900 dark:text-white">{fmt(c.totalDebit)}</span></span>
               <span className="text-gray-500">Crédit <span className="font-mono text-gray-900 dark:text-white">{fmt(c.totalCredit)}</span></span>
               <span className={`font-mono font-bold ${c.solde >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(Math.abs(c.solde))} {c.solde >= 0 ? 'D' : 'C'}</span>
             </div>
           </button>
           {ouverts[c.compte.id] && (
-            <div className="table-container !shadow-none !border-0 !rounded-none border-t border-gray-200 dark:border-surface-700">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '16%' }} />
-                  <col style={{ width: '36%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '12%' }} />
-                </colgroup>
-                <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate">Date</th><th className="table-header !text-[10px] !px-1.5 truncate">Journal</th><th className="table-header !text-[10px] !px-1.5 truncate">N° Écriture</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Crédit</th></tr></thead>
-                <tbody>
-                  {c.mouvements.map((m: any) => (
-                    <tr key={m.id} className="table-row">
-                      <td className="table-cell text-xs" data-label="Date">{new Date(m.date).toLocaleDateString('fr-FR')}</td>
-                      <td className="table-cell" data-label="Journal">{m.journal}</td>
-                      <td className="table-cell font-mono text-xs" data-label="N° Écriture">{m.numeroEcriture}</td>
-                      <td className="table-cell" data-label="Libellé">{m.libelle}</td>
-                      <td className="table-cell text-right font-mono" data-label="Débit">{Number(m.debit) > 0 ? fmt(m.debit) : ''}</td>
-                      <td className="table-cell text-right font-mono" data-label="Crédit">{Number(m.credit) > 0 ? fmt(m.credit) : ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="border-t border-gray-200 p-3 dark:border-surface-700">
+              <ListeResponsive
+                colonnes={[
+                  { cle: 'd', libelle: 'Date', texte: (m: any) => new Date(m.date).toLocaleDateString('fr-FR'), rendu: (m: any) => <Discret>{new Date(m.date).toLocaleDateString('fr-FR')}</Discret> },
+                  { cle: 'j', libelle: 'Journal', texte: (m: any) => m.journal, rendu: (m: any) => <Discret>{m.journal}</Discret> },
+                  { cle: 'n', libelle: 'N° écriture', texte: (m: any) => m.numeroEcriture, rendu: (m: any) => <Numero>{m.numeroEcriture}</Numero> },
+                  { cle: 'l', libelle: 'Libellé', texte: (m: any) => m.libelle || '', rendu: (m: any) => <Tronque texte={m.libelle} largeur="24rem" /> },
+                  { cle: 'db', libelle: 'Débit', align: 'right' as const, texte: (m: any) => String(m.debit), rendu: (m: any) => Number(m.debit) > 0 ? <Montant valeur={m.debit} unite="" /> : <Discret>—</Discret> },
+                  { cle: 'cr', libelle: 'Crédit', align: 'right' as const, texte: (m: any) => String(m.credit), rendu: (m: any) => Number(m.credit) > 0 ? <Montant valeur={m.credit} unite="" /> : <Discret>—</Discret> },
+                ]}
+                lignes={c.mouvements}
+                cleLigne={(m: any) => m.id}
+                carte={(m: any) => ({ titre: m.libelle || m.numeroEcriture, sousTitre: `${m.numeroEcriture} — ${m.journal} — ${new Date(m.date).toLocaleDateString('fr-FR')}`, droite: Number(m.debit) > 0 ? <span>D {fmt(m.debit)}</span> : <span>C {fmt(m.credit)}</span> })}
+                vide={<p className="py-3 text-center text-sm text-gray-500">Aucun mouvement</p>}
+              />
             </div>
           )}
         </div>
@@ -477,49 +452,30 @@ function BalanceTab({ exerciceId, origine }: { exerciceId: string; origine: 'AUT
   }, [exerciceId, origine]);
 
   return (
-    <div className="table-container">
-      <table className="w-full table-fixed">
-        <colgroup>
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '30%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '15%' }} />
-          <col style={{ width: '15%' }} />
-        </colgroup>
-        <thead><tr>
-          <th className="table-header !text-[10px] !px-1.5 truncate">Compte</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th>
-          <th className="table-header !text-[10px] !px-1.5 truncate text-right">Total Débit</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Total Crédit</th>
-          <th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde Débiteur</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde Créditeur</th>
-        </tr></thead>
-        <tbody>
-          {loading ? (
-            <SkeletonRows cols={6} />
-          ) : lignes.length === 0 ? (
-            <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun mouvement</td></tr>
-          ) : lignes.map((l: any) => (
-            <tr key={l.compte} className="table-row">
-              <td className="table-cell font-mono font-medium text-primary-600" data-label="Compte">{l.compte}</td>
-              <td className="table-cell" data-label="Libellé">{l.libelle}</td>
-              <td className="table-cell text-right font-mono" data-label="Total Débit">{fmt(l.debit)}</td>
-              <td className="table-cell text-right font-mono" data-label="Total Crédit">{fmt(l.credit)}</td>
-              <td className="table-cell text-right font-mono font-medium text-green-600" data-label="Solde Débiteur">{l.soldeDebiteur > 0 ? fmt(l.soldeDebiteur) : ''}</td>
-              <td className="table-cell text-right font-mono font-medium text-red-600" data-label="Solde Créditeur">{l.soldeCrediteur > 0 ? fmt(l.soldeCrediteur) : ''}</td>
-            </tr>
+    <div className="space-y-3">
+      {totaux && !loading && lignes.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {[['Total débit', totaux.debit, ''], ['Total crédit', totaux.credit, ''], ['Solde débiteur', totaux.soldeDebiteur, 'text-green-600'], ['Solde créditeur', totaux.soldeCrediteur, 'text-red-600']].map(([l, v, c]: any) => (
+            <div key={l} className="card !p-3"><p className="text-[11px] uppercase text-gray-500">{l}</p><p className={`font-mono text-base font-bold tabular-nums sm:text-lg ${c}`}>{fmt(v)}</p></div>
           ))}
-        </tbody>
-        {totaux && !loading && lignes.length > 0 && (
-          <tfoot>
-            <tr className="bg-gray-100 dark:bg-surface-700 font-bold">
-              <td className="table-cell" colSpan={2}>TOTAUX</td>
-              <td className="table-cell text-right font-mono">{fmt(totaux.debit)}</td>
-              <td className="table-cell text-right font-mono">{fmt(totaux.credit)}</td>
-              <td className="table-cell text-right font-mono text-green-600">{fmt(totaux.soldeDebiteur)}</td>
-              <td className="table-cell text-right font-mono text-red-600">{fmt(totaux.soldeCrediteur)}</td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
+        </div>
+      )}
+      <ListeResponsive
+        colonnes={[
+          { cle: 'c', libelle: 'Compte', texte: (l: any) => String(l.compte), rendu: (l: any) => <Numero>{l.compte}</Numero> },
+          { cle: 'l', libelle: 'Libellé', texte: (l: any) => l.libelle, rendu: (l: any) => <Tronque texte={l.libelle} largeur="26rem" /> },
+          { cle: 'd', libelle: 'Total débit', align: 'right' as const, texte: (l: any) => String(l.debit), rendu: (l: any) => <Montant valeur={l.debit} unite="" /> },
+          { cle: 'k', libelle: 'Total crédit', align: 'right' as const, texte: (l: any) => String(l.credit), rendu: (l: any) => <Montant valeur={l.credit} unite="" /> },
+          { cle: 'sd', libelle: 'Solde débiteur', align: 'right' as const, texte: (l: any) => String(l.soldeDebiteur), rendu: (l: any) => l.soldeDebiteur > 0 ? <Montant valeur={l.soldeDebiteur} ton="positif" unite="" /> : <Discret>—</Discret> },
+          { cle: 'sc', libelle: 'Solde créditeur', align: 'right' as const, texte: (l: any) => String(l.soldeCrediteur), rendu: (l: any) => l.soldeCrediteur > 0 ? <Montant valeur={l.soldeCrediteur} ton="negatif" unite="" /> : <Discret>—</Discret> },
+        ]}
+        lignes={lignes}
+        cleLigne={(l: any) => String(l.compte)}
+        chargement={loading}
+        nomExport="balance"
+        carte={(l: any) => ({ titre: l.libelle, sousTitre: String(l.compte), droite: l.soldeDebiteur > 0 ? <Montant valeur={l.soldeDebiteur} ton="positif" /> : <Montant valeur={l.soldeCrediteur} ton="negatif" />, details: `Débit ${fmt(l.debit)} — Crédit ${fmt(l.credit)} — ${l.soldeDebiteur > 0 ? 'solde débiteur' : 'solde créditeur'}` })}
+        vide={<EmptyState titre="Aucun mouvement" description="La balance apparaîtra dès les premières écritures." />}
+      />
     </div>
   );
 }
@@ -747,51 +703,32 @@ function EnAttenteTab({ exerciceId, comptes, journaux, statutFiltre }: { exercic
         </div>
       )}
 
-      <div className="table-container">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '28%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: statutFiltre === 'EN_ATTENTE' ? '15%' : '15%' }} />
-          </colgroup>
-          <thead><tr>
-            <th className="table-header !text-[10px] !px-1.5 truncate">Source</th><th className="table-header !text-[10px] !px-1.5 truncate">Référence</th>
-            <th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Date</th>
-            <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
-            <th className="table-header !text-[10px] !px-1.5 truncate">{statutFiltre === 'EN_ATTENTE' ? 'Actions' : 'Motif'}</th>
-          </tr></thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows cols={6} />
-            ) : items.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-gray-500">{statutFiltre === 'EN_ATTENTE' ? 'Aucune entrée en attente' : 'Aucune entrée rejetée'}</td></tr>
-            ) : items.map(item => (
-              <tr key={item.id} className="table-row">
-                <td className="table-cell !text-[10.5px]" data-label="Source"><span className="badge badge-gray !text-[10px]">{SOURCE_LABELS[item.source] || item.source}</span></td>
-                <td className="table-cell !text-[10.5px] truncate" data-label="Référence" title={sourceDetail(item)}>{sourceDetail(item)}</td>
-                <td className="table-cell !text-[11px] truncate" data-label="Libellé" title={item.libelle}>{item.libelle}</td>
-                <td className="table-cell !text-[10.5px]" data-label="Date">{new Date(item.dateOperation).toLocaleDateString('fr-FR')}</td>
-                <td className="table-cell text-right font-mono !text-[10.5px]" data-label="Montant">{fmt(item.montant)}</td>
-                <td className="table-cell !text-[10.5px]" data-label={statutFiltre === 'EN_ATTENTE' ? 'Actions' : 'Motif'}>
-                  {statutFiltre === 'EN_ATTENTE' ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => openComptabiliser(item)} className="text-primary-500 hover:underline">Comptabiliser</button>
-                      <button onClick={() => handleRejeter(item)} className="text-red-500 hover:underline">Rejeter</button>
-                    </div>
-                  ) : (item.motifRejet || '-')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ListeResponsive
+        colonnes={[
+          { cle: 's', libelle: 'Source', texte: (it: any) => SOURCE_LABELS[it.source] || it.source, rendu: (it: any) => <Discret>{SOURCE_LABELS[it.source] || it.source}</Discret> },
+          { cle: 'r', libelle: 'Référence', masquerSous: 'xl' as const, texte: (it: any) => sourceDetail(it), rendu: (it: any) => <Tronque texte={sourceDetail(it)} largeur="14rem" /> },
+          { cle: 'l', libelle: 'Libellé', texte: (it: any) => it.libelle, rendu: (it: any) => <Tronque texte={it.libelle} largeur="24rem" /> },
+          { cle: 'd', libelle: 'Date', texte: (it: any) => new Date(it.dateOperation).toLocaleDateString('fr-FR'), rendu: (it: any) => <Discret>{new Date(it.dateOperation).toLocaleDateString('fr-FR')}</Discret> },
+          { cle: 'm', libelle: 'Montant', align: 'right' as const, texte: (it: any) => String(it.montant), rendu: (it: any) => <Montant valeur={it.montant} /> },
+          ...(statutFiltre === 'REJETEE' ? [{ cle: 'x', libelle: 'Motif', texte: (it: any) => it.motifRejet || '', rendu: (it: any) => <Tronque texte={it.motifRejet || '—'} largeur="16rem" /> }] : []),
+        ]}
+        lignes={items}
+        cleLigne={(it: any) => it.id}
+        chargement={loading}
+        nomExport={statutFiltre === 'EN_ATTENTE' ? 'pieces-en-attente' : 'pieces-rejetees'}
+        actions={statutFiltre === 'EN_ATTENTE' ? (it: any) => (
+          <>
+            <BoutonIcone titre="Comptabiliser" ton="primaire" onClick={() => openComptabiliser(it)}><IconeValider /></BoutonIcone>
+            <BoutonIcone titre="Rejeter" ton="danger" onClick={() => handleRejeter(it)}><IconeSupprimer /></BoutonIcone>
+          </>
+        ) : undefined}
+        carte={(it: any) => ({ titre: it.libelle, sousTitre: `${SOURCE_LABELS[it.source] || it.source} — ${sourceDetail(it)}`, droite: <Montant valeur={it.montant} />, details: `${new Date(it.dateOperation).toLocaleDateString('fr-FR')}${statutFiltre === 'REJETEE' && it.motifRejet ? ` — ${it.motifRejet}` : ''}` })}
+        vide={<EmptyState titre={statutFiltre === 'EN_ATTENTE' ? 'Aucune pièce en attente' : 'Aucune pièce rejetée'} description="Tout est à jour." />}
+      />
 
       {comptabilisant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in sm:p-4">
+          <div className="bg-white dark:bg-surface-800 rounded-t-2xl sm:rounded-xl shadow-elevated w-full max-w-3xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-surface-700">
               <div>
                 <h3 className="font-bold text-lg">Comptabiliser — {comptabilisant.libelle}</h3>

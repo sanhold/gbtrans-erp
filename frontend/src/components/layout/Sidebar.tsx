@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '@/lib/api';
 import { useCachedFetch, TTL } from '@/lib/cache';
 import { getRequiredModule } from '@/lib/permissions';
+import { BASE_AUTO, BASE_FNE, BASE_REEL, ONGLETS_AUTO, ONGLETS_FNE, ONGLETS_REEL, sousMenu } from '@/lib/comptaOnglets';
 
 export interface NavItem {
   name: string;
@@ -20,6 +21,8 @@ export interface NavItem {
   repli?: string;
   /** Pages regroupées sous cette entrée (onglets) : elles activent l'entrée et sont cherchables. */
   sous?: { name: string; href: string }[];
+  /** Affiche les pages `sous` comme sous-menu, dès que l'on est dans cette rubrique. */
+  sousVisible?: boolean;
 }
 
 const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesPlies';
@@ -96,9 +99,9 @@ export const navGroups: NavGroup[] = [
     title: 'Comptabilité',
     items: [
       { name: 'Plan comptable', href: '/comptabilite/plan-comptable', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-      { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
+      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z', sousVisible: true, sous: sousMenu(BASE_AUTO, ONGLETS_AUTO) },
+      { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', sousVisible: true, sous: sousMenu(BASE_FNE, ONGLETS_FNE) },
+      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4', sousVisible: true, sous: sousMenu(BASE_REEL, ONGLETS_REEL) },
     ],
   },
   {
@@ -123,6 +126,9 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
+  // Rubriques à sous-menu (Compta Auto, Compta Manuelle) dépliées : on voit toutes les pages d'un coup d'œil, sans quitter le menu.
+  const [sousOuverts, setSousOuverts] = useState<string[]>([]);
+  const basculerSous = (href: string) => setSousOuverts((l) => (l.includes(href) ? l.filter((h) => h !== href) : [...l, href]));
   // Groupes pliés (mémorisés). Par défaut, tout le menu est déplié.
   const ouvertsBrut = useSyncExternalStore(abonnerGroupes, lireGroupesOuverts, () => '[]');
   const plies: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
@@ -152,6 +158,11 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     if (!groupe) return;
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
     if (actuels.includes(groupe.title)) ecrireGroupesOuverts(actuels.filter((t) => t !== groupe.title));
+  }, [pathname]);
+
+  useEffect(() => {
+    const dedans = navGroups.flatMap((g) => g.items).filter((i) => i.sousVisible && i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))).map((i) => i.href);
+    if (dedans.length) setSousOuverts((l) => Array.from(new Set([...l, ...dedans])));
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -248,24 +259,79 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
               const isActive = isItemActive(cible, item.sous);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={cible}
-                  onClick={onClose}
-                  aria-current={isActive ? 'page' : undefined}
-                  title={collapsed ? item.name : undefined}
-                  className={linkCls(isActive)}
-                  style={teinte(idx)}
-                >
+              const dansSous = !!item.sousVisible && !!item.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'));
+              const accordeon = !!item.sousVisible && !!item.sous && !collapsed;
+              const ouvert = accordeon && sousOuverts.includes(item.href);
+              const afficherSous = ouvert;
+              const contenuLien = (
+                <>
                   <Icon d={item.icon} />
                   <span className={clsx('truncate', collapsed && 'lg:hidden')}>{item.name}</span>
+                  {accordeon && (
+                    <svg aria-hidden="true" className={clsx('ml-auto w-4 h-4 flex-shrink-0 transition-transform duration-150', ouvert ? 'rotate-180' : 'rotate-0')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                  )}
                   {!!badge && (
                     <span className={clsx(collapsed && 'lg:hidden', 'm-badge ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
                       {badge}
                     </span>
                   )}
-                </Link>
+                </>
+              );
+              return (
+                <div key={item.href}>
+                {accordeon ? (
+                  <>
+                    {/* Téléphone : un simple lien. Les pages de la rubrique s'affichent en haut de la page elle-même. */}
+                    <div className="lg:hidden">
+                      <Link href={cible} onClick={onClose} aria-current={isActive ? 'page' : undefined} className={linkCls(isActive)} style={teinte(idx)}>
+                        <Icon d={item.icon} />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    </div>
+                    {/* Ordinateur : la rubrique se déplie dans le menu. */}
+                    <div className="hidden lg:block">
+                      <button
+                        type="button"
+                        onClick={() => basculerSous(item.href)}
+                        aria-expanded={ouvert}
+                        className={clsx(linkCls(false), 'w-[calc(100%-1.5rem)] text-left', dansSous && 'font-semibold')}
+                        style={teinte(idx)}
+                      >
+                        {contenuLien}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <Link
+                    href={cible}
+                    onClick={onClose}
+                    aria-current={isActive ? 'page' : undefined}
+                    title={collapsed ? item.name : undefined}
+                    className={linkCls(isActive)}
+                    style={teinte(idx)}
+                  >
+                    {contenuLien}
+                  </Link>
+                )}
+                {afficherSous && (
+                  <div role="group" aria-label={item.name} className="hidden lg:block my-0.5 space-y-0.5">
+                    {item.sous!.map((x) => {
+                      const actif = pathname === x.href || pathname?.startsWith(x.href + '/');
+                      return (
+                        <Link
+                          key={x.href}
+                          href={x.href}
+                          onClick={onClose}
+                          aria-current={actif ? 'page' : undefined}
+                          className={clsx('m-it flex items-center ml-[38px] mr-3 pl-3 pr-2 min-h-[38px] lg:min-h-[32px] rounded-lg text-[13px] border-l border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500', actif ? 'font-semibold' : 'opacity-90')}
+                        >
+                          <span className="truncate">{x.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>
               );
             })}
             </div>

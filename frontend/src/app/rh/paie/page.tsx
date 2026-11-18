@@ -1,9 +1,14 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import KpiCard from '@/components/dashboard/KpiCard';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeVoir } from '@/components/tables/BoutonIcone';
+import { Numero, Tronque, Tiers, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { rhApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -92,81 +97,59 @@ export default function PaiePage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 mr-1 whitespace-nowrap">Paie</h1>
-            <select value={mois} onChange={e => setMois(parseInt(e.target.value))} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
-              {MOIS_LABELS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-            <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} className="input-field !py-1.5 text-xs !w-auto flex-shrink-0">
-              {[annee - 1, annee, annee + 1].map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <button onClick={handleGenerer} disabled={generating} className="btn-primary !px-3 !py-1.5 text-xs disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
-              {generating ? 'Génération...' : `Générer les bulletins de ${MOIS_LABELS[mois - 1]}`}
-            </button>
-            <Link href="/rh/employes" className="btn-secondary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">Employés</Link>
-          </div>
-          <p className="text-[10px] text-gray-400 italic mt-1.5">
-            Barème CNPS/ITS indicatif — à faire vérifier par un expert-comptable
-          </p>
+        <PageHeader
+          titre="Paie"
+          sousTitre={`Bulletins de ${MOIS_LABELS[mois - 1]} ${annee}`}
+          icone="M3 7h18v12H3zM3 7l2-4h14l2 4M9 12h6"
+          actions={
+            <>
+              <Link href="/rh/employes" className="btn-secondary">Employés</Link>
+              <button onClick={handleGenerer} disabled={generating} className="btn-primary disabled:opacity-50">
+                {generating ? 'Génération…' : `Générer ${MOIS_LABELS[mois - 1].toLowerCase()}`}
+              </button>
+            </>
+          }
+        />
+
+        <div className="card !p-2.5 sm:!p-3 flex flex-wrap items-center gap-2">
+          <select value={mois} onChange={e => setMois(parseInt(e.target.value))} aria-label="Mois" className="input-field !w-auto">
+            {MOIS_LABELS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+          </select>
+          <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} aria-label="Année" className="input-field !w-auto">
+            {[annee - 1, annee, annee + 1].map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <p className="basis-full text-[11.5px] italic text-gray-500 sm:ml-auto sm:basis-auto">Barème CNPS/ITS indicatif — à faire vérifier par un expert-comptable</p>
         </div>
 
         {bulletins.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Masse brute</p><p className="text-sm font-bold">{money(totaux.brut)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">CNPS (salarié+patronal)</p><p className="text-sm font-bold text-amber-600">{money(totaux.cnps)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">ITS retenu</p><p className="text-sm font-bold text-amber-600">{money(totaux.its)} F</p></div>
-            <div className="stat-card !p-3"><p className="text-[10px] text-gray-500 uppercase">Coût total employeur</p><p className="text-sm font-bold text-primary-700">{money(totaux.coutTotal)} F</p></div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <KpiCard label="Masse brute" value={money(totaux.brut)} unit="F" icon="M3 7h16a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 13h3" iconClass="text-blue-600" />
+            <KpiCard label="CNPS (salarié + patronal)" value={money(totaux.cnps)} unit="F" icon="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" iconClass="text-orange-500" />
+            <KpiCard label="ITS retenu" value={money(totaux.its)} unit="F" icon="M5 7h14M5 12h14M5 17h9" iconClass="text-violet-600" />
+            <KpiCard label="Coût total employeur" value={money(totaux.coutTotal)} unit="F" icon="M3 17l6-6 4 4 8-8M21 7v5h-5" iconClass="text-green-600" />
           </div>
         )}
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '8%' }} />
-              </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">N° Bulletin</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Employé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Brut</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">CNPS</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">ITS</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Net à payer</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={9} />
-              ) : bulletins.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-500">Aucun bulletin pour cette période. Cliquez sur &quot;Générer&quot;.</td></tr>
-              ) : bulletins.map(b => (
-                <tr key={b.id} className="table-row cursor-pointer" onClick={() => openDetail(b.id)}>
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <button onClick={(e) => { e.stopPropagation(); openDetail(b.id); }} className="text-[10.5px] text-primary-500 hover:underline">Voir</button>
-                  </td>
-                  <td className="table-cell font-mono font-medium text-primary-600 !px-1.5 !text-[10.5px] truncate" data-label="N° Bulletin">{b.numero}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Employé">{b.employe?.prenom} {b.employe?.nom}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={b.employe?.poste}>{b.employe?.poste}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Brut">{money(b.salaireBrut)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="CNPS">{money(b.cnpsSalarie)}</td>
-                  <td className="table-cell text-right font-mono text-amber-600 !px-1.5 !text-[10.5px] truncate" data-label="ITS">{money(b.itsSalarie)}</td>
-                  <td className="table-cell text-right font-mono font-bold !px-1.5 !text-[10.5px] truncate" data-label="Net à payer">{money(b.salaireNet)}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${STATUT_COLORS[b.statut] || 'badge-gray'} !text-[10px] !px-1.5 !py-0`}>{b.statut}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'num', libelle: 'N° bulletin', texte: (b: any) => b.numero, rendu: (b: any) => <Numero>{b.numero}</Numero> },
+            { cle: 'employe', libelle: 'Employé', texte: (b: any) => `${b.employe?.prenom ?? ''} ${b.employe?.nom ?? ''}`.trim(), rendu: (b: any) => <Tiers nom={`${b.employe?.prenom ?? ''} ${b.employe?.nom ?? ''}`.trim()} /> },
+            { cle: 'poste', libelle: 'Poste', masquerSous: 'xl' as const, texte: (b: any) => b.employe?.poste || '', rendu: (b: any) => <Tronque texte={b.employe?.poste} largeur="14rem" /> },
+            { cle: 'brut', libelle: 'Brut', align: 'right' as const, texte: (b: any) => String(b.salaireBrut), rendu: (b: any) => (canSeeMontants ? <Montant valeur={b.salaireBrut} /> : '•••••••') },
+            { cle: 'cnps', libelle: 'CNPS', align: 'right' as const, masquerSous: 'xl' as const, texte: (b: any) => String(b.cnpsSalarie), rendu: (b: any) => (canSeeMontants ? <Montant valeur={b.cnpsSalarie} ton="negatif" /> : '•••••••') },
+            { cle: 'its', libelle: 'ITS', align: 'right' as const, masquerSous: 'xl' as const, texte: (b: any) => String(b.itsSalarie), rendu: (b: any) => (canSeeMontants ? <Montant valeur={b.itsSalarie} ton="negatif" /> : '•••••••') },
+            { cle: 'net', libelle: 'Net à payer', align: 'right' as const, texte: (b: any) => String(b.salaireNet), rendu: (b: any) => (canSeeMontants ? <Montant valeur={b.salaireNet} /> : '•••••••') },
+            { cle: 'statut', libelle: 'Statut', texte: (b: any) => b.statut, rendu: (b: any) => <StatutPastille libelle={b.statut} ton={tonDepuisBadge(STATUT_COLORS[b.statut])} /> },
+          ]}
+          lignes={bulletins}
+          cleLigne={(b: any) => b.id}
+          chargement={loading}
+          nomExport="bulletins-paie"
+          onClic={(b: any) => openDetail(b.id)}
+          actions={(b: any) => <BoutonIcone titre="Voir le bulletin" ton="primaire" onClick={() => openDetail(b.id)}><IconeVoir /></BoutonIcone>}
+          carte={(b: any) => ({ titre: `${b.employe?.prenom ?? ''} ${b.employe?.nom ?? ''}`.trim(), sousTitre: b.employe?.poste, statut: <StatutPastille libelle={b.statut} ton={tonDepuisBadge(STATUT_COLORS[b.statut])} />, droite: canSeeMontants ? <Montant valeur={b.salaireNet} /> : '•••••••', details: `${b.numero} · brut ${money(b.salaireBrut)}` })}
+          vide={<EmptyState titre="Aucun bulletin pour cette période" description="Utilisez « Générer » pour créer les bulletins du mois." />}
+        />
       </div>
 
       {/* Modal détail bulletin */}

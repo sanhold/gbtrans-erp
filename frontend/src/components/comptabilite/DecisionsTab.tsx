@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { SkeletonRows } from '@/components/ui/Skeleton';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Numero, Discret, Tronque, Montant } from '@/components/tables/cellules';
 import InfoBulle from '@/components/ui/InfoBulle';
 import Modal from '@/components/ui/Modal';
 import { comptabiliteApi } from '@/lib/api';
@@ -35,11 +37,10 @@ const LIBELLE_DECISION: Record<string, string> = {
  * arrivent ici. On décide : facture normalisée (numéro FNE de la DGI), comptabilité réelle, ou corbeille.
  * Facture normalisée et comptabilité réelle ajoutent automatiquement la pièce aux « Pièces à comptabiliser ».
  */
-export default function DecisionsTab({ onChange }: { onChange?: () => void }) {
+export default function DecisionsTab({ vue, onChange }: { vue: Vue; onChange?: () => void }) {
   const { hasPermission } = useAuthStore();
   const peutDecider = hasPermission('COMPTABILITE:DECIDER');
 
-  const [vue, setVue] = useState<Vue>('a-decider');
   const [type, setType] = useState('');
   const [recherche, setRecherche] = useState('');
   const [page, setPage] = useState(1);
@@ -119,26 +120,15 @@ export default function DecisionsTab({ onChange }: { onChange?: () => void }) {
     } finally { setEnCours(false); }
   };
 
-  const onglets: { id: Vue; label: string; n?: number }[] = [
-    { id: 'a-decider', label: 'À décider', n: compteurs?.aDecider },
-    { id: 'traitees', label: 'Décidées', n: compteurs?.traitees },
-    { id: 'corbeille', label: 'Corbeille', n: compteurs?.corbeille },
-  ];
   const nbPages = Math.max(Math.ceil((data?.total ?? 0) / LIMITE), 1);
-  const colonnes = vue === 'a-decider' ? 6 : 7;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1">
-          {onglets.map(o => (
-            <button key={o.id} onClick={() => { setVue(o.id); setPage(1); setSelection(new Set()); if (o.id !== 'a-decider') setType(''); }}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-all ${vue === o.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600'}`}>
-              {o.label}{o.n != null && <span className="ml-1.5 text-xs text-gray-500">({o.n})</span>}
-            </button>
-          ))}
-        </div>
         <input value={recherche} onChange={e => { setRecherche(e.target.value); setPage(1); setSelection(new Set()); }} placeholder="Rechercher (n°, tiers, FNE…)" className="input-field !w-60 !py-1.5 text-sm" />
+        {(vue === 'a-decider' || vue === 'corbeille') && peutDecider && items.length > 0 && (
+          <button type="button" onClick={basculerTout} className="btn-secondary !py-1.5 text-sm">{toutSelectionne ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
+        )}
         <InfoBulle titre="File de décision" cote="gauche">
           <p>Toutes les transactions (factures, paiements, dépenses) arrivent ici avant la comptabilité réelle.</p>
           <p><b>Facture normalisée</b> (factures clients) : vous enregistrez le numéro FNE délivré par la DGI. <b>Comptabilité réelle</b> : la transaction est recevable. Dans les deux cas, elle passe automatiquement dans « Pièces à comptabiliser ».</p>
@@ -176,52 +166,37 @@ export default function DecisionsTab({ onChange }: { onChange?: () => void }) {
         </div>
       )}
 
-      <div className="table-container table-compact">
-        <table className="w-full">
-          <thead>
-            <tr>
-              {(vue === 'a-decider' || vue === 'corbeille') && peutDecider
-                ? <th className="table-header !px-2 w-8"><input type="checkbox" checked={toutSelectionne} onChange={basculerTout} aria-label="Tout sélectionner" /></th>
-                : <th className="table-header !px-1 w-2" />}
-              <th className="table-header !text-[10px] !px-1.5">Type</th>
-              <th className="table-header !text-[10px] !px-1.5">Référence</th>
-              <th className="table-header !text-[10px] !px-1.5">Tiers / libellé</th>
-              <th className="table-header !text-[10px] !px-1.5">Date</th>
-              <th className="table-header !text-[10px] !px-1.5 text-right">Montant</th>
-              {vue !== 'a-decider' && <th className="table-header !text-[10px] !px-1.5">Décision</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <SkeletonRows cols={colonnes} /> : items.length === 0 ? (
-              <tr><td colSpan={colonnes} className="text-center py-12 text-gray-500">
-                {vue === 'a-decider' ? 'Aucune transaction à décider.' : vue === 'traitees' ? 'Aucune transaction décidée.' : 'La corbeille est vide.'}
-              </td></tr>
-            ) : items.map(i => (
-              <tr key={i.cle} className="table-row">
-                <td className="table-cell !px-2">
-                  {(vue === 'a-decider' || vue === 'corbeille') && peutDecider && <input type="checkbox" checked={selection.has(i.cle)} onChange={() => basculer(i.cle)} aria-label={`Sélectionner ${i.numero || i.libelle}`} />}
-                </td>
-                <td className="table-cell !text-[10.5px]" data-label="Type"><span className="badge badge-gray !text-[10px]">{i.typeLibelle}</span></td>
-                <td className="table-cell !text-[10.5px] font-mono" data-label="Référence">{i.numero || '—'}</td>
-                <td className="table-cell !text-[11px] truncate max-w-[22rem]" data-label="Tiers" title={`${i.tiers ?? ''} ${i.libelle}`}>{i.tiers ?? i.libelle}</td>
-                <td className="table-cell !text-[10.5px]" data-label="Date">{new Date(i.date).toLocaleDateString('fr-FR')}</td>
-                <td className="table-cell text-right font-mono !text-[10.5px]" data-label="Montant">{fmt(i.montant)}</td>
-                {vue !== 'a-decider' && (
-                  <td className="table-cell !text-[10.5px]" data-label="Décision">
-                    <span className="font-medium">{LIBELLE_DECISION[i.decision?.statut] ?? i.decision?.statut}</span>
-                    {i.decision?.statut === 'FACTURE_NORMALISEE' && (
-                      <> · FNE <span className="font-mono">{i.decision.numeroFne || '—'}</span>
-                        {peutDecider && <button onClick={() => setEdition({ id: i.decision.id, numeroFne: i.decision.numeroFne ?? '' })} className="ml-1 text-primary-500 hover:underline">modifier</button>}</>
-                    )}
-                    {i.decision?.motif && <span className="text-gray-500"> · {i.decision.motif}</span>}
-                    {i.decision?.decidePar && <span className="block text-gray-400">{i.decision.decidePar}</span>}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ListeResponsive
+        colonnes={[
+          ...(((vue === 'a-decider' || vue === 'corbeille') && peutDecider) ? [{ cle: 'sel', libelle: '', texte: () => '', rendu: (i: any) => <input type="checkbox" checked={selection.has(i.cle)} onClick={e => e.stopPropagation()} onChange={() => basculer(i.cle)} aria-label={`Sélectionner ${i.numero || i.libelle}`} className="h-4 w-4 rounded accent-blue-600" /> }] : []),
+          { cle: 'type', libelle: 'Type', texte: (i: any) => i.typeLibelle, rendu: (i: any) => <Discret>{i.typeLibelle}</Discret> },
+          { cle: 'ref', libelle: 'Référence', texte: (i: any) => i.numero || '', rendu: (i: any) => <Numero>{i.numero || '—'}</Numero> },
+          { cle: 'tiers', libelle: 'Tiers / libellé', texte: (i: any) => i.tiers ?? i.libelle, rendu: (i: any) => <Tronque texte={i.tiers ?? i.libelle} largeur="22rem" /> },
+          { cle: 'date', libelle: 'Date', texte: (i: any) => new Date(i.date).toLocaleDateString('fr-FR'), rendu: (i: any) => <Discret>{new Date(i.date).toLocaleDateString('fr-FR')}</Discret> },
+          { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (i: any) => String(i.montant), rendu: (i: any) => <Montant valeur={i.montant} /> },
+          ...(vue !== 'a-decider' ? [{ cle: 'dec', libelle: 'Décision', texte: (i: any) => LIBELLE_DECISION[i.decision?.statut] ?? '', rendu: (i: any) => (
+            <span className="text-[13px]">
+              <span className="font-medium">{LIBELLE_DECISION[i.decision?.statut] ?? i.decision?.statut}</span>
+              {i.decision?.statut === 'FACTURE_NORMALISEE' && (
+                <> · FNE <span className="font-mono">{i.decision.numeroFne || '—'}</span>
+                  {peutDecider && <button type="button" onClick={e => { e.stopPropagation(); setEdition({ id: i.decision.id, numeroFne: i.decision.numeroFne ?? '' }); }} className="ml-1 text-azure hover:underline">modifier</button>}</>
+              )}
+              {i.decision?.motif && <span className="text-gray-500"> · {i.decision.motif}</span>}
+            </span>
+          ) }] : []),
+        ]}
+        lignes={items}
+        cleLigne={(i: any) => i.cle}
+        chargement={loading}
+        nomExport={`fne-${vue}`}
+        carte={(i: any) => ({
+          titre: <span className="inline-flex items-center gap-2">{(vue === 'a-decider' || vue === 'corbeille') && peutDecider && <input type="checkbox" checked={selection.has(i.cle)} onClick={e => e.stopPropagation()} onChange={() => basculer(i.cle)} aria-label={`Sélectionner ${i.numero || i.libelle}`} className="h-4 w-4 rounded accent-blue-600" />}{i.tiers ?? i.libelle}</span>,
+          sousTitre: `${i.typeLibelle} — ${i.numero || '—'} — ${new Date(i.date).toLocaleDateString('fr-FR')}`,
+          droite: <Montant valeur={i.montant} />,
+          details: vue !== 'a-decider' ? `${LIBELLE_DECISION[i.decision?.statut] ?? ''}${i.decision?.statut === 'FACTURE_NORMALISEE' ? ` · FNE ${i.decision.numeroFne || '—'}` : ''}${i.decision?.motif ? ` · ${i.decision.motif}` : ''}` : undefined,
+        })}
+        vide={<EmptyState titre={vue === 'a-decider' ? 'Aucune transaction à décider' : vue === 'traitees' ? 'Aucune transaction décidée' : 'La corbeille est vide'} description="Tout est à jour." />}
+      />
 
       {data && data.total > LIMITE && (
         <div className="flex items-center justify-between text-sm text-gray-600">

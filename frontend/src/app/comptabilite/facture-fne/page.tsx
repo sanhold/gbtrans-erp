@@ -1,22 +1,19 @@
 'use client';
 
-import AppLayout from '@/components/layout/AppLayout';
-import DecisionsTab from '@/components/comptabilite/DecisionsTab';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import MenuRubriqueCompta from '@/components/comptabilite/MenuRubriqueCompta';
+import { BASE_FNE, ONGLETS_FNE } from '@/lib/comptaOnglets';
 
-/**
- * Sous-module « Facture FNE Comptabilité » : file de décision de la comptabilité réelle.
- * Toutes les transactions y arrivent ; on décide facture normalisée (numéro FNE), comptabilité réelle ou corbeille.
- */
+/** Téléphone : écran de cartes de la rubrique. Ordinateur : on ouvre directement la file « À décider » (sous-menu dans la barre latérale). */
 export default function FactureFneComptabilitePage() {
-  return (
-    <AppLayout>
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Facture FNE Comptabilité</h1>
-          <p className="text-sm text-gray-500">Décidez du sort de chaque transaction : facture normalisée, comptabilité réelle ou corbeille.</p>
-        </div>
-        <DecisionsTab />
-      </div>
-    </AppLayout>
-  );
+  const router = useRouter();
+  const [mobile, setMobile] = useState<boolean | null>(null);
+  useEffect(() => {
+    const grand = window.matchMedia('(min-width: 1024px)').matches;
+    if (grand) router.replace(`${BASE_FNE}/${ONGLETS_FNE[0].slug}`);
+    setMobile(!grand);
+  }, [router]);
+  if (!mobile) return null;
+  return <MenuRubriqueCompta base={BASE_FNE} defs={ONGLETS_FNE} titre="Facture FNE Comptabilité" avecPlan={false} />;
 }

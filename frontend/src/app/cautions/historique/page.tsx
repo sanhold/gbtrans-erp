@@ -1,10 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Numero, Discret, Tronque, Montant } from '@/components/tables/cellules';
 import { cautionsApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 
@@ -32,80 +34,49 @@ export default function CautionsHistoriquePage() {
   const totalPages = Math.ceil(total / limit);
   const sommeMontant = items.reduce((s, c) => s + Number(c.montant || 0), 0);
 
+  const numDossier = (c: any) => c.dossier ? (c.dossier.numeroPhysique || c.dossier.numero) : '—';
+  const colonnes = [
+    { cle: 'num', libelle: 'Id caution', texte: (c: any) => c.numero, rendu: (c: any) => <Numero>{c.numero}</Numero> },
+    { cle: 'date', libelle: 'Date', texte: (c: any) => fmtDate(c.dateCaution), rendu: (c: any) => <Discret>{fmtDate(c.dateCaution)}</Discret> },
+    { cle: 'dos', libelle: 'N° dossier', texte: numDossier, rendu: (c: any) => c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} onClick={e => e.stopPropagation()} className="font-mono text-[12.5px] font-semibold text-azure hover:underline">{numDossier(c)}</Link> : <Discret>—</Discret> },
+    { cle: 'bl', libelle: 'N° BL', masquerSous: 'xl' as const, texte: (c: any) => c.numeroBL || '', rendu: (c: any) => <Discret>{c.numeroBL || '—'}</Discret> },
+    { cle: 'client', libelle: 'Client', texte: (c: any) => c.client?.raisonSociale || '', rendu: (c: any) => <Tronque texte={c.client?.raisonSociale} largeur="14rem" /> },
+    { cle: 'qte', libelle: 'Qté', align: 'right' as const, masquerSous: 'xl' as const, texte: (c: any) => String(c.quantite ?? ''), rendu: (c: any) => <Discret>{c.quantite}</Discret> },
+    { cle: 'mt', libelle: 'Montant', align: 'right' as const, texte: (c: any) => String(c.montant ?? ''), rendu: (c: any) => <Montant valeur={c.montant} /> },
+    { cle: 'cie', libelle: 'Compagnie', masquerSous: 'xl' as const, texte: (c: any) => c.compagnie || '', rendu: (c: any) => <Tronque texte={c.compagnie} largeur="10rem" /> },
+    { cle: 'pay', libelle: 'Payée le', texte: (c: any) => fmtDate(c.datePaiement), rendu: (c: any) => <span className="text-[13px] font-medium text-green-600">{fmtDate(c.datePaiement)}</span> },
+    { cle: 'obs', libelle: 'Observation', masquerSous: '2xl' as const, texte: (c: any) => c.observations || '', rendu: (c: any) => <Tronque texte={c.observations || '—'} largeur="14rem" /> },
+  ];
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <Link href="/cautions" className="text-sm text-primary-600 hover:underline mb-2 inline-block">← Gestion des Cautions</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Historique des Cautions</h1>
-          <p className="text-sm text-gray-500">Cautions payées</p>
-        </div>
-
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '5%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '17%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Id caution</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Date caution</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N°Dossier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° BL</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-center">Qte</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Montant</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Compagnie</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Dépôt Courrier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Paiement</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Observation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={11} />
-              ) : items.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune caution payée</td></tr>
-              ) : items.map(c => (
-                <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id caution" title={c.numero}>{c.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date caution">{fmtDate(c.dateCaution)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N°Dossier">
-                    {c.dossier ? <Link href={`/dossiers/${c.dossier.id}`} className="text-primary-600 hover:underline">{c.dossier.numeroPhysique || c.dossier.numero}</Link> : '-'}
-                  </td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° BL" title={c.numeroBL || undefined}>{c.numeroBL || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={c.client?.raisonSociale || undefined}>{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-center !px-1 !text-[10.5px]" data-label="Qte">{c.quantite}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Caution">{fmt(c.montant)}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Compagnie" title={c.compagnie || undefined}>{c.compagnie || '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date dépôt Courrier">{fmtDate(c.dateDepotCourrier)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate font-medium text-green-600" data-label="Date Paiement">{fmtDate(c.datePaiement)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Observation" title={c.observations || ''}>{c.observations || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-            {items.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-gray-300 dark:border-surface-600 font-semibold">
-                  <td className="table-cell" colSpan={6}>Somme / Compteur (page)</td>
-                  <td className="table-cell text-right font-mono">{fmt(sommeMontant)}</td>
-                  <td className="table-cell" colSpan={4}>{total} caution(s) payée(s)</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Historique des cautions"
+          sousTitre="Cautions payées"
+          actions={<Link href="/cautions" className="btn-secondary">← Gestion des cautions</Link>}
+          centre={
+            <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 text-[13px] dark:border-surface-600 dark:bg-surface-800">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-green-500" />
+              <b className="tabular-nums">{fmt(sommeMontant)}</b><span className="text-gray-500">F sur cette page — {total} caution(s)</span>
+            </span>
+          }
+        />
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={items}
+          cleLigne={(c: any) => c.id}
+          chargement={loading}
+          nomExport="historique-cautions"
+          carte={(c: any) => ({
+            titre: c.client?.raisonSociale || c.numero,
+            sousTitre: `${c.numero} — ${numDossier(c)}${c.compagnie ? ` — ${c.compagnie}` : ''}`,
+            droite: <Montant valeur={c.montant} />,
+            details: `Payée le ${fmtDate(c.datePaiement)}`,
+          })}
+          pagination={{ page, totalPages: Math.max(1, totalPages), total, pageSize: limit, onPageChange: setPage, onPageSizeChange: changeLimit }}
+          vide={<EmptyState titre="Aucune caution payée" description="Les cautions payées apparaîtront ici." />}
+        />
       </div>
     </AppLayout>
   );
