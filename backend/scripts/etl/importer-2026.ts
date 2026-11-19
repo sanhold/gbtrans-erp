@@ -22,8 +22,7 @@ import * as path from 'path';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import {
-  Row, str, num, date, norm, cut, ajouterJours, lire, normaliserNumeroDossier, TYPE_TRANSPORT, natureDossier, loginDe, calculerFusionClients,
-} from './commun';
+  Row, str, num, date, norm, cut, ajouterJours, lire, normaliserNumeroDossier, TYPE_TRANSPORT, natureDossier, loginDe, calculerFusionClients, exigerHoteAttendu } from './commun';
 
 const args = process.argv.slice(2);
 const APPLIQUER = args.includes('--appliquer');
@@ -55,6 +54,7 @@ function garde() {
   const hote = m?.[1] ?? '?';
   console.log(`Base cible : ${hote} / ${m?.[2] ?? '?'}  (${APPLIQUER ? 'ÉCRITURE' : 'simulation, aucune écriture'})`);
   const local = ['localhost', '127.0.0.1', '::1'].includes(hote);
+  exigerHoteAttendu(hote);
   if (!local && process.env.ETL_AUTORISER_DISTANT !== 'OUI_PRODUCTION') {
     console.error(`REFUS : la base ${hote} n'est pas locale. Définir ETL_AUTORISER_DISTANT=OUI_PRODUCTION après sauvegarde et validation sur une copie.`);
     process.exit(1);

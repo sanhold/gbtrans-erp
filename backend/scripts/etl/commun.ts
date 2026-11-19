@@ -132,3 +132,21 @@ export function calculerFusionClients(clients: Row[], dossiers: Row[]): Map<stri
   parNcc.forEach(traiter); parRs.forEach(traiter);
   return fusion;
 }
+
+/**
+ * Garde-fou « bonne base » : une base qui n'est pas locale n'est acceptée que si son hôte contient la valeur de
+ * ETL_HOTE_ATTENDU (ex. sehujboqpihrrkfortte). Cela évite d'écrire par erreur dans la base que le fichier backend/.env
+ * désigne quand DATABASE_URL n'a pas été définie dans la fenêtre de commande.
+ */
+export function exigerHoteAttendu(hote: string) {
+  if (['localhost', '127.0.0.1', '::1'].includes(hote)) return;
+  const attendu = (process.env.ETL_HOTE_ATTENDU || '').trim();
+  if (!attendu) {
+    console.error(`REFUS : base ${hote}. Définir ETL_HOTE_ATTENDU avec l'identifiant du projet visé (ex. $env:ETL_HOTE_ATTENDU="sehujboqpihrrkfortte").`);
+    process.exit(1);
+  }
+  if (!hote.includes(attendu)) {
+    console.error(`REFUS : la base visée est ${hote}, mais ETL_HOTE_ATTENDU vaut « ${attendu} ». DATABASE_URL vient peut-être du fichier backend/.env : la définir dans cette fenêtre.`);
+    process.exit(1);
+  }
+}

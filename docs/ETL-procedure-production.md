@@ -6,7 +6,7 @@ Cette procédure reprend, dans la base Supabase de production, les données de l
 
 ## 0. Règles à ne pas enfreindre
 
-1. **Ne jamais utiliser le fichier `backend/.env` pour l'ETL.** Il pointe vers un autre hôte (`qlsugwtojxtfmkfbvmaa`) que la production (`sehujboqpihrrkfortte`). Toujours définir `DATABASE_URL` à la main, dans la fenêtre PowerShell, pour la durée de l'opération.
+1. **Ne jamais utiliser le fichier `backend/.env` pour l'ETL** (c'est l'ancienne base, voir `ETL_HOTE_ATTENDU` section 5). Il pointe vers un autre hôte (`qlsugwtojxtfmkfbvmaa`) que la production (`sehujboqpihrrkfortte`). Toujours définir `DATABASE_URL` à la main, dans la fenêtre PowerShell, pour la durée de l'opération.
 2. **Rien n'est lancé sans sauvegarde testée** (étape 2).
 3. **Toujours une simulation avant `--appliquer`**, et relire sa sortie.
 4. **Un seul import à la fois.** Ne pas lancer deux scripts en parallèle sur la base.
@@ -68,7 +68,10 @@ Ouvrir une fenêtre PowerShell neuve, se placer dans `backend/`, puis :
 ```powershell
 $env:DATABASE_URL = "<url de production, connexion directe>"
 $env:ETL_AUTORISER_DISTANT = "OUI_PRODUCTION"
+$env:ETL_HOTE_ATTENDU = "sehujboqpihrrkfortte"
 ```
+
+`ETL_HOTE_ATTENDU` est l'identifiant du projet de production : tout script refuse une base dont l'hôte ne le contient pas. Il évite d'écrire par erreur dans l'ancienne base `qlsugwtojxtfmkfbvmaa` quand `DATABASE_URL` n'est pas définie dans la fenêtre (les scripts liraient alors `backend/.env`). Les variables sont perdues à chaque nouvelle fenêtre PowerShell : les redéfinir.
 
 L'ordre est obligatoire : chaque étape s'appuie sur la précédente. Chaque script affiche d'abord `Base cible : <hôte> / <base>` : **vérifier que l'hôte est `sehujboqpihrrkfortte…`** avant de continuer. Pour chaque étape, lancer d'abord sans `--appliquer` (simulation), lire, puis relancer avec `--appliquer`.
 
