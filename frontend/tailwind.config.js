@@ -58,7 +58,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        display: ['EspaceFin', '"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
       },
       boxShadow: {
         'card': '0 1px 2px 0 rgba(16, 24, 40, 0.05)',

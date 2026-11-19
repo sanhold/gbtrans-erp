@@ -35,6 +35,10 @@ interface DataTableProps<T> {
   pied?: ReactNode;
   /** Garde les actions visibles en permanence (par défaut : au survol), utile sur écran tactile. */
   actionsToujoursVisibles?: boolean;
+  /** Tableau dense : cellules plus serrées pour afficher beaucoup de colonnes (journaux). */
+  dense?: boolean;
+  /** Ligne de totaux sous le tableau (un <tr> avec ses <td>), ex. « Somme ». */
+  lignePied?: ReactNode;
 }
 
 // NB : l'utilitaire Tailwind « table-cell » est en collision avec la classe maison .table-cell : on passe par une propriété arbitraire.
@@ -56,7 +60,7 @@ function exporterCsv<T>(colonnes: Colonne<T>[], lignes: T[], nom: string) {
 }
 
 /** Tableau de bureau soigné : en-tête collant, lignes aérées, survol, ligne sélectionnée, export. */
-export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles }: DataTableProps<T>) {
+export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles, dense, lignePied }: DataTableProps<T>) {
   const alignement = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
   const nbCols = colonnes.length + (actions ? 1 : 0);
 
@@ -78,7 +82,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
             <tr className="border-y border-gray-200 bg-gray-50 dark:border-surface-700 dark:bg-surface-900/50">
               {colonnes.map((c) => (
                 <th key={c.cle} scope="col" style={c.largeur ? { width: c.largeur } : undefined}
-                  className={clsx('px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
+                  className={clsx(dense ? 'px-2.5 py-2.5' : 'px-4 py-3', 'font-display text-[10.5px] font-semibold uppercase tracking-[0.07em] text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
                   {c.libelle}
                 </th>
               ))}
@@ -109,7 +113,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
                       actif ? 'bg-primary-50/80 dark:bg-primary-500/15 shadow-[inset_3px_0_0_theme(colors.primary.600)]' : 'hover:bg-primary-50/40 dark:hover:bg-white/[.04]')}>
                     {colonnes.map((c) => (
                       <td key={c.cle}
-                        className={clsx('px-4 py-3.5 whitespace-nowrap align-middle text-[13.5px] text-gray-700 dark:text-gray-200 first:pl-5', alignement(c.align), c.mono && 'font-mono text-[13px]', c.masquerSous && MASQUE[c.masquerSous])}>
+                        className={clsx(dense ? 'px-2.5 py-1.5' : 'px-4 py-3.5', 'font-display text-[12.5px] font-medium whitespace-nowrap align-middle text-gray-700 dark:text-gray-200 first:pl-5', alignement(c.align), c.align === 'right' && 'font-sans tabular-nums', c.mono && 'font-mono text-[11.5px]', c.masquerSous && MASQUE[c.masquerSous])}>
                         {c.rendu(l)}
                       </td>
                     ))}
@@ -123,6 +127,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
               })
             )}
           </tbody>
+          {lignePied && !chargement && lignes.length > 0 && <tfoot className="border-t-2 border-gray-200 bg-gray-50 font-semibold dark:border-surface-700 dark:bg-surface-900/50">{lignePied}</tfoot>}
         </table>
       </div>
       {pied}

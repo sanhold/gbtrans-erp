@@ -1,3 +1,11 @@
+/* Plus Jakarta Sans n'a pas l'espace fine insécable (U+202F) que le français utilise pour les milliers :
+   « 3 306 722 » s'afficherait « 3306722 ». Cette police ne sert que pour ce caractère et le prend dans une police du système. */
+@font-face {
+  font-family: 'EspaceFin';
+  src: local('Arial'), local('Helvetica'), local('Roboto'), local('Segoe UI'), local('Noto Sans'), local('DejaVu Sans');
+  unicode-range: U+202F;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -91,7 +99,7 @@
   }
 
   .table-header {
-    @apply px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase
+    @apply font-display px-4 py-3 text-left text-[10.5px] font-semibold text-gray-500 uppercase
            bg-gray-50 border-0 border-b border-gray-200 whitespace-nowrap
            dark:bg-surface-900/50 dark:text-gray-400 dark:border-surface-700;
     letter-spacing: 0.07em;
@@ -103,9 +111,17 @@
   }
 
   .table-cell {
-    @apply px-4 py-3 text-[13.5px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap align-middle
+    @apply font-display font-medium px-4 py-3 text-[12.5px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap align-middle
            dark:text-gray-200 dark:border-surface-700/70;
     letter-spacing: 0.005em;
+  }
+
+  /* Chiffres et montants : Inter, chiffres de même largeur, pour que les colonnes restent alignées. */
+  .table-cell.text-right,
+  .table-header.text-right,
+  .table-cell .tabular-nums,
+  .table-cell .font-mono {
+    font-family: theme('fontFamily.sans');
   }
 
   .table-row {
