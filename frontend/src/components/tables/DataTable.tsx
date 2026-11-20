@@ -37,6 +37,8 @@ interface DataTableProps<T> {
   pied?: ReactNode;
   /** Garde les actions visibles en permanence (par défaut : au survol), utile sur écran tactile. */
   actionsToujoursVisibles?: boolean;
+  /** Ligne de totaux sous le tableau (un <tr> avec ses <td>), ex. « Somme ». */
+  lignePied?: ReactNode;
 }
 
 // Densité des tableaux : « compact » (40 px) par défaut, « confortable » (48 px), mémorisée par utilisateur.
@@ -72,7 +74,7 @@ function exporterCsv<T>(colonnes: Colonne<T>[], lignes: T[], nom: string) {
 }
 
 /** Tableau de bureau soigné : en-tête collant, lignes aérées, survol, ligne sélectionnée, export. */
-export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles = true }: DataTableProps<T>) {
+export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles = true, lignePied }: DataTableProps<T>) {
   const alignement = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
   const cols = lignes.length > 0 ? colonnes.filter((c) => !(c.videSi && lignes.every(c.videSi))) : colonnes;
   const nbCols = cols.length + (actions ? 1 : 0);
@@ -151,6 +153,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
               })
             )}
           </tbody>
+          {lignePied && !chargement && lignes.length > 0 && <tfoot className="border-t-2 border-gray-200 bg-gray-50 font-semibold dark:border-surface-700 dark:bg-surface-900/50">{lignePied}</tfoot>}
         </table>
       </div>
       {pied}

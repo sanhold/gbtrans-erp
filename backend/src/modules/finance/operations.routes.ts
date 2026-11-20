@@ -37,9 +37,9 @@ router.get('/', authorize('FINANCE:LIRE'), async (req: AuthRequest, res: Respons
         where, skip, take: Math.min(parseInt(limit as string) || 20, 100),
         orderBy: { dateOperation: 'desc' },
         relationLoadStrategy: 'join', include: {
-          caisse: { select: { id: true, code: true, libelle: true } },
-          compteBancaire: { select: { id: true, code: true, libelle: true, banque: true } },
-          compteTiers: { select: { id: true, code: true, libelle: true, type: true } },
+          caisse: { select: { id: true, code: true, libelle: true, solde: true } },
+          compteBancaire: { select: { id: true, code: true, libelle: true, banque: true, solde: true } },
+          compteTiers: { select: { id: true, code: true, libelle: true, type: true, solde: true } },
           agent: { select: { id: true, nom: true, prenom: true } },
         },
       }),
