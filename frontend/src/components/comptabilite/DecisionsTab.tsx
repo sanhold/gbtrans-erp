@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import EmptyState from '@/components/ui/EmptyState';
 import ListeResponsive from '@/components/tables/ListeResponsive';
-import { Numero, Discret, Tronque, Montant } from '@/components/tables/cellules';
+import { Discret, Montant, Avatar } from '@/components/tables/cellules';
 import InfoBulle from '@/components/ui/InfoBulle';
 import Modal from '@/components/ui/Modal';
 import { comptabiliteApi } from '@/lib/api';
@@ -13,8 +13,31 @@ import { useAuthStore } from '@/stores/authStore';
 type Vue = 'a-decider' | 'traitees' | 'corbeille';
 type Decision = 'FACTURE_NORMALISEE' | 'RECEVABLE' | 'CORBEILLE';
 
-const fmt = (n: any) => (n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0');
 const LIMITE = 50;
+
+/** Cellule façon Wave : pastille ronde, titre en gras (catégorie ou tiers) et détail TOUJOURS visible juste dessous. */
+function CelluleWave({ titre, detail }: { titre?: string | null; detail?: string | null }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar nom={titre} />
+      <div className="min-w-0 leading-tight">
+        <div className="truncate font-semibold text-gray-900 dark:text-white">{titre || '—'}</div>
+        {detail ? <div className="mt-0.5 max-w-[36rem] truncate text-xs text-gray-500 dark:text-gray-400" title={detail}>{detail}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+/** Montant façon Wave : « + » en vert pour une entrée (facture ou paiement client), « − » pour une sortie. */
+function MontantSigne({ valeur, sens }: { valeur: any; sens?: string }) {
+  const entree = sens === 'ENTREE';
+  return (
+    <span className="inline-flex items-baseline justify-end gap-1 whitespace-nowrap">
+      <span aria-hidden="true" className={entree ? 'text-emerald-600' : 'text-gray-400'}>{entree ? '+' : '−'}</span>
+      <Montant valeur={valeur} ton={entree ? 'positif' : 'normal'} />
+    </span>
+  );
+}
 
 const TYPES = [
   { id: '', label: 'Tout' },
@@ -42,6 +65,7 @@ export default function DecisionsTab({ vue, onChange }: { vue: Vue; onChange?: (
   const peutDecider = hasPermission('COMPTABILITE:DECIDER');
 
   const [type, setType] = useState('');
+  const [categorie, setCategorie] = useState('');
   const [recherche, setRecherche] = useState('');
   const [page, setPage] = useState(1);
   const [resultat, setResultat] = useState<{ cle: string; data: { items: any[]; total: number; compteurs: any } } | null>(null);
@@ -53,16 +77,16 @@ export default function DecisionsTab({ vue, onChange }: { vue: Vue; onChange?: (
   const [edition, setEdition] = useState<null | { id: string; numeroFne: string }>(null);
 
   // Le chargement est déduit de la clé de requête : pas de setState synchrone dans l'effet.
-  const cleRequete = JSON.stringify([vue, type, recherche, page, version]);
+  const cleRequete = JSON.stringify([vue, type, categorie, recherche, page, version]);
   useEffect(() => {
     let annule = false;
     const t = setTimeout(() => {
-      comptabiliteApi.decisions({ vue, type: type || undefined, q: recherche || undefined, page, limit: LIMITE })
+      comptabiliteApi.decisions({ vue, type: type || undefined, categorie: categorie || undefined, q: recherche || undefined, page, limit: LIMITE })
         .then(r => { if (!annule) setResultat({ cle: cleRequete, data: r.data.data }); })
         .catch(() => { if (!annule) { toast.error('Impossible de charger la file de décision'); setResultat({ cle: cleRequete, data: { items: [], total: 0, compteurs: null } }); } });
     }, recherche ? 300 : 0);
     return () => { annule = true; clearTimeout(t); };
-  }, [cleRequete, vue, type, recherche, page]);
+  }, [cleRequete, vue, type, categorie, recherche, page]);
 
   const loading = !resultat || resultat.cle !== cleRequete;
   const data = resultat?.data ?? null;
@@ -138,16 +162,30 @@ export default function DecisionsTab({ vue, onChange }: { vue: Vue; onChange?: (
       </div>
 
       {vue === 'a-decider' && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible">
           {TYPES.map(t => {
             const n = t.id ? compteurs?.parType?.[t.id] : compteurs?.aDecider;
             return (
-              <button key={t.id} onClick={() => { setType(t.id); setPage(1); setSelection(new Set()); }}
-                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${type === t.id ? 'bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-500/15' : 'border-gray-200 dark:border-surface-600 text-gray-600 hover:border-primary-300'}`}>
+              <button key={t.id} onClick={() => { setType(t.id); setCategorie(''); setPage(1); setSelection(new Set()); }}
+                className={`flex-shrink-0 whitespace-nowrap px-2.5 py-1 text-xs rounded-full border transition-colors ${type === t.id ? 'bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-500/15' : 'border-gray-200 dark:border-surface-600 text-gray-600 hover:border-primary-300'}`}>
                 {t.label}{n != null && <span className="ml-1 text-gray-500">{n}</span>}
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Catégories de dépenses (CIE, SODECI, RFCV…) : un clic filtre la liste. */}
+      {vue === 'a-decider' && type === 'DEPENSE' && (compteurs?.categories?.length ?? 0) > 1 && (
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible" role="group" aria-label="Catégories de dépenses">
+          {[{ categorie: '', n: compteurs?.parType?.DEPENSE }, ...(compteurs?.categories ?? [])].map((c: any) => (
+            <button key={c.categorie || 'toutes'} type="button" aria-pressed={categorie === c.categorie}
+              onClick={() => { setCategorie(c.categorie); setPage(1); setSelection(new Set()); }}
+              className={`inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-1 text-xs rounded-full border transition-colors ${categorie === c.categorie ? 'bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-500/15' : 'border-gray-200 dark:border-surface-600 text-gray-600 hover:border-primary-300'}`}>
+              {c.categorie ? <Avatar nom={c.categorie} /> : null}
+              {c.categorie || 'Toutes les catégories'}<span className="text-gray-500">{c.n}</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -169,11 +207,10 @@ export default function DecisionsTab({ vue, onChange }: { vue: Vue; onChange?: (
       <ListeResponsive
         colonnes={[
           ...(((vue === 'a-decider' || vue === 'corbeille') && peutDecider) ? [{ cle: 'sel', libelle: '', texte: () => '', rendu: (i: any) => <input type="checkbox" checked={selection.has(i.cle)} onClick={e => e.stopPropagation()} onChange={() => basculer(i.cle)} aria-label={`Sélectionner ${i.numero || i.libelle}`} className="h-4 w-4 rounded accent-blue-600" /> }] : []),
+          { cle: 'transaction', libelle: 'Transaction', texte: (i: any) => `${i.titre} — ${i.detail}`, rendu: (i: any) => <CelluleWave titre={i.titre} detail={i.detail} /> },
           { cle: 'type', libelle: 'Type', texte: (i: any) => i.typeLibelle, rendu: (i: any) => <Discret>{i.typeLibelle}</Discret> },
-          { cle: 'ref', libelle: 'Référence', texte: (i: any) => i.numero || '', rendu: (i: any) => <Numero>{i.numero || '—'}</Numero> },
-          { cle: 'tiers', libelle: 'Tiers / libellé', texte: (i: any) => i.tiers ?? i.libelle, rendu: (i: any) => <Tronque texte={i.tiers ?? i.libelle} largeur="22rem" /> },
           { cle: 'date', libelle: 'Date', texte: (i: any) => new Date(i.date).toLocaleDateString('fr-FR'), rendu: (i: any) => <Discret>{new Date(i.date).toLocaleDateString('fr-FR')}</Discret> },
-          { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (i: any) => String(i.montant), rendu: (i: any) => <Montant valeur={i.montant} /> },
+          { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (i: any) => `${i.sens === 'ENTREE' ? '' : '-'}${i.montant}`, rendu: (i: any) => <MontantSigne valeur={i.montant} sens={i.sens} /> },
           ...(vue !== 'a-decider' ? [{ cle: 'dec', libelle: 'Décision', texte: (i: any) => LIBELLE_DECISION[i.decision?.statut] ?? '', rendu: (i: any) => (
             <span className="text-[13px]">
               <span className="font-medium">{LIBELLE_DECISION[i.decision?.statut] ?? i.decision?.statut}</span>
@@ -190,10 +227,11 @@ export default function DecisionsTab({ vue, onChange }: { vue: Vue; onChange?: (
         chargement={loading}
         nomExport={`fne-${vue}`}
         carte={(i: any) => ({
-          titre: <span className="inline-flex items-center gap-2">{(vue === 'a-decider' || vue === 'corbeille') && peutDecider && <input type="checkbox" checked={selection.has(i.cle)} onClick={e => e.stopPropagation()} onChange={() => basculer(i.cle)} aria-label={`Sélectionner ${i.numero || i.libelle}`} className="h-4 w-4 rounded accent-blue-600" />}{i.tiers ?? i.libelle}</span>,
-          sousTitre: `${i.typeLibelle} — ${i.numero || '—'} — ${new Date(i.date).toLocaleDateString('fr-FR')}`,
-          droite: <Montant valeur={i.montant} />,
-          details: vue !== 'a-decider' ? `${LIBELLE_DECISION[i.decision?.statut] ?? ''}${i.decision?.statut === 'FACTURE_NORMALISEE' ? ` · FNE ${i.decision.numeroFne || '—'}` : ''}${i.decision?.motif ? ` · ${i.decision.motif}` : ''}` : undefined,
+          // Façon Wave : pastille + catégorie / tiers en gras, détail juste dessous, montant signé à droite, date en dernier.
+          titre: <span className="inline-flex items-center gap-2.5">{(vue === 'a-decider' || vue === 'corbeille') && peutDecider && <input type="checkbox" checked={selection.has(i.cle)} onClick={e => e.stopPropagation()} onChange={() => basculer(i.cle)} aria-label={`Sélectionner ${i.numero || i.libelle}`} className="h-4 w-4 rounded accent-blue-600" />}<Avatar nom={i.titre} />{i.titre}</span>,
+          sousTitre: i.detail,
+          droite: <MontantSigne valeur={i.montant} sens={i.sens} />,
+          details: `${new Date(i.date).toLocaleDateString('fr-FR')}${vue !== 'a-decider' ? ` · ${LIBELLE_DECISION[i.decision?.statut] ?? ''}${i.decision?.statut === 'FACTURE_NORMALISEE' ? ` · FNE ${i.decision.numeroFne || '—'}` : ''}${i.decision?.motif ? ` · ${i.decision.motif}` : ''}` : ''}`,
         })}
         vide={<EmptyState titre={vue === 'a-decider' ? 'Aucune transaction à décider' : vue === 'traitees' ? 'Aucune transaction décidée' : 'La corbeille est vide'} description="Tout est à jour." />}
       />
