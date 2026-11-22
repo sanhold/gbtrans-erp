@@ -37,10 +37,16 @@ const MAX_LOT = 200;
 interface Ligne {
   cle: string; kind: 'TRANSACTION' | 'DECISION' | 'REJET'; id: string; source: Source | 'MANUEL';
   typeLibelle: string; numero: string; tiers: string | null; libelle: string; montant: number; date: Date;
+  /** Affichage « type Wave » : titre en gras (catégorie d'une dépense, sinon le tiers), détail juste dessous, sens du montant. */
+  titre: string; detail: string; sens: 'ENTREE' | 'SORTIE'; categorie?: string;
   decision?: { id: string; statut: string; numeroFne: string | null; motif: string | null; decidePar: string | null; date: Date };
 }
 
 const n = (v: unknown) => Number(v ?? 0);
+
+const MODES: Record<string, string> = { ESPECES: 'Espèces', CHEQUE: 'Chèque', VIREMENT: 'Virement', MOBILE_MONEY: 'Mobile money', CARTE: 'Carte', COMPENSATION: 'Compensation', TRAITE: 'Traite', ORANGE_MONEY: 'Orange Money', MTN_MONEY: 'MTN Money', WAVE: 'Wave', MOOV_MONEY: 'Moov Money' };
+const libelleMode = (m: unknown) => (m ? (MODES[String(m)] ?? String(m).replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase())) : '');
+const joindre = (...p: (string | null | undefined | false)[]) => p.filter(Boolean).join(' · ');
 
 /** Filtres de portée « société » et d'éligibilité (transactions valides, non brouillon) par type de source. */
 function filtreSource(source: Source, societeId: string): Record<string, unknown> {
@@ -53,7 +59,7 @@ function filtreSource(source: Source, societeId: string): Record<string, unknown
   }
 }
 
-async function transactionsADecider(societeId: string, types: Source[]): Promise<Ligne[]> {
+async function transactionsADecider(societeId: string, types: Source[], categorie?: string): Promise<Ligne[]> {
   const sansDecision = { decisionFne: null };
   const lignes: Ligne[] = [];
   const base = { take: LIMITE_PAR_SOURCE };
@@ -61,59 +67,66 @@ async function transactionsADecider(societeId: string, types: Source[]): Promise
   if (types.includes('FACTURE')) {
     const r = await prisma.facture.findMany({
       ...base, where: { ...filtreSource('FACTURE', societeId), ...sansDecision } as any, orderBy: { dateFacture: 'desc' },
-      select: { id: true, numero: true, type: true, dateFacture: true, montantTTC: true, client: { select: { raisonSociale: true } } },
+      select: { id: true, numero: true, type: true, objet: true, dateFacture: true, montantTTC: true, client: { select: { raisonSociale: true } } },
     });
-    for (const f of r) lignes.push({ cle: `FACTURE:${f.id}`, kind: 'TRANSACTION', id: f.id, source: 'FACTURE', typeLibelle: f.type === 'FACTURE' ? 'Facture' : String(f.type), numero: f.numero, tiers: f.client?.raisonSociale ?? null, libelle: `Facture ${f.numero}`, montant: n(f.montantTTC), date: f.dateFacture });
+    for (const f of r) lignes.push({ cle: `FACTURE:${f.id}`, kind: 'TRANSACTION', id: f.id, source: 'FACTURE', typeLibelle: f.type === 'FACTURE' ? 'Facture' : String(f.type), numero: f.numero, tiers: f.client?.raisonSociale ?? null, libelle: `Facture ${f.numero}`, montant: n(f.montantTTC), date: f.dateFacture,
+      titre: f.client?.raisonSociale ?? `Facture ${f.numero}`, detail: joindre(`${f.type === 'FACTURE' ? 'Facture' : String(f.type)} ${f.numero}`, f.objet), sens: 'ENTREE' });
   }
   if (types.includes('FACTURE_FOURNISSEUR')) {
     const r = await prisma.factureFournisseur.findMany({
       ...base, where: { ...filtreSource('FACTURE_FOURNISSEUR', societeId), ...sansDecision } as any, orderBy: { dateFacture: 'desc' },
-      select: { id: true, numero: true, dateFacture: true, montantTTC: true, fournisseur: { select: { raisonSociale: true } } },
+      select: { id: true, numero: true, reference: true, dateFacture: true, montantTTC: true, fournisseur: { select: { raisonSociale: true } } },
     });
-    for (const f of r) lignes.push({ cle: `FACTURE_FOURNISSEUR:${f.id}`, kind: 'TRANSACTION', id: f.id, source: 'FACTURE_FOURNISSEUR', typeLibelle: LIBELLE_SOURCE.FACTURE_FOURNISSEUR, numero: f.numero, tiers: f.fournisseur?.raisonSociale ?? null, libelle: `Facture fournisseur ${f.numero}`, montant: n(f.montantTTC), date: f.dateFacture });
+    for (const f of r) lignes.push({ cle: `FACTURE_FOURNISSEUR:${f.id}`, kind: 'TRANSACTION', id: f.id, source: 'FACTURE_FOURNISSEUR', typeLibelle: LIBELLE_SOURCE.FACTURE_FOURNISSEUR, numero: f.numero, tiers: f.fournisseur?.raisonSociale ?? null, libelle: `Facture fournisseur ${f.numero}`, montant: n(f.montantTTC), date: f.dateFacture,
+      titre: f.fournisseur?.raisonSociale ?? `Facture fournisseur ${f.numero}`, detail: joindre(`Facture fournisseur ${f.numero}`, f.reference), sens: 'SORTIE' });
   }
   if (types.includes('PAIEMENT')) {
     const r = await prisma.paiement.findMany({
       ...base, where: { ...filtreSource('PAIEMENT', societeId), ...sansDecision } as any, orderBy: { datePaiement: 'desc' },
-      select: { id: true, numero: true, datePaiement: true, montant: true, client: { select: { raisonSociale: true } } },
+      select: { id: true, numero: true, modePaiement: true, datePaiement: true, montant: true, client: { select: { raisonSociale: true } } },
     });
-    for (const p of r) lignes.push({ cle: `PAIEMENT:${p.id}`, kind: 'TRANSACTION', id: p.id, source: 'PAIEMENT', typeLibelle: LIBELLE_SOURCE.PAIEMENT, numero: p.numero, tiers: p.client?.raisonSociale ?? null, libelle: `Paiement client ${p.numero}`, montant: n(p.montant), date: p.datePaiement });
+    for (const p of r) lignes.push({ cle: `PAIEMENT:${p.id}`, kind: 'TRANSACTION', id: p.id, source: 'PAIEMENT', typeLibelle: LIBELLE_SOURCE.PAIEMENT, numero: p.numero, tiers: p.client?.raisonSociale ?? null, libelle: `Paiement client ${p.numero}`, montant: n(p.montant), date: p.datePaiement,
+      titre: p.client?.raisonSociale ?? `Paiement ${p.numero}`, detail: joindre(`Paiement ${p.numero}`, libelleMode(p.modePaiement)), sens: 'ENTREE' });
   }
   if (types.includes('PAIEMENT_FOURNISSEUR')) {
     const r = await prisma.paiementFournisseur.findMany({
       ...base, where: { ...filtreSource('PAIEMENT_FOURNISSEUR', societeId), ...sansDecision } as any, orderBy: { datePaiement: 'desc' },
-      select: { id: true, numero: true, datePaiement: true, montant: true, fournisseur: { select: { raisonSociale: true } } },
+      select: { id: true, numero: true, modePaiement: true, datePaiement: true, montant: true, fournisseur: { select: { raisonSociale: true } } },
     });
-    for (const p of r) lignes.push({ cle: `PAIEMENT_FOURNISSEUR:${p.id}`, kind: 'TRANSACTION', id: p.id, source: 'PAIEMENT_FOURNISSEUR', typeLibelle: LIBELLE_SOURCE.PAIEMENT_FOURNISSEUR, numero: p.numero, tiers: p.fournisseur?.raisonSociale ?? null, libelle: `Paiement fournisseur ${p.numero}`, montant: n(p.montant), date: p.datePaiement });
+    for (const p of r) lignes.push({ cle: `PAIEMENT_FOURNISSEUR:${p.id}`, kind: 'TRANSACTION', id: p.id, source: 'PAIEMENT_FOURNISSEUR', typeLibelle: LIBELLE_SOURCE.PAIEMENT_FOURNISSEUR, numero: p.numero, tiers: p.fournisseur?.raisonSociale ?? null, libelle: `Paiement fournisseur ${p.numero}`, montant: n(p.montant), date: p.datePaiement,
+      titre: p.fournisseur?.raisonSociale ?? `Paiement ${p.numero}`, detail: joindre(`Paiement fournisseur ${p.numero}`, libelleMode(p.modePaiement)), sens: 'SORTIE' });
   }
   if (types.includes('DEPENSE')) {
     const r = await prisma.depense.findMany({
-      ...base, where: { ...filtreSource('DEPENSE', societeId), ...sansDecision } as any, orderBy: { dateDepense: 'desc' },
-      select: { id: true, numero: true, dateDepense: true, montant: true, categorie: true, fournisseur: { select: { raisonSociale: true } } },
+      ...base, where: { ...filtreSource('DEPENSE', societeId), ...sansDecision, ...(categorie ? { categorie } : {}) } as any, orderBy: { dateDepense: 'desc' },
+      select: { id: true, numero: true, dateDepense: true, montant: true, categorie: true, designation: true, modePaiement: true, fournisseur: { select: { raisonSociale: true } } },
     });
-    for (const d of r) lignes.push({ cle: `DEPENSE:${d.id}`, kind: 'TRANSACTION', id: d.id, source: 'DEPENSE', typeLibelle: LIBELLE_SOURCE.DEPENSE, numero: d.numero, tiers: d.fournisseur?.raisonSociale ?? null, libelle: `Dépense ${d.numero} — ${d.categorie}`, montant: n(d.montant), date: d.dateDepense });
+    for (const d of r) lignes.push({ cle: `DEPENSE:${d.id}`, kind: 'TRANSACTION', id: d.id, source: 'DEPENSE', typeLibelle: LIBELLE_SOURCE.DEPENSE, numero: d.numero, tiers: d.fournisseur?.raisonSociale ?? null, libelle: `Dépense ${d.numero} — ${d.categorie}`, montant: n(d.montant), date: d.dateDepense,
+      // Comme dans Wave : la catégorie (CIE, SODECI, RFCV…) en titre, le détail juste en dessous.
+      titre: d.categorie, categorie: d.categorie, detail: joindre(d.designation, d.fournisseur?.raisonSociale, d.numero, libelleMode(d.modePaiement)), sens: 'SORTIE' });
   }
   return lignes;
 }
 
 const includeDecision = {
-  facture: { select: { numero: true, numeroNormalise: true, type: true, dateFacture: true, montantTTC: true, client: { select: { raisonSociale: true } } } },
-  factureFournisseur: { select: { numero: true, dateFacture: true, montantTTC: true, fournisseur: { select: { raisonSociale: true } } } },
-  paiement: { select: { numero: true, datePaiement: true, montant: true, client: { select: { raisonSociale: true } } } },
-  paiementFournisseur: { select: { numero: true, datePaiement: true, montant: true, fournisseur: { select: { raisonSociale: true } } } },
-  depense: { select: { numero: true, dateDepense: true, montant: true, categorie: true, fournisseur: { select: { raisonSociale: true } } } },
+  facture: { select: { numero: true, numeroNormalise: true, objet: true, type: true, dateFacture: true, montantTTC: true, client: { select: { raisonSociale: true } } } },
+  factureFournisseur: { select: { numero: true, reference: true, dateFacture: true, montantTTC: true, fournisseur: { select: { raisonSociale: true } } } },
+  paiement: { select: { numero: true, modePaiement: true, datePaiement: true, montant: true, client: { select: { raisonSociale: true } } } },
+  paiementFournisseur: { select: { numero: true, modePaiement: true, datePaiement: true, montant: true, fournisseur: { select: { raisonSociale: true } } } },
+  depense: { select: { numero: true, dateDepense: true, montant: true, categorie: true, designation: true, modePaiement: true, fournisseur: { select: { raisonSociale: true } } } },
 } as const;
 
 function ligneDepuisDecision(d: any): Ligne {
   let numero = '', tiers: string | null = null, montant = 0, date: Date = d.createdAt, libelle = '';
-  if (d.facture) { numero = d.facture.numero; tiers = d.facture.client?.raisonSociale ?? null; montant = n(d.facture.montantTTC); date = d.facture.dateFacture; libelle = `Facture ${numero}`; }
-  else if (d.factureFournisseur) { numero = d.factureFournisseur.numero; tiers = d.factureFournisseur.fournisseur?.raisonSociale ?? null; montant = n(d.factureFournisseur.montantTTC); date = d.factureFournisseur.dateFacture; libelle = `Facture fournisseur ${numero}`; }
-  else if (d.paiement) { numero = d.paiement.numero; tiers = d.paiement.client?.raisonSociale ?? null; montant = n(d.paiement.montant); date = d.paiement.datePaiement; libelle = `Paiement client ${numero}`; }
-  else if (d.paiementFournisseur) { numero = d.paiementFournisseur.numero; tiers = d.paiementFournisseur.fournisseur?.raisonSociale ?? null; montant = n(d.paiementFournisseur.montant); date = d.paiementFournisseur.datePaiement; libelle = `Paiement fournisseur ${numero}`; }
-  else if (d.depense) { numero = d.depense.numero; tiers = d.depense.fournisseur?.raisonSociale ?? null; montant = n(d.depense.montant); date = d.depense.dateDepense; libelle = `Dépense ${numero} — ${d.depense.categorie}`; }
+  let titre = '', detail = '', sens: 'ENTREE' | 'SORTIE' = 'SORTIE', categorie: string | undefined;
+  if (d.facture) { numero = d.facture.numero; tiers = d.facture.client?.raisonSociale ?? null; montant = n(d.facture.montantTTC); date = d.facture.dateFacture; libelle = `Facture ${numero}`; titre = tiers ?? libelle; detail = joindre(`Facture ${numero}`, d.facture.objet); sens = 'ENTREE'; }
+  else if (d.factureFournisseur) { numero = d.factureFournisseur.numero; tiers = d.factureFournisseur.fournisseur?.raisonSociale ?? null; montant = n(d.factureFournisseur.montantTTC); date = d.factureFournisseur.dateFacture; libelle = `Facture fournisseur ${numero}`; titre = tiers ?? libelle; detail = joindre(`Facture fournisseur ${numero}`, d.factureFournisseur.reference); }
+  else if (d.paiement) { numero = d.paiement.numero; tiers = d.paiement.client?.raisonSociale ?? null; montant = n(d.paiement.montant); date = d.paiement.datePaiement; libelle = `Paiement client ${numero}`; titre = tiers ?? libelle; detail = joindre(`Paiement ${numero}`, libelleMode(d.paiement.modePaiement)); sens = 'ENTREE'; }
+  else if (d.paiementFournisseur) { numero = d.paiementFournisseur.numero; tiers = d.paiementFournisseur.fournisseur?.raisonSociale ?? null; montant = n(d.paiementFournisseur.montant); date = d.paiementFournisseur.datePaiement; libelle = `Paiement fournisseur ${numero}`; titre = tiers ?? libelle; detail = joindre(`Paiement fournisseur ${numero}`, libelleMode(d.paiementFournisseur.modePaiement)); }
+  else if (d.depense) { numero = d.depense.numero; tiers = d.depense.fournisseur?.raisonSociale ?? null; montant = n(d.depense.montant); date = d.depense.dateDepense; libelle = `Dépense ${numero} — ${d.depense.categorie}`; titre = d.depense.categorie; categorie = d.depense.categorie; detail = joindre(d.depense.designation, tiers, numero, libelleMode(d.depense.modePaiement)); }
   return {
     cle: `DECISION:${d.id}`, kind: 'DECISION', id: d.id, source: d.source, typeLibelle: LIBELLE_SOURCE[d.source as Source] ?? d.source,
-    numero, tiers, libelle, montant, date,
+    numero, tiers, libelle, montant, date, titre, detail, sens, categorie,
     decision: { id: d.id, statut: d.statut, numeroFne: d.facture?.numeroNormalise ?? d.numeroFne, motif: d.motif, decidePar: d.decidePar, date: d.updatedAt },
   };
 }
@@ -130,13 +143,14 @@ router.get('/', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Re
     const vue = (req.query.vue as string) || 'a-decider';
     const type = req.query.type as string | undefined;
     const q = ((req.query.q as string) || '').trim().toLowerCase();
+    const categorie = typeof req.query.categorie === 'string' && req.query.categorie ? req.query.categorie.slice(0, 100) : undefined;
     const page = Math.max(parseInt(req.query.page as string) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200);
     const types = type && (SOURCES as string[]).includes(type) ? [type as Source] : SOURCES;
 
     let lignes: Ligne[] = [];
     if (vue === 'a-decider') {
-      lignes = await transactionsADecider(societeId, types);
+      lignes = await transactionsADecider(societeId, types, categorie);
     } else if (vue === 'traitees') {
       const r = await prisma.decisionFne.findMany({
         where: { societeId, statut: { in: ['FACTURE_NORMALISEE', 'RECEVABLE'] }, ...(type ? { source: type as Source } : {}) },
@@ -152,12 +166,13 @@ router.get('/', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Re
       for (const e of rejetees as any[]) {
         lignes.push({
           cle: `REJET:${e.id}`, kind: 'REJET', id: e.id, source: e.source, typeLibelle: 'Pièce rejetée', numero: '', tiers: null,
-          libelle: e.libelle, montant: n(e.montant), date: e.dateOperation,
+          libelle: e.libelle, montant: n(e.montant), date: e.dateOperation, titre: e.libelle, detail: 'Pièce rejetée', sens: 'SORTIE',
           decision: { id: e.id, statut: 'REJETEE', numeroFne: null, motif: e.motifRejet, decidePar: e.createurNom, date: e.updatedAt },
         });
       }
     } else { ApiResponse.badRequest(res, 'Vue inconnue'); return; }
 
+    if (categorie && vue !== 'a-decider') lignes = lignes.filter(l => l.categorie === categorie);
     if (q) lignes = lignes.filter(l => `${l.numero} ${l.tiers ?? ''} ${l.libelle} ${l.decision?.numeroFne ?? ''}`.toLowerCase().includes(q));
     lignes.sort((a, b) => b.date.getTime() - a.date.getTime());
     const total = lignes.length;
@@ -174,7 +189,13 @@ router.get('/', authorize('COMPTABILITE:LIRE'), async (req: AuthRequest, res: Re
       prisma.ecritureEnAttente.count({ where: { societeId, statut: 'REJETEE' } }),
       prisma.decisionFne.count({ where: { societeId, statut: { in: ['FACTURE_NORMALISEE', 'RECEVABLE'] } } }),
     ]);
+    // Catégories de dépenses encore à décider (pour les filtres : CIE, SODECI, RFCV…).
+    const cats = await prisma.depense.groupBy({
+      by: ['categorie'], where: { ...filtreSource('DEPENSE', societeId), decisionFne: null } as any, _count: { _all: true },
+    });
+    const categories = cats.map(c => ({ categorie: c.categorie, n: c._count._all })).sort((a, b) => b.n - a.n || a.categorie.localeCompare(b.categorie));
     const compteurs = {
+      categories,
       aDecider: Object.values(parType).reduce((a, b) => a + b, 0), parType,
       corbeille: corbeilleDec + corbeilleRej, traitees,
     };
