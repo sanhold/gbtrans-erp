@@ -758,6 +758,52 @@ export default function ModifierProformaPage() {
         .pf-sheet.pf-exporting input, .pf-sheet.pf-exporting textarea { border:none !important; outline:none !important; background:transparent !important; }
         .pf-sheet.pf-exporting .pf-no-export { display:none !important; }
         .pf-sheet.pf-exporting { box-shadow:none; }
+
+        /* Téléphone : la fiche devient une liste de cartes lisibles et saisissables */
+        @media (max-width:767px){
+          .pf-sheet-wrap{ background:transparent; padding:0; }
+          .pf-sheet{ box-shadow:none !important; border:1px solid var(--pf-line); border-radius:12px; padding:14px 12px !important; }
+          .pf-doc-head{ flex-direction:column; border-bottom:1px solid var(--pf-line); padding-bottom:10px; margin-bottom:12px; }
+          .pf-company-name{ font-size:16px; color:#0B2A5B; }
+          .pf-company-addr{ display:none; }
+          .pf-doc-title{ text-align:left; display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 12px; }
+          .pf-doc-label{ font-size:15px; color:#0B2A5B; }
+          .pf-meta-grid, .pf-bottom-row{ flex-direction:column; }
+          .pf-meta-k{ color:#1F6FEB; }
+          .pf-fob-strong{ color:#1F6FEB !important; }
+          .pf-titre{ background:#E8F0FF; border-left-color:#1F6FEB; }
+          .pf-inline-toolbar{ flex-direction:column; align-items:stretch; background:#f8fafc; border-style:solid; border-radius:10px; }
+          .pf-inline-group-add{ flex-direction:column; align-items:stretch; }
+          .pf-inline-select{ min-width:0; width:100%; font-size:14px; padding:9px 10px; border-radius:8px; }
+          .pf-inline-btn-outline, .pf-inline-btn-solid{ width:100%; justify-content:center; font-size:13.5px; padding:9px 12px; border-radius:8px; background:#1F6FEB; color:#fff; border:1px solid #1F6FEB; }
+          .pf-inline-btn-outline{ background:#fff; color:#1F6FEB; }
+          table.pf-items, table.pf-items tbody, table.pf-items tfoot, table.pf-items tr, table.pf-items td{ display:block; }
+          table.pf-items{ border:none; }
+          table.pf-items thead{ display:none; }
+          table.pf-items tbody{ margin-bottom:12px; border:1px solid var(--pf-line); border-radius:10px; overflow:hidden; }
+          table.pf-items td.pf-section-title-row{ padding:8px 10px !important; }
+          .pf-section-title-row{ display:flex !important; justify-content:space-between; align-items:center; background:#0B2A5B; color:#fff !important; font-size:11px !important; padding:8px 10px !important; border:none !important; }
+          .pf-section-title-row .pf-move button{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); color:#fff; padding:5px 8px; }
+          table.pf-items tr:not(.pf-subtotal-row):not(.pf-foot-row):not(:first-child){ display:grid; grid-template-columns:22px 1fr auto auto; gap:4px 8px; align-items:center; padding:8px 10px; border-top:1px solid var(--pf-line); }
+          table.pf-items tr td{ border:none !important; padding:0 !important; }
+          .pf-numcol{ width:auto !important; font-size:11px; }
+          table.pf-items tr:not(.pf-subtotal-row):not(.pf-foot-row) td:nth-child(2){ grid-column:2 / -1; }
+          table.pf-items tr:not(.pf-subtotal-row):not(.pf-foot-row) td:nth-child(2) input{ font-size:14px; font-weight:600; border-bottom:1px dashed var(--pf-line); padding:4px 2px; }
+          table.pf-items tr:not(.pf-subtotal-row):not(.pf-foot-row) td.pf-num{ grid-column:2; }
+          table.pf-items tr:not(.pf-subtotal-row):not(.pf-foot-row) td.pf-num input{ font-size:15px; max-width:150px; text-align:left; border:1px solid var(--pf-line); border-radius:8px; padding:6px 8px; }
+          .pf-tvacol{ width:auto !important; grid-column:3; }
+          .pf-tvacol::before{ content:'TVA '; font-size:10px; color:#8b93ad; }
+          .pf-rmcol{ width:auto !important; grid-column:4; }
+          .pf-move button{ font-size:12px; padding:6px 9px; border-radius:6px; }
+          table.pf-items .pf-rmcol button{ font-size:14px; }
+          .pf-subtotal-row, .pf-foot-row{ display:flex !important; justify-content:space-between; padding:8px 10px; background:#f6f8fa; }
+          .pf-subtotal-row td, .pf-foot-row td{ background:transparent !important; border:none !important; padding:0 !important; text-align:left !important; }
+          .pf-subtotal-row .pf-no-export, .pf-foot-row .pf-no-export{ display:none !important; }
+          table.pf-items tfoot{ border:1px solid var(--pf-line); border-radius:10px; overflow:hidden; }
+          .pf-totals-table{ width:100%; }
+          .pf-totals-table tr.pf-grand td{ color:#0B2A5B; font-size:15px; }
+          .pf-signature-box{ width:100%; }
+        }
       `}</style>
     </AppLayout>
   );

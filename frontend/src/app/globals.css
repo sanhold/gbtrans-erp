@@ -37,7 +37,7 @@
            disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
 
-  .btn-primary { @apply bg-primary-500 text-white hover:bg-primary-700 active:bg-primary-800; }
+  .btn-primary { @apply bg-azure text-white hover:bg-azure-hover active:bg-azure-hover shadow-sm focus-visible:ring-azure; }
 
   .btn-secondary {
     @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 active:bg-gray-100
@@ -61,10 +61,10 @@
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-800
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
            dark:bg-surface-800 dark:border-surface-700 dark:text-white
-           placeholder:text-gray-400 text-sm transition-colors
+           placeholder:text-gray-500 dark:placeholder:text-gray-400 text-sm transition-colors
            disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed dark:disabled:bg-surface-700;
   }
 
@@ -91,10 +91,10 @@
   }
 
   .table-header {
-    @apply px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase
-           bg-gray-50 border-0 border-b border-gray-200 whitespace-nowrap
-           dark:bg-surface-900/50 dark:text-gray-400 dark:border-surface-700;
-    letter-spacing: 0.07em;
+    @apply px-4 py-3 text-left text-[12.5px] font-bold text-white
+           bg-primary-600 border-0 whitespace-nowrap
+           dark:bg-primary-800 dark:text-white;
+    letter-spacing: 0.01em;
   }
 
   .table-header:first-child,
@@ -107,6 +107,9 @@
            dark:text-gray-200 dark:border-surface-700/70;
     letter-spacing: 0.005em;
   }
+
+  .table-container tbody tr:nth-child(even) > .table-cell { background-color: rgb(248 250 252 / 0.7); }
+  .dark .table-container tbody tr:nth-child(even) > .table-cell { background-color: rgb(255 255 255 / 0.02); }
 
   .table-row {
     @apply hover:bg-primary-50/40 dark:hover:bg-white/[.04] transition-colors;
@@ -530,4 +533,66 @@ input[type='number'] {
   .dark .fixed.inset-0.z-50.items-center.justify-center form > div:last-child:has(> button[type='submit']) {
     background: theme('colors.surface.800');
   }
+}
+
+/* Tableaux sur ordinateur : une seule ligne par enregistrement, la seconde information passe en infobulle. */
+@media (min-width: 1024px) {
+  .dt-une-ligne .dt-bas { display: none; }
+  .dt-une-ligne .dt-avatar { height: 1.5rem; width: 1.5rem; font-size: 10px; }
+}
+
+/* ===== Menu latéral : trois styles au choix (défaut « nuit »), voir lib/styleMenu.ts ===== */
+.menu-lateral .m-ico { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; transition: background-color .15s, color .15s; }
+
+/* 1. Bleu nuit (défaut) */
+.menu-lateral[data-menu='nuit'] { background: linear-gradient(180deg, #0B2A5B, #08204A); border-color: transparent; color: #DCE7FB; }
+.menu-lateral[data-menu='nuit'] .m-t { color: #7F9BCB; }
+.menu-lateral[data-menu='nuit'] .m-t:hover { color: #B7CBEE; }
+.menu-lateral[data-menu='nuit'] .m-it { color: #DCE7FB; }
+.menu-lateral[data-menu='nuit'] .m-it:hover { background: rgba(255,255,255,.09); color: #fff; }
+.menu-lateral[data-menu='nuit'] .m-ico { color: #9DB8E8; }
+.menu-lateral[data-menu='nuit'] .m-it[aria-current='page'] { background: #1F6FEB; color: #fff; box-shadow: 0 4px 12px rgba(31,111,235,.45); }
+.menu-lateral[data-menu='nuit'] .m-it[aria-current='page'] .m-ico { color: #fff; }
+.menu-lateral[data-menu='nuit'] .m-badge { background: rgba(255,255,255,.14); color: #fff; }
+.menu-lateral[data-menu='nuit'] .m-foot { border-color: rgba(255,255,255,.12); }
+.menu-lateral[data-menu='nuit'] .m-out { color: #FCA5A5; }
+.menu-lateral[data-menu='nuit'] .m-out:hover { background: rgba(252,165,165,.12); }
+
+/* 2. Blanc et couleurs : une pastille colorée par entrée */
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-ico { background: color-mix(in srgb, var(--c) 14%, white); color: var(--c); }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-t { color: #7A8AA6; }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-it { color: #1E293B; }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-it:hover { background: #F1F6FF; }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-it[aria-current='page'] { background: #0B2A5B; color: #fff; }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-it[aria-current='page'] .m-ico { background: rgba(255,255,255,.18); color: #fff; }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-badge { background: #E8F0FF; color: #1A4FB8; }
+html:not(.dark) .menu-lateral[data-menu='blanc'] .m-it[aria-current='page'] .m-badge { background: rgba(255,255,255,.2); color: #fff; }
+.dark .menu-lateral[data-menu='blanc'] .m-ico { background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--c); }
+.dark .menu-lateral[data-menu='blanc'] .m-it[aria-current='page'] { background: #1F6FEB; color: #fff; }
+
+/* 3. Bleu ciel : dégradé clair, page active en carte blanche */
+html:not(.dark) .menu-lateral[data-menu='ciel'] { background: linear-gradient(180deg, #EAF2FF 0%, #F7FAFF 55%, #FFFFFF 100%); border-color: #D5E3FA; }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-t { color: #1F6FEB; }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-it { color: #14305F; }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-it:hover { background: rgba(255,255,255,.7); }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-ico { color: #1F6FEB; }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-it[aria-current='page'] { background: #fff; color: #0B2A5B; font-weight: 700; box-shadow: 0 1px 3px rgba(11,42,91,.12), inset 3px 0 0 #1F6FEB; }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-it[aria-current='page'] .m-ico { background: #E8F0FF; color: #1F6FEB; }
+html:not(.dark) .menu-lateral[data-menu='ciel'] .m-badge { background: #1F6FEB; color: #fff; }
+.dark .menu-lateral[data-menu='ciel'] .m-it[aria-current='page'] { background: #1F6FEB; color: #fff; }
+
+/* Titres de page des écrans qui n'utilisent pas encore PageHeader : même identité (Plus Jakarta Sans, bleu nuit). */
+h1.text-2xl.font-bold,
+h1.text-xl.font-bold {
+  font-family: var(--font-display, 'Plus Jakarta Sans', 'Inter', sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #12314f;
+}
+.dark h1.text-2xl.font-bold,
+.dark h1.text-xl.font-bold { color: #fff; }
+
+/* Tableaux historiques (classes .table-cell) : lignes de 40 px, comme les tableaux compacts. */
+@media (min-width: 1024px) {
+  .table-container:not(.table-compact) .table-cell { padding-top: 0.5625rem; padding-bottom: 0.5625rem; }
 }

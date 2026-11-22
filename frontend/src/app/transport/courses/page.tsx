@@ -1,9 +1,13 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider, IconeEnvoyer, IconeSupprimer } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { coursesApi, vehiculesApi, chauffeursApi, clientsApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -22,6 +26,7 @@ export default function CoursesPage() {
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [statutFiltre, setStatutFiltre] = useState('');
@@ -39,7 +44,7 @@ export default function CoursesPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await coursesApi.list({ page, limit: 20, statut: statutFiltre || undefined });
+      const res = await coursesApi.list({ page, limit: pageSize, statut: statutFiltre || undefined });
       setData(res.data.data || []);
       setTotal(res.data.pagination?.total || 0);
       setTotalPages(res.data.pagination?.totalPages || 1);
@@ -47,7 +52,7 @@ export default function CoursesPage() {
     } catch { toast.error('Erreur de chargement'); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [page, statutFiltre]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [page, pageSize, statutFiltre]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { clientsApi.listRef().then(r => setClients(r.data.data || [])).catch(() => {}); }, []);
 
   const ouvrirCreation = async () => {
@@ -123,93 +128,77 @@ export default function CoursesPage() {
     finally { setFacturantSelection(false); }
   };
 
+  const trajet = (c: any) => `${c.origine} → ${c.destination}`;
+  const chauffeur = (c: any) => [c.chauffeur?.prenom, c.chauffeur?.nom].filter(Boolean).join(' ') || '—';
+  const ouvrirFacturation = (c: any) => setFacturation({ id: c.id, clientId: c.clientId || '', montantFacturable: c.montantFacturable || '', fraisCarburant: c.fraisCarburant || '', fraisPeage: c.fraisPeage || '', autresFrais: c.autresFrais || '' });
+  const pastille = (c: any) => <StatutPastille libelle={STATUT_LABEL[c.statut] || c.statut} ton={tonDepuisBadge(STATUT_BADGE[c.statut])} />;
+  const cellFacturation = (c: any) => c.facture ? (
+    <Link href={`/facturation/${c.facture.id}`} onClick={e => e.stopPropagation()} className="font-mono text-[12.5px] font-semibold text-azure hover:underline">{c.facture.numero}</Link>
+  ) : c.statut === 'TERMINEE' ? (
+    <button type="button" onClick={e => { e.stopPropagation(); ouvrirFacturation(c); }} className="text-[12.5px] font-semibold text-orange-600 hover:underline">{c.clientId && c.montantFacturable ? 'Modifier' : 'À renseigner'}</button>
+  ) : <Discret>—</Discret>;
+  const resultat = (c: any) => { const r = resultatCourse(c); return r == null ? <Discret>—</Discret> : <Montant valeur={r} ton={r >= 0 ? 'positif' : 'negatif'} />; };
+
+  const colonnes = [
+    { cle: 'sel', libelle: '', texte: () => '', rendu: (c: any) => facturable(c) ? <input type="checkbox" aria-label="Sélectionner" checked={selection.includes(c.id)} onClick={e => e.stopPropagation()} onChange={() => toggleSelection(c.id)} className="h-4 w-4 rounded accent-blue-600" /> : null },
+    { cle: 'numero', libelle: 'N°', texte: (c: any) => c.numero, rendu: (c: any) => <Numero>{c.numero}</Numero> },
+    { cle: 'trajet', libelle: 'Trajet', texte: trajet, rendu: (c: any) => <Tronque texte={trajet(c)} largeur="16rem" /> },
+    { cle: 'vehicule', libelle: 'Véhicule', texte: (c: any) => c.vehicule?.immatriculation || '', rendu: (c: any) => <Discret>{c.vehicule?.immatriculation || '—'}</Discret> },
+    { cle: 'chauffeur', libelle: 'Chauffeur', masquerSous: '2xl' as const, texte: chauffeur, rendu: (c: any) => <Tronque texte={chauffeur(c)} largeur="11rem" /> },
+    { cle: 'client', libelle: 'Client', masquerSous: '2xl' as const, texte: (c: any) => c.client?.raisonSociale || '', rendu: (c: any) => <Tronque texte={c.client?.raisonSociale} largeur="12rem" /> },
+    { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (c: any) => String(c.montantFacturable ?? ''), rendu: (c: any) => c.montantFacturable != null ? <Montant valeur={c.montantFacturable} /> : <Discret>—</Discret> },
+    { cle: 'resultat', libelle: 'Résultat', align: 'right' as const, masquerSous: '2xl' as const, texte: (c: any) => String(resultatCourse(c) ?? ''), rendu: resultat },
+    { cle: 'statut', libelle: 'Statut', texte: (c: any) => STATUT_LABEL[c.statut] || c.statut, rendu: pastille },
+    { cle: 'facturation', libelle: 'Facturation', texte: (c: any) => c.facture?.numero || '', rendu: cellFacturation },
+  ];
+
+  const actionsCourse = (c: any) => (
+    <>
+      {c.statut === 'PLANIFIEE' && <BoutonIcone titre="Démarrer" ton="primaire" disabled={busyId === c.id} onClick={() => changerStatut(c.id, 'EN_COURS')}><IconeEnvoyer /></BoutonIcone>}
+      {c.statut === 'EN_COURS' && <BoutonIcone titre="Terminer" ton="primaire" disabled={busyId === c.id} onClick={() => changerStatut(c.id, 'TERMINEE')}><IconeValider /></BoutonIcone>}
+      {(c.statut === 'PLANIFIEE' || c.statut === 'EN_COURS') && <BoutonIcone titre="Annuler la course" ton="neutre" disabled={busyId === c.id} onClick={() => changerStatut(c.id, 'ANNULEE')}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></BoutonIcone>}
+      {c.statut === 'PLANIFIEE' && <BoutonIcone titre="Supprimer" ton="danger" onClick={() => supprimer(c.id)}><IconeSupprimer /></BoutonIcone>}
+    </>
+  );
+
   return (
     <AppLayout>
-      <div className="space-y-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
-            <p className="text-sm text-gray-500">{total} course(s)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <select value={statutFiltre} onChange={e => { setPage(1); setStatutFiltre(e.target.value); }} className="input-field !w-48 text-sm">
-              <option value="">Tous les statuts</option>
-              {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
-            </select>
-            {selection.length > 0 && (
-              <button onClick={facturerSelection} disabled={!selectionValide || facturantSelection} title={!selectionValide ? 'Les courses sélectionnées doivent être du même client' : undefined} className="btn-secondary !text-sm !text-accent-600 disabled:opacity-50">
-                {facturantSelection ? 'Facturation...' : `Facturer la sélection (${selection.length})`}
-              </button>
-            )}
-            <button onClick={ouvrirCreation} className="btn-primary text-sm">+ Nouvelle course</button>
-          </div>
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Courses"
+          sousTitre={`${total} course(s)`}
+          actions={
+            <>
+              <select value={statutFiltre} onChange={e => { setPage(1); setStatutFiltre(e.target.value); }} aria-label="Filtrer par statut" className="input-field !w-auto !py-1.5 text-sm">
+                <option value="">Tous les statuts</option>
+                {STATUTS.map(s => <option key={s} value={s}>{STATUT_LABEL[s]}</option>)}
+              </select>
+              {selection.length > 0 && (
+                <button onClick={facturerSelection} disabled={!selectionValide || facturantSelection} title={!selectionValide ? 'Les courses sélectionnées doivent être du même client' : undefined} className="btn-secondary disabled:opacity-50">
+                  {facturantSelection ? 'Facturation...' : `Facturer la sélection (${selection.length})`}
+                </button>
+              )}
+              <button onClick={ouvrirCreation} className="btn-primary">+ Nouvelle course</button>
+            </>
+          }
+        />
 
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr>
-              <th className="table-header w-8"></th>
-              <th className="table-header">N°</th>
-              <th className="table-header">Véhicule</th>
-              <th className="table-header">Chauffeur</th>
-              <th className="table-header">Trajet</th>
-              <th className="table-header">Client</th>
-              <th className="table-header text-right">Montant</th>
-              <th className="table-header">Statut</th>
-              <th className="table-header text-right">Résultat</th>
-              <th className="table-header">Facturation</th>
-              <th className="table-header">Actions</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={11} />
-              ) : data.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune course</td></tr>
-              ) : data.map(c => (
-                <tr key={c.id} className="table-row">
-                  <td className="table-cell">
-                    {facturable(c) && <input type="checkbox" checked={selection.includes(c.id)} onChange={() => toggleSelection(c.id)} className="w-4 h-4 rounded" />}
-                  </td>
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="N°">{c.numero}</td>
-                  <td className="table-cell text-xs" data-label="Véhicule">{c.vehicule?.immatriculation}</td>
-                  <td className="table-cell text-xs" data-label="Chauffeur">{c.chauffeur?.prenom} {c.chauffeur?.nom}</td>
-                  <td className="table-cell text-xs" data-label="Trajet">{c.origine} → {c.destination}</td>
-                  <td className="table-cell text-xs" data-label="Client">{c.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell text-right text-xs font-mono" data-label="Montant">{fmtMontant(c.montantFacturable)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px]`}>{STATUT_LABEL[c.statut]}</span></td>
-                  <td className="table-cell text-right text-xs font-mono" data-label="Résultat">
-                    {resultatCourse(c) != null ? <span className={resultatCourse(c)! >= 0 ? 'text-accent-600' : 'text-red-600'}>{fmtMontant(resultatCourse(c))}</span> : '-'}
-                  </td>
-                  <td className="table-cell" data-label="Facturation">
-                    {c.facture ? (
-                      <Link href={`/facturation/${c.facture.id}`} className="text-xs text-primary-600 hover:underline font-mono">{c.facture.numero}</Link>
-                    ) : c.statut === 'TERMINEE' ? (
-                      <button onClick={() => setFacturation({ id: c.id, clientId: c.clientId || '', montantFacturable: c.montantFacturable || '', fraisCarburant: c.fraisCarburant || '', fraisPeage: c.fraisPeage || '', autresFrais: c.autresFrais || '' })} className="text-xs text-amber-600 hover:underline">
-                        {c.clientId && c.montantFacturable ? 'Modifier' : 'À renseigner'}
-                      </button>
-                    ) : <span className="text-xs text-gray-400">-</span>}
-                  </td>
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {c.statut === 'PLANIFIEE' && <button onClick={() => changerStatut(c.id, 'EN_COURS')} disabled={busyId === c.id} className="text-xs text-primary-600 hover:underline disabled:opacity-50">Démarrer</button>}
-                      {c.statut === 'EN_COURS' && <button onClick={() => changerStatut(c.id, 'TERMINEE')} disabled={busyId === c.id} className="text-xs text-accent-600 hover:underline disabled:opacity-50">Terminer</button>}
-                      {(c.statut === 'PLANIFIEE' || c.statut === 'EN_COURS') && <button onClick={() => changerStatut(c.id, 'ANNULEE')} disabled={busyId === c.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Annuler</button>}
-                      {c.statut === 'PLANIFIEE' && <button onClick={() => supprimer(c.id)} className="text-xs text-gray-500 hover:underline">Supprimer</button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Précédent</button>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Suivant</button>
-          </div>
-        )}
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={data}
+          cleLigne={(c: any) => c.id}
+          chargement={loading}
+          nomExport="courses"
+          actions={actionsCourse}
+          carte={(c: any) => ({
+            titre: <span className="inline-flex items-center gap-2">{facturable(c) && <input type="checkbox" aria-label="Sélectionner" checked={selection.includes(c.id)} onClick={e => e.stopPropagation()} onChange={() => toggleSelection(c.id)} className="h-4 w-4 rounded accent-blue-600" />}{trajet(c)}</span>,
+            sousTitre: `${c.numero} — ${c.vehicule?.immatriculation || ''} — ${chauffeur(c)}`,
+            statut: pastille(c),
+            details: <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">{c.client?.raisonSociale || 'Sans client'}{c.montantFacturable != null && <b className="text-gray-700">{fmtMontant(c.montantFacturable)}</b>}{(c.facture || c.statut === 'TERMINEE') && cellFacturation(c)}</span>,
+          })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: (n: number) => { setPageSize(n); setPage(1); } }}
+          vide={<EmptyState titre="Aucune course" description="Créez une première course." />}
+        />
       </div>
 
       {showModal && (

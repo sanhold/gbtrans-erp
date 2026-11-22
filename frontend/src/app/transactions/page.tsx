@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, StatutPastille } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, StatutPastille } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -79,8 +79,10 @@ export default function TransactionsPage() {
   );
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'op', libelle: 'Opération', rendu: op => (
-      <div className="flex min-w-0 items-center gap-3"><Pastille op={op} /><DoubleLigne haut={op.libelle} bas={`${op.numero} · ${fmtDate(op.dateOperation)}`} /></div>
+    { cle: 'numero', libelle: 'N°', rendu: op => <Numero>{op.numero}</Numero>, texte: op => op.numero },
+    { cle: 'date', libelle: 'Date', rendu: op => <Discret>{fmtDate(op.dateOperation)}</Discret>, texte: op => fmtDate(op.dateOperation) },
+    { cle: 'op', libelle: 'Libellé', rendu: op => (
+      <div className="flex min-w-0 items-center gap-2.5"><Pastille op={op} /><Tronque texte={op.libelle} largeur="22rem" /></div>
     ), texte: op => op.libelle },
     { cle: 'type', libelle: 'Catégorie', rendu: op => <StatutPastille libelle={TYPE_OPERATION_LABELS[op.type] || op.type} ton="info" />, texte: op => TYPE_OPERATION_LABELS[op.type] || op.type },
     { cle: 'compte', libelle: 'Compte', rendu: op => nomCompte(op), texte: op => nomCompte(op) },

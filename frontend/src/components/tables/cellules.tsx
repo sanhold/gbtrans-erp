@@ -18,7 +18,7 @@ function initiales(nom: string) {
 /** Pastille ronde aux initiales d'un client ou d'un tiers (couleur stable selon le nom). */
 export function Avatar({ nom }: { nom?: string | null }) {
   const n = nom || '?';
-  return <span aria-hidden="true" className={clsx('inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold', teinte(n))}>{initiales(n)}</span>;
+  return <span aria-hidden="true" className={clsx('inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold dt-avatar', teinte(n))}>{initiales(n)}</span>;
 }
 
 type Ton = 'info' | 'warning' | 'success' | 'danger' | 'gray';
@@ -50,9 +50,9 @@ export function StatutPastille({ libelle, ton = 'gray' }: { libelle: string; ton
 /** Deux lignes : valeur principale et information secondaire plus discrète. */
 export function DoubleLigne({ haut, bas, mono = false }: { haut: ReactNode; bas?: ReactNode; mono?: boolean }) {
   return (
-    <div className="min-w-0 leading-tight">
+    <div className="min-w-0 leading-tight" title={typeof bas === 'string' ? bas : undefined}>
       <div className={clsx('truncate font-semibold text-gray-900 dark:text-white', mono && 'font-mono text-[13px] text-primary-600 dark:text-primary-300')}>{haut}</div>
-      {bas !== undefined && bas !== null && bas !== '' && <div className="mt-0.5 truncate text-xs text-gray-400">{bas}</div>}
+      {bas !== undefined && bas !== null && bas !== '' && <div className="dt-bas mt-0.5 truncate text-xs text-gray-400">{bas}</div>}
     </div>
   );
 }
@@ -62,9 +62,9 @@ export function Tiers({ nom, detail }: { nom?: string | null; detail?: ReactNode
   return (
     <div className="flex min-w-0 items-center gap-3">
       <Avatar nom={nom} />
-      <div className="min-w-0 leading-tight">
+      <div className="min-w-0 leading-tight" title={typeof detail === 'string' ? detail : undefined}>
         <div className="max-w-[16rem] truncate font-medium text-gray-900 dark:text-white" title={nom || undefined}>{nom || '—'}</div>
-        {detail !== undefined && detail !== null && detail !== '' && <div className="mt-0.5 truncate text-xs text-gray-400">{detail}</div>}
+        {detail !== undefined && detail !== null && detail !== '' && <div className="dt-bas mt-0.5 truncate text-xs text-gray-400">{detail}</div>}
       </div>
     </div>
   );
@@ -105,4 +105,20 @@ export function Compteur({ icone, valeur, titre }: { icone: ReactNode; valeur: n
       {icone}{valeur}
     </span>
   );
+}
+
+/** Numéro de pièce (dossier, facture, caution…) : police à chasse fixe, en bleu nuit, sur une seule ligne. */
+export function Numero({ children }: { children: ReactNode }) {
+  return <span className="font-mono text-[13px] font-semibold text-primary-600 dark:text-primary-300">{children}</span>;
+}
+
+/** Date ou information secondaire : grise, chiffres tabulaires. */
+export function Discret({ children, titre }: { children: ReactNode; titre?: string }) {
+  return <span title={titre} className="tabular-nums text-gray-500 dark:text-gray-400">{children}</span>;
+}
+
+/** Texte libre tronqué sur une ligne (objet, désignation, motif) ; le texte complet reste en infobulle. */
+export function Tronque({ texte, largeur = '20rem' }: { texte?: string | null; largeur?: string }) {
+  if (!texte) return <span className="text-gray-300">—</span>;
+  return <span className="block truncate text-gray-700 dark:text-gray-200" style={{ maxWidth: largeur }} title={texte}>{texte}</span>;
 }

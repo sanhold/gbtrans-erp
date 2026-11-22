@@ -68,7 +68,7 @@ function SectionCard({ title, action, children }: { title: string; action?: Reac
   return (
     <div className="card !p-4 sm:!p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[13px] font-bold tracking-tight text-gray-900 dark:text-white">{title}</h3>
+        <h3 className="text-[16px] font-extrabold tracking-tight text-primary-600 dark:text-white">{title}</h3>
         {action}
       </div>
       {children}
@@ -136,6 +136,7 @@ export default function DashboardHomePage() {
               label={`Dossiers ouverts en ${year}`}
               value={`${stats?.totalDossiers ?? 0}`}
               icon="M4 4h6l2 2h8v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
+              iconClass="text-blue-600"
               context={dossiersTrendPct !== null ? (
                 <span className={`font-semibold ${dossiersTrendPct >= 0 ? 'text-accent-600 dark:text-accent-500' : 'text-red-600'}`}>
                   {dossiersTrendPct >= 0 ? '↑ +' : '↓ '}{dossiersTrendPct} % vs {year - 1}
@@ -146,6 +147,7 @@ export default function DashboardHomePage() {
               label="Dossiers en cours"
               value={`${stats?.dossiersEnCours ?? 0}`}
               icon="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+              iconClass="text-green-600"
               context="En traitement actuellement"
             />
             <KpiCard
@@ -153,7 +155,7 @@ export default function DashboardHomePage() {
               value={caMois.value}
               unit={caMois.unit}
               icon="M3 17l6-6 4 4 8-8M21 7v5h-5"
-              iconClass="text-accent-600 dark:text-accent-500"
+              iconClass="text-blue-600"
               context="Facturé sur le mois"
             />
             <KpiCard
@@ -168,24 +170,28 @@ export default function DashboardHomePage() {
               label="Clients actifs"
               value={`${stats?.totalClients ?? 0}`}
               icon="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"
+              iconClass="text-violet-600"
               context={`${stats?.totalFournisseurs ?? 0} fournisseur(s)`}
             />
             <KpiCard
               label="Admissions temporaires"
               value={`${stats?.atActives ?? 0}`}
               icon="M6 2h12M6 22h12M7 2c0 5 5 6 5 10s-5 5-5 10M17 2c0 5-5 6-5 10s5 5 5 10"
+              iconClass="text-orange-500"
               context={stats?.atExpirees ? <span className="font-semibold text-amber-600 dark:text-amber-400">{stats.atExpirees} expirée(s)</span> : 'Aucune expirée'}
             />
             <KpiCard
               label="Cautions en cours"
               value={`${stats?.totalCautions ?? 0}`}
               icon="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"
+              iconClass="text-blue-600"
               context="Actives"
             />
             <KpiCard
               label="Documents archivés"
               value={`${stats?.documentsArchives ?? 0}`}
               icon="M3 4h18v4H3zM5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"
+              iconClass="text-violet-600"
               context={<Link href="/archives" className="font-semibold text-primary-600 dark:text-primary-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded">Archiver un document →</Link>}
             />
           </div>
@@ -195,7 +201,7 @@ export default function DashboardHomePage() {
               <div className="card !p-4 sm:!p-5 h-full">
                 <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                   <div>
-                    <h3 className="text-[16px] font-bold text-gray-900 dark:text-white">Chiffre d&apos;affaires mensuel {year}</h3>
+                    <h3 className="text-[16px] font-extrabold text-primary-600 dark:text-white">Chiffre d&apos;affaires mensuel {year}</h3>
                     <p className="text-[12.5px] text-gray-500 dark:text-gray-400">En FCFA</p>
                   </div>
                   <div className="flex items-center gap-4 text-[12.5px] whitespace-nowrap text-gray-600 dark:text-gray-300">
@@ -220,19 +226,19 @@ export default function DashboardHomePage() {
               {topClients.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-6">Aucune facturation cette année</p>
               ) : (
-                <div className="space-y-2">
-                  {topClients.map((c, i) => (
-                    <div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-700 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-6 h-6 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-[11px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate">{c.raisonSociale}</p>
-                          <p className="text-[11px] text-gray-400">{c.nombre_dossiers} dossier(s)</p>
-                        </div>
+                <div className="space-y-3">
+                  {topClients.map((c) => {
+                    const max = Math.max(...topClients.map(x => Number(x.ca_total) || 0), 1);
+                    return (
+                      <div key={c.id} className="grid grid-cols-[minmax(0,7.5rem)_1fr_auto] sm:grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 text-[12.5px]">
+                        <span className="truncate font-medium text-gray-800 dark:text-gray-200" title={c.raisonSociale}>{c.raisonSociale}</span>
+                        <span className="h-3 rounded-full bg-gray-100 dark:bg-surface-700 overflow-hidden">
+                          <span className="block h-full rounded-full bg-primary-600" style={{ width: `${canSeeMontants ? Math.max(3, (Number(c.ca_total) / max) * 100) : 0}%` }} />
+                        </span>
+                        <span className="font-bold text-gray-900 dark:text-white text-right tabular-nums">{canSeeMontants ? formatMontant(c.ca_total) : MONTANT_MASQUE}</span>
                       </div>
-                      <span className="text-[12px] font-bold text-gray-900 dark:text-white flex-shrink-0">{canSeeMontants ? formatMontant(c.ca_total) : MONTANT_MASQUE}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </SectionCard>

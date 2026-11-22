@@ -1,10 +1,13 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeValider } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
@@ -37,46 +40,30 @@ export default function ComptesBancairesHistoriquePage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <Link href="/finance/comptes-bancaires" className="text-sm text-primary-600 hover:underline mb-2 inline-block">← Comptes Bancaires</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Historique des comptes bancaires désactivés</h1>
-          <p className="text-sm text-gray-500">Cliquez sur un compte pour consulter son historique de transactions.</p>
-        </div>
-
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '18%' }} />
-                <col style={{ width: '26%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '14%' }} />
-            </colgroup>
-            <thead><tr><th className="table-header !text-[10px] !px-1.5 truncate"></th><th className="table-header !text-[10px] !px-1.5 truncate">Code</th><th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th><th className="table-header !text-[10px] !px-1.5 truncate">Banque</th><th className="table-header !text-[10px] !px-1.5 truncate">Devise</th><th className="table-header !text-[10px] !px-1.5 truncate text-right">Solde</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={6} />
-              : comptesDesactives.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun compte bancaire désactivé</td></tr>
-              : paged.map(c => (
-                <tr key={c.id} className="table-row cursor-pointer" onClick={() => setSelectedId(c.id)}>
-                  <td className="table-cell !px-1.5" data-label="Actions"><button onClick={(e) => { e.stopPropagation(); reactiver(c.id); }} className="text-[10.5px] text-primary-600 hover:underline">Réactiver</button></td>
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Code">{c.code}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Banque">{c.banque}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Devise">{c.devise}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Solde">{fmt(c.solde)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Comptes bancaires désactivés"
+          sousTitre="Touchez un compte pour consulter son historique de transactions"
+          actions={<Link href="/finance/comptes-bancaires" className="btn-secondary">← Comptes bancaires</Link>}
+        />
+        <ListeResponsive
+          colonnes={[
+            { cle: 'code', libelle: 'Code', texte: (c: any) => c.code, rendu: (c: any) => <Numero>{c.code}</Numero> },
+            { cle: 'libelle', libelle: 'Libellé', texte: (c: any) => c.libelle, rendu: (c: any) => <Tronque texte={c.libelle} largeur="20rem" /> },
+            { cle: 'banque', libelle: 'Banque', texte: (c: any) => c.banque || '', rendu: (c: any) => <Tronque texte={c.banque} largeur="12rem" /> },
+            { cle: 'devise', libelle: 'Devise', masquerSous: 'xl' as const, texte: (c: any) => c.devise, rendu: (c: any) => <Discret>{c.devise}</Discret> },
+            { cle: 'solde', libelle: 'Solde', align: 'right' as const, texte: (c: any) => String(c.solde), rendu: (c: any) => <Montant valeur={c.solde} /> },
+          ]}
+          lignes={paged}
+          cleLigne={(c: any) => c.id}
+          chargement={loading}
+          nomExport="comptes-desactives"
+          onClic={(c: any) => setSelectedId(c.id)}
+          actions={(c: any) => <BoutonIcone titre="Réactiver" ton="primaire" onClick={() => reactiver(c.id)}><IconeValider /></BoutonIcone>}
+          carte={(c: any) => ({ titre: c.libelle, sousTitre: `${c.code} — ${c.banque || ''}`, droite: <Montant valeur={c.solde} /> })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre="Aucun compte désactivé" description="Les comptes désactivés apparaîtront ici." />}
+        />
       </div>
     </AppLayout>
   );
@@ -106,45 +93,40 @@ function CompteHistoriqueDetail({ compte, onBack, onReactiver }: { compte: any; 
   if (!compte) return <div className="card text-center text-gray-500 py-8"><button onClick={onBack} className="btn-secondary mb-4">← Retour</button><p>Compte introuvable</p></div>;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← Comptes désactivés</button>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{compte.libelle} ({compte.banque})</h2>
-          <p className="text-sm text-gray-500">Solde au moment de la désactivation : <span className="font-bold text-gray-900 dark:text-white">{fmt(compte.solde)} {compte.devise}</span> · <span className="badge badge-gray">Inactif</span></p>
-        </div>
-        <button onClick={() => onReactiver(compte.id)} className="btn-primary">Réactiver ce compte</button>
+    <div className="space-y-3 sm:space-y-4">
+      <PageHeader
+        titre={compte.libelle}
+        sousTitre={`${compte.banque} — solde à la désactivation : ${fmt(compte.solde)} ${compte.devise}`}
+        actions={
+          <>
+            <button onClick={onBack} className="btn-secondary">← Comptes désactivés</button>
+            <button onClick={() => onReactiver(compte.id)} className="btn-primary">Réactiver ce compte</button>
+          </>
+        }
+      />
+
+      <div className="card !p-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
+        <div><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field sm:!w-auto" /></div>
+        <div><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field sm:!w-auto" /></div>
+        <button onClick={load} className="btn-primary col-span-2 sm:col-span-1">Afficher</button>
       </div>
 
-      <div className="card">
-        <div className="flex items-end justify-between flex-wrap gap-3 p-4 border-b border-gray-200 dark:border-surface-700">
-          <h3 className="text-sm font-semibold">Transactions du compte</h3>
-          <div className="flex items-end flex-wrap gap-3">
-            <div><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !w-auto" /></div>
-            <div><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !w-auto" /></div>
-            <button onClick={load} className="btn-primary">Afficher</button>
-          </div>
-        </div>
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Date</th><th className="table-header">Sens</th><th className="table-header">Origine</th><th className="table-header">Réf.</th><th className="table-header text-right">Montant</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={5} />
-              : rows.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-gray-500">Aucune transaction sur cette période</td></tr>
-              : paged.map(op => (
-                <tr key={op.id} className="table-row">
-                  <td className="table-cell text-xs" data-label="Date">{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Sens">{op.sens === 'ENTREE' ? <span className="text-green-600 font-medium">↘ Entrée</span> : <span className="text-red-600 font-medium">↗ Sortie</span>}</td>
-                  <td className="table-cell" data-label="Origine">{op.libelle}</td>
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
-                  <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{op.sens === 'ENTREE' ? '+' : '-'}{fmt(op.montant)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
-      </div>
+      <ListeResponsive
+        colonnes={[
+          { cle: 'd', libelle: 'Date', texte: (op: any) => new Date(op.dateOperation).toLocaleDateString('fr-FR'), rendu: (op: any) => <Discret>{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</Discret> },
+          { cle: 's', libelle: 'Sens', texte: (op: any) => (op.sens === 'ENTREE' ? 'Entrée' : 'Sortie'), rendu: (op: any) => op.sens === 'ENTREE' ? <span className="text-[13px] font-medium text-green-600">↘ Entrée</span> : <span className="text-[13px] font-medium text-red-600">↗ Sortie</span> },
+          { cle: 'o', libelle: 'Origine', texte: (op: any) => op.libelle || '', rendu: (op: any) => <Tronque texte={op.libelle} largeur="22rem" /> },
+          { cle: 'r', libelle: 'Réf.', texte: (op: any) => op.reference || op.numero || '', rendu: (op: any) => <Numero>{op.reference || op.numero}</Numero> },
+          { cle: 'm', libelle: 'Montant', align: 'right' as const, texte: (op: any) => String(op.montant), rendu: (op: any) => <Montant valeur={op.montant} ton={op.sens === 'ENTREE' ? 'positif' : 'negatif'} /> },
+        ]}
+        lignes={paged}
+        cleLigne={(op: any) => op.id}
+        chargement={loading}
+        nomExport="transactions-compte"
+        carte={(op: any) => ({ titre: op.libelle || op.numero, sousTitre: `${new Date(op.dateOperation).toLocaleDateString('fr-FR')} — ${op.reference || op.numero || ''}`, droite: <Montant valeur={op.montant} ton={op.sens === 'ENTREE' ? 'positif' : 'negatif'} />, details: op.sens === 'ENTREE' ? '↘ Entrée' : '↗ Sortie' })}
+        pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+        vide={<EmptyState titre="Aucune transaction" description="Aucune transaction sur cette période." />}
+      />
     </div>
   );
 }

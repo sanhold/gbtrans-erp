@@ -1,8 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeSupprimer } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, StatutPastille } from '@/components/tables/cellules';
 import toast from 'react-hot-toast';
 
 const TYPES_JOURNAL = ['ACHAT', 'VENTE', 'BANQUE', 'CAISSE', 'OD', 'SITUATION', 'TRESORERIE'];
@@ -91,38 +94,22 @@ export default function JournauxPanel() {
         </div>
       )}
 
-      <div className="table-container table-compact">
-        <table className="w-full">
-          <thead><tr>
-            <th className="table-header"></th>
-            <th className="table-header">Code</th>
-            <th className="table-header">Libellé</th>
-            <th className="table-header">Type</th>
-            <th className="table-header">Contrepartie</th>
-            <th className="table-header">Statut</th>
-          </tr></thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows cols={6} />
-            ) : journaux.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun journal. Créez-en un ci-dessus.</td></tr>
-            ) : journaux.map(j => (
-              <tr key={j.id} className="table-row">
-                <td className="table-cell text-right" data-label="Actions">
-                  <button onClick={() => handleSupprimerJournal(j.id)} className="text-gray-300 hover:text-red-500" title="Supprimer">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </td>
-                <td className="table-cell font-mono font-semibold text-primary-600" data-label="Code">{j.code}</td>
-                <td className="table-cell" data-label="Libellé">{j.libelle}</td>
-                <td className="table-cell text-xs text-gray-500" data-label="Type">{j.type}</td>
-                <td className="table-cell text-xs text-gray-500" data-label="Contrepartie">{j.compteContrepartie || '-'}</td>
-                <td className="table-cell" data-label="Statut"><button onClick={() => handleToggleActifJournal(j)} className={`badge ${j.actif ? 'badge-success' : 'badge-gray'}`}>{j.actif ? 'Actif' : 'Inactif'}</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ListeResponsive
+        colonnes={[
+          { cle: 'code', libelle: 'Code', texte: (j: any) => j.code, rendu: (j: any) => <Numero>{j.code}</Numero> },
+          { cle: 'lib', libelle: 'Libellé', texte: (j: any) => j.libelle, rendu: (j: any) => <Tronque texte={j.libelle} largeur="22rem" /> },
+          { cle: 'type', libelle: 'Type', texte: (j: any) => j.type, rendu: (j: any) => <Discret>{j.type}</Discret> },
+          { cle: 'cp', libelle: 'Contrepartie', texte: (j: any) => j.compteContrepartie || '', rendu: (j: any) => <Discret>{j.compteContrepartie || '—'}</Discret> },
+          { cle: 'st', libelle: 'Statut', texte: (j: any) => (j.actif ? 'Actif' : 'Inactif'), rendu: (j: any) => <button type="button" onClick={e => { e.stopPropagation(); handleToggleActifJournal(j); }} title="Cliquer pour activer ou désactiver"><StatutPastille libelle={j.actif ? 'Actif' : 'Inactif'} ton={j.actif ? 'success' : 'gray'} /></button> },
+        ]}
+        lignes={journaux}
+        cleLigne={(j: any) => j.id}
+        chargement={loading}
+        nomExport="journaux"
+        actions={(j: any) => <BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleSupprimerJournal(j.id)}><IconeSupprimer /></BoutonIcone>}
+        carte={(j: any) => ({ titre: j.libelle, sousTitre: `${j.code} — ${j.type}${j.compteContrepartie ? ` — contrepartie ${j.compteContrepartie}` : ''}`, statut: <button type="button" onClick={() => handleToggleActifJournal(j)}><StatutPastille libelle={j.actif ? 'Actif' : 'Inactif'} ton={j.actif ? 'success' : 'gray'} /></button> })}
+        vide={<EmptyState titre="Aucun journal" description="Créez-en un avec « Nouveau journal »." />}
+      />
     </div>
   );
 }

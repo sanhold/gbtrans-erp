@@ -7,6 +7,7 @@ import ExercicesPanel from './ExercicesPanel';
 import PlanComptablePanel from './PlanComptablePanel';
 import JournauxPanel from './JournauxPanel';
 import InfoBulle from '@/components/ui/InfoBulle';
+import PageHeader from '@/components/ui/PageHeader';
 
 const ONGLETS = [
   { id: 'plan', label: 'Plan comptable' },
@@ -44,7 +45,7 @@ export default function ParametresCompta() {
   return (
     <AppLayout>
       <div className="space-y-3">
-        <h1 className="sr-only">Plan comptable</h1>
+        <PageHeader titre="Plan comptable" sousTitre="Comptes, journaux et exercices" />
 
         {/* Une seule ligne : les onglets font office de titre ; liens et explications à droite. */}
         <div className="flex items-end justify-between gap-3 border-b border-gray-200 dark:border-surface-700">
@@ -53,7 +54,7 @@ export default function ParametresCompta() {
               <button
                 key={o.id}
                 onClick={() => setOnglet(o.id)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${onglet === o.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${onglet === o.id ? 'border-azure text-azure' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
               >
                 {o.label}
               </button>
