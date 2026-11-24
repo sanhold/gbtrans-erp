@@ -1,3 +1,11 @@
+/* Plus Jakarta Sans n'a pas l'espace fine insécable (U+202F) que le français utilise pour les milliers :
+   « 3 306 722 » s'afficherait « 3306722 ». Cette police ne sert que pour ce caractère et le prend dans une police du système. */
+@font-face {
+  font-family: 'EspaceFin';
+  src: local('Arial'), local('Helvetica'), local('Roboto'), local('Segoe UI'), local('Noto Sans'), local('DejaVu Sans');
+  unicode-range: U+202F;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -103,7 +111,7 @@
   }
 
   .table-cell {
-    @apply px-4 py-3 text-[13.5px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap align-middle
+    @apply font-display font-medium px-4 py-3 text-[12.5px] text-gray-700 border-0 border-b border-gray-100 whitespace-nowrap align-middle
            dark:text-gray-200 dark:border-surface-700/70;
     letter-spacing: 0.005em;
   }
