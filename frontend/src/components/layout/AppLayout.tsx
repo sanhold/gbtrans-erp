@@ -71,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="text-gray-400">›</span>
           <span>{getModuleName(pathname)}</span>
         </nav>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-5">
           {authorized ? children : (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center gap-3">
               <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">

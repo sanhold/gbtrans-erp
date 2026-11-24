@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/stores/authStore';
 import { peutAcceder } from './navAcces';
-import QuickActions from './QuickActions';
 
 interface Onglet { nom: string; href: string; icone: string; activite?: 'TRANSIT' | 'TRANSPORT' }
 
@@ -18,11 +16,10 @@ const ICONES = {
   finance: 'M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2zM12 14.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z',
 };
 
-/** Barre de navigation du bas (téléphone) : 4 onglets + bouton « + » central pour les actions rapides. */
+/** Barre de navigation du bas (téléphone) : les onglets principaux, répartis sur toute la largeur. */
 export default function BottomNav() {
   const pathname = usePathname() || '';
   const { user, hasPermission } = useAuthStore();
-  const [actions, setActions] = useState(false);
 
   const transit = user?.societe?.activiteTransit !== false;
   const candidats: Onglet[] = [
@@ -34,7 +31,6 @@ export default function BottomNav() {
     { nom: 'Finance', href: '/finance', icone: ICONES.finance },
   ];
   const onglets = candidats.filter((o) => peutAcceder(o.href, user, hasPermission, o.activite));
-  const milieu = Math.ceil(onglets.length / 2);
 
   const actif = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
@@ -49,17 +45,8 @@ export default function BottomNav() {
   );
 
   return (
-    <>
-      <nav aria-label="Navigation rapide" className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex items-stretch px-1 pb-[env(safe-area-inset-bottom)]">
-        {onglets.slice(0, milieu).map(rendu)}
-        <div className="w-[76px] flex-shrink-0" aria-hidden="true" />
-        {onglets.slice(milieu).map(rendu)}
-      </nav>
-      <button onClick={() => setActions(true)} aria-label="Actions rapides" title="Actions rapides"
-        className="lg:hidden fixed z-40 left-1/2 -translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom)+26px)] w-[58px] h-[58px] rounded-full bg-[#e8832a] active:bg-[#d4731f] text-white shadow-lg shadow-orange-500/40 border-4 border-canvas dark:border-surface-900 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-      </button>
-      <QuickActions open={actions} onClose={() => setActions(false)} />
-    </>
+    <nav aria-label="Navigation rapide" className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-surface-800 border-t border-gray-200 dark:border-surface-700 flex items-stretch px-1 pb-[env(safe-area-inset-bottom)]">
+      {onglets.map(rendu)}
+    </nav>
   );
 }
