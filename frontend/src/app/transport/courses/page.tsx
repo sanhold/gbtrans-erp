@@ -209,7 +209,7 @@ export default function CoursesPage() {
               <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Véhicule *</label>
                   <select value={form.vehiculeId} onChange={e => setForm({ ...form, vehiculeId: e.target.value })} className="input-field" required>
@@ -225,11 +225,11 @@ export default function CoursesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className="label">Origine *</label><input type="text" value={form.origine} onChange={e => setForm({ ...form, origine: e.target.value })} className="input-field" required /></div>
                 <div><label className="label">Destination *</label><input type="text" value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} className="input-field" required /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Client à facturer</label>
                   <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="input-field">
@@ -244,7 +244,7 @@ export default function CoursesPage() {
                 <div><label className="label">Poids (kg)</label><input type="number" value={form.poidsChargeKg} onChange={e => setForm({ ...form, poidsChargeKg: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Distance (km)</label><input type="number" value={form.distanceKm} onChange={e => setForm({ ...form, distanceKm: e.target.value })} className="input-field" /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className="label">Départ prévu</label><input type="datetime-local" value={form.dateDepartPrevue} onChange={e => setForm({ ...form, dateDepartPrevue: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Arrivée prévue</label><input type="datetime-local" value={form.dateArriveePrevue} onChange={e => setForm({ ...form, dateArriveePrevue: e.target.value })} className="input-field" /></div>
               </div>

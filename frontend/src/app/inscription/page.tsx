@@ -127,17 +127,17 @@ function InscriptionForm() {
               <p className="text-[11px] text-gray-400 mt-1.5">Vous pouvez sélectionner les deux, et ajouter l&apos;autre activité plus tard depuis vos paramètres.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="label">Votre prénom *</label><input type="text" value={form.prenom} onChange={e => updateField('prenom', e.target.value)} className="input-field" required /></div>
               <div><label className="label">Votre nom *</label><input type="text" value={form.nom} onChange={e => updateField('nom', e.target.value)} className="input-field" required /></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="label">Email professionnel *</label><input type="email" value={form.email} onChange={e => updateField('email', e.target.value)} className="input-field" required /></div>
               <div><label className="label">Téléphone</label><input type="tel" value={form.telephone} onChange={e => updateField('telephone', e.target.value)} className="input-field" placeholder="+225 07 00 00 00 00" /></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="label">Mot de passe *</label><input type="password" value={form.motDePasse} onChange={e => updateField('motDePasse', e.target.value)} className="input-field" required minLength={8} /></div>
               <div><label className="label">Confirmation *</label><input type="password" value={form.confirmation} onChange={e => updateField('confirmation', e.target.value)} className="input-field" required minLength={8} /></div>
             </div>
