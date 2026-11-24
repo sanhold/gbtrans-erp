@@ -582,7 +582,7 @@ export default function ParametresPage() {
               <button onClick={() => setShowUserModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form onSubmit={handleSaveUser} className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Matricule *</label><input type="text" value={userForm.matricule} onChange={e => setUserForm({ ...userForm, matricule: e.target.value.toUpperCase() })} className="input-field" disabled={!!editingUser} required /></div>
                 <div><label className="label">Profil</label>
                   <select value={userForm.profilId} onChange={e => setUserForm({ ...userForm, profilId: e.target.value })} className="input-field">
@@ -591,7 +591,7 @@ export default function ParametresPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Prénom *</label><input type="text" value={userForm.prenom} onChange={e => setUserForm({ ...userForm, prenom: e.target.value })} className="input-field" required /></div>
                 <div><label className="label">Nom *</label><input type="text" value={userForm.nom} onChange={e => setUserForm({ ...userForm, nom: e.target.value })} className="input-field" required /></div>
               </div>

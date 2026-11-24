@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Tabs from '@/components/ui/Tabs';
 import AdminShell from '@/components/admin/AdminShell';
 import { platformApi, platformAuth } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
@@ -26,17 +27,7 @@ export default function AdminConfigurationPage() {
           <p className="text-sm text-gray-500">Réglages de la plateforme SaaS</p>
         </div>
 
-        <div className="flex gap-1 border-b border-gray-200 dark:border-surface-700">
-          {ONGLETS.map(o => (
-            <button
-              key={o.id}
-              onClick={() => setOnglet(o.id)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${onglet === o.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
+        <Tabs items={ONGLETS.map(o => ({ key: o.id, label: o.label }))} value={onglet} onChange={setOnglet} ariaLabel="Sections de la configuration" />
 
         {onglet === 'comptes' && <SectionComptes isSuperAdmin={isSuperAdmin} />}
         {onglet === 'fournisseurs' && <SectionFournisseurs isSuperAdmin={isSuperAdmin} />}
@@ -138,7 +129,7 @@ function SectionComptes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         showForm ? (
           <form onSubmit={handleCreate} className="card space-y-3 !p-5 max-w-md">
             <h3 className="font-bold text-gray-900 dark:text-white">Nouveau compte administrateur</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="label">Prénom</label><input required value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} className="input-field" /></div>
               <div><label className="label">Nom</label><input required value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="input-field" /></div>
             </div>
@@ -297,19 +288,19 @@ function SectionVitrine({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     <div className="card max-w-2xl space-y-4">
       <div>
         <label className="label">Badge d&apos;accroche (page d&apos;accueil)</label>
-        <input disabled={!isSuperAdmin} value={form.heroBadge} onChange={e => setForm({ ...form, heroBadge: e.target.value })} className="input-field disabled:opacity-60" />
+        <textarea disabled={!isSuperAdmin} value={form.heroBadge} onChange={e => setForm({ ...form, heroBadge: e.target.value.replace(/\n/g, ' ') })} className="input-field disabled:opacity-60 resize-none [field-sizing:content]" rows={2} />
       </div>
       <div>
         <label className="label">Titre principal</label>
-        <input disabled={!isSuperAdmin} value={form.heroTitre} onChange={e => setForm({ ...form, heroTitre: e.target.value })} className="input-field disabled:opacity-60" />
+        <textarea disabled={!isSuperAdmin} value={form.heroTitre} onChange={e => setForm({ ...form, heroTitre: e.target.value.replace(/\n/g, ' ') })} className="input-field disabled:opacity-60 resize-none [field-sizing:content]" rows={2} />
       </div>
       <div>
         <label className="label">Sous-titre</label>
-        <textarea disabled={!isSuperAdmin} value={form.heroSousTitre} onChange={e => setForm({ ...form, heroSousTitre: e.target.value })} className="input-field disabled:opacity-60" rows={2} />
+        <textarea disabled={!isSuperAdmin} value={form.heroSousTitre} onChange={e => setForm({ ...form, heroSousTitre: e.target.value })} className="input-field disabled:opacity-60 resize-none [field-sizing:content]" rows={4} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div><label className="label">Titre page Tarifs</label><input disabled={!isSuperAdmin} value={form.tarifsTitre} onChange={e => setForm({ ...form, tarifsTitre: e.target.value })} className="input-field disabled:opacity-60" /></div>
-        <div><label className="label">Sous-titre page Tarifs</label><input disabled={!isSuperAdmin} value={form.tarifsSousTitre} onChange={e => setForm({ ...form, tarifsSousTitre: e.target.value })} className="input-field disabled:opacity-60" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label className="label">Titre page Tarifs</label><textarea disabled={!isSuperAdmin} value={form.tarifsTitre} onChange={e => setForm({ ...form, tarifsTitre: e.target.value.replace(/\n/g, ' ') })} className="input-field disabled:opacity-60 resize-none [field-sizing:content]" rows={2} /></div>
+        <div><label className="label">Sous-titre page Tarifs</label><textarea disabled={!isSuperAdmin} value={form.tarifsSousTitre} onChange={e => setForm({ ...form, tarifsSousTitre: e.target.value.replace(/\n/g, ' ') })} className="input-field disabled:opacity-60 resize-none [field-sizing:content]" rows={2} /></div>
       </div>
       <div>
         <label className="label">FAQ (question puis réponse, une ligne chacune, séparées par une ligne vide entre chaque question)</label>

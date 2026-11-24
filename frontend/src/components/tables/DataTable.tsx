@@ -37,6 +37,10 @@ interface DataTableProps<T> {
   pied?: ReactNode;
   /** Garde les actions visibles en permanence (par défaut : au survol), utile sur écran tactile. */
   actionsToujoursVisibles?: boolean;
+  /** Tableau dense : cellules plus serrées pour afficher beaucoup de colonnes (journaux). */
+  dense?: boolean;
+  /** Ligne de totaux sous le tableau (un <tr> avec ses <td>), ex. « Somme ». */
+  lignePied?: ReactNode;
 }
 
 // Densité des tableaux : « compact » (40 px) par défaut, « confortable » (48 px), mémorisée par utilisateur.
@@ -72,7 +76,7 @@ function exporterCsv<T>(colonnes: Colonne<T>[], lignes: T[], nom: string) {
 }
 
 /** Tableau de bureau soigné : en-tête collant, lignes aérées, survol, ligne sélectionnée, export. */
-export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles = true }: DataTableProps<T>) {
+export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, idSelectionne, chargement, vide, actions, nomExport, pied, actionsToujoursVisibles = true, dense, lignePied }: DataTableProps<T>) {
   const alignement = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
   const cols = lignes.length > 0 ? colonnes.filter((c) => !(c.videSi && lignes.every(c.videSi))) : colonnes;
   const nbCols = cols.length + (actions ? 1 : 0);
@@ -106,7 +110,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
             <tr className="bg-primary-600 dark:bg-primary-800">
               {cols.map((c) => (
                 <th key={c.cle} scope="col" style={c.largeur ? { width: c.largeur } : undefined}
-                  className={clsx('px-4 py-3 text-[12.5px] font-bold tracking-[0.01em] text-white whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
+                  className={clsx(dense ? 'px-2.5 py-3' : 'px-4 py-3', 'text-[12.5px] font-bold tracking-[0.01em] text-white whitespace-nowrap first:pl-5', alignement(c.align), c.masquerSous && MASQUE[c.masquerSous])}>
                   {c.libelle}
                 </th>
               ))}
@@ -137,7 +141,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
                       actif ? 'bg-primary-50/80 dark:bg-primary-500/15 shadow-[inset_3px_0_0_theme(colors.primary.600)]' : 'hover:bg-primary-50/40 dark:hover:bg-white/[.04]')}>
                     {cols.map((c) => (
                       <td key={c.cle}
-                        className={clsx('px-4 whitespace-nowrap align-middle text-[13px] text-gray-700 dark:text-gray-200 first:pl-5', alignement(c.align), c.mono && 'font-mono text-[13px]', c.masquerSous && MASQUE[c.masquerSous])}>
+                        className={clsx(dense ? 'px-2.5' : 'px-4', 'whitespace-nowrap align-middle text-[13px] text-gray-700 dark:text-gray-200 first:pl-5', alignement(c.align), c.mono && 'font-mono text-[13px]', c.masquerSous && MASQUE[c.masquerSous])}>
                         {c.rendu(l)}
                       </td>
                     ))}
@@ -151,6 +155,7 @@ export default function DataTable<T>({ colonnes, lignes, cleLigne, onClicLigne, 
               })
             )}
           </tbody>
+          {lignePied && !chargement && lignes.length > 0 && <tfoot className="border-t-2 border-gray-200 bg-gray-50 font-semibold dark:border-surface-700 dark:bg-surface-900/50">{lignePied}</tfoot>}
         </table>
       </div>
       {pied}

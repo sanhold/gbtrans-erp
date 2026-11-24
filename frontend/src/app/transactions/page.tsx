@@ -78,16 +78,37 @@ export default function TransactionsPage() {
     </span>
   );
 
+  const heure = (op: any) => new Date(op.createdAt || op.dateOperation).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const dossierDe = (op: any) => (op.observations || '').match(/Dossier\s+(\S+)/i)?.[1] || '';
+  const avecHeure = operations.some(o => heure(o) !== '00:00');
+  const montantEntree = (op: any) => (entree(op) ? fmt(op.montant) : '');
+  const montantSortie = (op: any) => (entree(op) ? '' : fmt(op.montant));
+  const coupe = (t: string, max: string) => <span className={`block truncate ${max}`} title={t}>{t || '—'}</span>;
+
+  // Colonnes calquées sur la « Gestion compte » de l'ancien logiciel : N°, date, heure, type, pièce, entré, sorti, dossier, tiers, motif.
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'N°', rendu: op => <Numero>{op.numero}</Numero>, texte: op => op.numero },
-    { cle: 'date', libelle: 'Date', rendu: op => <Discret>{fmtDate(op.dateOperation)}</Discret>, texte: op => fmtDate(op.dateOperation) },
-    { cle: 'op', libelle: 'Libellé', rendu: op => (
-      <div className="flex min-w-0 items-center gap-2.5"><Pastille op={op} /><Tronque texte={op.libelle} largeur="22rem" /></div>
-    ), texte: op => op.libelle },
-    { cle: 'type', libelle: 'Catégorie', rendu: op => <StatutPastille libelle={TYPE_OPERATION_LABELS[op.type] || op.type} ton="info" />, texte: op => TYPE_OPERATION_LABELS[op.type] || op.type },
-    { cle: 'compte', libelle: 'Compte', rendu: op => nomCompte(op), texte: op => nomCompte(op) },
-    { cle: 'montant', libelle: 'Montant', align: 'right', rendu: op => <span className={`tabular-nums font-semibold ${entree(op) ? 'text-emerald-600' : 'text-red-600'}`}>{entree(op) ? '+' : '−'}{fmt(op.montant)} <span className="text-[11px] font-normal text-gray-400">F</span></span>, texte: op => `${entree(op) ? '' : '-'}${op.montant}` },
+    { cle: 'numero', libelle: 'N°', mono: true, rendu: op => <span className="text-gray-500">{op.numero}</span>, texte: op => op.numero },
+    { cle: 'date', libelle: 'Date', rendu: op => fmtDate(op.dateOperation), texte: op => fmtDate(op.dateOperation) },
+    ...(avecHeure ? [{ cle: 'heure', libelle: 'Heure', rendu: (op: any) => <span className="text-gray-500 tabular-nums">{heure(op)}</span>, texte: (op: any) => heure(op) }] : []),
+    { cle: 'type', libelle: 'Type', rendu: op => <StatutPastille libelle={TYPE_OPERATION_LABELS[op.type] || op.type} ton="info" />, texte: op => TYPE_OPERATION_LABELS[op.type] || op.type },
+    ...(filterCompte ? [] : [{ cle: 'compte', libelle: 'Compte', rendu: (op: any) => coupe(nomCompte(op), 'max-w-[5.5rem] 2xl:max-w-[10rem]'), texte: (op: any) => nomCompte(op) }]),
+    { cle: 'piece', libelle: 'N° pièce', masquerSous: '2xl', mono: true, rendu: op => <span className="text-gray-500">{op.reference || '—'}</span>, texte: op => op.reference || '' },
+    { cle: 'entree', libelle: 'Entrée', align: 'right', rendu: op => entree(op) ? <span className="font-sans tabular-nums font-semibold text-emerald-600">{montantEntree(op)}</span> : <span className="font-sans text-gray-300">0</span>, texte: op => (entree(op) ? String(op.montant) : '0') },
+    { cle: 'sortie', libelle: 'Sortie', align: 'right', rendu: op => !entree(op) ? <span className="font-sans tabular-nums font-semibold text-red-600">{montantSortie(op)}</span> : <span className="font-sans text-gray-300">0</span>, texte: op => (entree(op) ? '0' : String(op.montant)) },
+    { cle: 'dossier', libelle: 'Dossier', rendu: op => <span className="text-[12px] font-semibold text-primary-700 dark:text-primary-300">{dossierDe(op) || '—'}</span>, texte: op => dossierDe(op) },
+    { cle: 'tiers', libelle: 'Tiers', rendu: op => coupe(op.beneficiaire || '', 'max-w-[7rem] 2xl:max-w-[10rem]'), texte: op => op.beneficiaire || '' },
+    { cle: 'motif', libelle: 'Motif', rendu: op => coupe(op.libelle, 'max-w-[13rem] 2xl:max-w-[30rem]'), texte: op => op.libelle },
   ];
+  // Ligne « Somme » : totaux de toute la sélection (toutes les pages), comme dans l'ancien logiciel.
+  const lignePied = (
+    <tr>
+      <td colSpan={colonnes.findIndex(c => c.cle === 'piece')} className="px-3 py-2.5 text-[13px] first:pl-5">Somme <span className="font-normal text-gray-400">({total} opération{total > 1 ? 's' : ''}, toutes pages)</span></td>
+      <td className="hidden px-3 py-2.5 2xl:[display:table-cell]" />
+      <td className="px-3 py-2.5 text-right font-sans tabular-nums text-emerald-700">{fmt(totalEntrees)}</td>
+      <td className="px-3 py-2.5 text-right font-sans tabular-nums text-red-700">{fmt(totalSorties)}</td>
+      <td colSpan={3} className="px-3 py-2.5" />
+    </tr>
+  );
 
   const vide = <EmptyState titre="Aucune opération" description="Aucun mouvement ne correspond à ces critères." />;
   const categories = [['', 'Toutes'], ...Object.entries(TYPE_OPERATION_LABELS)] as [string, string][];
@@ -112,6 +133,38 @@ export default function TransactionsPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Erreur'); }
   };
 
+  // Solde actuel du compte sélectionné (comme la case « Solde compte » de l'ancien logiciel).
+  const compteChoisi = filterCompte && operations.length ? (operations[0].caisse || operations[0].compteBancaire || operations[0].compteTiers) : null;
+  const tuile = (libelle: string, valeur: number, couleur: string) => (
+    <div className="min-w-[7rem] rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-right shadow-sm dark:border-surface-700 dark:bg-surface-800">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{libelle}</p>
+      <p className={`text-[14px] font-bold leading-tight tabular-nums whitespace-nowrap ${couleur}`}>{fmt(valeur)} <span className="text-[11px] font-normal text-gray-400">F</span></p>
+    </div>
+  );
+  const formulaireFiltres = (
+    <form onSubmit={e => { e.preventDefault(); setPage(1); load(); }}>
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_9rem_9rem_auto] gap-3 items-end">
+        <div>
+          <label className="label">Compte</label>
+          <PickerField value={filterCompte} onChange={setFilterCompte} options={compteOptions} placeholder="Tous les comptes" title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." />
+        </div>
+        <div><label className="label">Du</label><input type="date" value={filterDateDebut} onChange={e => setFilterDateDebut(e.target.value)} className="input-field" /></div>
+        <div><label className="label">Au</label><input type="date" value={filterDateFin} onChange={e => setFilterDateFin(e.target.value)} className="input-field" /></div>
+        <button type="submit" className="btn-primary w-full sm:w-auto">Afficher</button>
+      </div>
+    </form>
+  );
+  const chips = (
+    <div role="tablist" aria-label="Catégorie d'opération" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 lg:flex-wrap lg:overflow-visible lg:pb-0">
+      {categories.map(([cle, libelle]) => (
+        <button key={cle || 'toutes'} type="button" role="tab" aria-selected={filterType === cle} onClick={() => changerCategorie(cle)}
+          className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${filterType === cle ? 'border-primary-600 bg-primary-600 text-white shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-300'}`}>
+          {libelle}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <AppLayout>
       <div className="space-y-3 sm:space-y-4">
@@ -120,43 +173,34 @@ export default function TransactionsPage() {
           sousTitre="Journal de tous les mouvements financiers"
           sousTitreMasqueMobile
           actions={
-            <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
-              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              <span className="sm:hidden">Nouvelle</span><span className="hidden sm:inline">Nouvelle opération</span>
-            </button>
+            <>
+              {/* Ordinateur : la synthèse est alignée sur le bouton « Nouvelle opération » */}
+              <div className="hidden lg:flex items-center gap-1.5 xl:gap-2">
+                {compteChoisi && compteChoisi.solde != null && tuile('Solde compte', Number(compteChoisi.solde), Number(compteChoisi.solde) >= 0 ? 'text-primary-600 dark:text-primary-300' : 'text-red-600')}
+                {tuile('Entrées', totalEntrees, 'text-emerald-600')}
+                {tuile('Sorties', totalSorties, 'text-red-600')}
+                {tuile('Solde net', soldeNet, soldeNet >= 0 ? 'text-primary-600 dark:text-primary-300' : 'text-red-600')}
+              </div>
+              <button type="button" onClick={() => setShowModal(true)} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm lg:!py-3">
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <span className="sm:hidden">Nouvelle</span><span className="hidden sm:inline">Nouvelle opération</span>
+              </button>
+            </>
           }
         />
 
-        {/* Synthèse de la période (en F CFA) */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="card !p-2.5 sm:!p-4 min-w-0 block"><p className="text-[10px] text-gray-500 uppercase truncate">↘ Entrées</p><p className="text-[13px] sm:text-base font-bold text-emerald-600 tabular-nums whitespace-nowrap">{fmt(totalEntrees)}<span className="hidden sm:inline"> F</span></p></div>
-          <div className="card !p-2.5 sm:!p-4 min-w-0 block"><p className="text-[10px] text-gray-500 uppercase truncate">↗ Sorties</p><p className="text-[13px] sm:text-base font-bold text-red-600 tabular-nums whitespace-nowrap">{fmt(totalSorties)}<span className="hidden sm:inline"> F</span></p></div>
-          <div className="card !p-2.5 sm:!p-4 min-w-0 block"><p className="text-[10px] text-gray-500 uppercase truncate">Solde net</p><p className={`text-[13px] sm:text-base font-bold tabular-nums whitespace-nowrap ${soldeNet >= 0 ? 'text-primary-600 dark:text-primary-300' : 'text-red-600'}`}>{fmt(soldeNet)}<span className="hidden sm:inline"> F</span></p></div>
+        {/* Téléphone : synthèse en trois cases */}
+        <div className="grid grid-cols-3 gap-2 lg:hidden">
+          <div className="card !p-2.5 min-w-0 block"><p className="text-[10px] text-gray-500 uppercase truncate">↘ Entrées</p><p className="text-[13px] font-bold text-emerald-600 tabular-nums whitespace-nowrap">{fmt(totalEntrees)}</p></div>
+          <div className="card !p-2.5 min-w-0 block"><p className="text-[10px] text-gray-500 uppercase truncate">↗ Sorties</p><p className="text-[13px] font-bold text-red-600 tabular-nums whitespace-nowrap">{fmt(totalSorties)}</p></div>
+          <div className="card !p-2.5 min-w-0 block"><p className="text-[10px] text-gray-500 uppercase truncate">Solde net</p><p className={`text-[13px] font-bold tabular-nums whitespace-nowrap ${soldeNet >= 0 ? 'text-primary-600 dark:text-primary-300' : 'text-red-600'}`}>{fmt(soldeNet)}</p></div>
         </div>
 
-        {/* Catégories */}
-        <div role="tablist" aria-label="Catégorie d'opération" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          {categories.map(([cle, libelle]) => (
-            <button key={cle || 'toutes'} type="button" role="tab" aria-selected={filterType === cle} onClick={() => changerCategorie(cle)}
-              className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${filterType === cle ? 'border-primary-600 bg-primary-600 text-white shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-300'}`}>
-              {libelle}
-            </button>
-          ))}
-        </div>
+        {chips}
 
-        <FiltresDepliables actifs={nbFiltres}>
-          <form onSubmit={e => { e.preventDefault(); setPage(1); load(); }}>
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_9rem_9rem_auto] gap-3 items-end">
-              <div>
-                <label className="label">Compte</label>
-                <PickerField value={filterCompte} onChange={setFilterCompte} options={compteOptions} placeholder="Tous les comptes" title="Sélectionner un compte" searchPlaceholder="Compte, caisse..." />
-              </div>
-              <div><label className="label">Du</label><input type="date" value={filterDateDebut} onChange={e => setFilterDateDebut(e.target.value)} className="input-field" /></div>
-              <div><label className="label">Au</label><input type="date" value={filterDateFin} onChange={e => setFilterDateFin(e.target.value)} className="input-field" /></div>
-              <button type="submit" className="btn-primary w-full sm:w-auto">Afficher</button>
-            </div>
-          </form>
-        </FiltresDepliables>
+        {/* Téléphone : filtres repliables ; ordinateur : filtres toujours visibles */}
+        <div className="lg:hidden"><FiltresDepliables actifs={nbFiltres}>{formulaireFiltres}</FiltresDepliables></div>
+        <div className="hidden lg:block card !py-2.5 [&_.label]:mb-0.5 [&_.label]:text-xs">{formulaireFiltres}</div>
 
         {/* Ordinateur : tableau */}
         <div className="hidden lg:block">
@@ -167,6 +211,8 @@ export default function TransactionsPage() {
             onClicLigne={setDetail}
             chargement={loading}
             nomExport="transactions"
+            dense
+            lignePied={lignePied}
             pied={<TablePagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={changePageSize} />}
             vide={vide}
           />

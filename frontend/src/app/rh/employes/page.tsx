@@ -151,11 +151,11 @@ export default function EmployesPage() {
               <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form onSubmit={handleSave} className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Matricule *</label><input type="text" value={form.matricule} onChange={e => setForm({ ...form, matricule: e.target.value.toUpperCase() })} className="input-field" disabled={!!editing} required /></div>
                 <div><label className="label">Poste *</label><input type="text" value={form.poste} onChange={e => setForm({ ...form, poste: e.target.value })} className="input-field" required /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Prénom *</label><input type="text" value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} className="input-field" required /></div>
                 <div><label className="label">Nom *</label><input type="text" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="input-field" required /></div>
               </div>
@@ -177,11 +177,11 @@ export default function EmployesPage() {
                 <div><label className="label">Nombre d&apos;enfants</label><input type="number" min="0" value={form.nombreEnfants} onChange={e => setForm({ ...form, nombreEnfants: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Salaire de base (XOF) *</label><input type="number" min="0" value={form.salaireBase} onChange={e => setForm({ ...form, salaireBase: e.target.value })} className="input-field" required /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Téléphone</label><input type="text" value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Email</label><input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">N° CNPS</label><input type="text" value={form.numeroCNPS} onChange={e => setForm({ ...form, numeroCNPS: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Compte bancaire</label><input type="text" value={form.compteBancaire} onChange={e => setForm({ ...form, compteBancaire: e.target.value })} className="input-field" /></div>
               </div>
