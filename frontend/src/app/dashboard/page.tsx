@@ -95,6 +95,11 @@ export default function DashboardHomePage() {
   const alertes = alertesRes?.data?.data ?? null;
   const loading = loadingStats;
 
+  // Années proposées dans le sélecteur : au moins les 5 dernières, et toutes celles qui ont des dossiers.
+  const anneesAvecDonnees = Object.keys(stats?.dossiersParAnnee ?? {}).map(Number).filter(a => Number.isInteger(a) && a >= 2000 && a <= currentYear);
+  const premiereAnnee = Math.min(currentYear - 4, year, ...anneesAvecDonnees);
+  const annees = Array.from({ length: currentYear - premiereAnnee + 1 }, (_, i) => currentYear - i);
+
   const dossiersAnneePrecedente = stats?.dossiersParAnnee?.[String(year - 1)] || 0;
   const dossiersTrendPct = dossiersAnneePrecedente > 0 && stats
     ? Math.round(((stats.totalDossiers - dossiersAnneePrecedente) / dossiersAnneePrecedente) * 100)
@@ -115,7 +120,7 @@ export default function DashboardHomePage() {
       <PageHeader
         titre="Tableau de bord"
         sousTitre="Vue d'ensemble de l'activité du bureau de transit"
-        actions={<PeriodSwitch years={[currentYear - 1, currentYear]} value={year} onChange={setYear} />}
+        actions={<PeriodSwitch value={year} onChange={setYear} anneeCourante={currentYear} annees={annees} />}
       />
       {!loading && !stats && erreurStats ? (
         <div className="card"><ErrorState titre="Impossible de charger le tableau de bord" onRetry={recharger} /></div>
