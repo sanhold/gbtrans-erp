@@ -60,7 +60,7 @@ async function withMontants(dotations: any[]) {
   return dotations.map((d) => {
     const montantUtilise = utiliseParId.get(d.id) || 0;
     const soumise = soumisParId.has(d.id);
-    return { ...d, montantUtilise, montantRestant: Number(d.montant) - montantUtilise, soumise, modifiable: d.statut === 'VALIDE' && !soumise, reversement: reversementParNumero.get(d.numero) || null };
+    return { ...d, montantUtilise, montantRestant: Number(d.montant) - montantUtilise, soumise, modifiable: d.statut !== 'SOLDEE' && d.statut !== 'ANNULEE' && !soumise, reversement: reversementParNumero.get(d.numero) || null };
   });
 }
 
@@ -131,7 +131,7 @@ router.put('/:id', authorize('FINANCE:MODIFIER'), audit('FINANCE', 'MODIFIER'), 
     if (!existing) { ApiResponse.notFound(res); return; }
     if (existing.statut === 'SOLDEE') { ApiResponse.badRequest(res, 'Cette dotation est soldée : elle ne peut plus être modifiée'); return; }
 
-    if (existing.statut !== 'VALIDE') { ApiResponse.badRequest(res, 'Cette dotation est annulée : elle ne peut plus être modifiée'); return; }
+    if (existing.statut === 'ANNULEE') { ApiResponse.badRequest(res, 'Cette dotation est annulée : elle ne peut plus être modifiée'); return; }
     const nbSoumis = await prisma.justificatifDotation.count({ where: { dotationId: req.params.id, statut: { not: 'BROUILLON' } } });
     if (nbSoumis > 0) { ApiResponse.badRequest(res, 'Cette dotation est déjà soumise à la trésorerie : elle ne peut plus être modifiée'); return; }
 

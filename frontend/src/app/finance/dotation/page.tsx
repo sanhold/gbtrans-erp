@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, Montant, Progression, StatutPastille } from '@/components/tables/cellules';
+import { Numero, Discret, Tronque, Tiers, Montant, Progression, StatutPastille } from '@/components/tables/cellules';
 import EmptyState from '@/components/ui/EmptyState';
 import PickerField from '@/components/ui/PickerField';
 import Modal from '@/components/ui/Modal';
@@ -144,7 +144,7 @@ export default function DotationPage() {
   const actionsLigne = (d: any) => (
     <>
       {d.modifiable && <button type="button" onClick={() => openEdit(d)} className={`${bouton} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}>Modifier</button>}
-      {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} className={`${bouton} border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}>Supprimer</button>}
+      {d.modifiable && <button type="button" onClick={() => handleAnnuler(d)} className={`${bouton} border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}>Supprimer</button>}
       {d.reversement && <button type="button" onClick={() => openReversement(d)} className={`${bouton} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`} title="Reste versé : compte et bénéficiaire">Reversement</button>}
       <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="Reçu de dotation (PDF)">Fiche 1</button>
       <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} className={`${bouton} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`} title="État d'utilisation (PDF)">Fiche 2</button>
@@ -155,7 +155,7 @@ export default function DotationPage() {
   const actionsTableau = (d: any) => (
     <>
       {d.modifiable && <button type="button" onClick={() => openEdit(d)} title="Modifier la dotation" aria-label="Modifier la dotation" className={`${iconBtn} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 112.828 2.828L11.828 15.83a2 2 0 01-.89.514L7 17l.657-3.94A2 2 0 018.172 12.2z" /></svg></button>}
-      {d.statut === 'VALIDE' && !d.soumise && <button type="button" onClick={() => handleAnnuler(d)} title="Supprimer la dotation" aria-label="Supprimer la dotation" className={`${iconBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" /></svg></button>}
+      {d.modifiable && <button type="button" onClick={() => handleAnnuler(d)} title="Supprimer la dotation" aria-label="Supprimer la dotation" className={`${iconBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" /></svg></button>}
       {d.reversement && <button type="button" onClick={() => openReversement(d)} title="Reste versé : compte et bénéficiaire" aria-label="Reversement du reste" className={`${iconBtn} border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/15 dark:text-primary-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zm7 3a3 3 0 100 6 3 3 0 000-6z" /></svg></button>}
       <button type="button" onClick={() => handlePrintFiche1(d)} disabled={printing === d.id + '-1'} title="Fiche 1 : reçu de dotation (PDF)" aria-label="Fiche 1, reçu de dotation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
       <button type="button" onClick={() => handlePrintFiche2(d)} disabled={printing === d.id + '-2'} title="Fiche 2 : état d'utilisation (PDF)" aria-label="Fiche 2, état d'utilisation" className={`${iconBtn} border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-surface-600 dark:bg-surface-800 dark:text-gray-200`}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4" /></svg></button>
@@ -163,8 +163,10 @@ export default function DotationPage() {
   );
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'numero', libelle: 'Dotation', rendu: d => <DoubleLigne mono haut={d.numero} bas={`${new Date(d.dateDotation).toLocaleDateString('fr-FR')}${d.motif ? ' · ' + d.motif : ''}`} />, texte: d => d.numero },
+    { cle: 'numero', libelle: 'N° dotation', rendu: d => <Numero>{d.numero}</Numero>, texte: d => d.numero },
+    { cle: 'date', libelle: 'Date', rendu: d => <Discret>{new Date(d.dateDotation).toLocaleDateString('fr-FR')}</Discret>, texte: d => new Date(d.dateDotation).toLocaleDateString('fr-FR') },
     { cle: 'agent', libelle: 'Agent', rendu: d => <Tiers nom={d.agent ? `${d.agent.prenom} ${d.agent.nom}` : null} />, texte: d => (d.agent ? `${d.agent.prenom} ${d.agent.nom}` : '') },
+    { cle: 'motif', libelle: 'Motif', masquerSous: 'xl', videSi: d => !d.motif, rendu: d => <Tronque texte={d.motif} largeur="14rem" />, texte: d => d.motif || '' },
     { cle: 'montant', libelle: 'Montant', align: 'right', rendu: d => <Montant valeur={d.montant} />, texte: d => String(d.montant) },
     { cle: 'utilise', libelle: 'Utilisé', align: 'right', rendu: d => <Montant valeur={d.montantUtilise} ton="negatif" />, texte: d => String(d.montantUtilise) },
     { cle: 'restant', libelle: 'Restant', align: 'right', rendu: d => <Montant valeur={d.montantRestant} ton="positif" />, texte: d => String(d.montantRestant) },

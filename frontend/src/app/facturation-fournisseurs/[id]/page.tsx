@@ -4,6 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
+import PageHeader from '@/components/ui/PageHeader';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeSupprimer } from '@/components/tables/BoutonIcone';
+import { Discret, Numero, Montant, Tronque } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -118,34 +122,41 @@ export default function FactureFournisseurDetailPage() {
     finally { setPaying(false); }
   };
 
+  const colonnesLignes = [
+    { cle: 'des', libelle: 'Désignation', texte: (l: any) => l.designation, rendu: (l: any) => <Tronque texte={l.designation} largeur="28rem" /> },
+    { cle: 'qte', libelle: 'Qté', align: 'right' as const, texte: (l: any) => String(Number(l.quantite)), rendu: (l: any) => <Discret>{Number(l.quantite)}</Discret> },
+    { cle: 'pu', libelle: 'Prix unitaire', align: 'right' as const, texte: (l: any) => String(l.prixUnitaire), rendu: (l: any) => <Montant valeur={l.prixUnitaire} unite="" /> },
+    { cle: 'tva', libelle: 'TVA', align: 'right' as const, masquerSous: 'xl' as const, texte: (l: any) => `${Number(l.tauxTVA)}%`, rendu: (l: any) => <Discret>{Number(l.tauxTVA)}%</Discret> },
+    { cle: 'ht', libelle: 'Montant HT', align: 'right' as const, texte: (l: any) => String(l.montantHT), rendu: (l: any) => <Montant valeur={l.montantHT} unite="" /> },
+    { cle: 'mtva', libelle: 'Montant TVA', align: 'right' as const, masquerSous: 'xl' as const, texte: (l: any) => String(l.montantTVA), rendu: (l: any) => <Montant valeur={l.montantTVA} unite="" /> },
+  ];
+  const colonnesPaiements = [
+    { cle: 'date', libelle: 'Date', texte: (a: any) => new Date(a.paiementFournisseur.datePaiement).toLocaleDateString('fr-FR'), rendu: (a: any) => <Discret>{new Date(a.paiementFournisseur.datePaiement).toLocaleDateString('fr-FR')}</Discret> },
+    { cle: 'num', libelle: 'N° transaction', texte: (a: any) => a.paiementFournisseur.numero, rendu: (a: any) => <Numero>{a.paiementFournisseur.numero}</Numero> },
+    { cle: 'mode', libelle: 'Mode', texte: (a: any) => MODE_PAIEMENT_LABELS[a.paiementFournisseur.modePaiement] || a.paiementFournisseur.modePaiement, rendu: (a: any) => <Discret>{MODE_PAIEMENT_LABELS[a.paiementFournisseur.modePaiement] || a.paiementFournisseur.modePaiement}</Discret> },
+    { cle: 'compte', libelle: 'Compte', masquerSous: 'xl' as const, texte: (a: any) => { const p = a.paiementFournisseur; return p.caisse?.libelle || p.compteBancaire?.libelle || p.compteTiers?.libelle || '—'; }, rendu: (a: any) => { const p = a.paiementFournisseur; return <Tronque texte={p.caisse?.libelle || p.compteBancaire?.libelle || p.compteTiers?.libelle || '—'} largeur="14rem" />; } },
+    { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (a: any) => String(a.montant), rendu: (a: any) => <Montant valeur={a.montant} ton="positif" /> },
+    { cle: 'user', libelle: 'Utilisateur', masquerSous: 'xl' as const, texte: (a: any) => { const c = a.paiementFournisseur.createur; return c ? `${c.nom} ${c.prenom}` : '—'; }, rendu: (a: any) => { const c = a.paiementFournisseur.createur; return <Discret>{c ? `${c.nom} ${c.prenom}` : '—'}</Discret>; } },
+  ];
+
   return (
     <AppLayout>
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="bg-primary-700 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/facturation-fournisseurs')} className="p-2 rounded-lg hover:bg-primary-600 text-white">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            </button>
-            <div>
-              <h1 className="text-lg font-bold text-white">Facture Fournisseur</h1>
-              <p className="text-primary-100 text-xs">{facture.numero} — {facture.statut}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {isBrouillon && (
-              <button onClick={handleValider} disabled={validating} className="px-4 py-2 bg-white text-primary-700 rounded-lg font-semibold text-sm hover:bg-primary-50 disabled:opacity-50 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                {validating ? 'Validation...' : 'Valider'}
-              </button>
-            )}
-            {facture.statut !== 'ANNULEE' && facture.statut !== 'PAYEE' && Number(facture.resteAPayer) > 0 && (
-              <button onClick={openPaiementModal} className="px-4 py-2 bg-white text-primary-700 rounded-lg font-semibold text-sm hover:bg-primary-50">
-                Enregistrer un paiement
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre={`Facture ${facture.numero}`}
+          sousTitre={`${(facture.statut || '').replace(/_/g, ' ')} — ${facture.fournisseur?.raisonSociale || ''}`}
+          actions={
+            <>
+              <button onClick={() => router.push('/facturation-fournisseurs')} className="btn-secondary">← Retour</button>
+              {isBrouillon && (
+                <button onClick={handleValider} disabled={validating} className="btn-primary disabled:opacity-50">{validating ? 'Validation...' : 'Valider'}</button>
+              )}
+              {facture.statut !== 'ANNULEE' && facture.statut !== 'PAYEE' && Number(facture.resteAPayer) > 0 && (
+                <button onClick={openPaiementModal} className="btn-primary">Enregistrer un paiement</button>
+              )}
+            </>
+          }
+        />
 
         {/* Infos */}
         <div className="card grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -165,34 +176,14 @@ export default function FactureFournisseurDetailPage() {
               <button onClick={() => setShowLigne(true)} className="btn-secondary text-xs">+ Ajouter une ligne</button>
             )}
           </div>
-          <div className="table-container">
-            <table className="w-full text-sm">
-              <thead><tr>
-                {isBrouillon && <th className="table-header"></th>}
-                <th className="table-header">Désignation</th><th className="table-header text-right">Quantité</th>
-                <th className="table-header text-right">Prix unitaire</th><th className="table-header text-right">Taux TVA</th>
-                <th className="table-header text-right">Montant HT</th><th className="table-header text-right">Montant TVA</th>
-              </tr></thead>
-              <tbody>
-                {lignes.length === 0 ? <tr><td colSpan={isBrouillon ? 7 : 6} className="text-center py-8 text-gray-500">Aucune ligne. {isBrouillon ? 'Ajoutez-en une.' : ''}</td></tr>
-                : lignes.map((l: any) => (
-                  <tr key={l.id} className="table-row">
-                    {isBrouillon && (
-                      <td className="table-cell" data-label="Actions">
-                        <button onClick={() => handleDeleteLigne(l.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
-                      </td>
-                    )}
-                    <td className="table-cell" data-label="Désignation">{l.designation}</td>
-                    <td className="table-cell text-right font-mono" data-label="Quantité">{Number(l.quantite)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Prix unitaire">{fmt(l.prixUnitaire)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Taux TVA">{Number(l.tauxTVA)}%</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant HT">{fmt(l.montantHT)}</td>
-                    <td className="table-cell text-right font-mono" data-label="Montant TVA">{fmt(l.montantTVA)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ListeResponsive
+            colonnes={colonnesLignes}
+            lignes={lignes}
+            cleLigne={(l: any) => l.id}
+            actions={isBrouillon ? (l: any) => <BoutonIcone titre="Supprimer" ton="danger" onClick={() => handleDeleteLigne(l.id)}><IconeSupprimer /></BoutonIcone> : undefined}
+            carte={(l: any) => ({ titre: l.designation, sousTitre: `${Number(l.quantite)} × ${fmt(l.prixUnitaire)} — TVA ${Number(l.tauxTVA)}%`, droite: <Montant valeur={l.montantHT} /> })}
+            vide={<p className="py-6 text-center text-sm text-gray-500">Aucune ligne. {isBrouillon ? 'Ajoutez-en une.' : ''}</p>}
+          />
 
           <div className="flex justify-end mt-4">
             <div className="w-full max-w-xs space-y-1 text-sm">
@@ -211,33 +202,13 @@ export default function FactureFournisseurDetailPage() {
           {(facture.paiements || []).length === 0 ? (
             <p className="text-sm text-gray-500">Aucun paiement enregistré pour cette facture</p>
           ) : (
-            <div className="table-container">
-              <table className="w-full text-sm">
-                <thead><tr>
-                  <th className="table-header">Date</th><th className="table-header">N° Transaction</th>
-                  <th className="table-header">Mode</th><th className="table-header">Compte financier</th>
-                  <th className="table-header text-right">Montant</th><th className="table-header">Utilisateur</th>
-                  <th className="table-header">Observations</th>
-                </tr></thead>
-                <tbody>
-                  {facture.paiements.map((aff: any) => {
-                    const p = aff.paiementFournisseur;
-                    if (!p) return null;
-                    return (
-                      <tr key={aff.id} className="table-row">
-                        <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
-                        <td className="table-cell font-medium text-primary-600" data-label="N° Transaction">{p.numero}</td>
-                        <td className="table-cell" data-label="Mode">{MODE_PAIEMENT_LABELS[p.modePaiement] || p.modePaiement}</td>
-                        <td className="table-cell" data-label="Compte financier">{p.caisse?.libelle || p.compteBancaire?.libelle || p.compteTiers?.libelle || '-'}</td>
-                        <td className="table-cell text-right font-mono" data-label="Montant">{fmt(aff.montant)}</td>
-                        <td className="table-cell" data-label="Utilisateur">{p.createur ? `${p.createur.nom} ${p.createur.prenom}` : '-'}</td>
-                        <td className="table-cell text-xs" data-label="Observations">{p.observations || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ListeResponsive
+              colonnes={colonnesPaiements}
+              lignes={(facture.paiements || []).filter((a: any) => a.paiementFournisseur)}
+              cleLigne={(a: any) => a.id}
+              carte={(a: any) => ({ titre: a.paiementFournisseur.numero, sousTitre: `${new Date(a.paiementFournisseur.datePaiement).toLocaleDateString('fr-FR')} — ${MODE_PAIEMENT_LABELS[a.paiementFournisseur.modePaiement] || a.paiementFournisseur.modePaiement}`, droite: <Montant valeur={a.montant} ton="positif" /> })}
+              vide={<p className="py-4 text-sm text-gray-500">Aucun paiement enregistré</p>}
+            />
           )}
         </div>
       </div>

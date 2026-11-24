@@ -1,9 +1,13 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeModifier, IconeArchiver, IconeValider } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Tiers, Montant, StatutPastille } from '@/components/tables/cellules';
 import { rhApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -89,78 +93,54 @@ export default function EmployesPage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="card !p-3 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Employés</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">{employes.filter(e => e.actif).length} actif(s)</p>
-            </div>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher (nom, matricule, poste)..." className="input-field !py-1.5 text-xs w-56 flex-shrink-0" />
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer flex-shrink-0 whitespace-nowrap">
-              <input type="checkbox" checked={showInactifs} onChange={e => setShowInactifs(e.target.checked)} className="w-3.5 h-3.5 rounded" />
-              Afficher désactivés
-            </label>
-            <div className="flex gap-2 flex-shrink-0 ml-auto">
-              <Link href="/rh/paie" className="btn-secondary !px-3 !py-1.5 text-xs">Paie</Link>
-              <button onClick={openCreate} className="btn-primary !px-3 !py-1.5 text-xs">+ Nouvel Employé</button>
-            </div>
-          </div>
+        <PageHeader
+          titre="Employés"
+          sousTitre={`${employes.filter(e => e.actif).length} actif(s)`}
+          icone="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2 20c0-3 3-5 7-5s7 2 7 5M17 11a3 3 0 100-6M19 15c2 .5 3 2 3 5"
+          actions={
+            <>
+              <Link href="/rh/paie" className="btn-secondary">Paie</Link>
+              <button onClick={openCreate} className="btn-primary">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Nouvel employé
+              </button>
+            </>
+          }
+        />
+
+        <div className="card !p-2.5 sm:!p-3 flex flex-wrap items-center gap-3">
+          <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher (nom, matricule, poste)…" aria-label="Rechercher un employé" className="input-field flex-1 min-w-[14rem]" />
+          <label className="flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300 cursor-pointer whitespace-nowrap">
+            <input type="checkbox" checked={showInactifs} onChange={e => setShowInactifs(e.target.checked)} className="w-4 h-4 rounded" />
+            Afficher les désactivés
+          </label>
         </div>
 
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '17%' }} />
-              <col style={{ width: '19%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '9%' }} />
-                <col style={{ width: '17%' }} />
-              <col style={{ width: '19%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-            </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Matricule</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Nom</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Poste</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Contrat</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Embauche</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-right">Salaire base</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={8} />
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun employé</td></tr>
-              ) : filtered.map(e => (
-                <tr key={e.id} className="table-row">
-                  <td className="table-cell !px-1.5" data-label="Actions">
-                    <div className="flex gap-2 text-[10.5px]">
-                      <button onClick={() => openEdit(e)} className="text-primary-500 hover:underline">Modifier</button>
-                      <button onClick={() => handleToggleStatut(e)} className={e.actif ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline'}>{e.actif ? 'Désactiver' : 'Réactiver'}</button>
-                    </div>
-                  </td>
-                  <td className="table-cell font-mono font-medium !px-1.5 !text-[10.5px] truncate" data-label="Matricule">{e.matricule}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Nom">{e.prenom} {e.nom}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Poste" title={`${e.poste}${e.departement ? ` — ${e.departement}` : ''}`}>{e.poste}{e.departement ? ` — ${e.departement}` : ''}</td>
-                  <td className="table-cell !px-1.5" data-label="Contrat"><span className="badge badge-info !text-[10px] !px-1.5 !py-0 truncate">{TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat}</span></td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Embauche">{new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Salaire de base">{canSeeMontants ? fmt(e.salaireBase) : '•••••••'}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut"><span className={`badge ${e.actif ? 'badge-success' : 'badge-danger'} !text-[10px] !px-1.5 !py-0`}>{e.actif ? 'Actif' : 'Désactivé'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'matricule', libelle: 'Matricule', texte: (e: any) => e.matricule, rendu: (e: any) => <Numero>{e.matricule}</Numero> },
+            { cle: 'nom', libelle: 'Employé', texte: (e: any) => `${e.prenom} ${e.nom}`, rendu: (e: any) => <Tiers nom={`${e.prenom} ${e.nom}`} /> },
+            { cle: 'poste', libelle: 'Poste', texte: (e: any) => e.poste || '', rendu: (e: any) => <Tronque texte={e.poste} largeur="14rem" /> },
+            { cle: 'dept', libelle: 'Département', masquerSous: 'xl' as const, videSi: (e: any) => !e.departement, texte: (e: any) => e.departement || '', rendu: (e: any) => <Tronque texte={e.departement} largeur="12rem" /> },
+            { cle: 'contrat', libelle: 'Contrat', texte: (e: any) => TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat, rendu: (e: any) => <StatutPastille libelle={TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat} ton="info" /> },
+            { cle: 'embauche', libelle: 'Embauche', masquerSous: 'xl' as const, texte: (e: any) => new Date(e.dateEmbauche).toLocaleDateString('fr-FR'), rendu: (e: any) => <Discret>{new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</Discret> },
+            { cle: 'salaire', libelle: 'Salaire de base', align: 'right' as const, texte: (e: any) => String(e.salaireBase ?? ''), rendu: (e: any) => (canSeeMontants ? <Montant valeur={e.salaireBase} /> : '•••••••') },
+            { cle: 'statut', libelle: 'Statut', texte: (e: any) => (e.actif ? 'Actif' : 'Désactivé'), rendu: (e: any) => <StatutPastille libelle={e.actif ? 'Actif' : 'Désactivé'} ton={e.actif ? 'success' : 'danger'} /> },
+          ]}
+          lignes={filtered}
+          cleLigne={(e: any) => e.id}
+          chargement={loading}
+          nomExport="employes"
+          actions={(e: any) => (
+            <>
+              <BoutonIcone titre="Modifier" ton="primaire" onClick={() => openEdit(e)}><IconeModifier /></BoutonIcone>
+              <BoutonIcone titre={e.actif ? 'Désactiver' : 'Réactiver'} ton={e.actif ? 'neutre' : 'primaire'} onClick={() => handleToggleStatut(e)}>{e.actif ? <IconeArchiver /> : <IconeValider />}</BoutonIcone>
+            </>
+          )}
+          onClic={(e: any) => openEdit(e)}
+          carte={(e: any) => ({ titre: `${e.prenom} ${e.nom}`, sousTitre: [e.poste, e.departement].filter(Boolean).join(' — ') || undefined, statut: <StatutPastille libelle={e.actif ? 'Actif' : 'Désactivé'} ton={e.actif ? 'success' : 'danger'} />, droite: canSeeMontants ? <Montant valeur={e.salaireBase} /> : '•••••••', details: `${e.matricule} · ${TYPE_CONTRAT_LABELS[e.typeContrat] || e.typeContrat}` })}
+          vide={<EmptyState titre="Aucun employé" description="Ajoutez votre premier employé avec le bouton en haut à droite." />}
+        />
       </div>
 
       {showModal && (

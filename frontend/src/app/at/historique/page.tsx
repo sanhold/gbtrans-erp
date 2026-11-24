@@ -1,10 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Numero, Discret, Tronque, Montant } from '@/components/tables/cellules';
 import { atApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 
@@ -36,79 +38,46 @@ export default function ATHistoriquePage() {
   const changeLimit = (n: number) => { setLimit(n); setPage(1); };
   const totalPages = Math.ceil(total / limit);
 
+  const numDossier = (at: any) => at.dossiers?.[0] ? (at.dossiers[0].numeroPhysique || at.dossiers[0].numero) : '—';
+  const colonnes = [
+    { cle: 'num', libelle: 'Id. AT', texte: (at: any) => at.numero, rendu: (at: any) => <Numero>{at.numero}</Numero> },
+    { cle: 'dos', libelle: 'N° dossier', texte: numDossier, rendu: (at: any) => at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} onClick={e => e.stopPropagation()} className="font-mono text-[12.5px] font-semibold text-azure hover:underline">{numDossier(at)}</Link> : <Discret>—</Discret> },
+    { cle: 'client', libelle: 'Client', texte: (at: any) => at.client?.raisonSociale || '', rendu: (at: any) => <Tronque texte={at.client?.raisonSociale} largeur="14rem" /> },
+    { cle: 'des', libelle: 'Désignation', masquerSous: 'xl' as const, texte: (at: any) => at.designation || '', rendu: (at: any) => <Tronque texte={at.designation} largeur="16rem" /> },
+    { cle: 'ech', libelle: 'Échéance', texte: (at: any) => fmtDate(at.dateExpiration), rendu: (at: any) => <Discret>{fmtDate(at.dateExpiration)}</Discret> },
+    { cle: 'gar', libelle: 'Garantie', align: 'right' as const, masquerSous: 'xl' as const, texte: (at: any) => String(at.montantCaution ?? ''), rendu: (at: any) => <Montant valeur={at.montantCaution} unite="" /> },
+    { cle: 'apu', libelle: 'Apuré le', texte: (at: any) => fmtDate(at.dateApurement), rendu: (at: any) => <Discret>{fmtDate(at.dateApurement)}</Discret> },
+    { cle: 'mt', libelle: 'Mt apuré', align: 'right' as const, texte: (at: any) => String(at.montantApure ?? ''), rendu: (at: any) => <Montant valeur={at.montantApure} ton="positif" unite="" /> },
+    { cle: 'ref', libelle: 'Réf. apurement', masquerSous: '2xl' as const, texte: (at: any) => at.referenceApurement || '', rendu: (at: any) => <Discret>{at.referenceApurement || '—'}</Discret> },
+  ];
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={handleSearch} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <Link href="/at" className="text-[10px] text-primary-600 hover:underline block">← Admissions Temporaires</Link>
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Historique AT</h1>
-            </div>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-56 flex-shrink-0" placeholder="N° AT, désignation, déclarant..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Afficher</button>
-          </form>
-        </div>
-
-        <div className="table-container">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Id. AT</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Date Créat.</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">N° Dossier</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Client</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Designation</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Declarant</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Échéance</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Garantie</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Apurement</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate text-right">Mt. Apuré</th>
-                <th className="table-header !text-[10px] !px-1.5 truncate">Réf. Apur.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={11} />
-              ) : items.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-500">Aucune AT apurée</td></tr>
-              ) : items.map(at => (
-                <tr key={at.id} className="table-row">
-                  <td className="table-cell font-medium text-primary-600 !px-1.5 !text-[11px] truncate" data-label="Id. AT" title={at.numero}>{at.numero}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Création">{fmtDate(at.dateCreation)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="N° Dossier">
-                    {at.dossiers?.[0] ? <Link href={`/dossiers/${at.dossiers[0].id}`} className="text-primary-600 hover:underline">{at.dossiers[0].numeroPhysique || at.dossiers[0].numero}</Link> : '-'}
-                  </td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Client" title={at.client?.raisonSociale || undefined}>{at.client?.raisonSociale || '-'}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Designation" title={at.designation}>{at.designation}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Declarant" title={at.declarant || undefined}>{at.declarant || '-'}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Échéance">{fmtDate(at.dateExpiration)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate" data-label="Montant Garantie">{fmt(at.montantCaution)}</td>
-                  <td className="table-cell !text-[10.5px] !px-1.5 truncate" data-label="Date Apurement">{fmtDate(at.dateApurement)}</td>
-                  <td className="table-cell text-right font-mono !px-1.5 !text-[10.5px] truncate text-green-600" data-label="Montant Apuré">{fmt(at.montantApure)}</td>
-                  <td className="table-cell font-mono !text-[10.5px] !px-1.5 truncate" data-label="Réf. Apurement" title={at.referenceApurement || undefined}>{at.referenceApurement || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-surface-700">
-            <span className="text-xs text-gray-500">Compteur : {total}</span>
-          </div>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={limit} onPageChange={setPage} onPageSizeChange={changeLimit} />
-        </div>
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Historique AT"
+          sousTitre={`${total} admission(s) temporaire(s) apurée(s)`}
+          actions={<Link href="/at" className="btn-secondary">← Admissions temporaires</Link>}
+        />
+        <form onSubmit={handleSearch} className="card !p-3 flex gap-2">
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="input-field !py-2 text-sm flex-1 min-w-0" placeholder="N° AT, désignation, déclarant..." aria-label="Rechercher" />
+          <button type="submit" className="btn-primary flex-shrink-0">Afficher</button>
+        </form>
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={items}
+          cleLigne={(at: any) => at.id}
+          chargement={loading}
+          nomExport="historique-at"
+          carte={(at: any) => ({
+            titre: at.client?.raisonSociale || at.numero,
+            sousTitre: `${at.numero} — ${at.designation || ''}`,
+            droite: <Montant valeur={at.montantApure} ton="positif" />,
+            details: `Apuré le ${fmtDate(at.dateApurement)}${at.referenceApurement ? ` — réf. ${at.referenceApurement}` : ''}`,
+          })}
+          pagination={{ page, totalPages: Math.max(1, totalPages), total, pageSize: limit, onPageChange: setPage, onPageSizeChange: changeLimit }}
+          vide={<EmptyState titre="Aucune AT apurée" description="Les admissions temporaires apurées apparaîtront ici." />}
+        />
       </div>
     </AppLayout>
   );

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore, useCallback } from 'react';
+import { useEffect, useState, useSyncExternalStore, useCallback, type CSSProperties } from 'react';
+import { useStyleMenu } from '@/lib/styleMenu';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '@/lib/api';
 import { useCachedFetch, TTL } from '@/lib/cache';
 import { getRequiredModule } from '@/lib/permissions';
+import { BASE_AUTO, BASE_FNE, BASE_REEL, ONGLETS_AUTO, ONGLETS_FNE, ONGLETS_REEL, sousMenu } from '@/lib/comptaOnglets';
 
 export interface NavItem {
   name: string;
@@ -19,9 +21,11 @@ export interface NavItem {
   repli?: string;
   /** Pages regroupées sous cette entrée (onglets) : elles activent l'entrée et sont cherchables. */
   sous?: { name: string; href: string }[];
+  /** Affiche les pages `sous` comme sous-menu, dès que l'on est dans cette rubrique. */
+  sousVisible?: boolean;
 }
 
-const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesOuverts';
+const CLE_GROUPES_OUVERTS = 'gbtrans.menu.groupesPlies';
 const EVT_GROUPES = 'gbtrans:menu-groupes';
 function lireGroupesOuverts(): string {
   try { return window.localStorage.getItem(CLE_GROUPES_OUVERTS) || '[]'; } catch { return '[]'; }
@@ -89,16 +93,15 @@ export const navGroups: NavGroup[] = [
       { name: 'Transactions', href: '/transactions', icon: 'M3 17l6-6 4 4 8-8M21 7v5h-5' },
       { name: 'Dotations', href: '/finance/dotation', repli: '/mes-dotations', icon: 'M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6M12 1v22', sous: [{ name: 'Dotations à valider', href: '/finance/justificatifs' }, { name: 'Mes dotations', href: '/mes-dotations' }] },
       { name: 'État Facturation Dossier', href: '/finance/etat-facturation-dossier', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
-      { name: 'Statistique', href: '/statistiques', icon: 'M3 3v18h18M7 11h3v6H7zm5-4h3v10h-3zm5-3h3v13h-3z' },
     ],
   },
   {
     title: 'Comptabilité',
     items: [
       { name: 'Plan comptable', href: '/comptabilite/plan-comptable', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-      { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4' },
+      { name: 'Compta Auto', href: '/comptabilite/compta-auto', icon: 'M13 10V3L4 14h7v7l9-11h-7z', sousVisible: true, sous: sousMenu(BASE_AUTO, ONGLETS_AUTO) },
+      { name: 'Facture FNE Comptabilité', href: '/comptabilite/facture-fne', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', sousVisible: true, sous: sousMenu(BASE_FNE, ONGLETS_FNE) },
+      { name: 'Compta Manuelle', href: '/compta-reel', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4', sousVisible: true, sous: sousMenu(BASE_REEL, ONGLETS_REEL) },
     ],
   },
   {
@@ -119,12 +122,16 @@ interface SidebarProps {
 
 export default function Sidebar({ open = false, onClose = () => {}, collapsed = false }: SidebarProps) {
   const pathname = usePathname();
+  const { style: styleMenu } = useStyleMenu();
   const router = useRouter();
   const { user, logout, hasPermission } = useAuthStore();
   const [badges, setBadges] = useState<{ dossiers?: number; courriers?: number }>({});
-  // Groupes dépliés (mémorisés). Par défaut, tout le menu est plié.
+  // Rubriques à sous-menu (Compta Auto, Compta Manuelle) dépliées : on voit toutes les pages d'un coup d'œil, sans quitter le menu.
+  const [sousOuverts, setSousOuverts] = useState<string[]>([]);
+  const basculerSous = (href: string) => setSousOuverts((l) => (l.includes(href) ? l.filter((h) => h !== href) : [...l, href]));
+  // Groupes pliés (mémorisés). Par défaut, tout le menu est déplié.
   const ouvertsBrut = useSyncExternalStore(abonnerGroupes, lireGroupesOuverts, () => '[]');
-  const ouverts: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
+  const plies: string[] = (() => { try { const v = JSON.parse(ouvertsBrut); return Array.isArray(v) ? v : []; } catch { return []; } })();
   const basculerGroupe = useCallback((titre: string) => {
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
     ecrireGroupesOuverts(actuels.includes(titre) ? actuels.filter((t) => t !== titre) : [...actuels, titre]);
@@ -144,13 +151,18 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
     if (d) setBadges({ dossiers: d.totalDossiers, courriers: d.totalCourriers });
   }, [badgeStats]);
 
-  // Quand on change de page, le groupe qui la contient se déplie (les autres restent pliés).
+  // Quand on change de page, le groupe qui la contient se déplie s'il était plié.
   useEffect(() => {
     const groupe = navGroups.find((g) => g.items.some((i) =>
       pathname === i.href || pathname?.startsWith(i.href + '/') || i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))));
     if (!groupe) return;
     const actuels: string[] = (() => { try { const v = JSON.parse(lireGroupesOuverts()); return Array.isArray(v) ? v : []; } catch { return []; } })();
-    if (!actuels.includes(groupe.title)) ecrireGroupesOuverts([...actuels, groupe.title]);
+    if (actuels.includes(groupe.title)) ecrireGroupesOuverts(actuels.filter((t) => t !== groupe.title));
+  }, [pathname]);
+
+  useEffect(() => {
+    const dedans = navGroups.flatMap((g) => g.items).filter((i) => i.sousVisible && i.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'))).map((i) => i.href);
+    if (dedans.length) setSousOuverts((l) => Array.from(new Set([...l, ...dedans])));
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -160,17 +172,22 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
 
   const linkCls = (active: boolean) => clsx(
     collapsed && 'lg:justify-center lg:px-0 lg:mx-2',
-    'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+    'm-it flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] rounded-lg text-[13.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
     active
-      ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-white font-semibold'
+      ? 'bg-primary-600 dark:bg-primary-500/40 text-white font-semibold'
       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
   );
-  const titleCls = clsx(collapsed && 'lg:hidden', 'px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
-  const Icon = ({ d, active }: { d: string; active: boolean }) => (
-    <svg aria-hidden="true" className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600 dark:text-white' : 'text-gray-400 dark:text-gray-500')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
+  const titleCls = clsx(collapsed && 'lg:hidden', 'm-t px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
+  const Icon = ({ d }: { d: string }) => (
+    <span className="m-ico flex-shrink-0">
+      <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    </span>
   );
+  // Une couleur par entrée de menu (utilisée par le style « Blanc et couleurs »)
+  const PALETTE = ['#1F6FEB', '#0EA5E9', '#F97316', '#16A34A', '#7C3AED', '#64748B'];
+  const teinte = (i: number) => ({ '--c': PALETTE[i % PALETTE.length] } as CSSProperties);
 
   return (
     <>
@@ -182,7 +199,9 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
         />
       )}
       <aside
+        data-menu={styleMenu}
         className={clsx(
+          'menu-lateral',
           collapsed ? 'lg:w-[72px]' : 'lg:w-[250px] xl:w-[260px]',
           'fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] flex-shrink-0 bg-white dark:bg-surface-800 border-r border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-200 flex flex-col overflow-y-auto',
           'transform transition-transform duration-200 ease-out',
@@ -211,7 +230,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
 
           // En mode réduit (icônes seules) il n'y a pas de titres : tout reste visible.
           const pliable = visibleItems.length > 1;
-          const replie = !collapsed && pliable && !ouverts.includes(group.title);
+          const replie = !collapsed && pliable && plies.includes(group.title);
           const idListe = `menu-groupe-${group.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
 
           return (
@@ -234,29 +253,85 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
               <div className={titleCls}>{group.title}</div>
             )}
             <div id={idListe} hidden={replie}>
-            {visibleItems.map((item) => {
+            {visibleItems.map((item, idx) => {
               const moduleItem = getRequiredModule(item.href);
               const cible = item.repli && moduleItem && !hasPermission(`${moduleItem}:LIRE`) ? item.repli : item.href;
               const isActive = isItemActive(cible, item.sous);
               const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={cible}
-                  onClick={onClose}
-                  aria-current={isActive ? 'page' : undefined}
-                  title={collapsed ? item.name : undefined}
-                  className={linkCls(isActive)}
-                >
-                  <Icon d={item.icon} active={isActive} />
+              const dansSous = !!item.sousVisible && !!item.sous?.some((x) => pathname === x.href || pathname?.startsWith(x.href + '/'));
+              const accordeon = !!item.sousVisible && !!item.sous && !collapsed;
+              const ouvert = accordeon && sousOuverts.includes(item.href);
+              const afficherSous = ouvert;
+              const contenuLien = (
+                <>
+                  <Icon d={item.icon} />
                   <span className={clsx('truncate', collapsed && 'lg:hidden')}>{item.name}</span>
+                  {accordeon && (
+                    <svg aria-hidden="true" className={clsx('ml-auto w-4 h-4 flex-shrink-0 transition-transform duration-150', ouvert ? 'rotate-180' : 'rotate-0')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                  )}
                   {!!badge && (
-                    <span className={clsx(collapsed && 'lg:hidden', 'ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
+                    <span className={clsx(collapsed && 'lg:hidden', 'm-badge ml-auto bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-[11px] font-semibold px-2 py-0.5 rounded-full')}>
                       {badge}
                     </span>
                   )}
-                </Link>
+                </>
+              );
+              return (
+                <div key={item.href}>
+                {accordeon ? (
+                  <>
+                    {/* Téléphone : un simple lien. Les pages de la rubrique s'affichent en haut de la page elle-même. */}
+                    <div className="lg:hidden">
+                      <Link href={cible} onClick={onClose} aria-current={isActive ? 'page' : undefined} className={linkCls(isActive)} style={teinte(idx)}>
+                        <Icon d={item.icon} />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    </div>
+                    {/* Ordinateur : la rubrique se déplie dans le menu. */}
+                    <div className="hidden lg:block">
+                      <button
+                        type="button"
+                        onClick={() => basculerSous(item.href)}
+                        aria-expanded={ouvert}
+                        className={clsx(linkCls(false), 'w-[calc(100%-1.5rem)] text-left', dansSous && 'font-semibold')}
+                        style={teinte(idx)}
+                      >
+                        {contenuLien}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <Link
+                    href={cible}
+                    onClick={onClose}
+                    aria-current={isActive ? 'page' : undefined}
+                    title={collapsed ? item.name : undefined}
+                    className={linkCls(isActive)}
+                    style={teinte(idx)}
+                  >
+                    {contenuLien}
+                  </Link>
+                )}
+                {afficherSous && (
+                  <div role="group" aria-label={item.name} className="hidden lg:block my-0.5 space-y-0.5">
+                    {item.sous!.map((x) => {
+                      const actif = pathname === x.href || pathname?.startsWith(x.href + '/');
+                      return (
+                        <Link
+                          key={x.href}
+                          href={x.href}
+                          onClick={onClose}
+                          aria-current={actif ? 'page' : undefined}
+                          className={clsx('m-it flex items-center ml-[38px] mr-3 pl-3 pr-2 min-h-[38px] lg:min-h-[32px] rounded-lg text-[13px] border-l border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500', actif ? 'font-semibold' : 'opacity-90')}
+                        >
+                          <span className="truncate">{x.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>
               );
             })}
             </div>
@@ -266,12 +341,12 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto pb-3 border-t border-gray-200 dark:border-surface-700">
+      <div className="m-foot mt-auto pb-3 border-t border-gray-200 dark:border-surface-700">
         {hasPermission('PARAMETRES:LIRE') && (
           <>
             <div className={titleCls}>Configuration</div>
-            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} title={collapsed ? 'Paramètres' : undefined} className={linkCls(isItemActive('/parametres'))}>
-              <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" active={isItemActive('/parametres')} />
+            <Link href="/parametres" onClick={onClose} aria-current={isItemActive('/parametres') ? 'page' : undefined} title={collapsed ? 'Paramètres' : undefined} className={linkCls(isItemActive('/parametres'))} style={teinte(5)}>
+              <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
               <span className={clsx(collapsed && 'lg:hidden')}>Paramètres</span>
             </Link>
           </>
@@ -279,7 +354,7 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
         <button
           onClick={handleLogout}
           title={collapsed ? 'Déconnexion' : undefined}
-          className={clsx(collapsed && 'lg:justify-center lg:px-0', 'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400')}
+          className={clsx(collapsed && 'lg:justify-center lg:px-0', 'flex items-center gap-3 mx-3 px-3 min-h-[44px] lg:min-h-[38px] w-[calc(100%-1.5rem)] m-out rounded-lg text-left text-[13.5px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400')}
         >
           <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
           <span className={clsx(collapsed && 'lg:hidden')}>Déconnexion</span>

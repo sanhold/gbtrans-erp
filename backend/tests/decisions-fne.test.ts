@@ -55,6 +55,41 @@ describe('File de décision (facture normalisée / comptabilité réelle / corbe
     expect(b.items).toHaveLength(0);
   });
 
+  it('affichage « Wave » : la catégorie de la dépense en titre, le détail dessous, le sens du montant et le filtre par catégorie', async () => {
+    const cie = await prisma.depense.create({
+      data: { societeId: A.societeId, numero: `CIE-${Date.now()}`, categorie: 'CIE', designation: 'Électricité octobre', montant: 48500, modePaiement: 'MOBILE_MONEY', statut: 'VALIDE' },
+    });
+    const sodeci = await prisma.depense.create({
+      data: { societeId: A.societeId, numero: `SOD-${Date.now()}`, categorie: 'SODECI', designation: 'Eau septembre', montant: 12000, modePaiement: 'ESPECES', statut: 'VALIDE' },
+    });
+
+    const tout = await liste(A, 'a-decider');
+    const ligneCie = tout.items.find(i => i.id === cie.id);
+    expect(ligneCie.titre).toBe('CIE');
+    expect(ligneCie.categorie).toBe('CIE');
+    expect(ligneCie.detail).toContain('Électricité octobre');
+    expect(ligneCie.detail).toContain('Mobile money');
+    expect(ligneCie.sens).toBe('SORTIE');
+
+    // une facture client est une entrée, titrée par le nom du client
+    const ligneFacture = tout.items.find(i => i.id === factureValidee.id);
+    expect(ligneFacture.titre).toBe('Client FNE');
+    expect(ligneFacture.sens).toBe('ENTREE');
+
+    // filtre par catégorie + compteurs par catégorie
+    const filtre = await liste(A, 'a-decider', '&type=DEPENSE&categorie=SODECI');
+    expect(filtre.items.map(i => i.id)).toEqual([sodeci.id]);
+    const cats = tout.compteurs.categories as { categorie: string; n: number }[];
+    expect(cats).toEqual(expect.arrayContaining([{ categorie: 'CIE', n: 1 }, { categorie: 'SODECI', n: 1 }]));
+
+    // la catégorie reste visible dans la corbeille
+    await decider(A, { items: [{ source: 'DEPENSE', id: sodeci.id }], decision: 'CORBEILLE', motif: 'Test' });
+    const corb = await liste(A, 'corbeille', '&categorie=SODECI');
+    expect(corb.items).toHaveLength(1);
+    expect(corb.items[0].titre).toBe('SODECI');
+    await api().post(`${BASE}/restaurer`).set(authHeader(A.token)).send({ items: [{ kind: 'DECISION', id: corb.items[0].id }] });
+  });
+
   it('refuse la décision sans la permission COMPTABILITE:DECIDER', async () => {
     const r = await api().post(`${BASE}/decider`).set(authHeader(tokenSansPermission)).send({ items: [{ source: 'DEPENSE', id: depenseId }], decision: 'RECEVABLE' });
     expect(r.status).toBe(403);

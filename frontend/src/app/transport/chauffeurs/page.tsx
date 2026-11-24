@@ -1,9 +1,15 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Tiers, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import BoutonIcone, { IconeModifier, IconeSupprimer } from '@/components/tables/BoutonIcone';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import Modal from '@/components/ui/Modal';
 import { chauffeursApi } from '@/lib/api';
+import { type Colonne } from '@/components/tables/DataTable';
 import toast from 'react-hot-toast';
 
 const STATUT_LABEL: Record<string, string> = { DISPONIBLE: 'Disponible', EN_COURSE: 'En course', EN_CONGE: 'En congé', INACTIF: 'Inactif' };
@@ -62,89 +68,90 @@ export default function ChauffeursPage() {
     catch (err: any) { toast.error(err.response?.data?.message || 'Erreur'); }
   };
 
+  const permis = (c: any) => `${c.numeroPermis || '—'}${c.categoriePermis ? ` (${c.categoriePermis})` : ''}`;
+  const echeance = (d: any) => <span className={dateProche(d) ? 'text-red-600 font-semibold' : ''}>{fmtDate(d)}</span>;
+
+  const colonnes: Colonne<any>[] = [
+    { cle: 'nom', libelle: 'Chauffeur', rendu: c => <Tiers nom={`${c.prenom} ${c.nom}`} />, texte: c => `${c.prenom} ${c.nom}` },
+    { cle: 'tel', libelle: 'Téléphone', rendu: c => c.telephone || '—', texte: c => c.telephone || '' },
+    { cle: 'permis', libelle: 'Permis', rendu: c => permis(c), texte: c => permis(c) },
+    { cle: 'exp', libelle: 'Expiration permis', rendu: c => echeance(c.dateExpirationPermis), texte: c => fmtDate(c.dateExpirationPermis) },
+    { cle: 'statut', libelle: 'Statut', rendu: c => <StatutPastille libelle={STATUT_LABEL[c.statut] || c.statut} ton={tonDepuisBadge(STATUT_BADGE[c.statut])} />, texte: c => STATUT_LABEL[c.statut] || c.statut },
+  ];
+
+  const vide = <EmptyState titre="Aucun chauffeur" description="Ajoutez votre premier chauffeur." action={<button type="button" onClick={ouvrirCreation} className="btn-primary">Nouveau chauffeur</button>} />;
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="card !p-3 overflow-x-auto">
-          <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex flex-nowrap items-center gap-2 min-w-max">
-            <div className="flex-shrink-0 mr-1">
-              <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">Chauffeurs</h1>
-              <p className="text-[10px] text-gray-500 whitespace-nowrap">{chauffeurs.length} chauffeur(s)</p>
-            </div>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field !py-1.5 text-xs w-64 flex-shrink-0" placeholder="Rechercher..." />
-            <button type="submit" className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0">Rechercher</button>
-            <button type="button" onClick={ouvrirCreation} className="btn-primary !px-3 !py-1.5 text-xs flex-shrink-0 ml-auto">
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Nouveau chauffeur
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader
+          titre="Chauffeurs"
+          sousTitre={`${chauffeurs.length} chauffeur(s)`}
+          actions={
+            <button type="button" onClick={ouvrirCreation} className="btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-sm">
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              <span className="sm:hidden">Nouveau</span><span className="hidden sm:inline">Nouveau chauffeur</span>
             </button>
-          </form>
-        </div>
+          }
+        />
 
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr>
-              <th className="table-header">Nom</th>
-              <th className="table-header">Téléphone</th>
-              <th className="table-header">Permis</th>
-              <th className="table-header">Expiration permis</th>
-              <th className="table-header">Statut</th>
-              <th className="table-header">Actions</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={6} />
-              ) : chauffeurs.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucun chauffeur</td></tr>
-              ) : chauffeurs.map(c => (
-                <tr key={c.id} className="table-row">
-                  <td className="table-cell font-medium" data-label="Nom">{c.prenom} {c.nom}</td>
-                  <td className="table-cell text-xs" data-label="Téléphone">{c.telephone || '-'}</td>
-                  <td className="table-cell text-xs" data-label="Permis">{c.numeroPermis || '-'} {c.categoriePermis ? `(${c.categoriePermis})` : ''}</td>
-                  <td className={`table-cell text-xs ${dateProche(c.dateExpirationPermis) ? 'text-red-600 font-semibold' : ''}`} data-label="Expiration permis">{fmtDate(c.dateExpirationPermis)}</td>
-                  <td className="table-cell" data-label="Statut"><span className={`badge ${STATUT_BADGE[c.statut]} !text-[10px]`}>{STATUT_LABEL[c.statut]}</span></td>
-                  <td className="table-cell" data-label="Actions">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => ouvrirEdition(c)} className="text-xs text-primary-600 hover:underline">Modifier</button>
-                      <button onClick={() => supprimer(c.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <form onSubmit={(e) => { e.preventDefault(); load(); }} className="card !p-3 sm:!p-4">
+          <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-end">
+            <div><label className="label">Recherche</label><input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input-field" placeholder="Nom, téléphone, permis..." /></div>
+            <button type="submit" className="btn-primary">Rechercher</button>
+          </div>
+        </form>
+
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={chauffeurs}
+          cleLigne={(c) => c.id}
+          chargement={loading}
+          nomExport="chauffeurs"
+          vide={vide}
+          carte={(c) => ({
+            titre: `${c.prenom} ${c.nom}`,
+            sousTitre: c.telephone || '—',
+            statut: <StatutPastille libelle={STATUT_LABEL[c.statut] || c.statut} ton={tonDepuisBadge(STATUT_BADGE[c.statut])} />,
+            details: <>Permis {permis(c)} · expire {echeance(c.dateExpirationPermis)}</>,
+          })}
+          actions={(c) => (
+            <>
+              <BoutonIcone titre="Modifier" ton="primaire" onClick={() => ouvrirEdition(c)}><IconeModifier /></BoutonIcone>
+              <BoutonIcone titre="Supprimer" ton="danger" onClick={() => supprimer(c.id)}><IconeSupprimer /></BoutonIcone>
+            </>
+          )}
+        />
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in p-4">
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-surface-700">
-              <h2 className="text-lg font-bold">{editingId ? 'Modifier le chauffeur' : 'Nouveau chauffeur'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingId ? 'Modifier le chauffeur' : 'Nouveau chauffeur'}
+        footer={
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" form="form-chauffeur" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editingId ? 'Modifier' : 'Créer'}</button>
+          </>
+        }
+      >
+        <form id="form-chauffeur" onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className="label">Prénom *</label><input type="text" value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} className="input-field" required /></div>
                 <div><label className="label">Nom *</label><input type="text" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="input-field" required /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className="label">Téléphone</label><input type="text" value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Email</label><input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className="label">N° permis</label><input type="text" value={form.numeroPermis} onChange={e => setForm({ ...form, numeroPermis: e.target.value })} className="input-field" /></div>
                 <div><label className="label">Catégorie permis</label><input type="text" value={form.categoriePermis} onChange={e => setForm({ ...form, categoriePermis: e.target.value })} className="input-field" placeholder="ex: C, D..." /></div>
               </div>
               <div><label className="label">Expiration permis</label><input type="date" value={form.dateExpirationPermis} onChange={e => setForm({ ...form, dateExpirationPermis: e.target.value })} className="input-field" /></div>
               <div><label className="label">Observations</label><textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="input-field" rows={2} /></div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-surface-700">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Annuler</button>
-                <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Enregistrement...' : editingId ? 'Modifier' : 'Créer'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </form>
+      </Modal>
     </AppLayout>
   );
 }

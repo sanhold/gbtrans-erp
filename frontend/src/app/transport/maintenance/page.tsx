@@ -1,8 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeSupprimer } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { maintenanceApi, vehiculesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -87,13 +91,12 @@ export default function MaintenancePage() {
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Maintenance véhicules</h1>
-            <p className="text-sm text-gray-500">{maintenances.length} intervention(s) enregistrée(s)</p>
-          </div>
-          <button onClick={ouvrirCreation} className="btn-primary text-sm">+ Nouvelle intervention</button>
-        </div>
+        <PageHeader
+          titre="Maintenance véhicules"
+          sousTitre={`${maintenances.length} intervention(s) enregistrée(s)`}
+          icone="M14.7 6.3a4 4 0 00-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 005.4-5.4l-2.5 2.5-2.1-.6-.6-2.1z"
+          actions={<button onClick={ouvrirCreation} className="btn-primary"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>Nouvelle intervention</button>}
+        />
 
         {!loading && nbAlertes > 0 && (
           <div className="card !border-l-4 !border-amber-500 bg-amber-50/60 dark:bg-amber-900/10">
@@ -133,38 +136,23 @@ export default function MaintenancePage() {
           </div>
         )}
 
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr>
-              <th className="table-header">Véhicule</th>
-              <th className="table-header">Type</th>
-              <th className="table-header">Date</th>
-              <th className="table-header">Coût</th>
-              <th className="table-header">Prestataire</th>
-              <th className="table-header">Prochain rappel</th>
-              <th className="table-header">Actions</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={7} />
-              ) : maintenances.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-500">Aucune maintenance enregistrée</td></tr>
-              ) : maintenances.map(m => (
-                <tr key={m.id} className="table-row">
-                  <td className="table-cell font-mono font-medium" data-label="Véhicule">{m.vehicule?.immatriculation}</td>
-                  <td className="table-cell" data-label="Type"><span className="badge badge-info !text-[10px]">{TYPE_LABEL[m.type]}</span></td>
-                  <td className="table-cell text-xs" data-label="Date">{fmtDate(m.date)}</td>
-                  <td className="table-cell text-xs font-mono" data-label="Coût">{fmtMontant(m.cout)}</td>
-                  <td className="table-cell text-xs" data-label="Prestataire">{m.prestataire || '-'}</td>
-                  <td className="table-cell text-xs" data-label="Prochain rappel">{fmtDate(m.prochaineDateRappel)}</td>
-                  <td className="table-cell" data-label="Actions">
-                    <button onClick={() => supprimer(m.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'vehicule', libelle: 'Véhicule', texte: (m: any) => m.vehicule?.immatriculation || '', rendu: (m: any) => <Numero>{m.vehicule?.immatriculation}</Numero> },
+            { cle: 'type', libelle: 'Type', texte: (m: any) => TYPE_LABEL[m.type] || m.type, rendu: (m: any) => <StatutPastille libelle={TYPE_LABEL[m.type] || m.type} ton="info" /> },
+            { cle: 'date', libelle: 'Date', texte: (m: any) => fmtDate(m.date), rendu: (m: any) => <Discret>{fmtDate(m.date)}</Discret> },
+            { cle: 'cout', libelle: 'Coût', align: 'right' as const, texte: (m: any) => String(m.cout ?? ''), rendu: (m: any) => <Montant valeur={m.cout} unite="FCFA" /> },
+            { cle: 'prestataire', libelle: 'Prestataire', masquerSous: 'xl' as const, texte: (m: any) => m.prestataire || '', rendu: (m: any) => <Tronque texte={m.prestataire} largeur="14rem" /> },
+            { cle: 'rappel', libelle: 'Prochain rappel', masquerSous: 'xl' as const, texte: (m: any) => fmtDate(m.prochaineDateRappel), rendu: (m: any) => <Discret>{fmtDate(m.prochaineDateRappel)}</Discret> },
+          ]}
+          lignes={maintenances}
+          cleLigne={(m: any) => m.id}
+          chargement={loading}
+          nomExport="maintenance-vehicules"
+          actions={(m: any) => <BoutonIcone titre="Supprimer" ton="danger" onClick={() => supprimer(m.id)}><IconeSupprimer /></BoutonIcone>}
+          carte={(m: any) => ({ titre: m.vehicule?.immatriculation, sousTitre: TYPE_LABEL[m.type] || m.type, droite: <Montant valeur={m.cout} unite="FCFA" />, details: `${fmtDate(m.date)}${m.prestataire ? ' · ' + m.prestataire : ''}` })}
+          vide={<EmptyState titre="Aucune maintenance enregistrée" description="Ajoutez une intervention avec le bouton en haut à droite." />}
+        />
       </div>
 
       {showModal && (

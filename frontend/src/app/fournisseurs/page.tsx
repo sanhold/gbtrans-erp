@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { DoubleLigne, Tiers, StatutPastille } from '@/components/tables/cellules';
+import { Tronque, Tiers, StatutPastille } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
@@ -51,9 +51,11 @@ export default function FournisseursPage() {
   const statut = (f: any): { libelle: string; ton: 'success' | 'gray' } => f.actif ? { libelle: 'Actif', ton: 'success' } : { libelle: 'Inactif', ton: 'gray' };
 
   const colonnes: Colonne<any>[] = [
-    { cle: 'fournisseur', libelle: 'Fournisseur', rendu: f => <Tiers nom={f.raisonSociale} detail={<span className="font-mono">{f.code}</span>} />, texte: f => f.raisonSociale },
+    { cle: 'fournisseur', libelle: 'Fournisseur', rendu: f => <Tiers nom={f.raisonSociale} />, texte: f => f.raisonSociale },
+    { cle: 'code', libelle: 'Code', rendu: f => <span className="font-mono text-[13px] text-gray-600 dark:text-gray-300">{f.code}</span>, texte: f => f.code || '' },
     { cle: 'type', libelle: 'Type', rendu: f => <StatutPastille libelle={typeFournisseurLabels[f.type] || f.type} ton="info" />, texte: f => typeFournisseurLabels[f.type] || f.type },
-    { cle: 'contact', libelle: 'Contact', rendu: f => <DoubleLigne haut={f.telephone || '—'} bas={f.email} />, texte: f => `${f.telephone || ''} ${f.email || ''}`.trim() },
+    { cle: 'tel', libelle: 'Téléphone', rendu: f => <span className="tabular-nums">{f.telephone || '—'}</span>, texte: f => f.telephone || '' },
+    { cle: 'email', libelle: 'Email', masquerSous: 'xl', videSi: f => !f.email, rendu: f => <Tronque texte={f.email} largeur="14rem" />, texte: f => f.email || '' },
     { cle: 'ville', libelle: 'Ville', masquerSous: 'xl', rendu: f => f.ville || '—', texte: f => f.ville || '' },
     { cle: 'statut', libelle: 'Statut', rendu: f => { const st = statut(f); return <StatutPastille libelle={st.libelle} ton={st.ton} />; }, texte: f => statut(f).libelle },
   ];

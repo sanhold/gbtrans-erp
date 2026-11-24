@@ -1,8 +1,12 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { comptabiliteApi } from '@/lib/api';
+import { usePagination } from '@/lib/usePagination';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import BoutonIcone, { IconeModifier, IconeSupprimer } from '@/components/tables/BoutonIcone';
+import { Numero, Discret, Tronque, StatutPastille } from '@/components/tables/cellules';
 import ImporterSyscohadaModal from './ImporterSyscohadaModal';
 import toast from 'react-hot-toast';
 
@@ -45,6 +49,7 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => comptes.filter(c => !classe || String(c.classe) === classe), [comptes, classe]);
+  const { paged, page, setPage, pageSize, setPageSize, total, totalPages } = usePagination(filtered);
 
   const openCreate = () => { setEditing(null); setForm(compteVide()); setShowForm(true); };
   const openEdit = (c: any) => {
@@ -111,9 +116,9 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
       <div className="space-y-2">
         {/* Une seule ligne : classes à gauche, compteur et actions à droite (explications dans la bulle « i » de la page). */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <div className="flex flex-wrap gap-1 min-w-0 flex-1">
+          <div className="-mx-1 flex w-full min-w-0 gap-1 overflow-x-auto lg:w-auto lg:flex-1 px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {CLASSES.map(c => (
-              <button key={c.id} onClick={() => setClasse(c.id)} className={`px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${classe === c.id ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600'}`}>
+              <button key={c.id} onClick={() => setClasse(c.id)} className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${classe === c.id ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600'}`}>
                 {c.label}
               </button>
             ))}
@@ -127,80 +132,36 @@ export default function PlanComptablePanel({ lectureSeule = false }: { lectureSe
           )}
         </div>
 
-        <div className="table-container table-compact">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '9%' }} />
-              </colgroup>
-            <thead><tr>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Actions</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Numéro</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Libellé</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate text-center">Classe</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Type</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Nature</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Sens</th>
-              <th className="table-header !text-[10px] !px-1.5 truncate">Statut</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={8} />
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-500">Aucun compte</td></tr>
-              ) : filtered.map(c => (
-                <tr key={c.id} className="table-row">
-                  <td className="table-cell !px-1" data-label="Actions">
-                    {!lectureSeule && (
-                      <div className="flex gap-0.5">
-                        <button onClick={() => handleToggleVerrou(c)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700" title={c.verrouille ? 'Déverrouiller' : 'Verrouiller'}>
-                          {c.verrouille ? (
-                            <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0M6 11h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1z" /></svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6-6h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1zm2-4a4 4 0 118 0v4H8V7z" /></svg>
-                          )}
-                        </button>
-                        <button onClick={() => openEdit(c)} disabled={c.verrouille} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 disabled:opacity-30" title="Modifier">
-                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        </button>
-                        <button onClick={() => handleDelete(c)} disabled={c.verrouille} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-surface-700 disabled:opacity-30" title="Supprimer">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td className="table-cell font-mono font-semibold !px-1.5 !text-[11px]" data-label="Numéro">
-                    <span className="inline-flex items-center gap-1">
-                      {c.verrouille && <svg className="w-3 h-3 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 116 0v3H9z" /></svg>}
-                      {c.numero}
-                    </span>
-                  </td>
-                  <td className="table-cell !px-1.5 !text-[11px] truncate" data-label="Libellé" title={c.libelle}>{c.libelle}</td>
-                  <td className="table-cell !px-1.5 !text-[11px] text-center" data-label="Classe">{c.classe}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Type">{c.type}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Nature">{c.nature}</td>
-                  <td className="table-cell !px-1.5 !text-[10.5px] truncate" data-label="Sens">{c.sens}</td>
-                  <td className="table-cell !px-1.5" data-label="Statut">
-                    {lectureSeule
-                      ? <span className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</span>
-                      : <button onClick={() => handleToggleActif(c)} className={`badge ${c.actif ? 'badge-success' : 'badge-gray'} !text-[10px]`}>{c.actif ? 'Actif' : 'Inactif'}</button>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'num', libelle: 'Numéro', texte: (c: any) => c.numero, rendu: (c: any) => <span className="inline-flex items-center gap-1"><Numero>{c.numero}</Numero>{c.verrouille && <svg className="h-3 w-3 flex-shrink-0 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 016 0v3H9z" /></svg>}</span> },
+            { cle: 'lib', libelle: 'Libellé', texte: (c: any) => c.libelle, rendu: (c: any) => <Tronque texte={c.libelle} largeur="26rem" /> },
+            { cle: 'classe', libelle: 'Classe', align: 'right' as const, texte: (c: any) => String(c.classe), rendu: (c: any) => <Discret>{c.classe}</Discret> },
+            { cle: 'type', libelle: 'Type', masquerSous: 'xl' as const, texte: (c: any) => c.type, rendu: (c: any) => <Discret>{c.type}</Discret> },
+            { cle: 'nature', libelle: 'Nature', masquerSous: 'xl' as const, texte: (c: any) => c.nature, rendu: (c: any) => <Discret>{c.nature}</Discret> },
+            { cle: 'sens', libelle: 'Sens', masquerSous: '2xl' as const, texte: (c: any) => c.sens, rendu: (c: any) => <Discret>{c.sens}</Discret> },
+            { cle: 'st', libelle: 'Statut', texte: (c: any) => (c.actif ? 'Actif' : 'Inactif'), rendu: (c: any) => lectureSeule ? <StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} /> : <button type="button" onClick={e => { e.stopPropagation(); handleToggleActif(c); }} title="Cliquer pour activer ou désactiver"><StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} /></button> },
+          ]}
+          lignes={paged}
+          cleLigne={(c: any) => c.id}
+          chargement={loading}
+          nomExport="plan-comptable"
+          actions={lectureSeule ? undefined : (c: any) => (
+            <>
+              <BoutonIcone titre={c.verrouille ? 'Déverrouiller' : 'Verrouiller'} ton="neutre" onClick={() => handleToggleVerrou(c)}><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d={c.verrouille ? 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' : 'M8 11V7a4 4 0 118 0M6 11h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1z'} /></svg></BoutonIcone>
+              <BoutonIcone titre="Modifier" ton="primaire" disabled={c.verrouille} onClick={() => openEdit(c)}><IconeModifier /></BoutonIcone>
+              <BoutonIcone titre="Supprimer" ton="danger" disabled={c.verrouille} onClick={() => handleDelete(c)}><IconeSupprimer /></BoutonIcone>
+            </>
+          )}
+          carte={(c: any) => ({ titre: <span className="inline-flex items-center gap-1.5"><span className="font-mono">{c.numero}</span>{c.verrouille && <span className="text-amber-500" title="Verrouillé">🔒</span>}</span>, sousTitre: c.libelle, statut: <StatutPastille libelle={c.actif ? 'Actif' : 'Inactif'} ton={c.actif ? 'success' : 'gray'} />, details: `Classe ${c.classe} — ${c.type} — ${c.nature} — ${c.sens}` })}
+          pagination={{ page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize }}
+          vide={<EmptyState titre="Aucun compte" description="Importez le plan SYSCOHADA ou créez un compte." />}
+        />
       </div>
 
       {showForm && !lectureSeule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in" onClick={() => setShowForm(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-elevated w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in" onClick={() => setShowForm(false)}>
+          <div className="bg-white dark:bg-surface-800 rounded-t-2xl sm:rounded-xl shadow-elevated w-full max-w-lg sm:mx-4 max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-surface-700">
               <h3 className="font-bold text-lg">{editing ? 'Modifier le compte' : 'Nouveau compte'}</h3>
               <button onClick={() => setShowForm(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-surface-700"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>

@@ -1,18 +1,18 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
-import PaginationControls from '@/components/tables/PaginationControls';
+import PageHeader from '@/components/ui/PageHeader';
+import KpiCard from '@/components/dashboard/KpiCard';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import EmptyState from '@/components/ui/EmptyState';
+import { Avatar, Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import { useAuthStore } from '@/stores/authStore';
 import ComptesBancairesManager from '@/components/finance/ComptesBancairesManager';
-import { GraphifyChart } from '@/components/charts';
-import MontantsMasques from '@/components/ui/MontantsMasques';
-import type { GraphifyData } from '@/types/graphify';
 
 const MONTANT_MASQUE = '•••••••';
 
@@ -73,16 +73,25 @@ interface AccountCardItem {
 function AccountGrid({ items, canSeeMontants }: { items: AccountCardItem[]; canSeeMontants: boolean }) {
   if (items.length === 0) return <div className="card text-center text-gray-500 py-8">Aucun compte dans cette catégorie</div>;
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {items.map(c => (
-        <div key={c.id} onClick={c.onClick} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
-          <span className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
-          <AccountIcon kind={c.kind} />
-          <h3 className="font-semibold text-gray-900 dark:text-white mt-3 truncate">{c.libelle}</h3>
-          <p className="text-xs text-gray-500 truncate">{c.sub}</p>
-          <p className={`text-xl font-bold mt-3 ${(c.kind === 'Client' || c.kind === 'Fournisseur') ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE} <span className="text-xs font-normal text-gray-500">{c.devise}</span></p>
-        </div>
-      ))}
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+      {items.map(c => {
+        const tiers = c.kind === 'Client' || c.kind === 'Fournisseur';
+        return (
+          <button key={c.id} type="button" onClick={c.onClick}
+            className="group flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-left shadow-card transition-all hover:border-azure hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-azure dark:border-surface-700 dark:bg-surface-800">
+            {tiers ? <Avatar nom={c.libelle} /> : <AccountIcon kind={c.kind} />}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-semibold text-gray-900 dark:text-white" title={c.libelle}>{c.libelle}</span>
+              <span className="block truncate text-[12px] text-gray-500">{c.sub}</span>
+            </span>
+            <span className="flex-shrink-0 text-right">
+              <span className={`block text-[15px] font-bold tabular-nums leading-tight ${tiers ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{canSeeMontants ? fmt(c.solde) : MONTANT_MASQUE}</span>
+              <span className="block text-[11px] text-gray-400">{c.devise}</span>
+            </span>
+            <svg aria-hidden="true" className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-azure" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -154,7 +163,7 @@ export default function ComptesPage() {
       <AppLayout>
         <div className="space-y-6">
           <div>
-            <button onClick={() => setSelectedType(null)} className="text-sm text-primary-600 hover:underline mb-2">← Tous les types de compte</button>
+            <button onClick={() => setSelectedType(null)} className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-[13px] font-medium text-primary-600 shadow-sm transition-colors hover:border-azure focus:outline-none focus-visible:ring-2 focus-visible:ring-azure dark:border-surface-600 dark:bg-surface-800 dark:text-primary-300">← Tous les types de compte</button>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{TYPE_LABELS[selectedType]}</h1>
             <p className="text-sm text-gray-500">{selectedType === 'BANQUE' ? 'Gestion des comptes bancaires. Cliquez sur un compte pour voir son historique.' : 'Sélectionnez un compte pour voir ses transactions.'}</p>
           </div>
@@ -174,44 +183,33 @@ export default function ComptesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comptes</h1><p className="text-sm text-gray-500">Vue consolidée de la trésorerie : comptes de caisse et banque, plus les comptes tiers (clients à recevoir, fournisseurs à payer). Ouvrez un type de compte pour voir ses comptes.</p></div>
+        <PageHeader titre="Comptes" sousTitre="Vue consolidée de la trésorerie : caisses, banques et comptes tiers. Ouvrez un type de compte pour voir ses comptes." sousTitreMasqueMobile />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Trésorerie disponible</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(tresorerie)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">{caissesItems.length + banquesItems.length} comptes</p></div>
-          <Link href="/finance/creances-clients" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Créances clients</p><p className="text-lg font-bold text-green-600">{canSeeMontants ? `${fmt(totalCreances)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à recevoir</p></Link>
-          <Link href="/finance/dettes-fournisseurs" className="stat-card !p-4 block cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all"><p className="text-[10px] text-gray-500 uppercase">Dettes fournisseurs</p><p className="text-lg font-bold text-amber-600">{canSeeMontants ? `${fmt(totalDettes)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">à payer</p></Link>
-          <div className="stat-card !p-4"><p className="text-[10px] text-gray-500 uppercase">Position nette</p><p className={`text-lg font-bold ${positionNette >= 0 ? 'text-primary-600' : 'text-red-600'}`}>{canSeeMontants ? `${fmt(positionNette)} F` : MONTANT_MASQUE}</p><p className="text-xs text-gray-400 mt-0.5">dispo + créances − dettes</p></div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <KpiCard label="Trésorerie disponible" value={canSeeMontants ? fmt(tresorerie) : MONTANT_MASQUE} unit="F" icon="M3 7h16a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 13h3" iconClass="text-blue-600" context={`${caissesItems.length + banquesItems.length} comptes`} />
+          <Link href="/finance/creances-clients" className="block min-w-0 hover:opacity-90 transition-opacity"><KpiCard label="Créances clients" value={canSeeMontants ? fmt(totalCreances) : MONTANT_MASQUE} unit="F" icon="M7 17l10-10M7 7h10v10" iconClass="text-green-600" context="à recevoir" /></Link>
+          <Link href="/finance/dettes-fournisseurs" className="block min-w-0 hover:opacity-90 transition-opacity"><KpiCard label="Dettes fournisseurs" value={canSeeMontants ? fmt(totalDettes) : MONTANT_MASQUE} unit="F" icon="M17 7L7 17M17 17H7V7" iconClass="text-orange-500" context="à payer" /></Link>
+          <KpiCard label="Position nette" value={canSeeMontants ? fmt(positionNette) : MONTANT_MASQUE} unit="F" icon="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6" iconClass={positionNette >= 0 ? 'text-primary-600' : 'text-red-600'} context="dispo + créances − dettes" />
         </div>
 
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Types de compte</h3>
           {loading ? <div className="card text-center text-gray-500 py-8">Chargement...</div> : (
             <>
-              {typeTiles.some(t => t.total !== 0) && (
-                <div className="card !p-4 mb-4">
-                  {canSeeMontants ? (
-                    <GraphifyChart
-                      type="bar"
-                      data={{
-                        labels: typeTiles.map(t => TYPE_LABELS[t.type]),
-                        series: [{ label: 'Solde', data: typeTiles.map(t => t.total), color: '#345c80' }],
-                      } as GraphifyData}
-                      config={{ height: 160, yAxisFormatter: (v) => fmt(v) }}
-                    />
-                  ) : (
-                    <MontantsMasques height={160} label="Soldes masqués" />
-                  )}
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
               {typeTiles.map(t => (
-                <div key={t.type} onClick={() => setSelectedType(t.type)} className="card relative cursor-pointer hover:shadow-elevated hover:border-primary-300 transition-all">
-                  <span className="absolute top-4 right-4 text-gray-300 dark:text-gray-600">→</span>
-                  <AccountIcon kind={TYPE_ICON[t.type]} />
-                  <h3 className="font-semibold text-gray-900 dark:text-white mt-3">{TYPE_LABELS[t.type]}</h3>
-                  <p className="text-xs text-gray-500">{t.count} compte{t.count > 1 ? 's' : ''}</p>
-                  <p className="text-xl font-bold text-gray-900 dark:text-white mt-3">{canSeeMontants ? fmt(t.total) : MONTANT_MASQUE} <span className="text-xs font-normal text-gray-500">XOF</span></p>
-                </div>
+                <button key={t.type} type="button" onClick={() => setSelectedType(t.type)}
+                  className="group flex min-w-0 flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-left shadow-card transition-all hover:border-azure hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-azure dark:border-surface-700 dark:bg-surface-800 sm:p-4">
+                  <span className="flex items-center justify-between">
+                    <AccountIcon kind={TYPE_ICON[t.type]} />
+                    <svg aria-hidden="true" className="h-4 w-4 text-gray-300 transition-colors group-hover:text-azure" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14px] font-bold text-gray-900 dark:text-white">{TYPE_LABELS[t.type]}</span>
+                    <span className="block text-[12px] text-gray-500">{t.count} compte{t.count > 1 ? 's' : ''}</span>
+                  </span>
+                  <span className="block truncate text-[17px] font-extrabold tabular-nums text-primary-600 dark:text-white sm:text-[19px]">{canSeeMontants ? fmt(t.total) : MONTANT_MASQUE} <span className="text-[11px] font-medium text-gray-400">XOF</span></span>
+                </button>
               ))}
               </div>
             </>
@@ -253,40 +251,32 @@ function CompteDetailView({ compte, comptesActifs, onBack }: { compte: { type: '
   return (
     <div className="space-y-4">
       <div>
-        <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← {TYPE_LABELS[compte.type]}</button>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{c.kind === 'Banque' ? `${c.libelle} (${c.banque})` : c.libelle}</h2>
+        <button onClick={onBack} className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-[13px] font-medium text-primary-600 shadow-sm transition-colors hover:border-azure focus:outline-none focus-visible:ring-2 focus-visible:ring-azure dark:border-surface-600 dark:bg-surface-800 dark:text-primary-300">← {TYPE_LABELS[compte.type]}</button>
+        <h2 className="font-display text-[22px] font-extrabold leading-tight tracking-tight text-primary-600 dark:text-white">{c.kind === 'Banque' ? `${c.libelle} (${c.banque})` : c.libelle}</h2>
         <p className="text-sm text-gray-500">{c.kind} · Solde courant : <span className="font-bold text-gray-900 dark:text-white">{canSeeMontants ? `${fmt(c.solde)} ${c.devise}` : MONTANT_MASQUE}</span></p>
       </div>
 
-      <div className="card">
-        <div className="flex items-end justify-between flex-wrap gap-3 p-4 border-b border-gray-200 dark:border-surface-700">
-          <h3 className="text-sm font-semibold">Transactions du compte</h3>
-          <div className="flex items-end flex-wrap gap-3">
-            <div><label className="label !mb-1">Du</label><input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !w-auto" /></div>
-            <div><label className="label !mb-1">Au</label><input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !w-auto" /></div>
-            <button onClick={load} className="btn-primary">Afficher</button>
-          </div>
-        </div>
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Date</th><th className="table-header">Sens</th><th className="table-header">Origine</th><th className="table-header">Réf.</th><th className="table-header text-right">Montant</th></tr></thead>
-            <tbody>
-              {loading ? <SkeletonRows cols={5} />
-              : rows.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-gray-500">Aucune transaction sur cette période</td></tr>
-              : paged.map(op => (
-                <tr key={op.id} className="table-row">
-                  <td className="table-cell text-xs" data-label="Date">{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell" data-label="Sens">{op.sens === 'ENTREE' ? <span className="text-green-600 font-medium">↘ Entrée</span> : <span className="text-red-600 font-medium">↗ Sortie</span>}</td>
-                  <td className="table-cell" data-label="Origine">{op.libelle}</td>
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="Réf.">{op.reference || op.numero}</td>
-                  <td className={`table-cell text-right font-mono font-semibold ${op.sens === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`} data-label="Montant">{canSeeMontants ? `${op.sens === 'ENTREE' ? '+' : '-'}${fmt(op.montant)}` : MONTANT_MASQUE}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-gray-200 bg-white p-3 dark:border-surface-700 dark:bg-surface-800">
+        <div><label className="label !mb-1" htmlFor="compte-du">Du</label><input id="compte-du" type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="input-field !w-auto" /></div>
+        <div><label className="label !mb-1" htmlFor="compte-au">Au</label><input id="compte-au" type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="input-field !w-auto" /></div>
+        <button onClick={load} className="btn-primary">Afficher</button>
       </div>
+      <ListeResponsive
+        colonnes={[
+          { cle: 'date', libelle: 'Date', texte: (op: any) => new Date(op.dateOperation).toLocaleDateString('fr-FR'), rendu: (op: any) => <Discret>{new Date(op.dateOperation).toLocaleDateString('fr-FR')}</Discret> },
+          { cle: 'sens', libelle: 'Sens', texte: (op: any) => (op.sens === 'ENTREE' ? 'Entrée' : 'Sortie'), rendu: (op: any) => <StatutPastille libelle={op.sens === 'ENTREE' ? 'Entrée' : 'Sortie'} ton={op.sens === 'ENTREE' ? 'success' : 'danger'} /> },
+          { cle: 'origine', libelle: 'Origine', texte: (op: any) => op.libelle || '', rendu: (op: any) => <Tronque texte={op.libelle} largeur="26rem" /> },
+          { cle: 'ref', libelle: 'Réf.', masquerSous: 'xl' as const, texte: (op: any) => op.reference || op.numero || '', rendu: (op: any) => <Numero>{op.reference || op.numero}</Numero> },
+          { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (op: any) => String(op.montant), rendu: (op: any) => (canSeeMontants ? <Montant valeur={op.montant} ton={op.sens === 'ENTREE' ? 'positif' : 'negatif'} /> : MONTANT_MASQUE) },
+        ]}
+        lignes={paged}
+        cleLigne={(op: any) => op.id}
+        chargement={loading}
+        nomExport="transactions-compte"
+        carte={(op: any) => ({ titre: op.libelle || op.numero, sousTitre: new Date(op.dateOperation).toLocaleDateString('fr-FR'), statut: <StatutPastille libelle={op.sens === 'ENTREE' ? 'Entrée' : 'Sortie'} ton={op.sens === 'ENTREE' ? 'success' : 'danger'} />, droite: canSeeMontants ? <Montant valeur={op.montant} ton={op.sens === 'ENTREE' ? 'positif' : 'negatif'} /> : MONTANT_MASQUE, details: op.reference || op.numero })}
+        pagination={total > 10 ? { page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize } : undefined}
+        vide={<EmptyState titre="Aucune transaction sur cette période" description="Élargissez les dates ou retirez le filtre." />}
+      />
     </div>
   );
 }
@@ -311,57 +301,52 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
   const factures = detail.factures || [];
   const paiements = detail.paiements || [];
   const resteAPayer = factures.reduce((s: number, f: any) => s + Number(f.resteAPayer), 0);
+  const facturesDe = (p: any) => (p.affectations || []).map((a: any) => a.facture?.numero || a.factureFournisseur?.numero).filter(Boolean).join(', ');
 
   return (
     <div className="space-y-4">
       <div>
-        <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-2">← {TYPE_LABELS[type]}</button>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{tiers?.raisonSociale}</h2>
+        <button onClick={onBack} className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-[13px] font-medium text-primary-600 shadow-sm transition-colors hover:border-azure focus:outline-none focus-visible:ring-2 focus-visible:ring-azure dark:border-surface-600 dark:bg-surface-800 dark:text-primary-300">← {TYPE_LABELS[type]}</button>
+        <h2 className="font-display text-[22px] font-extrabold leading-tight tracking-tight text-primary-600 dark:text-white">{tiers?.raisonSociale}</h2>
         <p className="text-sm text-gray-500">{type === 'CLIENT' ? 'Client' : 'Fournisseur'} · Solde dû : <span className="font-bold text-red-600">{canSeeMontants ? `${fmt(resteAPayer)} XOF` : MONTANT_MASQUE}</span></p>
       </div>
 
-      <div className="card">
-        <div className="p-4 border-b border-gray-200 dark:border-surface-700"><h3 className="text-sm font-semibold">Transactions (paiements)</h3></div>
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">Date</th><th className="table-header">N° Transaction</th><th className="table-header">Facture(s)</th><th className="table-header text-right">Montant</th></tr></thead>
-            <tbody>
-              {paiements.length === 0 ? <tr><td colSpan={4} className="text-center py-12 text-gray-500">Aucun paiement enregistré</td></tr>
-              : paged.map((p: any) => (
-                <tr key={p.id} className="table-row">
-                  <td className="table-cell text-xs" data-label="Date">{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="N° Transaction">{p.numero}</td>
-                  <td className="table-cell text-xs" data-label="Facture(s)">{(p.affectations || []).map((a: any) => a.facture?.numero || a.factureFournisseur?.numero).join(', ') || '-'}</td>
-                  <td className="table-cell text-right font-mono font-semibold text-green-600" data-label="Montant">{canSeeMontants ? fmt(p.montant) : MONTANT_MASQUE}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationControls page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
-      </div>
+      <section aria-labelledby="titre-paiements" className="space-y-2">
+        <h3 id="titre-paiements" className="text-[15px] font-extrabold text-primary-600 dark:text-white">Transactions (paiements)</h3>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'date', libelle: 'Date', texte: (p: any) => new Date(p.datePaiement).toLocaleDateString('fr-FR'), rendu: (p: any) => <Discret>{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</Discret> },
+            { cle: 'num', libelle: 'N° transaction', texte: (p: any) => p.numero, rendu: (p: any) => <Numero>{p.numero}</Numero> },
+            { cle: 'fact', libelle: 'Facture(s)', masquerSous: 'xl' as const, texte: (p: any) => facturesDe(p), rendu: (p: any) => <span className="font-mono text-[13px]">{facturesDe(p) || '—'}</span> },
+            { cle: 'montant', libelle: 'Montant', align: 'right' as const, texte: (p: any) => String(p.montant), rendu: (p: any) => (canSeeMontants ? <Montant valeur={p.montant} ton="positif" /> : MONTANT_MASQUE) },
+          ]}
+          lignes={paged}
+          cleLigne={(p: any) => p.id}
+          nomExport="paiements-compte"
+          carte={(p: any) => ({ titre: p.numero, sousTitre: new Date(p.datePaiement).toLocaleDateString('fr-FR'), droite: canSeeMontants ? <Montant valeur={p.montant} ton="positif" /> : MONTANT_MASQUE, details: facturesDe(p) || undefined })}
+          pagination={total > 10 ? { page, totalPages, total, pageSize, onPageChange: setPage, onPageSizeChange: setPageSize } : undefined}
+          vide={<EmptyState titre="Aucun paiement enregistré" description="Les paiements apparaissent ici dès qu'ils sont saisis." />}
+        />
+      </section>
 
-      <div className="card">
-        <div className="p-4 border-b border-gray-200 dark:border-surface-700"><h3 className="text-sm font-semibold">Factures</h3></div>
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr><th className="table-header">N°</th><th className="table-header">Date</th><th className="table-header text-right">TTC</th><th className="table-header text-right">Payé</th><th className="table-header text-right">Reste</th><th className="table-header">Statut</th></tr></thead>
-            <tbody>
-              {factures.length === 0 ? <tr><td colSpan={6} className="text-center py-12 text-gray-500">Aucune facture</td></tr>
-              : factures.map((f: any) => (
-                <tr key={f.id} className="table-row">
-                  <td className="table-cell font-mono text-xs text-primary-600" data-label="N°">{f.numero}</td>
-                  <td className="table-cell text-xs" data-label="Date">{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</td>
-                  <td className="table-cell text-right font-mono" data-label="TTC">{canSeeMontants ? fmt(f.montantTTC) : MONTANT_MASQUE}</td>
-                  <td className="table-cell text-right font-mono text-green-600" data-label="Payé">{canSeeMontants ? fmt(f.montantPaye) : MONTANT_MASQUE}</td>
-                  <td className="table-cell text-right font-mono text-red-600" data-label="Reste">{canSeeMontants ? fmt(f.resteAPayer) : MONTANT_MASQUE}</td>
-                  <td className="table-cell" data-label="Statut"><span className="badge badge-info">{f.statut}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <section aria-labelledby="titre-factures" className="space-y-2">
+        <h3 id="titre-factures" className="text-[15px] font-extrabold text-primary-600 dark:text-white">Factures</h3>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'num', libelle: 'N°', texte: (f: any) => f.numero, rendu: (f: any) => <Numero>{f.numero}</Numero> },
+            { cle: 'date', libelle: 'Date', texte: (f: any) => new Date(f.dateFacture).toLocaleDateString('fr-FR'), rendu: (f: any) => <Discret>{new Date(f.dateFacture).toLocaleDateString('fr-FR')}</Discret> },
+            { cle: 'ttc', libelle: 'TTC', align: 'right' as const, texte: (f: any) => String(f.montantTTC), rendu: (f: any) => (canSeeMontants ? <Montant valeur={f.montantTTC} /> : MONTANT_MASQUE) },
+            { cle: 'paye', libelle: 'Payé', align: 'right' as const, masquerSous: 'xl' as const, texte: (f: any) => String(f.montantPaye), rendu: (f: any) => (canSeeMontants ? <Montant valeur={f.montantPaye} ton="positif" /> : MONTANT_MASQUE) },
+            { cle: 'reste', libelle: 'Reste', align: 'right' as const, texte: (f: any) => String(f.resteAPayer), rendu: (f: any) => (canSeeMontants ? <Montant valeur={f.resteAPayer} ton="negatif" /> : MONTANT_MASQUE) },
+            { cle: 'statut', libelle: 'Statut', texte: (f: any) => String(f.statut || '').replace(/_/g, ' '), rendu: (f: any) => <StatutPastille libelle={String(f.statut || '').replace(/_/g, ' ')} ton="info" /> },
+          ]}
+          lignes={factures}
+          cleLigne={(f: any) => f.id}
+          nomExport="factures-compte"
+          carte={(f: any) => ({ titre: f.numero, sousTitre: new Date(f.dateFacture).toLocaleDateString('fr-FR'), droite: canSeeMontants ? <Montant valeur={f.resteAPayer} ton="negatif" /> : MONTANT_MASQUE, details: <span className="flex flex-col gap-1"><StatutPastille libelle={String(f.statut || '').replace(/_/g, ' ')} ton="info" />{canSeeMontants && <span>{`TTC ${fmt(f.montantTTC)} · payé ${fmt(f.montantPaye)}`}</span>}</span> })}
+          vide={<EmptyState titre="Aucune facture" description="Aucune facture n'est rattachée à ce compte." />}
+        />
+      </section>
     </div>
   );
 }

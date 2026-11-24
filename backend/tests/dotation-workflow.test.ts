@@ -299,3 +299,31 @@ describe('Validation d\'une dotation : dépenses cochées, compte débité, reli
     expect(lue.body.data.reversement.beneficiaire).toBe(`${moi.prenom} ${moi.nom}`.trim());
   });
 });
+
+describe('Dotation importée avec un statut non standard (ex. « EN_COURS ») : reste modifiable', () => {
+  let A: ContexteSociete;
+  let agentId: string;
+
+  beforeAll(async () => {
+    A = await creerContexteSociete('Société dotation importée');
+    agentId = (await prisma.utilisateur.findFirstOrThrow({ where: { societeId: A.societeId } })).id;
+  });
+  afterAll(async () => { await prisma.$disconnect(); });
+
+  it('expose modifiable=true et accepte la modification tant que la dotation n\'est ni soldée ni annulée', async () => {
+    const dot = await prisma.dotation.create({ data: { societeId: A.societeId, numero: 'DOT-IMPORT-1', montant: 500000, motif: 'Import', agentId, createurId: agentId, statut: 'EN_COURS' } });
+    const liste = await api().get(`${FIN}/dotations`).set(authHeader(A.token));
+    expect(liste.body.data.find((x: any) => x.id === dot.id).modifiable).toBe(true);
+    const ok = await api().put(`${FIN}/dotations/${dot.id}`).set(authHeader(A.token)).send({ montant: 600000, motif: 'Corrigé' });
+    expect(ok.status).toBe(200);
+    expect(Number(ok.body.data.montant)).toBe(600000);
+  });
+
+  it('refuse toujours la modification d\'une dotation annulée ou soldée', async () => {
+    for (const statut of ['ANNULEE', 'SOLDEE']) {
+      const dot = await prisma.dotation.create({ data: { societeId: A.societeId, numero: `DOT-IMPORT-${statut}`, montant: 100000, agentId, createurId: agentId, statut } });
+      const res = await api().put(`${FIN}/dotations/${dot.id}`).set(authHeader(A.token)).send({ montant: 120000 });
+      expect(res.status).toBe(400);
+    }
+  });
+});

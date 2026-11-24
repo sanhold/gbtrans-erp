@@ -256,25 +256,20 @@ export default function DossierDetailPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.push('/dossiers')} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-700">
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="flex items-start gap-2 sm:gap-4 min-w-0">
+            <button onClick={() => router.push('/dossiers')} aria-label="Retour" className="p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-700 flex-shrink-0">
               <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{dossier.numeroPhysique || dossier.numero}</h1>
-                {dossier.numeroPhysique && (
-                  <span className="badge badge-gray font-mono">N° physique: {dossier.numeroPhysique}</span>
-                )}
-              </div>
-              <p className="text-sm text-gray-500">{dossier.client?.raisonSociale} — {dossier.nature} {dossier.type}</p>
+            <div className="min-w-0">
+              <h1 className="font-display text-xl sm:text-2xl font-bold text-primary-600 dark:text-white">{dossier.numeroPhysique || dossier.numero}</h1>
+              <p className="text-sm text-gray-500 break-words">{dossier.client?.raisonSociale} — {dossier.nature} {dossier.type}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`badge ${statutColors[dossier.statut]} text-sm px-3 py-1`}>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <span className={`badge ${statutColors[dossier.statut]} text-xs sm:text-sm px-3 py-1`}>
               {statutLabels[dossier.statut]}
             </span>
             {isFerme ? (
@@ -336,7 +331,7 @@ export default function DossierDetailPage() {
         </details>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 dark:bg-surface-700 rounded-lg p-1 w-fit">
+        <div role="tablist" className="flex gap-1 overflow-x-auto bg-gray-100 dark:bg-surface-700 rounded-lg p-1 max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {[
             { id: 'infos', label: 'Informations' },
             { id: 'articles', label: `Articles (${dossier.articles?.length || 0})` },
@@ -349,7 +344,7 @@ export default function DossierDetailPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              role="tab" aria-selected={tab === t.id} className={`px-3 sm:px-4 py-2 text-[13px] sm:text-sm font-medium rounded-md transition-all whitespace-nowrap flex-shrink-0 ${
                 tab === t.id ? 'bg-white dark:bg-surface-800 shadow text-primary-600' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -401,10 +396,10 @@ export default function DossierDetailPage() {
         {/* Tab: Articles */}
         {tab === 'articles' && (
           <div className="card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <h3 className="font-semibold">Articles / Marchandises</h3>
               {!isFerme && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 [&_.btn-secondary]:!px-3 [&_.btn-secondary]:!py-1.5 [&_.btn-secondary]:!text-xs sm:[&_.btn-secondary]:!text-sm">
                   <button type="button" onClick={() => setShowAideImport(v => !v)} className="btn-secondary" title="Comment importer des articles ?">Aide import</button>
                   <button type="button" onClick={telechargerModeleImport} className="btn-secondary">Télécharger le modèle</button>
                   <label className={`btn-secondary cursor-pointer ${importingExcel ? 'opacity-50' : ''}`}>
