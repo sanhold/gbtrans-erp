@@ -1,12 +1,14 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AdminShell from '@/components/admin/AdminShell';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Discret, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { platformApi, platformAuth } from '@/lib/platformApi';
 import { exportCSV } from '@/lib/exportCsv';
 import toast from 'react-hot-toast';
@@ -23,6 +25,7 @@ const STATUTS = Object.keys(STATUT_LABEL);
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 
 export default function AdminSocietesPage() {
+  const router = useRouter();
   const [societes, setSocietes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState(false);
@@ -96,7 +99,7 @@ export default function AdminSocietesPage() {
           actions={<button onClick={exporter} disabled={filtrees.length === 0} className="btn-secondary">Exporter en CSV</button>}
         />
 
-        <div className="card !p-3 space-y-3">
+        <div className="card !p-3 space-y-3 mb-3 sm:mb-4">
           <input
             type="search"
             value={search}
@@ -116,67 +119,58 @@ export default function AdminSocietesPage() {
           </div>
         </div>
 
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr>
-              <th className="table-header">Société</th>
-              <th className="table-header">Formule</th>
-              <th className="table-header">Statut</th>
-              <th className="table-header">Prochain paiement</th>
-              <th className="table-header text-center">Utilisateurs</th>
-              <th className="table-header text-center">Dossiers</th>
-              <th className="table-header">Inscrite le</th>
-              <th className="table-header">Actions</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={8} />
-              ) : erreur ? (
-                <tr><td colSpan={8}><ErrorState titre="Impossible de charger les sociétés" onRetry={load} /></td></tr>
-              ) : filtrees.length === 0 ? (
-                <tr><td colSpan={8}>
-                  {societes.length === 0
-                    ? <EmptyState titre="Aucune société pour le moment" description="Les sociétés qui s'inscrivent depuis le site apparaîtront ici." />
-                    : <EmptyState titre="Aucune société ne correspond" description="Modifiez la recherche ou retirez le filtre de statut."
-                        action={<button onClick={() => { setSearch(''); setFiltreStatut(null); }} className="btn-secondary">Effacer les filtres</button>} />}
-                </td></tr>
-              ) : filtrees.map(s => (
-                <tr key={s.id} className="table-row">
-                  <td className="table-cell cell-title font-medium" data-label="Société">
-                    <Link href={`/admin/societes/${s.id}`} className="text-primary-600 hover:underline">{s.raisonSociale}</Link>
-                    {s.sousDomaine && <span className="block font-mono text-[11px] font-normal text-gray-400">{s.sousDomaine}.gbtrans.app</span>}
-                  </td>
-                  <td className="table-cell" data-label="Formule">{s.abonnement?.plan?.nom || <span className="text-gray-400">Aucune</span>}</td>
-                  <td className="table-cell" data-label="Statut">
-                    {s.abonnement ? <span className={`badge ${STATUT_BADGE[s.abonnement.statut]} !text-[10px]`}>{STATUT_LABEL[s.abonnement.statut]}</span> : <span className="badge badge-gray !text-[10px]">Sans abonnement</span>}
-                  </td>
-                  <td className="table-cell col-opt text-xs" data-label="Prochain paiement">{fmtDate(s.abonnement?.dateProchainPaiement)}</td>
-                  <td className="table-cell text-center" data-label="Utilisateurs">{s._count?.utilisateurs ?? 0}</td>
-                  <td className="table-cell text-center" data-label="Dossiers">{s._count?.dossiers ?? 0}</td>
-                  <td className="table-cell cell-normal text-xs" data-label="Inscrite le">{fmtDate(s.createdAt)}</td>
-                  <td className="table-cell row-actions" data-label="Actions">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {s.abonnement && (
-                        <select
-                          value={s.abonnement.statut}
-                          disabled={busyId === s.id || !isSuperAdmin}
-                          title={!isSuperAdmin ? 'Compte de démonstration : lecture seule' : undefined}
-                          onChange={e => changerStatut(s.id, e.target.value)}
-                          className="input-field !py-1 !text-xs !w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {STATUTS.map(st => <option key={st} value={st}>{STATUT_LABEL[st]}</option>)}
-                        </select>
-                      )}
-                      {s.abonnement?.statut === 'IMPAYE' && (
-                        <button onClick={() => relancer(s.id)} disabled={busyId === s.id} className="text-xs text-amber-600 hover:underline disabled:opacity-50">Relancer</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListeResponsive
+          colonnes={[
+            { cle: 'soc', libelle: 'Société', texte: (x: any) => x.raisonSociale, rendu: (x: any) => (
+              <span className="block leading-tight">
+                <Link href={`/admin/societes/${x.id}`} onClick={e => e.stopPropagation()} className="font-semibold text-azure hover:underline">{x.raisonSociale}</Link>
+                {x.sousDomaine && <span className="block font-mono text-[11px] text-gray-400">{x.sousDomaine}.gbtrans.app</span>}
+              </span>
+            ) },
+            { cle: 'formule', libelle: 'Formule', texte: (x: any) => x.abonnement?.plan?.nom || '', rendu: (x: any) => <Discret>{x.abonnement?.plan?.nom || 'Aucune'}</Discret> },
+            { cle: 'statut', libelle: 'Statut', texte: (x: any) => (x.abonnement ? STATUT_LABEL[x.abonnement.statut] : 'Sans abonnement'), rendu: (x: any) => <StatutPastille libelle={x.abonnement ? STATUT_LABEL[x.abonnement.statut] : 'Sans abonnement'} ton={x.abonnement ? tonDepuisBadge(STATUT_BADGE[x.abonnement.statut]) : 'gray'} /> },
+            { cle: 'paiement', libelle: 'Prochain paiement', masquerSous: 'xl' as const, texte: (x: any) => fmtDate(x.abonnement?.dateProchainPaiement), rendu: (x: any) => <Discret>{fmtDate(x.abonnement?.dateProchainPaiement)}</Discret> },
+            { cle: 'users', libelle: 'Utilisateurs', align: 'right' as const, texte: (x: any) => String(x._count?.utilisateurs ?? 0), rendu: (x: any) => <Discret>{x._count?.utilisateurs ?? 0}</Discret> },
+            { cle: 'dossiers', libelle: 'Dossiers', align: 'right' as const, texte: (x: any) => String(x._count?.dossiers ?? 0), rendu: (x: any) => <Discret>{x._count?.dossiers ?? 0}</Discret> },
+            { cle: 'inscrite', libelle: 'Inscrite le', masquerSous: '2xl' as const, texte: (x: any) => fmtDate(x.createdAt), rendu: (x: any) => <Discret>{fmtDate(x.createdAt)}</Discret> },
+          ]}
+          lignes={erreur ? [] : filtrees}
+          cleLigne={(x: any) => x.id}
+          chargement={loading}
+          nomExport="societes"
+          actions={(x: any) => (
+            <>
+              {x.abonnement && (
+                <select
+                  value={x.abonnement.statut}
+                  disabled={busyId === x.id || !isSuperAdmin}
+                  title={!isSuperAdmin ? 'Compte de démonstration : lecture seule' : 'Changer le statut de l\'abonnement'}
+                  aria-label={`Statut de l'abonnement de ${x.raisonSociale}`}
+                  onClick={e => e.stopPropagation()}
+                  onChange={e => changerStatut(x.id, e.target.value)}
+                  className="input-field !h-8 !w-auto !py-0 !text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {STATUTS.map(st => <option key={st} value={st}>{STATUT_LABEL[st]}</option>)}
+                </select>
+              )}
+              {x.abonnement?.statut === 'IMPAYE' && (
+                <button type="button" onClick={e => { e.stopPropagation(); relancer(x.id); }} disabled={busyId === x.id} className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-amber-50 px-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50">Relancer</button>
+              )}
+            </>
+          )}
+          carte={(x: any) => ({
+            titre: x.raisonSociale,
+            sousTitre: `${x.abonnement?.plan?.nom || 'Aucune formule'}${x.sousDomaine ? ` — ${x.sousDomaine}.gbtrans.app` : ''}`,
+            statut: <StatutPastille libelle={x.abonnement ? STATUT_LABEL[x.abonnement.statut] : 'Sans abonnement'} ton={x.abonnement ? tonDepuisBadge(STATUT_BADGE[x.abonnement.statut]) : 'gray'} />,
+            details: `${x._count?.utilisateurs ?? 0} utilisateur(s) — ${x._count?.dossiers ?? 0} dossier(s) — inscrite le ${fmtDate(x.createdAt)}`,
+          })}
+          onClic={(x: any) => router.push(`/admin/societes/${x.id}`)}
+          vide={erreur ? <ErrorState titre="Impossible de charger les sociétés" onRetry={load} /> : (
+            societes.length === 0
+              ? <EmptyState titre="Aucune société pour le moment" description="Les sociétés qui s'inscrivent depuis le site apparaîtront ici." />
+              : <EmptyState titre="Aucune société ne correspond" description="Modifiez la recherche ou retirez le filtre de statut." action={<button onClick={() => { setSearch(''); setFiltreStatut(null); }} className="btn-secondary">Effacer les filtres</button>} />
+          )}
+        />
       </div>
     </AdminShell>
   );
