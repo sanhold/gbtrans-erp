@@ -10,13 +10,13 @@ import BoutonIcone, { IconeSupprimer } from '@/components/tables/BoutonIcone';
 import { Discret, Numero, Montant, Tronque } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
 const MODE_PAIEMENT_LABELS: Record<string, string> = {
   ESPECES: 'Espèces', CHEQUE: 'Chèque', VIREMENT: 'Virement', TRAITE: 'Traite',
   MOBILE_MONEY: 'Mobile Money', ORANGE_MONEY: 'Orange Money', MTN_MONEY: 'MTN Money',
   WAVE: 'Wave', MOOV_MONEY: 'Moov Money', CARTE_BANCAIRE: 'Carte bancaire', COMPENSATION: 'Compensation',
 };
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 function parseCompteValue(value: string): { type: 'CAISSE' | 'BANQUE' | 'TIERS'; id: string } | null {
   if (!value) return null;

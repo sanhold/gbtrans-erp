@@ -9,8 +9,8 @@ import EmptyState from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { platformApi, platformAuth } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const limite = (n: any, illimite: string, unite: string) => n == null ? illimite : `${n} ${unite}`;
 
 function Ligne({ icone, children }: { icone: string; children: React.ReactNode }) {

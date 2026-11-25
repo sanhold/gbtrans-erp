@@ -1,8 +1,11 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import ListeResponsive from '@/components/tables/ListeResponsive';
+import { Discret, Tronque, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { platformApi } from '@/lib/platformApi';
 import toast from 'react-hot-toast';
 
@@ -54,46 +57,28 @@ export default function AdminJournalPage() {
     return null;
   };
 
+  const pastille = (e: any) => <StatutPastille libelle={ACTION_LABEL[e.action] || e.action} ton={tonDepuisBadge(ACTION_BADGE[e.action])} />;
+  const colonnes = [
+    { cle: 'date', libelle: 'Date', texte: (e: any) => fmtDateHeure(e.createdAt), rendu: (e: any) => <Discret>{fmtDateHeure(e.createdAt)}</Discret> },
+    { cle: 'admin', libelle: 'Administrateur', texte: (e: any) => e.adminEmail || '', rendu: (e: any) => <Tronque texte={e.adminEmail} largeur="18rem" /> },
+    { cle: 'action', libelle: 'Action', texte: (e: any) => ACTION_LABEL[e.action] || e.action, rendu: pastille },
+    { cle: 'details', libelle: 'Détails', texte: (e: any) => detailsTexte(e) || '', rendu: (e: any) => <Tronque texte={detailsTexte(e) || '—'} largeur="20rem" /> },
+  ];
+
   return (
     <AdminShell>
-      <div className="space-y-5">
-        <div>
-          <h1 className="font-display text-[24px] sm:text-[26px] font-extrabold tracking-tight text-gray-900 dark:text-white">Journal d&apos;activité</h1>
-          <p className="text-sm text-gray-500">{total} action(s) enregistrée(s) — traçabilité des opérations sensibles de la plateforme</p>
-        </div>
-
-        <div className="table-container">
-          <table className="w-full">
-            <thead><tr>
-              <th className="table-header">Date</th>
-              <th className="table-header">Administrateur</th>
-              <th className="table-header">Action</th>
-              <th className="table-header">Détails</th>
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <SkeletonRows cols={4} />
-              ) : data.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-12 text-gray-500">Aucune action enregistrée</td></tr>
-              ) : data.map(entry => (
-                <tr key={entry.id} className="table-row">
-                  <td className="table-cell text-xs" data-label="Date">{fmtDateHeure(entry.createdAt)}</td>
-                  <td className="table-cell text-xs" data-label="Administrateur">{entry.adminEmail}</td>
-                  <td className="table-cell" data-label="Action"><span className={`badge ${ACTION_BADGE[entry.action] || 'badge-gray'} !text-[10px]`}>{ACTION_LABEL[entry.action] || entry.action}</span></td>
-                  <td className="table-cell text-xs text-gray-500" data-label="Détails">{detailsTexte(entry) || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Précédent</button>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary !px-3 !py-1.5 text-sm disabled:opacity-40">Suivant</button>
-          </div>
-        )}
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeader titre="Journal d'activité" sousTitre={`${total} action(s) — traçabilité des opérations sensibles`} sousTitreMasqueMobile />
+        <ListeResponsive
+          colonnes={colonnes}
+          lignes={data}
+          cleLigne={(e: any) => e.id}
+          chargement={loading}
+          nomExport="journal-activite"
+          carte={(e: any) => ({ titre: ACTION_LABEL[e.action] || e.action, sousTitre: e.adminEmail, statut: undefined, details: `${fmtDateHeure(e.createdAt)}${detailsTexte(e) ? ` — ${detailsTexte(e)}` : ''}` })}
+          pagination={{ page, totalPages, total, pageSize: 30, onPageChange: setPage, onPageSizeChange: () => {} }}
+          vide={<EmptyState titre="Aucune action enregistrée" description="Les opérations sensibles apparaîtront ici." />}
+        />
       </div>
     </AdminShell>
   );

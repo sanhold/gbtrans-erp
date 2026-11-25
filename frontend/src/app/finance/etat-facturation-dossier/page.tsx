@@ -12,6 +12,10 @@ import { fmt, STATUTS_DOSSIER } from '@/lib/financeHelpers';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
 
+const Section = ({ titre, children }: { titre: string; children: React.ReactNode }) => (
+  <section><h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">{titre}</h4>{children}</section>
+);
+
 export default function EtatFacturationDossierPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -208,10 +212,6 @@ export default function EtatFacturationDossierPage() {
   const encaisse = (detail?.factures || []).reduce((s: number, f: any) => s + Number(f.montantPaye || 0), 0);
   const depense = (detail?.depenses || []).reduce((s: number, d: any) => s + Number(d.montant || 0), 0);
   const resultat = encaisse - depense;
-
-  const Section = ({ titre, children }: { titre: string; children: React.ReactNode }) => (
-    <section><h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">{titre}</h4>{children}</section>
-  );
 
   return (
     <AppLayout>

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { offresApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
 const statutColors: Record<string, string> = {
   BROUILLON: 'badge-gray', ENVOYEE: 'badge-info', ACCEPTEE: 'badge-success',
@@ -15,7 +16,6 @@ const statutLabels: Record<string, string> = {
   BROUILLON: 'Brouillon', ENVOYEE: 'Envoyée', ACCEPTEE: 'Acceptée',
   REFUSEE: 'Refusée', EXPIREE: 'Expirée', TRANSFORMEE: 'Transformée', ANNULEE: 'Annulée',
 };
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function OffreDetailPage() {
   const params = useParams();

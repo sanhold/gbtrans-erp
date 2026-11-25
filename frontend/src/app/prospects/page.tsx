@@ -9,15 +9,7 @@ import { Discret, Tronque, StatutPastille, tonDepuisBadge } from '@/components/t
 import api from '@/lib/api';
 import { usePagination } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
-import { GraphifyChart } from '@/components/charts';
-import type { GraphifyData } from '@/types/graphify';
 
-const PIPELINE_STAGES = [
-  { label: 'Nouveaux', statut: 'NOUVEAU', color: '#345c80' },
-  { label: 'En négociation', statut: 'EN_NEGOCIATION', color: '#e8821e' },
-  { label: 'Gagnés', statut: 'GAGNE', color: '#00b884' },
-  { label: 'Perdus', statut: 'PERDU', color: '#dc2626' },
-];
 
 const statutColors: Record<string, string> = {
   NOUVEAU: 'badge-info', CONTACTE: 'badge-warning', EN_NEGOCIATION: 'badge-warning',

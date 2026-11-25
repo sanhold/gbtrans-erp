@@ -120,6 +120,15 @@ interface SidebarProps {
   collapsed?: boolean;
 }
 
+/** Pictogramme de menu (défini hors du composant pour ne pas être recréé à chaque rendu). */
+const Icon = ({ d }: { d: string }) => (
+  <span className="m-ico flex-shrink-0">
+    <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  </span>
+);
+
 export default function Sidebar({ open = false, onClose = () => {}, collapsed = false }: SidebarProps) {
   const pathname = usePathname();
   const { style: styleMenu } = useStyleMenu();
@@ -178,13 +187,6 @@ export default function Sidebar({ open = false, onClose = () => {}, collapsed = 
       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700 hover:text-gray-900 dark:hover:text-white'
   );
   const titleCls = clsx(collapsed && 'lg:hidden', 'm-t px-6 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500');
-  const Icon = ({ d }: { d: string }) => (
-    <span className="m-ico flex-shrink-0">
-      <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d={d} />
-      </svg>
-    </span>
-  );
   // Une couleur par entrée de menu (utilisée par le style « Blanc et couleurs »)
   const PALETTE = ['#1F6FEB', '#0EA5E9', '#F97316', '#16A34A', '#7C3AED', '#64748B'];
   const teinte = (i: number) => ({ '--c': PALETTE[i % PALETTE.length] } as CSSProperties);

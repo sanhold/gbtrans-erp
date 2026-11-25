@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { catalogueApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
 const CATEGORIES = [
   'DOUANE', 'DOUANE & COMPAGNIE', 'DEBOURS DOUANE', 'DEBOURS DOUANE & COMPAGNIE', 'DOUANE ELIBU-NOE-E',
@@ -28,7 +29,6 @@ const CAT_COLORS: Record<string, string> = {
   'DIVERS': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const emptyForm = { categorie: CATEGORIES[0], code: '', designation: '', montantDefaut: '', tauxTVA: '18', estTVA: true };
 

@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { saasApi } from '@/lib/api';
+import { fmt } from '@/lib/format';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function PlansGrid({
   selectedCode, onSelect, compact = false, onPeriodiciteChange,

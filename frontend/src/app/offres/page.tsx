@@ -15,6 +15,7 @@ import PickerField from '@/components/ui/PickerField';
 import { offresApi, clientsApi, dossiersApi, catalogueApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
 const statutColors: Record<string, string> = {
   BROUILLON: 'badge-gray', ENVOYEE: 'badge-info', ACCEPTEE: 'badge-success',
@@ -25,7 +26,6 @@ const statutLabels: Record<string, string> = {
   REFUSEE: 'Refusée', EXPIREE: 'Expirée', TRANSFORMEE: 'Transformée', ANNULEE: 'Annulée',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const ligneVide = () => ({ designation: '', quantite: '1', unite: 'FORFAIT', prixUnitaire: '', tauxTVA: 18 });
 

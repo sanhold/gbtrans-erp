@@ -12,6 +12,7 @@ import { Numero, Tronque, Tiers, Montant, StatutPastille, tonDepuisBadge } from 
 import { rhApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
 const MOIS_LABELS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const STATUT_COLORS: Record<string, string> = { BROUILLON: 'badge-gray', VALIDE: 'badge-info', PAYE: 'badge-success' };
@@ -21,7 +22,6 @@ const MODE_PAIEMENT_LABELS: Record<string, string> = {
   WAVE: 'Wave', MOOV_MONEY: 'Moov Money', CARTE_BANCAIRE: 'Carte bancaire', COMPENSATION: 'Compensation',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const now = new Date();
 
 export default function PaiePage() {

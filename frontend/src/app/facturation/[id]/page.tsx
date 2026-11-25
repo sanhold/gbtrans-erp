@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { montantEnLettres } from '@/lib/montantEnLettres';
 import { downloadPDF, printDocument, buildProformaHtml, buildFactureDocData, type DocData } from '@/lib/generatePDF';
 import { useAuthStore } from '@/stores/authStore';
+import { fmt } from '@/lib/format';
 
 const CAT_COLORS: Record<string, string> = {
   'DOUANE': '#059669', 'DOUANE & COMPAGNIE': '#059669',
@@ -29,7 +30,6 @@ const MODE_PAIEMENT_LABELS: Record<string, string> = {
   MOBILE_MONEY: 'Mobile Money', ORANGE_MONEY: 'Orange Money', MTN_MONEY: 'MTN Money',
   WAVE: 'Wave', MOOV_MONEY: 'Moov Money', CARTE_BANCAIRE: 'Carte bancaire', COMPENSATION: 'Compensation',
 };
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FactureDetailPage() {
   const params = useParams();

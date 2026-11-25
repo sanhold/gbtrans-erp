@@ -16,8 +16,8 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import PickerField from '@/components/ui/PickerField';
 import RowActionsMenu, { ActionsButton, openRowMenu, RowMenuState, RowAction } from '@/components/ui/RowActionsMenu';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 const todayISO = () => new Date().toISOString().slice(0, 10);
 

@@ -7,7 +7,7 @@ import ListeResponsive from '@/components/tables/ListeResponsive';
 import BoutonIcone, { IconeValider, IconeArchiver } from '@/components/tables/BoutonIcone';
 import { Numero, Discret, Tronque, Montant, StatutPastille } from '@/components/tables/cellules';
 import { financeApi } from '@/lib/api';
-import { fmt, useComptesFinanciers } from '@/lib/financeHelpers';
+import { useComptesFinanciers } from '@/lib/financeHelpers';
 import { usePagination } from '@/lib/usePagination';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
