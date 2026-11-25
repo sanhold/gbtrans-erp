@@ -7,15 +7,15 @@ import AppLayout from '@/components/layout/AppLayout';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import ListeResponsive from '@/components/tables/ListeResponsive';
-import { Numero, Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
+import { Discret, Tronque, Montant, StatutPastille, tonDepuisBadge } from '@/components/tables/cellules';
 import { dossiersApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { statutColors, statutLabels, STATUTS_DOSSIER } from '@/lib/dossierStatut';
+import { fmt } from '@/lib/format';
 const natureLabels: Record<string, string> = {
   IMPORT: 'Import', EXPORT: 'Export', TRANSIT: 'Transit', REEXPORT: 'Réexport', CABOTAGE: 'Cabotage', TRANSBORDEMENT: 'Transbordement',
 };
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 const toInputDate = (d: Date) => d.toISOString().slice(0, 10);
 

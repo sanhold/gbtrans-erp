@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import PaginationControls from '@/components/tables/PaginationControls';
 import TablePagination from '@/components/tables/TablePagination';
 import DataTable, { type Colonne } from '@/components/tables/DataTable';
-import { Numero, Discret, Tronque, StatutPastille } from '@/components/tables/cellules';
+import {StatutPastille } from '@/components/tables/cellules';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';

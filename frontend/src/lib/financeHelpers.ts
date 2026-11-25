@@ -4,7 +4,7 @@ import { cachedGet, peekCache, invalidateCache, TTL } from './cache';
 import { useCallback, useEffect, useState } from 'react';
 import { financeApi } from '@/lib/api';
 
-export const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
+export { fmt } from './format';
 
 export const MODE_PAIEMENT_LABELS: Record<string, string> = {
   ESPECES: 'Espèces', CHEQUE: 'Chèque', VIREMENT: 'Virement', TRAITE: 'Traite',

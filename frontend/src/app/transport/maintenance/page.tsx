@@ -15,7 +15,6 @@ const TYPE_LABEL: Record<string, string> = { VIDANGE: 'Vidange', REPARATION: 'RÃ
 const FORM_VIDE = { vehiculeId: '', type: 'VIDANGE', date: '', kilometrage: '', cout: '', prestataire: '', description: '', prochaineDateRappel: '', observations: '' };
 
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
-const fmtMontant = (n: any) => n != null ? `${new Intl.NumberFormat('fr-FR').format(Number(n))} FCFA` : '-';
 
 const joursRestants = (d: any) => d ? Math.ceil((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000) : null;
 const urgenceClasse = (j: number | null) => {

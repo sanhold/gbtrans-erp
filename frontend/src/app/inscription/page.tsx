@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { saasApi } from '@/lib/api';
 import PlansGrid from '@/components/marketing/PlansGrid';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 function slugify(v: string) {
   return v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);

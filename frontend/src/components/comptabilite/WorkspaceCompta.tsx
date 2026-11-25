@@ -1,6 +1,5 @@
 'use client';
 
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import ListeResponsive from '@/components/tables/ListeResponsive';
@@ -14,11 +13,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import PickerField from '@/components/ui/PickerField';
 import { comptabiliteApi } from '@/lib/api';
 import GenerationAutoTab from './GenerationAutoTab';
-import PlanComptablePanel from './PlanComptablePanel';
 import InfoBulle from '@/components/ui/InfoBulle';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 const emptyLigne = () => ({ compteId: '', libelle: '', debit: '', credit: '' });
 const emptyEcritureForm = () => ({ journalId: '', dateEcriture: new Date().toISOString().slice(0, 10), libelle: '', reference: '', piece: '', lignes: [emptyLigne(), emptyLigne()] });

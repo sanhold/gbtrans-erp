@@ -1012,9 +1012,9 @@ model ModeleCatalogue {
   ordre       Int      @default(0)
   actif       Boolean  @default(true)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now()) @updatedAt
 
-  societe Societe @relation(fields: [societeId], references: [id])
+  societe Societe @relation(fields: [societeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([societeId])
   @@map("modeles_catalogue")
@@ -1918,14 +1918,14 @@ model JustificatifDotation {
   dateValidation   DateTime?
   depenseId        String?   @unique
   createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  updatedAt        DateTime  @default(now()) @updatedAt
 
-  societe  Societe     @relation(fields: [societeId], references: [id])
-  dotation Dotation    @relation(fields: [dotationId], references: [id])
-  dossier  Dossier?    @relation(fields: [dossierId], references: [id])
-  auteur   Utilisateur @relation("JustificatifAuteur", fields: [auteurId], references: [id])
-  valideur Utilisateur? @relation("JustificatifValideur", fields: [valideParId], references: [id])
-  depense  Depense?    @relation(fields: [depenseId], references: [id])
+  societe  Societe     @relation(fields: [societeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dotation Dotation    @relation(fields: [dotationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dossier  Dossier?    @relation(fields: [dossierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  auteur   Utilisateur @relation("JustificatifAuteur", fields: [auteurId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  valideur Utilisateur? @relation("JustificatifValideur", fields: [valideParId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  depense  Depense?    @relation(fields: [depenseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([societeId, statut])
   @@index([dotationId])

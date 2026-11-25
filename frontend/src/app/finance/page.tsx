@@ -299,7 +299,6 @@ function TiersDetailView({ type, id, onBack }: { type: 'CLIENT' | 'FOURNISSEUR';
 
   const tiers = type === 'CLIENT' ? detail.client : detail.fournisseur;
   const factures = detail.factures || [];
-  const paiements = detail.paiements || [];
   const resteAPayer = factures.reduce((s: number, f: any) => s + Number(f.resteAPayer), 0);
   const facturesDe = (p: any) => (p.affectations || []).map((a: any) => a.facture?.numero || a.factureFournisseur?.numero).filter(Boolean).join(', ');
 

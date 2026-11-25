@@ -19,8 +19,8 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import { generateATCertBlob, downloadBlob } from '@/lib/generateATPdf';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 
 const ETAT_LABELS: Record<string, string> = { NON_APURE: 'Non apuré', EXPIRE: 'Expiré', APURE: 'Apuré' };

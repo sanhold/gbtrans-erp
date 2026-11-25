@@ -10,7 +10,6 @@ import { Numero, Discret, Tronque, Montant } from '@/components/tables/cellules'
 import { atApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('fr-FR') : '-';
 
 export default function ATHistoriquePage() {

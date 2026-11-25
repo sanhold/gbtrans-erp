@@ -15,6 +15,7 @@ import PaginationControls from '@/components/tables/PaginationControls';
 import api, { facturesApi } from '@/lib/api';
 import { DEFAULT_PAGE_SIZE } from '@/lib/usePagination';
 import toast from 'react-hot-toast';
+import { fmt } from '@/lib/format';
 
 const statutColors: Record<string, string> = {
   BROUILLON: 'badge-gray', VALIDEE: 'badge-info', ENVOYEE: 'badge-info',
@@ -26,7 +27,6 @@ const statutLibelles: Record<string, string> = {
   PAYEE: 'Payée', EN_RETARD: 'En retard', ANNULEE: 'Annulée', CONTENTIEUX: 'Contentieux',
 };
 const statutLibelle = (s: string) => statutLibelles[s] || (s || '').replace(/_/g, ' ');
-const fmt = (n: any) => n != null ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(n)) : '0';
 
 export default function FacturationPage() {
   const router = useRouter();

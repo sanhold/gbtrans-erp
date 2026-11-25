@@ -238,8 +238,9 @@ export default function DossierDetailPage() {
   const isFerme = STATUTS_DOSSIER_FERME.includes(dossier.statut);
   const peutArchiver = dossier.statut === 'TERMINE';
 
-  const EditableField = ({ label, field, type = 'text' }: { label: string; field: string; type?: string }) => (
-    <div>
+  // Fonction de rendu (et non composant) : un composant défini ici serait recréé à chaque frappe et ferait perdre le focus du champ.
+  const champEditable = (label: string, field: string, type = 'text') => (
+    <div key={field}>
       <p className="text-gray-500 text-xs mb-1">{label}</p>
       {editing ? (
         <input
@@ -359,7 +360,7 @@ export default function DossierDetailPage() {
             <div className="card">
               <h3 className="font-semibold mb-4">Client</h3>
               <div className="mb-3">
-                <EditableField label="N° physique" field="numeroPhysique" />
+                {champEditable("N° physique", "numeroPhysique")}
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Raison Sociale</span><span className="font-medium">{dossier.client?.raisonSociale}</span></div>
@@ -372,13 +373,13 @@ export default function DossierDetailPage() {
             <div className="card">
               <h3 className="font-semibold mb-4">Marchandise</h3>
               <div className="grid grid-cols-1 gap-3">
-                <EditableField label="Désignation" field="designation" />
+                {champEditable("Désignation", "designation")}
                 <div className="grid grid-cols-2 gap-3">
-                  <EditableField label="Poids Brut (kg)" field="poidsBrut" type="number" />
-                  <EditableField label="Poids Net (kg)" field="poidsNet" type="number" />
-                  <EditableField label="Volume (m³)" field="volume" type="number" />
-                  <EditableField label="Nombre de colis" field="nombreColis" type="number" />
-                  <EditableField label="Emballage" field="emballage" />
+                  {champEditable("Poids Brut (kg)", "poidsBrut", "number")}
+                  {champEditable("Poids Net (kg)", "poidsNet", "number")}
+                  {champEditable("Volume (m³)", "volume", "number")}
+                  {champEditable("Nombre de colis", "nombreColis", "number")}
+                  {champEditable("Emballage", "emballage")}
                 </div>
               </div>
             </div>
@@ -521,12 +522,12 @@ export default function DossierDetailPage() {
           <div className="card">
             <h3 className="font-semibold mb-4">Détails Transport</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <EditableField label="Compagnie Maritime" field="compagnieMaritime" />
-              <EditableField label="Navire" field="navire" />
-              <EditableField label="Voyage" field="voyage" />
-              <EditableField label="N° BL / Connaissement" field="numeroBL" />
-              <EditableField label="Port d'Origine" field="portOrigine" />
-              <EditableField label="Port de Destination" field="portDestination" />
+              {champEditable("Compagnie Maritime", "compagnieMaritime")}
+              {champEditable("Navire", "navire")}
+              {champEditable("Voyage", "voyage")}
+              {champEditable("N° BL / Connaissement", "numeroBL")}
+              {champEditable("Port d'Origine", "portOrigine")}
+              {champEditable("Port de Destination", "portDestination")}
             </div>
             {dossier.conteneurs?.length > 0 && (
               <div className="mt-6">
@@ -553,22 +554,22 @@ export default function DossierDetailPage() {
           <div className="card">
             <h3 className="font-semibold mb-4">Douane & Valeur</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <EditableField label="Valeur FOB" field="valeurFOB" type="number" />
-              <EditableField label="Fret" field="fret" type="number" />
-              <EditableField label="Assurance" field="assurance" type="number" />
-              <EditableField label="Valeur CAF" field="valeurCAF" type="number" />
-              <EditableField label="Incoterm" field="incoterm" />
-              <EditableField label="Devise" field="devise" />
-              <EditableField label="N° Déclaration" field="numeroDeclaration" />
-              <EditableField label="Régime Douanier" field="regimeDouanier" />
-              <EditableField label="Bureau de Douane" field="bureauDouane" />
-              <EditableField label="Droits de Douane" field="droitDouane" type="number" />
-              <EditableField label="TVA" field="tva" type="number" />
-              <EditableField label="Total Droits & Taxes" field="totalDroits" type="number" />
+              {champEditable("Valeur FOB", "valeurFOB", "number")}
+              {champEditable("Fret", "fret", "number")}
+              {champEditable("Assurance", "assurance", "number")}
+              {champEditable("Valeur CAF", "valeurCAF", "number")}
+              {champEditable("Incoterm", "incoterm")}
+              {champEditable("Devise", "devise")}
+              {champEditable("N° Déclaration", "numeroDeclaration")}
+              {champEditable("Régime Douanier", "regimeDouanier")}
+              {champEditable("Bureau de Douane", "bureauDouane")}
+              {champEditable("Droits de Douane", "droitDouane", "number")}
+              {champEditable("TVA", "tva", "number")}
+              {champEditable("Total Droits & Taxes", "totalDroits", "number")}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-surface-700">
-              <EditableField label="Lieu de Livraison" field="lieuLivraison" />
-              <EditableField label="N° Bon de Livraison" field="bonLivraison" />
+              {champEditable("Lieu de Livraison", "lieuLivraison")}
+              {champEditable("N° Bon de Livraison", "bonLivraison")}
             </div>
           </div>
         )}
